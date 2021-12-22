@@ -476,6 +476,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 write.flush()
 
                 response = read.read()
+                assert isinstance(response, str)
                 if "\r" not in response:
                     # Carriage return will be removed when reading as a file on
                     # some platforms.  We add it before the comparison.

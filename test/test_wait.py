@@ -3,7 +3,7 @@ import threading
 import time
 from socket import socket, socketpair
 from types import FrameType
-from typing import Callable, Generator, List, Tuple
+from typing import Any, Callable, Generator, List, Optional, Tuple
 
 import pytest
 
@@ -106,7 +106,7 @@ def test_eintr(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: FrameType) -> None:
+    def handler(sig: int, frame: Optional[FrameType]) -> Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 
@@ -137,7 +137,7 @@ def test_eintr_zero_timeout(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: FrameType) -> None:
+    def handler(sig: int, frame: Optional[FrameType]) -> Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 
@@ -168,7 +168,7 @@ def test_eintr_infinite_timeout(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> 
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: FrameType) -> None:
+    def handler(sig: int, frame: Optional[FrameType]) -> Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 

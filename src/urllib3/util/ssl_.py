@@ -88,6 +88,8 @@ def _is_has_never_check_common_name_reliable(
 
 
 if TYPE_CHECKING:
+    from ssl import VerifyMode
+
     from typing_extensions import Literal
 
     from .ssltransport import SSLTransport as SSLTransportType
@@ -144,8 +146,8 @@ except ImportError:
     OP_NO_TICKET = 0x4000  # type: ignore[assignment]
     OP_NO_SSLv2 = 0x1000000  # type: ignore[assignment]
     OP_NO_SSLv3 = 0x2000000  # type: ignore[assignment]
-    PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
-    PROTOCOL_TLS_CLIENT = 16
+    PROTOCOL_SSLv23 = PROTOCOL_TLS = 2  # type: ignore[assignment]
+    PROTOCOL_TLS_CLIENT = 16  # type: ignore[assignment]
 
 
 _PCTRTT = Tuple[Tuple[str, str], ...]
@@ -221,7 +223,7 @@ def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
         )
 
 
-def resolve_cert_reqs(candidate: Union[None, int, str]) -> int:
+def resolve_cert_reqs(candidate: Union[None, int, str]) -> "VerifyMode":
     """
     Resolves the argument to a numeric constant, which can be passed to
     the wrap_socket function/method from the ssl module.
@@ -239,9 +241,9 @@ def resolve_cert_reqs(candidate: Union[None, int, str]) -> int:
         res = getattr(ssl, candidate, None)
         if res is None:
             res = getattr(ssl, "CERT_" + candidate)
-        return cast(int, res)
+        return res  # type: ignore[no-any-return]
 
-    return candidate
+    return candidate  # type: ignore[return-value]
 
 
 def resolve_ssl_version(candidate: Union[None, int, str]) -> int:

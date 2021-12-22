@@ -158,7 +158,7 @@ class RecentlyUsedContainer(Generic[_KT, _VT], MutableMapping[_KT, _VT]):
             for value in values:
                 self.dispose_func(value)
 
-    def keys(self) -> Set[_KT]:
+    def keys(self) -> Set[_KT]:  # type: ignore[override]
         with self.lock:
             return set(self._container.keys())
 
@@ -413,7 +413,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
             val = self._container[key.lower()]
             yield val[0], ", ".join(val[1:])
 
-    def items(self) -> HTTPHeaderDictItemView:
+    def items(self) -> HTTPHeaderDictItemView:  # type: ignore[override]
         return HTTPHeaderDictItemView(self)
 
     def _has_value_for_header(self, header_name: str, potential_value: str) -> bool:

@@ -476,7 +476,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # HTTP version
             conn._http_vsn_str,  # type: ignore[attr-defined]
             httplib_response.status,
-            httplib_response.length,  # type: ignore[attr-defined]
+            httplib_response.length,
         )
 
         try:

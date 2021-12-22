@@ -320,7 +320,7 @@ class TestResponse:
         with pytest.raises(IOError):
             resp3.fileno()
 
-        resp3._fp = 2  # type: ignore[assignment]
+        resp3._fp = 2
         # A corner case where _fp is present but doesn't have `closed`,
         # `isclosed`, or `fileno`.  Unlikely, but possible.
         assert resp3.closed
@@ -330,9 +330,9 @@ class TestResponse:
     def test_io_closed_consistently(self, sock: socket.socket) -> None:
         try:
             hlr = httplib.HTTPResponse(sock)
-            hlr.fp = BytesIO(b"foo")  # type: ignore[attr-defined]
-            hlr.chunked = 0  # type: ignore[attr-defined]
-            hlr.length = 3  # type: ignore[attr-defined]
+            hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
+            hlr.chunked = 0  # type: ignore[assignment]
+            hlr.length = 3
             with HTTPResponse(hlr, preload_content=False) as resp:
                 assert not resp.closed
                 assert resp._fp is not None
@@ -688,7 +688,7 @@ class TestResponse:
         stream = [b"fo", b"o", b"bar"]
         fp = MockChunkedEncodingResponse(stream)
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-        r.fp = fp  # type: ignore[attr-defined]
+        r.fp = fp  # type: ignore[assignment]
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
@@ -709,7 +709,7 @@ class TestResponse:
 
         fp = MockChunkedEncodingResponse(list(stream()))
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-        r.fp = fp  # type: ignore[attr-defined]
+        r.fp = fp  # type: ignore[assignment]
         headers = {"transfer-encoding": "chunked", "content-encoding": "gzip"}
         resp = HTTPResponse(r, preload_content=False, headers=headers)
 
@@ -723,9 +723,9 @@ class TestResponse:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-        r.fp = fp  # type: ignore[attr-defined]
-        r.chunked = True  # type: ignore[attr-defined]
-        r.chunk_left = None  # type: ignore[attr-defined]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
@@ -737,9 +737,9 @@ class TestResponse:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-        r.fp = fp  # type: ignore[attr-defined]
-        r.chunked = True  # type: ignore[attr-defined]
-        r.chunk_left = None  # type: ignore[attr-defined]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
@@ -777,16 +777,16 @@ class TestResponse:
 
         orig_ex = ctx.value.args[1]
         assert isinstance(orig_ex, IncompleteRead)
-        assert orig_ex.partial == 0
+        assert orig_ex.partial == 0  # type: ignore[comparison-overlap]
         assert orig_ex.expected == content_length
 
     def test_incomplete_chunk(self) -> None:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedIncompleteRead(stream)
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-        r.fp = fp  # type: ignore[attr-defined]
-        r.chunked = True  # type: ignore[attr-defined]
-        r.chunk_left = None  # type: ignore[attr-defined]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
@@ -800,9 +800,9 @@ class TestResponse:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedInvalidChunkLength(stream)
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-        r.fp = fp  # type: ignore[attr-defined]
-        r.chunked = True  # type: ignore[attr-defined]
-        r.chunk_left = None  # type: ignore[attr-defined]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
@@ -822,9 +822,9 @@ class TestResponse:
         stream = [b"foo", b"bar", b"baz"]
         fp = MockChunkedEncodingWithoutCRLFOnEnd(stream)
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-        r.fp = fp  # type: ignore[attr-defined]
-        r.chunked = True  # type: ignore[attr-defined]
-        r.chunk_left = None  # type: ignore[attr-defined]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
@@ -834,9 +834,9 @@ class TestResponse:
         stream = [b"foo", b"bar"]
         fp = MockChunkedEncodingWithExtensions(stream)
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-        r.fp = fp  # type: ignore[attr-defined]
-        r.chunked = True  # type: ignore[attr-defined]
-        r.chunk_left = None  # type: ignore[attr-defined]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
@@ -844,8 +844,8 @@ class TestResponse:
 
     def test_chunked_head_response(self) -> None:
         r = httplib.HTTPResponse(MockSock, method="HEAD")  # type: ignore[arg-type]
-        r.chunked = True  # type: ignore[attr-defined]
-        r.chunk_left = None  # type: ignore[attr-defined]
+        r.chunked = True
+        r.chunk_left = None
         resp = HTTPResponse(
             "",
             preload_content=False,
@@ -939,7 +939,7 @@ class TestResponse:
 
         fp = MockChunkedEncodingResponse(list(stream()))
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-        r.fp = fp  # type: ignore[attr-defined]
+        r.fp = fp  # type: ignore[assignment]
         headers = {"transfer-encoding": "chunked", "content-encoding": "gzip"}
         resp = HTTPResponse(r, preload_content=False, headers=headers)
 
