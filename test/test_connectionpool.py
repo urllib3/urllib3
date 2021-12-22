@@ -515,7 +515,7 @@ class TestConnectionPool:
                     ex, self._ex = self._ex, None
                     raise ex()
                 response = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-                response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[attr-defined]
+                response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
                 response.headers = response.msg = httplib.HTTPMessage()
                 return response
 
@@ -567,7 +567,7 @@ class TestConnectionPool:
 
             def _make_request(self, *args: Any, **kwargs: Any) -> httplib.HTTPResponse:
                 httplib_response = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-                httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[attr-defined]
+                httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
                 httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()
                 return httplib_response
 

@@ -905,7 +905,7 @@ class HTTPResponse(BaseHTTPResponse):
 
             # Chunk content ends with \r\n: discard it.
             while self._fp is not None:
-                line = self._fp.fp.readline()  # type: ignore[attr-defined]
+                line = self._fp.fp.readline()
                 if not line:
                     # Some sites may not end with '\r\n'.
                     break

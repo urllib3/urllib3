@@ -231,7 +231,7 @@ def _read_callback(
                 buffer = (ctypes.c_char * remaining).from_address(
                     data_buffer + read_count
                 )
-                chunk_size = base_socket.recv_into(buffer, remaining)  # type: ignore[arg-type]
+                chunk_size = base_socket.recv_into(buffer, remaining)
                 read_count += chunk_size
                 if not chunk_size:
                     if not read_count:
