@@ -27,11 +27,8 @@ def tests_impl(session, extras="socks,secure,brotli"):
     # Print OpenSSL information.
     session.run("python", "-m", "OpenSSL.debug")
 
-    # Inspired from https://github.com/pyca/cryptography
-    # We use parallel mode and then combine here so that coverage.py will take
-    # the paths like .tox/pyXY/lib/pythonX.Y/site-packages/urllib3/__init__.py
-    # and collapse them into src/urllib3/__init__.py.
-
+    # Inspired from https://hynek.me/articles/ditch-codecov-python/
+    # We use parallel mode and then combine in a later CI step
     session.run(
         "coverage",
         "run",
@@ -40,17 +37,15 @@ def tests_impl(session, extras="socks,secure,brotli"):
         "pytest",
         "-r",
         "a",
+        f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
         "--tb=native",
         "--no-success-flaky-report",
         *(session.posargs or ("test/",)),
         env={"PYTHONWARNINGS": "always::DeprecationWarning"},
     )
-    session.run("coverage", "combine")
-    session.run("coverage", "report", "-m")
-    session.run("coverage", "xml")
 
 
-@nox.session(python=["2.7", "3.6", "3.7", "3.8", "3.9", "3.10", "pypy"])
+@nox.session(python=["2.7", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "pypy"])
 def test(session):
     tests_impl(session)
 
@@ -79,9 +74,6 @@ def app_engine(session):
         "test/appengine",
         *session.posargs,
     )
-    session.run("coverage", "combine")
-    session.run("coverage", "report", "-m")
-    session.run("coverage", "xml")
 
 
 def git_clone(session, git_url):
