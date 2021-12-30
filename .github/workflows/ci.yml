@@ -21,8 +21,8 @@ jobs:
           cache: pip
       - name: Check packages
         run: |
-          python3 -m pip install -U pip setuptools wheel twine rstcheck;
-          python3 setup.py sdist bdist_wheel;
+          python3 -m pip install -U pip setuptools wheel build twine rstcheck
+          python3 -m build
           rstcheck README.rst CHANGES.rst
           python3 -m twine check dist/*
   test:
@@ -68,13 +68,6 @@ jobs:
 
       - name: Set Up Python - ${{ matrix.python-version }}
         uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-
-      - name: Set Up Python - ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        if: "!endsWith(matrix.python-version, '-dev')"
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
