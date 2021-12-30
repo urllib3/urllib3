@@ -18,8 +18,8 @@
     python -m venv
     source venv/bin/activate
     python -m pip install -U pip
-    python -m pip install -U twine setuptools wheel
-    python setup.py sdist bdist_wheel
+    python -m pip install -U twine setuptools wheel build
+    python -m build
     
     twine check dist/*
     # Inspect the output to make sure it looks right
