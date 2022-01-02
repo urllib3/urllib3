@@ -419,7 +419,7 @@ class HTTPResponse(BaseHTTPResponse):
         connection: Optional[HTTPConnection] = None,
         msg: Optional[_HttplibHTTPMessage] = None,
         retries: Optional[Retry] = None,
-        enforce_content_length: bool = False,
+        enforce_content_length: bool = True,
         request_method: Optional[str] = None,
         request_url: Optional[str] = None,
         auto_close: bool = True,
