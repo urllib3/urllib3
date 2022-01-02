@@ -1,0 +1,1 @@
+Change `enforce_content_length` default to True, preventing silent data loss when reading streamed responses.
