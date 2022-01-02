@@ -153,7 +153,7 @@ class Retry:
 
         seconds. If the backoff_factor is 0.1, then :func:`.sleep` will sleep
         for [0.0s, 0.2s, 0.4s, ...] between retries. It will never be longer
-        than :attr:`Retry.BACKOFF_MAX`.
+        than :attr:`Retry.backoff_max`.
 
         By default, backoff is disabled (set to 0).
 
@@ -191,8 +191,8 @@ class Retry:
     #: Default headers to be used for ``remove_headers_on_redirect``
     DEFAULT_REMOVE_HEADERS_ON_REDIRECT = frozenset(["Authorization"])
 
-    #: Maximum backoff time.
-    BACKOFF_MAX = 120
+    #: Default maximum backoff time.
+    DEFAULT_BACKOFF_MAX = 120
 
     # Backward compatibility; assigned outside of the class.
     DEFAULT: ClassVar["Retry"]
@@ -208,6 +208,7 @@ class Retry:
         allowed_methods: Optional[Collection[str]] = DEFAULT_ALLOWED_METHODS,
         status_forcelist: Optional[Collection[int]] = None,
         backoff_factor: float = 0,
+        backoff_max: float = DEFAULT_BACKOFF_MAX,
         raise_on_redirect: bool = True,
         raise_on_status: bool = True,
         history: Optional[Tuple[RequestHistory, ...]] = None,
@@ -230,6 +231,7 @@ class Retry:
         self.status_forcelist = status_forcelist or set()
         self.allowed_methods = allowed_methods
         self.backoff_factor = backoff_factor
+        self.backoff_max = backoff_max
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
         self.history = history or ()
@@ -249,6 +251,7 @@ class Retry:
             allowed_methods=self.allowed_methods,
             status_forcelist=self.status_forcelist,
             backoff_factor=self.backoff_factor,
+            backoff_max=self.backoff_max,
             raise_on_redirect=self.raise_on_redirect,
             raise_on_status=self.raise_on_status,
             history=self.history,
@@ -293,7 +296,7 @@ class Retry:
             return 0
 
         backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
-        return float(min(self.BACKOFF_MAX, backoff_value))
+        return float(min(self.backoff_max, backoff_value))
 
     def parse_retry_after(self, retry_after: str) -> float:
         seconds: float
