@@ -770,7 +770,7 @@ class HTTPResponse(BaseHTTPResponse):
     @property
     def closed(self) -> bool:
         if not self.auto_close:
-            return io.IOBase.closed.__get__(self)  # type: ignore[no-any-return, attr-defined]
+            return io.IOBase.closed.__get__(self)()
         elif self._fp is None:
             return True
         elif hasattr(self._fp, "isclosed"):
