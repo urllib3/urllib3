@@ -531,8 +531,6 @@ class TestUtil:
         # Pass non-integer position
         with pytest.raises(ValueError):
             rewind_body(body, body_pos=None)
-        with pytest.raises(ValueError):
-            rewind_body(body, body_pos=object())
 
     def test_rewind_body_failed_seek(self) -> None:
         class BadSeek(io.StringIO):
