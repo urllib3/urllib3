@@ -26,13 +26,13 @@ else:
     ACCEPT_ENCODING += ",br"
 
 
-class _TYPE_DEFAULT(Enum):
+class _TYPE_FAILEDTELL(Enum):
     token = 0
 
 
-_FAILEDTELL: "Final[_TYPE_DEFAULT]" = _TYPE_DEFAULT.token
+_FAILEDTELL: "Final[_TYPE_FAILEDTELL]" = _TYPE_FAILEDTELL.token
 
-_TYPE_FAILEDTELL = Optional[Union[int, _TYPE_DEFAULT]]
+_TYPE_BODY_POSITION = Optional[Union[int, _TYPE_FAILEDTELL]]
 
 
 def make_headers(
@@ -114,7 +114,7 @@ def make_headers(
     return headers
 
 
-def set_file_position(body: Any, pos: _TYPE_FAILEDTELL) -> _TYPE_FAILEDTELL:
+def set_file_position(body: Any, pos: _TYPE_BODY_POSITION) -> _TYPE_BODY_POSITION:
     """
     If a position is provided, move file to that point.
     Otherwise, we'll attempt to record a position for future use.
@@ -132,7 +132,7 @@ def set_file_position(body: Any, pos: _TYPE_FAILEDTELL) -> _TYPE_FAILEDTELL:
     return pos
 
 
-def rewind_body(body: IO[AnyStr], body_pos: _TYPE_FAILEDTELL) -> None:
+def rewind_body(body: IO[AnyStr], body_pos: _TYPE_BODY_POSITION) -> None:
     """
     Attempt to rewind body to a certain position.
     Primarily used for request redirects and retries.

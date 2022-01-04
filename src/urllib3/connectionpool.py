@@ -41,7 +41,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse, HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
-from .util.request import _TYPE_FAILEDTELL, set_file_position
+from .util.request import _TYPE_BODY_POSITION, set_file_position
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
@@ -547,7 +547,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         pool_timeout: Optional[int] = None,
         release_conn: Optional[bool] = None,
         chunked: bool = False,
-        body_pos: _TYPE_FAILEDTELL = None,
+        body_pos: _TYPE_BODY_POSITION = None,
         **response_kw: Any,
     ) -> BaseHTTPResponse:
         """
