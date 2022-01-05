@@ -32,7 +32,7 @@ class _TYPE_FAILEDTELL(Enum):
 
 _FAILEDTELL: "Final[_TYPE_FAILEDTELL]" = _TYPE_FAILEDTELL.token
 
-_TYPE_BODY_POSITION = Optional[Union[int, _TYPE_FAILEDTELL]]
+_TYPE_BODY_POSITION = Union[int, _TYPE_FAILEDTELL]
 
 
 def make_headers(
@@ -114,7 +114,9 @@ def make_headers(
     return headers
 
 
-def set_file_position(body: Any, pos: _TYPE_BODY_POSITION) -> _TYPE_BODY_POSITION:
+def set_file_position(
+    body: Any, pos: Optional[_TYPE_BODY_POSITION]
+) -> Optional[_TYPE_BODY_POSITION]:
     """
     If a position is provided, move file to that point.
     Otherwise, we'll attempt to record a position for future use.

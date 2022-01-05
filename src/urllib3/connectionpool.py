@@ -547,7 +547,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         pool_timeout: Optional[int] = None,
         release_conn: Optional[bool] = None,
         chunked: bool = False,
-        body_pos: _TYPE_BODY_POSITION = None,
+        body_pos: Optional[_TYPE_BODY_POSITION] = None,
         **response_kw: Any,
     ) -> BaseHTTPResponse:
         """

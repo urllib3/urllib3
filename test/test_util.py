@@ -530,7 +530,7 @@ class TestUtil:
 
         # Pass non-integer position
         with pytest.raises(ValueError):
-            rewind_body(body, body_pos=None)
+            rewind_body(body, body_pos=None)  # type: ignore[arg-type]
         with pytest.raises(ValueError):
             rewind_body(body, body_pos=object())  # type: ignore[arg-type]
 
