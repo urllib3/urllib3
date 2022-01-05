@@ -1,7 +1,11 @@
 from base64 import b64encode
-from typing import IO, Any, AnyStr, Dict, List, Optional, Union
+from enum import Enum
+from typing import IO, TYPE_CHECKING, Any, AnyStr, Dict, List, Optional, Union
 
 from ..exceptions import UnrewindableBodyError
+
+if TYPE_CHECKING:
+    from typing_extensions import Final
 
 # Pass as a value within ``headers`` to skip
 # emitting some HTTP headers that are added automatically.
@@ -21,7 +25,14 @@ except ImportError:
 else:
     ACCEPT_ENCODING += ",br"
 
-_FAILEDTELL = object()
+
+class _TYPE_FAILEDTELL(Enum):
+    token = 0
+
+
+_FAILEDTELL: "Final[_TYPE_FAILEDTELL]" = _TYPE_FAILEDTELL.token
+
+_TYPE_BODY_POSITION = Union[int, _TYPE_FAILEDTELL]
 
 
 def make_headers(
@@ -104,8 +115,8 @@ def make_headers(
 
 
 def set_file_position(
-    body: Any, pos: Optional[Union[int, object]]
-) -> Optional[Union[int, object]]:
+    body: Any, pos: Optional[_TYPE_BODY_POSITION]
+) -> Optional[_TYPE_BODY_POSITION]:
     """
     If a position is provided, move file to that point.
     Otherwise, we'll attempt to record a position for future use.
@@ -123,7 +134,7 @@ def set_file_position(
     return pos
 
 
-def rewind_body(body: IO[AnyStr], body_pos: Optional[Union[int, object]]) -> None:
+def rewind_body(body: IO[AnyStr], body_pos: _TYPE_BODY_POSITION) -> None:
     """
     Attempt to rewind body to a certain position.
     Primarily used for request redirects and retries.
