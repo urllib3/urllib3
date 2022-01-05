@@ -6,9 +6,10 @@ import sys
 import warnings
 from itertools import chain
 from test import ImportBlocker, ModuleStash, notBrotli, onlyBrotli
-from typing import TYPE_CHECKING, Dict, NoReturn, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, NoReturn, Optional, Tuple, Union
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
+from urllib.parse import urlparse
 
 import pytest
 
@@ -360,13 +361,53 @@ class TestUtil:
         returned_url = parse_url(url)
         assert returned_url.request_uri == expected_request_uri
 
+    url_authority_map: List[Tuple[str, Optional[str]]] = [
+        ("http://user:pass@google.com/mail", "user:pass@google.com"),
+        ("http://user:pass@google.com:80/mail", "user:pass@google.com:80"),
+        ("http://user@google.com:80/mail", "user@google.com:80"),
+        ("http://user:pass@192.168.1.1/path", "user:pass@192.168.1.1"),
+        ("http://user:pass@192.168.1.1:80/path", "user:pass@192.168.1.1:80"),
+        ("http://user@192.168.1.1:80/path", "user@192.168.1.1:80"),
+        ("http://user:pass@[::1]/path", "user:pass@[::1]"),
+        ("http://user:pass@[::1]:80/path", "user:pass@[::1]:80"),
+        ("http://user@[::1]:80/path", "user@[::1]:80"),
+        ("http://user:pass@localhost/path", "user:pass@localhost"),
+        ("http://user:pass@localhost:80/path", "user:pass@localhost:80"),
+        ("http://user@localhost:80/path", "user@localhost:80"),
+    ]
+
     url_netloc_map = [
         ("http://google.com/mail", "google.com"),
         ("http://google.com:80/mail", "google.com:80"),
+        ("http://192.168.0.1/path", "192.168.0.1"),
+        ("http://192.168.0.1:80/path", "192.168.0.1:80"),
+        ("http://[::1]/path", "[::1]"),
+        ("http://[::1]:80/path", "[::1]:80"),
+        ("http://localhost", "localhost"),
+        ("http://localhost:80", "localhost:80"),
         ("google.com/foobar", "google.com"),
         ("google.com:12345", "google.com:12345"),
         ("/", None),
     ]
+
+    combined_netloc_authority_map = url_authority_map + url_netloc_map
+
+    # We compose this list due to variances between parse_url
+    # and urlparse when URIs don't provide a scheme.
+    url_authority_with_schemes_map = [
+        u for u in combined_netloc_authority_map if u[0].startswith("http")
+    ]
+
+    @pytest.mark.parametrize("url, expected_authority", combined_netloc_authority_map)
+    def test_authority(self, url: str, expected_authority: Optional[str]) -> None:
+        assert parse_url(url).authority == expected_authority
+
+    @pytest.mark.parametrize("url, expected_authority", url_authority_with_schemes_map)
+    def test_authority_matches_urllib_netloc(
+        self, url: str, expected_authority: Optional[str]
+    ) -> None:
+        """Validate this matches the behavior of urlparse().netloc"""
+        assert urlparse(url).netloc == expected_authority
 
     @pytest.mark.parametrize("url, expected_netloc", url_netloc_map)
     def test_netloc(self, url: str, expected_netloc: Optional[str]) -> None:
