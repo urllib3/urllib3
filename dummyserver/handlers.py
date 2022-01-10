@@ -8,7 +8,7 @@ import zlib
 from datetime import datetime, timedelta
 from http.client import responses
 from io import BytesIO
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, NoReturn, Optional, Sequence, Tuple, Union
 from urllib.parse import urlsplit
 
 from tornado import httputil
@@ -347,5 +347,5 @@ class TestingApp(RequestHandler):
         headers = [("Location", target), ("Retry-After", retry_after)]
         return Response(status="303 See Other", headers=headers)
 
-    def shutdown(self, request: httputil.HTTPServerRequest) -> None:
+    def shutdown(self, request: httputil.HTTPServerRequest) -> NoReturn:
         sys.exit()

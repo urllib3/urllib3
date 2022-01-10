@@ -6,7 +6,7 @@ import sys
 import warnings
 from itertools import chain
 from test import ImportBlocker, ModuleStash, notBrotli, onlyBrotli
-from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, NoReturn, Optional, Tuple, Union
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
 
@@ -536,7 +536,7 @@ class TestUtil:
 
     def test_rewind_body_failed_seek(self) -> None:
         class BadSeek(io.StringIO):
-            def seek(self, offset: int, whence: int = 0) -> int:
+            def seek(self, offset: int, whence: int = 0) -> NoReturn:
                 raise OSError
 
         with pytest.raises(UnrewindableBodyError):
