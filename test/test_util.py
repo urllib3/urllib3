@@ -1017,8 +1017,8 @@ class TestUtilSSL:
             ("OpenSSL 1.1.1l", 0x101010CF, "cpython", (3, 9, 3), True),
             # Python OK -> reliable
             ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), True),
-            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 6, 9), True),
-            ("LibreSSL 3.3.5", 0x101010CF, "pypy", (3, 6, 9), True),
+            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 6, 9), False),
+            ("LibreSSL 3.3.5", 0x101010CF, "pypy", (3, 6, 9), False),
             # OpenSSL OK -> reliable
             ("OpenSSL", 0x101010CF, "cpython", (3, 9, 2), True),
             # unreliable

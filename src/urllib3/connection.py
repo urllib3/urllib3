@@ -25,6 +25,8 @@ from typing import (
 if TYPE_CHECKING:
     from typing_extensions import Literal
 
+    from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
+
 from .util.proxy import create_proxy_ssl_context
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_bytes, to_str
@@ -50,7 +52,6 @@ from .exceptions import (
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
 from .util.ssl_ import (
-    _TYPE_PEER_CERT_RET,
     assert_fingerprint,
     create_urllib3_context,
     resolve_cert_reqs,
@@ -537,8 +538,23 @@ class HTTPSConnection(HTTPConnection):
             and not context.check_hostname
             and self.assert_hostname is not False
         ):
-            cert = self.sock.getpeercert()
-            _match_hostname(cert, self.assert_hostname or server_hostname)
+            cert: "_TYPE_PEER_CERT_RET_DICT" = self.sock.getpeercert()  # type: ignore[assignment]
+
+            # Need to signal to our match_hostname whether to use 'commonName' or not.
+            # If we're using our own constructed SSLContext we explicitly set 'False'
+            # because PyPy hard-codes 'True' from SSLContext.hostname_checks_common_name.
+            if default_ssl_context:
+                hostname_checks_common_name = False
+            else:
+                hostname_checks_common_name = (
+                    getattr(context, "hostname_checks_common_name", False) or False
+                )
+
+            _match_hostname(
+                cert,
+                self.assert_hostname or server_hostname,
+                hostname_checks_common_name,
+            )
 
         self.is_verified = context.verify_mode == ssl.CERT_REQUIRED or bool(
             self.assert_fingerprint
@@ -583,9 +599,13 @@ class HTTPSConnection(HTTPConnection):
         )
 
 
-def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
+def _match_hostname(
+    cert: Optional["_TYPE_PEER_CERT_RET_DICT"],
+    asserted_hostname: str,
+    hostname_checks_common_name: bool = False,
+) -> None:
     try:
-        match_hostname(cert, asserted_hostname)
+        match_hostname(cert, asserted_hostname, hostname_checks_common_name)
     except CertificateError as e:
         log.warning(
             "Certificate did not match expected hostname: %s. Certificate: %s",
