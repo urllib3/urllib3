@@ -67,7 +67,7 @@ def _is_bpo_43522_fixed(
     allowing this function to return 'True'.
 
     Outside of CPython and PyPy we don't know which implementations work
-    or not so we conseratively use our hostname matching as we know that works
+    or not so we conservatively use our hostname matching as we know that works
     on all implementations.
 
     https://github.com/urllib3/urllib3/issues/2192#issuecomment-821832963
