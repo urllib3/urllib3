@@ -29,6 +29,7 @@ from urllib3.util.ssl_ import create_urllib3_context
 from urllib3.util.timeout import Timeout
 
 from .. import TARPIT_HOST, requires_network
+from ..conftest import ServerConfig
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
@@ -633,3 +634,34 @@ class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
 
             r = http.request("GET", f"{self.https_url}/")
             assert r.status == 200
+
+
+class TestHTTPSProxyVerification:
+    def test_https_proxy_hostname_verification(
+        self, no_localhost_san_server: ServerConfig
+    ) -> None:
+        bad_server = no_localhost_san_server
+        bad_proxy_url = f"https://{bad_server.host}:{bad_server.port}"
+
+        # An exception will be raised before we contact the destination domain.
+        test_url = "testing.com"
+        with proxy_from_url(bad_proxy_url, ca_certs=bad_server.ca_certs) as https:
+            with pytest.raises(MaxRetryError) as e:
+                https.request("GET", "http://%s/" % test_url)
+            assert isinstance(e.value.reason, ProxyError)
+
+            ssl_error = e.value.reason.original_error
+            assert isinstance(ssl_error, SSLError)
+            assert "hostname 'localhost' doesn't match" in str(
+                ssl_error
+            ) or "Hostname mismatch" in str(ssl_error)
+
+            with pytest.raises(MaxRetryError) as e:
+                https.request("GET", "https://%s/" % test_url)
+            assert isinstance(e.value.reason, ProxyError)
+
+            ssl_error = e.value.reason.original_error
+            assert isinstance(ssl_error, SSLError)
+            assert "hostname 'localhost' doesn't match" in str(
+                ssl_error
+            ) or "Hostname mismatch" in str(ssl_error)
