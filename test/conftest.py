@@ -100,6 +100,18 @@ def no_san_server(
         yield cfg
 
 
+@pytest.fixture()
+def no_san_server_with_different_commmon_name(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[ServerConfig, None, None]:
+    tmpdir = tmp_path_factory.mktemp("certs")
+    ca = trustme.CA()
+    server_cert = ca.issue_cert(common_name="example.com")
+
+    with run_server_in_thread("https", "localhost", tmpdir, ca, server_cert) as cfg:
+        yield cfg
+
+
 @pytest.fixture
 def ip_san_server(
     tmp_path_factory: pytest.TempPathFactory,
