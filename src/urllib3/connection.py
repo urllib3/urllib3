@@ -33,7 +33,7 @@ try:  # Compiled with SSL?
     import ssl
 
     BaseSSLError = ssl.SSLError
-except (ImportError, AttributeError):  # Platform-specific: No SSL.
+except (ImportError, AttributeError):
     ssl = None  # type: ignore[assignment]
 
     class BaseSSLError(BaseException):  # type: ignore[no-redef]
