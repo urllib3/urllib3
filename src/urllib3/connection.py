@@ -138,6 +138,7 @@ class HTTPConnection(_HTTPConnection):
         ] = default_socket_options,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
+        **noop_kw: Any,
     ) -> None:
         # Pre-set source_address.
         self.source_address = source_address
@@ -383,6 +384,7 @@ class HTTPSConnection(HTTPConnection):
         ] = HTTPConnection.default_socket_options,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
+        **noop_kw: Any,
     ) -> None:
 
         super().__init__(
