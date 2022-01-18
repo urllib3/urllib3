@@ -483,7 +483,7 @@ class HTTPSConnection(HTTPConnection):
                 SystemTimeWarning,
             )
 
-        self.sock, self.is_verified = _ssl_wrap_socket_and_match_hostname(
+        sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock=sock,
             cert_reqs=self.cert_reqs,
             ssl_version=self.ssl_version,
@@ -501,6 +501,8 @@ class HTTPSConnection(HTTPConnection):
             assert_hostname=self.assert_hostname,
             assert_fingerprint=self.assert_fingerprint,
         )
+        self.sock = sock_and_verified.socket
+        self.is_verified = sock_and_verified.is_verified
         self._connecting_to_proxy = False
 
     def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> "ssl.SSLSocket":
@@ -511,7 +513,7 @@ class HTTPSConnection(HTTPConnection):
             ProxyConfig, self.proxy_config
         )  # `_connect_tls_proxy` is called when self._is_using_tunnel() is truthy.
         ssl_context = proxy_config.ssl_context
-        ssl_sock, self.proxy_is_verified = _ssl_wrap_socket_and_match_hostname(
+        sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
             cert_reqs=self.cert_reqs,
             ssl_version=self.ssl_version,
@@ -530,7 +532,18 @@ class HTTPSConnection(HTTPConnection):
             key_password=None,
             tls_in_tls=False,
         )
-        return ssl_sock  # type: ignore[return-value]
+        self.proxy_is_verified = sock_and_verified.is_verified
+        return sock_and_verified.socket  # type: ignore[return-value]
+
+
+class _WrappedAndVerifiedSocket(NamedTuple):
+    """
+    Wrapped socket and whether the connection is
+    verified after the TLS handshake
+    """
+
+    socket: Union["ssl.SSLSocket", "SSLTransport"]
+    is_verified: bool
 
 
 def _ssl_wrap_socket_and_match_hostname(
@@ -551,15 +564,12 @@ def _ssl_wrap_socket_and_match_hostname(
     server_hostname: Optional[str],
     ssl_context: Optional["ssl.SSLContext"],
     tls_in_tls: bool = False,
-) -> Tuple[Union["ssl.SSLSocket", "SSLTransport"], bool]:
+) -> _WrappedAndVerifiedSocket:
     """Logic for constructing an SSLContext from all TLS parameters, passing
     that down into ssl_wrap_socket, and then doing certificate verification
     either via hostname or fingerprint. This function exists to guarantee
     that both proxies and targets have the same behavior when connecting via TLS.
     """
-
-    # Wrap socket using verification with the root certs in
-    # trusted_root_certs
     default_ssl_context = False
     if ssl_context is None:
         default_ssl_context = True
@@ -587,7 +597,6 @@ def _ssl_wrap_socket_and_match_hostname(
         context.check_hostname = False
 
     # Try to load OS default certs if none are given.
-    # Works well on Windows.
     if (
         not ca_certs
         and not ca_cert_dir
@@ -635,8 +644,10 @@ def _ssl_wrap_socket_and_match_hostname(
             hostname_checks_common_name,
         )
 
-    return ssl_sock, context.verify_mode == ssl.CERT_REQUIRED or bool(
-        assert_fingerprint
+    return _WrappedAndVerifiedSocket(
+        socket=ssl_sock,
+        is_verified=context.verify_mode == ssl.CERT_REQUIRED
+        or bool(assert_fingerprint),
     )
 
 
