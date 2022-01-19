@@ -55,7 +55,7 @@ Alternatively, you can grab the latest source code from `GitHub <https://github.
 .. code-block:: bash
 
     $ git clone git://github.com/urllib3/urllib3.git
-    $ python setup.py install
+    $ pip install .
 
 
 Documentation
