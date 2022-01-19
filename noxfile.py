@@ -61,7 +61,7 @@ def test(session: nox.Session) -> None:
 def unsupported_python2(session: nox.Session) -> None:
     # Can't check both returncode and output with session.run
     process = subprocess.run(
-        ["python", "setup.py", "install"],
+        ["pip", "install", "."],
         env={**session.env},
         text=True,
         capture_output=True,
