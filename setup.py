@@ -44,23 +44,8 @@ with open(os.path.join(base_path, "src", "urllib3", "_version.py")) as fp:
     )
 
 
-with open("README.rst", encoding="utf-8") as fp:
-    # Remove reST raw directive from README as they're not allowed on PyPI
-    # Those blocks start with a newline and continue until the next newline
-    mode = None
-    lines = []
-    for line in fp:
-        if line.startswith(".. raw::"):
-            mode = "ignore_nl"
-        elif line == "\n":
-            mode = "wait_nl" if mode == "ignore_nl" else None
-
-        if mode is None:
-            lines.append(line)
-    readme = "".join(lines)
-
-with open("CHANGES.rst", encoding="utf-8") as fp:
-    changes = fp.read()
+with open("README.md", encoding="utf-8") as fp:
+    readme = fp.read()
 
 version = VERSION
 
@@ -68,8 +53,8 @@ setup(
     name="urllib3",
     version=version,
     description="HTTP library with thread-safe connection pooling, file post, and more.",
-    long_description="\n\n".join([readme, changes]),
-    long_description_content_type="text/x-rst",
+    long_description=readme,
+    long_description_content_type="text/markdown",
     classifiers=[
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
