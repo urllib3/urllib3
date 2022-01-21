@@ -23,7 +23,7 @@ jobs:
         run: |
           python3 -m pip install -U pip setuptools wheel build twine rstcheck
           python3 -m build
-          rstcheck README.rst CHANGES.rst
+          rstcheck CHANGES.rst
           python3 -m twine check dist/*
   test:
     env:
