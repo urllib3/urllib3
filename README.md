@@ -1,10 +1,7 @@
 <h1 align="center">
-  <a href="https://github.com/urllib3/urllib3#gh-dark-mode-only">
-      <img src="./docs/_static/dark-logo.svg" width="500" alt="urllib3" />
-  </a>
-  <a href="https://github.com/urllib3/urllib3#gh-light-mode-only">
-      <img src="./docs/_static/banner.svg" width="500" alt="urllib3" />
-  </a>
+
+![urllib3](https://github.com/urllib3/urllib3/raw/main/docs/_static/banner_github.svg)
+
 </h1>
 
 <p align="center">
