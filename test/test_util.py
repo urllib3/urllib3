@@ -24,7 +24,7 @@ from urllib3.exceptions import (
 )
 from urllib3.util import is_fp_closed
 from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
-from urllib3.util.proxy import connection_requires_http_tunnel, create_proxy_ssl_context
+from urllib3.util.proxy import connection_requires_http_tunnel
 from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.ssl_ import (
@@ -788,10 +788,6 @@ class TestUtil:
         assert not connection_requires_http_tunnel(
             proxy, proxy_config, destination_scheme
         )
-
-    def test_create_proxy_ssl_context(self) -> None:
-        ssl_context = create_proxy_ssl_context(ssl_version=None, cert_reqs=None)
-        ssl_context.verify_mode = ssl.CERT_REQUIRED
 
     def test_assert_header_parsing_no_error_on_multipart(self) -> None:
         from http import client

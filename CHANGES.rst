@@ -1,3 +1,18 @@
+1.26.8 (2022-01-07)
+-------------------
+
+* Added extra message to``urllib3.exceptions.ProxyError`` when urllib3 detects that
+  a proxy is configured to use HTTPS but the proxy itself appears to only use HTTP.
+* Added a mention of the size of the connection pool when discarding a connection due to the pool being full.
+* Added explicit support for Python 3.11.
+* Deprecated the ``Retry.MAX_BACKOFF`` class property in favor of ``Retry.DEFAULT_MAX_BACKOFF``
+  to better match the rest of the default parameter names. ``Retry.MAX_BACKOFF`` is removed in v2.0.
+* Changed location of the vendored ``ssl.match_hostname`` function from ``urllib3.packages.ssl_match_hostname``
+  to ``urllib3.util.ssl_match_hostname`` to ensure Python 3.10+ compatibility after being repackaged
+  by downstream distributors.
+* Fixed absolute imports, all imports are now relative.
+
+
 1.26.7 (2021-09-22)
 ===================
 
