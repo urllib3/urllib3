@@ -36,3 +36,4 @@
   * [ ]  OpenCollective
   * [ ]  GitCoin Grants
 * [ ]  Update Tidelift metadata
+* [ ]  If this was a 1.26.x release, add changes to the `main` branch
