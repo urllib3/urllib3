@@ -2,14 +2,12 @@
 * [ ]  Get the release pull request approved by a [CODEOWNER](https://github.com/urllib3/urllib3/blob/main/.github/CODEOWNERS)
 * [ ]  Squash merge the release pull request with message "`Release <VERSION>`"
 * [ ]  Tag with X.Y.Z, push tag on urllib3/urllib3 (not on your fork, update `<REMOTE>` accordingly)
-  
   * Notice that the `<VERSION>` shouldn't have a `v` prefix (Use `1.26.6` instead of `v.1.26.6`)
   * ```
     git tag -a '<VERSION>' -m 'Release: <VERSION>'
     git push <REMOTE> --tags
     ```
 * [ ]  Push to PyPI
-  
   * ```
     cd /tmp
     git clone ssh://git@github.com/urllib3/urllib3
@@ -19,8 +17,13 @@
     source venv/bin/activate
     python -m pip install -U pip
     python -m pip install -U twine setuptools wheel build
+
+    # Set 'SOURCE_DATE_EPOCH' for build reproducibility.
+    export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+    echo $SOURCE_DATE_EPOCH
+
     python -m build
-    
+
     twine check dist/*
     # Inspect the output to make sure it looks right
     # Check versions, should be 1 wheel 1 sdist

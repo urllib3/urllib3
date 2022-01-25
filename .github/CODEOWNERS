@@ -4,5 +4,5 @@
 .github/CODEOWNERS          @sethmlarson @shazow
 src/urllib3/_version.py     @sethmlarson @shazow
 setup.py                    @sethmlarson @shazow
+pyproject.toml              @sethmlarson @shazow
 ci/                         @sethmlarson @shazow
-.travis.yml                 @sethmlarson @shazow
