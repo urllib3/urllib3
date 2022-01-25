@@ -47,7 +47,7 @@ urllib3 can be installed with [pip](https://pip.pypa.io):
 $ python -m pip install urllib3
 ```
 
-Alternatively, you can grab the latest source code from [GitHub](https://github.com/urllib3/urllib3>):
+Alternatively, you can grab the latest source code from [GitHub](https://github.com/urllib3/urllib3):
 
 ```bash
 $ git clone git://github.com/urllib3/urllib3.git
@@ -57,7 +57,7 @@ $ pip install .
 
 ## Documentation
 
-urllib3 has usage and reference documentation at [urllib3.readthedocs.io](https://urllib3.readthedocs.io>).
+urllib3 has usage and reference documentation at [urllib3.readthedocs.io](https://urllib3.readthedocs.io).
 
 
 ## Community
