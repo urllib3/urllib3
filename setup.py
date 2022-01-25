@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# This file is protected via CODEOWNERS
+
 import sys
 
 sys.stderr.write(
