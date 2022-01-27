@@ -58,17 +58,17 @@ def test(session: nox.Session) -> None:
 
 
 @nox.session(python=["2.7"])
-def unsupported_python2(session: nox.Session) -> None:
+def unsupported_setup_py(session: nox.Session) -> None:
     # Can't check both returncode and output with session.run
     process = subprocess.run(
-        ["pip", "install", "."],
+        ["python", "setup.py", "install"],
         env={**session.env},
         text=True,
         capture_output=True,
     )
     assert process.returncode == 1
     print(process.stderr)
-    assert "Unsupported Python version" in process.stderr
+    assert "Please use `python -m pip install .` instead." in process.stderr
 
 
 @nox.session(python=["3"])

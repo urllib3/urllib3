@@ -47,7 +47,7 @@ jobs:
           - python-version: "2.7"
             os: ubuntu-latest
             experimental: false
-            nox-session: unsupported_python2
+            nox-session: unsupported_setup_py
           - python-version: "3.9"
             os: ubuntu-latest
             experimental: false
@@ -99,7 +99,7 @@ jobs:
           NOX_SESSION: ${{ matrix.nox-session }}
 
       - name: Upload Coverage
-        if: ${{ matrix.nox-session != 'unsupported_python2' }}
+        if: ${{ matrix.nox-session != 'unsupported_setup_py' }}
         uses: "actions/upload-artifact@v2"
         with:
           name: coverage-data
