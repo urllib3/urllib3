@@ -8,6 +8,7 @@ Response
     :members:
     :undoc-members:
     :show-inheritance:
+    :inherited-members:
 
 Decoders
 --------

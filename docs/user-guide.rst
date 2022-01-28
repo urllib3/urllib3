@@ -30,7 +30,7 @@ so that you don't have to:
 
     http = urllib3.PoolManager()
 
-To make a request use :meth:`~poolmanager.PoolManager.request`:
+To make a request use :meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -46,10 +46,10 @@ To make a request use :meth:`~poolmanager.PoolManager.request`:
     print(resp.data)
     # b"User-agent: *\nDisallow: /deny\n"
 
-``request()`` returns a :class:`~response.HTTPResponse` object, the
+``request()`` returns a :class:`~urllib3.response.HTTPResponse` object, the
 :ref:`response_content` section explains how to handle various responses.
 
-You can use :meth:`~poolmanager.PoolManager.request` to make requests using any
+You can use :meth:`~urllib3.PoolManager.request` to make requests using any
 HTTP verb:
 
 .. code-block:: python
@@ -81,9 +81,9 @@ including JSON, files, and binary data.
 Response Content
 ----------------
 
-The :class:`~response.HTTPResponse` object provides
-:attr:`~response.HTTPResponse.status`, :attr:`~response.HTTPResponse.data`, and
-:attr:`~response.HTTPResponse.headers` attributes:
+The :class:`~urllib3.response.HTTPResponse` object provides
+:py:attr:`~urllib3.response.HTTPResponse.status`, :py:attr:`~urllib3.response.HTTPResponse.data`, and
+:py:attr:`~urllib3.response.HTTPResponse.headers` attributes:
 
 .. code-block:: python
 
@@ -101,7 +101,7 @@ The :class:`~response.HTTPResponse` object provides
 
 JSON Content
 ~~~~~~~~~~~~
-JSON content can be loaded by :meth:`~response.HTTPResponse.json` 
+JSON content can be loaded by :meth:`~urllib3.response.HTTPResponse.json` 
 method of the response:
 
 .. code-block:: python
@@ -114,7 +114,7 @@ method of the response:
     # {"origin": "127.0.0.1"}
 
 Alternatively, Custom JSON libraries such as `orjson` can be used to encode data,
-retrieve data by decoding and deserializing the :attr:`~response.HTTPResponse.data` 
+retrieve data by decoding and deserializing the :attr:`~urllib3.response.HTTPResponse.data` 
 attribute of the request:
 
 .. code-block:: python
@@ -131,7 +131,7 @@ attribute of the request:
 Binary Content
 ~~~~~~~~~~~~~~
 
-The :attr:`~response.HTTPResponse.data` attribute of the response is always set
+The :attr:`~urllib3.response.HTTPResponse.data` attribute of the response is always set
 to a byte string representing the response content:
 
 .. code-block:: python
@@ -150,8 +150,8 @@ Using io Wrappers with Response Content
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Sometimes you want to use :class:`io.TextIOWrapper` or similar objects like a CSV reader
-directly with :class:`~response.HTTPResponse` data. Making these two interfaces play nice
-together requires using the :attr:`~response.HTTPResponse.auto_close` attribute by setting it
+directly with :class:`~urllib3.response.HTTPResponse` data. Making these two interfaces play nice
+together requires using the :attr:`~urllib3.response.HTTPResponse.auto_close` attribute by setting it
 to ``False``. By default HTTP responses are closed after reading all bytes, this disables that behavior:
 
 .. code-block:: python
@@ -179,7 +179,7 @@ Request Data
 Headers
 ~~~~~~~
 
-You can specify headers as a dictionary in the ``headers`` argument in :meth:`~poolmanager.PoolManager.request`:
+You can specify headers as a dictionary in the ``headers`` argument in :meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -258,7 +258,7 @@ Query Parameters
 
 For ``GET``, ``HEAD``, and ``DELETE`` requests, you can simply pass the
 arguments as a dictionary in the ``fields`` argument to
-:meth:`~poolmanager.PoolManager.request`:
+:meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -299,7 +299,7 @@ Form Data
 
 For ``PUT`` and ``POST`` requests, urllib3 will automatically form-encode the
 dictionary in the ``fields`` argument provided to
-:meth:`~poolmanager.PoolManager.request`:
+:meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -323,7 +323,7 @@ You can send a JSON request by specifying the data as ``json`` argument,
 urllib3 automatically encodes data using ``json`` module with ``UTF-8`` 
 encoding. Also by default ``"Content-Type"`` in headers is set to 
 ``"application/json"`` if not specified when calling
-:meth:`~poolmanager.PoolManager.request`:
+:meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -471,7 +471,7 @@ Using Timeouts
 
 Timeouts allow you to control how long (in seconds) requests are allowed to run
 before being aborted. In simple cases, you can specify a timeout as a ``float``
-to :meth:`~poolmanager.PoolManager.request`:
+to :meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -484,7 +484,7 @@ to :meth:`~poolmanager.PoolManager.request`:
     )
 
     print(type(resp))
-    # <class "urllib3.response.HTTPResponse">
+    # <class "urllib3.urllib3.response.HTTPResponse">
 
     # This request will take more time to process than timeout.
     urllib3.request(
@@ -508,7 +508,7 @@ instance which lets you specify separate connect and read timeouts:
     )
 
     print(type(resp))
-    # <urllib3.response.HTTPResponse>
+    # <urllib3.urllib3.response.HTTPResponse>
 
     urllib3.request(
         "GET",
@@ -532,14 +532,14 @@ the timeout at the :class:`~urllib3.poolmanager.PoolManager` level:
     )
 
 You still override this pool-level timeout by specifying ``timeout`` to
-:meth:`~poolmanager.PoolManager.request`.
+:meth:`~urllib3.PoolManager.request`.
 
 Retrying Requests
 -----------------
 
 urllib3 can automatically retry idempotent requests. This same mechanism also
 handles redirects. You can control the retries using the ``retries`` parameter
-to :meth:`~poolmanager.PoolManager.request`. By default, urllib3 will retry
+to :meth:`~urllib3.PoolManager.request`. By default, urllib3 will retry
 requests 3 times and follow up to 3 redirects.
 
 To change the number of retries just specify an integer:
@@ -630,7 +630,7 @@ specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
     )
 
 You still override this pool-level retry policy by specifying ``retries`` to
-:meth:`~poolmanager.PoolManager.request`.
+:meth:`~urllib3.PoolManager.request`.
 
 Errors & Exceptions
 -------------------

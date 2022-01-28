@@ -5,6 +5,7 @@ Pool Manager
     :members:
     :undoc-members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: urllib3.ProxyManager
     :members:
