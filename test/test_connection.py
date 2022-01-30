@@ -28,6 +28,12 @@ class TestConnection(object):
         asserted_hostname = "foo"
         _match_hostname(cert, asserted_hostname)
 
+    def test_match_hostname_ipaddress_none(self):
+        cert = {"subjectAltName": [("DNS", "foo")]}
+        asserted_hostname = "foo"
+        with mock.patch("urllib3.util.ssl_match_hostname.ipaddress", None):
+            assert _match_hostname(cert, asserted_hostname) is None
+
     def test_match_hostname_mismatch(self):
         cert = {"subjectAltName": [("DNS", "foo")]}
         asserted_hostname = "bar"

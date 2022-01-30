@@ -122,7 +122,7 @@ def match_hostname(cert, hostname):
         # Divergence from upstream: Make ipaddress library optional
         if ipaddress is None:
             host_ip = None
-        else:
+        else:  # Defensive
             raise
     dnsnames = []
     san = cert.get("subjectAltName", ())
