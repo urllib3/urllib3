@@ -265,7 +265,7 @@ class BaseHTTPResponse(io.IOBase):
         raise NotImplementedError()
 
     def stream(
-        self, amt: Optional[int] = 2 ** 16, decode_content: Optional[bool] = None
+        self, amt: Optional[int] = 2**16, decode_content: Optional[bool] = None
     ) -> Iterator[bytes]:
         raise NotImplementedError()
 
@@ -703,7 +703,7 @@ class HTTPResponse(BaseHTTPResponse):
         return data
 
     def stream(
-        self, amt: Optional[int] = 2 ** 16, decode_content: Optional[bool] = None
+        self, amt: Optional[int] = 2**16, decode_content: Optional[bool] = None
     ) -> Generator[bytes, None, None]:
         """
         A generator wrapper for the read() method. A call will block until
