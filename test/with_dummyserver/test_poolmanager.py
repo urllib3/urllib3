@@ -346,6 +346,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
             r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
             assert r.status == 200
 
+    def test_http_with_server_hostname(self):
+        with PoolManager(server_hostname="example.com") as http:
+            r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
+            assert r.status == 200
+
     def test_http_with_ca_cert_dir(self):
         with PoolManager(ca_certs="REQUIRED", ca_cert_dir="/nosuchdir") as http:
             r = http.request("GET", "http://%s:%s/" % (self.host, self.port))

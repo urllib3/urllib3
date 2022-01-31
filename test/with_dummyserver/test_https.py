@@ -858,6 +858,19 @@ class TestHTTPS_NoSAN:
                 assert r.status == 200
                 assert warn.called
 
+    def test_common_name_without_san_with_different_common_name(
+        self, no_san_server_with_different_commmon_name
+    ):
+        with HTTPSConnectionPool(
+            no_san_server_with_different_commmon_name.host,
+            no_san_server_with_different_commmon_name.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=no_san_server_with_different_commmon_name.ca_certs,
+        ) as https_pool:
+            with pytest.raises(MaxRetryError) as cm:
+                https_pool.request("GET", "/")
+            assert isinstance(cm.value.reason, SSLError)
+
 
 class TestHTTPS_IPV4SAN:
     def test_can_validate_ip_san(self, ipv4_san_server):
