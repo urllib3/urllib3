@@ -777,19 +777,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             new_e: Exception = e
             if isinstance(e, (BaseSSLError, CertificateError)):
                 new_e = SSLError(e)
-            if (
-                isinstance(
-                    new_e,
-                    (
-                        OSError,
-                        NewConnectionError,
-                        TimeoutError,
-                        SSLError,
-                        HTTPException,
-                    ),
-                )
-                and (conn and conn._connecting_to_proxy)
-            ):
+            if isinstance(
+                new_e,
+                (
+                    OSError,
+                    NewConnectionError,
+                    TimeoutError,
+                    SSLError,
+                    HTTPException,
+                ),
+            ) and (conn and conn._connecting_to_proxy):
                 new_e = _wrap_proxy_error(new_e)
             elif isinstance(new_e, (OSError, HTTPException)):
                 new_e = ProtocolError("Connection aborted.", new_e)
