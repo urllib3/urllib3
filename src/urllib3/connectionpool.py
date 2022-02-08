@@ -258,7 +258,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             raise ClosedPoolError(self, "Pool is closed.")
 
         try:
-            conn = self.pool.get(block=self.block, timeout=timeout)
+            if self.block and timeout is None:
+                # Don't wait and hang forever. Give the developer a hit if they forget to release the connection.
+                while True:
+                    try:
+                        conn = self.pool.get(block=self.block, timeout=60)
+                        break
+                    except queue.Empty:
+                        log.debug('Still waiting for available connections. Did you forget to release them?')
+            else:
+                conn = self.pool.get(block=self.block, timeout=timeout)
 
         except AttributeError:  # self.pool is None
             raise ClosedPoolError(self, "Pool is closed.") from None  # Defensive:
