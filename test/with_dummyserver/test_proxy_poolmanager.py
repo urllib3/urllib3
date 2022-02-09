@@ -515,7 +515,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         target_url = self.https_url if target_scheme == "https" else self.http_url
 
         with proxy_from_url(
-            proxy_url, ca_certs=DEFAULT_CA, timeout=SHORT_TIMEOUT
+            proxy_url,
+            ca_certs=DEFAULT_CA,
+            timeout=SHORT_TIMEOUT,
+            use_forwarding_for_https=use_forwarding_for_https,
         ) as proxy:
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", target_url)
@@ -556,7 +559,11 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     ) -> None:
         target_url = self.https_url if target_scheme == "https" else self.http_url
         proxy_ctx = ssl.create_default_context()
-        with proxy_from_url(self.https_proxy_url, proxy_ssl_context=proxy_ctx) as proxy:
+        with proxy_from_url(
+            self.https_proxy_url,
+            proxy_ssl_context=proxy_ctx,
+            use_forwarding_for_https=use_forwarding_for_https,
+        ) as proxy:
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", target_url)
             assert type(e.value.reason) == ProxyError
@@ -580,7 +587,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         ctx = ssl.create_default_context()
 
         with proxy_from_url(
-            proxy_url, proxy_ssl_context=proxy_ctx, ssl_context=ctx
+            proxy_url,
+            proxy_ssl_context=proxy_ctx,
+            ssl_context=ctx,
+            use_forwarding_for_https=use_forwarding_for_https,
         ) as proxy:
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", self.https_url)
