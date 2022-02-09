@@ -1065,36 +1065,6 @@ class TestHTTPS_IPV4SAN:
             assert r.status == 200
 
 
-class TestHTTPS_IPv6Addr:
-    @pytest.mark.xfail  # TODO: Remove test in urllib3/urllib3#2532
-    @pytest.mark.parametrize("host", ["::1", "[::1]"])
-    def test_strip_square_brackets_before_validating(
-        self, ipv6_no_san_server: ServerConfig, host: str
-    ) -> None:
-        """Test that the fix for #760 works."""
-
-        ctx = urllib3.util.ssl_.create_urllib3_context()
-        try:
-            ctx.hostname_checks_common_name = True
-        except AttributeError:
-            pass
-        if (
-            not getattr(ctx, "hostname_checks_common_name", False)
-            or not urllib3.util.ssl_.HAS_NEVER_CHECK_COMMON_NAME
-        ):
-            pytest.skip("Couldn't set SSLContext.hostname_checks_common_name = True")
-
-        with HTTPSConnectionPool(
-            host,
-            ipv6_no_san_server.port,
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=ipv6_no_san_server.ca_certs,
-            ssl_context=ctx,
-        ) as https_pool:
-            r = https_pool.request("GET", "/")
-            assert r.status == 200
-
-
 class TestHTTPS_IPV6SAN:
     @pytest.mark.parametrize("host", ["::1", "[::1]"])
     def test_can_validate_ipv6_san(
