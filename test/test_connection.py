@@ -149,6 +149,21 @@ class TestConnection:
             )
             assert e._peer_cert == cert
 
+    def test_match_hostname_dns_with_brackets_doesnt_match(self) -> None:
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {
+            "subjectAltName": (
+                ("DNS", "localhost"),
+                ("IP Address", "localhost"),
+            )
+        }
+        asserted_hostname = "[localhost]"
+        with pytest.raises(CertificateError) as e:
+            _match_hostname(cert, asserted_hostname)
+        assert (
+            "hostname '[localhost]' doesn't match either of 'localhost', 'localhost'"
+            in str(e.value)
+        )
+
     def test_match_hostname_ip_address_ipv6_brackets(self) -> None:
         cert: "_TYPE_PEER_CERT_RET_DICT" = {
             "subjectAltName": (("IP Address", "1:2::2:1"),)
