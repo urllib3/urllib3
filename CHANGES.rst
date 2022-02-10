@@ -4,7 +4,7 @@ Changes
 1.26.8 (2022-01-07)
 -------------------
 
-* Added extra message to``urllib3.exceptions.ProxyError`` when urllib3 detects that
+* Added extra message to ``urllib3.exceptions.ProxyError`` when urllib3 detects that
   a proxy is configured to use HTTPS but the proxy itself appears to only use HTTP.
 * Added a mention of the size of the connection pool when discarding a connection due to the pool being full.
 * Added explicit support for Python 3.11.
