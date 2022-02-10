@@ -53,6 +53,7 @@ socks = [
 ]
 
 [project.urls]
+"Changelog" = "https://github.com/urllib3/urllib3/blob/main/CHANGES.rst"
 "Documentation" = "https://urllib3.readthedocs.io"
 "Code" = "https://github.com/urllib3/urllib3"
 "Issue tracker" = "https://github.com/urllib3/urllib3/issues"
