@@ -1,7 +1,8 @@
 """
 Module for using pyOpenSSL as a TLS backend. This module was relevant before
-the standard library ``ssl`` module supported SNI. Nowadays all supported
-Python versions support SNI so **this module is no longer recommended**.
+the standard library ``ssl`` module supported SNI, but now that we've dropped
+support for Python 2.7 all relevant Python versions support SNI so
+**this module is no longer recommended**.
 
 This needs the following packages installed:
 
