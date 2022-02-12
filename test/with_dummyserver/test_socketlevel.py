@@ -1,6 +1,7 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
 import errno
+import io
 import os
 import os.path
 import select
@@ -8,6 +9,7 @@ import shutil
 import socket
 import ssl
 import tempfile
+import time
 from collections import OrderedDict
 from pathlib import Path
 from test import (
@@ -19,7 +21,7 @@ from test import (
     resolvesLocalhostFQDN,
 )
 from threading import Event
-from typing import Any, List, Optional
+from typing import Any, Generator, List, Optional
 from typing import OrderedDict as OrderedDictType
 from typing import Tuple, Union
 from unittest import mock
@@ -1930,7 +1932,7 @@ class TestMultipartResponse(SocketDummyServerTestCase):
         from urllib3.connectionpool import log
 
         with mock.patch.object(log, "warning") as log_warning:
-            with HTTPConnectionPool(self.host, self.port, timeout=3) as pool:
+            with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
                 resp = pool.urlopen("GET", "/")
                 assert resp.status == 404
                 assert (
@@ -1939,3 +1941,167 @@ class TestMultipartResponse(SocketDummyServerTestCase):
                 )
                 assert len(resp.data) == 73
                 log_warning.assert_not_called()
+
+
+class TestContentFraming(SocketDummyServerTestCase):
+    @pytest.mark.parametrize("content_length", [None, 0])
+    @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
+    def test_content_length_0_by_default(
+        self, method: str, content_length: Optional[int]
+    ) -> None:
+        buffer = bytearray()
+
+        def socket_handler(listener: socket.socket) -> None:
+            nonlocal buffer
+            sock = listener.accept()[0]
+            while not buffer.endswith(b"\r\n\r\n"):
+                buffer += sock.recv(65536)
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: example.com\r\n"
+                b"Content-Length: 0\r\n\r\n"
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        headers = {}
+        if content_length is not None:
+            headers["Content-Length"] = str(content_length)
+
+        with HTTPConnectionPool(self.host, self.port, timeout=3) as pool:
+            resp = pool.request(method, "/")
+            assert resp.status == 200
+
+        sent_bytes = bytes(buffer)
+        assert b"Accept-Encoding: identity\r\n" in sent_bytes
+        assert b"Content-Length: 0\r\n" in sent_bytes
+        assert b"transfer-encoding" not in sent_bytes.lower()
+
+    @pytest.mark.parametrize("chunked", [True, False])
+    @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
+    @pytest.mark.parametrize("body_type", ["file", "generator", "bytes"])
+    def test_chunked_specified(
+        self, method: str, chunked: bool, body_type: str
+    ) -> None:
+        buffer = bytearray()
+
+        def socket_handler(listener: socket.socket) -> None:
+            nonlocal buffer
+            sock = listener.accept()[0]
+            sock.settimeout(0)
+
+            start = time.time()
+            while time.time() - start < (LONG_TIMEOUT / 2):
+                try:
+                    buffer += sock.recv(65536)
+                except OSError:
+                    continue
+
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: example.com\r\n"
+                b"Content-Length: 0\r\n\r\n"
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        body: Any
+        if body_type == "generator":
+
+            def body_generator() -> Generator[bytes, None, None]:
+                yield b"x" * 10
+
+            body = body_generator()
+        elif body_type == "file":
+            body = io.BytesIO(b"x" * 10)
+            body.seek(0, 0)
+        else:
+            if chunked is False:
+                pytest.skip("urllib3 uses Content-Length in this case")
+            body = b"x" * 10
+
+        with HTTPConnectionPool(
+            self.host, self.port, timeout=LONG_TIMEOUT, retries=False
+        ) as pool:
+            resp = pool.request(method, "/", chunked=chunked, body=body)
+            assert resp.status == 200
+
+        sent_bytes = bytes(buffer)
+        assert sent_bytes.count(b":") == 5
+        assert b"Host: localhost:" in sent_bytes
+        assert b"Accept-Encoding: identity\r\n" in sent_bytes
+        assert b"Transfer-Encoding: chunked\r\n" in sent_bytes
+        assert b"User-Agent: python-urllib3/" in sent_bytes
+        assert b"content-length" not in sent_bytes.lower()
+
+        # TODO: Remove the .lower() after solving #2515
+        assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes.lower()
+
+    @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
+    @pytest.mark.parametrize("body_type", ["file", "generator", "bytes"])
+    def test_chunked_not_specified(self, method: str, body_type: str) -> None:
+        buffer = bytearray()
+
+        def socket_handler(listener: socket.socket) -> None:
+            nonlocal buffer
+            sock = listener.accept()[0]
+            sock.settimeout(0)
+
+            start = time.time()
+            while time.time() - start < (LONG_TIMEOUT / 2):
+                try:
+                    buffer += sock.recv(65536)
+                except OSError:
+                    continue
+
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: example.com\r\n"
+                b"Content-Length: 0\r\n\r\n"
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        body: Any
+        if body_type == "generator":
+
+            def body_generator() -> Generator[bytes, None, None]:
+                yield b"x" * 10
+
+            body = body_generator()
+            should_be_chunked = True
+
+        elif body_type == "file":
+            body = io.BytesIO(b"x" * 10)
+            body.seek(0, 0)
+            should_be_chunked = True
+
+        else:
+            body = b"x" * 10
+            should_be_chunked = False
+
+        with HTTPConnectionPool(
+            self.host, self.port, timeout=LONG_TIMEOUT, retries=False
+        ) as pool:
+            resp = pool.request(method, "/", body=body)
+            assert resp.status == 200
+
+        sent_bytes = bytes(buffer)
+        assert sent_bytes.count(b":") == 5
+        assert b"Host: localhost:" in sent_bytes
+        assert b"Accept-Encoding: identity\r\n" in sent_bytes
+        assert b"User-Agent: python-urllib3/" in sent_bytes
+
+        if should_be_chunked:
+            assert b"content-length" not in sent_bytes.lower()
+            assert b"Transfer-Encoding: chunked\r\n" in sent_bytes
+            # TODO: Remove the .lower() after solving #2515
+            assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes.lower()
+
+        else:
+            assert b"Content-Length: 10\r\n" in sent_bytes
+            assert b"transfer-encoding" not in sent_bytes.lower()
+            assert sent_bytes.endswith(b"\r\n\r\nxxxxxxxxxx")
