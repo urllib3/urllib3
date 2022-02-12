@@ -56,7 +56,7 @@ except ImportError:
     raise
 
 from socket import timeout as SocketTimeout
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional, TypedDict
 
 from ..connection import HTTPConnection, HTTPSConnection
 from ..connectionpool import HTTPConnectionPool, HTTPSConnectionPool
@@ -69,19 +69,14 @@ try:
 except ImportError:
     ssl = None  # type: ignore[assignment]
 
-try:
-    from typing import TypedDict
 
-    class _TYPE_SOCKS_OPTIONS(TypedDict):
-        socks_version: int
-        proxy_host: Optional[str]
-        proxy_port: Optional[str]
-        username: Optional[str]
-        password: Optional[str]
-        rdns: bool
-
-except ImportError:  # Python 3.7
-    _TYPE_SOCKS_OPTIONS = Dict[str, Any]  # type: ignore[misc, assignment]
+class _TYPE_SOCKS_OPTIONS(TypedDict):
+    socks_version: int
+    proxy_host: Optional[str]
+    proxy_port: Optional[str]
+    username: Optional[str]
+    password: Optional[str]
+    rdns: bool
 
 
 class SOCKSConnection(HTTPConnection):
