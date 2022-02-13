@@ -2035,9 +2035,7 @@ class TestContentFraming(SocketDummyServerTestCase):
         assert b"Transfer-Encoding: chunked\r\n" in sent_bytes
         assert b"User-Agent: python-urllib3/" in sent_bytes
         assert b"content-length" not in sent_bytes.lower()
-
-        # TODO: Remove the .lower() after solving #2515
-        assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes.lower()
+        assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes
 
     @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
     @pytest.mark.parametrize("body_type", ["file", "generator", "bytes"])

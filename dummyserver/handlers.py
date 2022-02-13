@@ -279,6 +279,9 @@ class TestingApp(RequestHandler):
     def headers(self, request: httputil.HTTPServerRequest) -> Response:
         return Response(json.dumps(dict(request.headers)))
 
+    def multi_headers(self, request: httputil.HTTPServerRequest) -> Response:
+        return Response(json.dumps({"headers": list(request.headers.get_all())}))
+
     def successful_retry(self, request: httputil.HTTPServerRequest) -> Response:
         """Handler which will return an error and then success
 

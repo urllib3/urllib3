@@ -351,26 +351,32 @@ class TestPoolManager(HTTPDummyServerTestCase):
         headers.add("Multi", "2")
 
         with PoolManager(headers=headers) as http:
-            r = http.request("GET", f"{self.base_url}/headers")
-            returned_headers = r.json()
-            assert returned_headers["Foo"] == "bar"
-            assert returned_headers["Multi"] == "1, 2"
-            assert returned_headers["Baz"] == "quux"
+            r = http.request("GET", f"{self.base_url}/multi_headers")
+            returned_headers = r.json()["headers"]
+            assert returned_headers[-4:] == [
+                ["Foo", "bar"],
+                ["Multi", "1"],
+                ["Multi", "2"],
+                ["Baz", "quux"],
+            ]
 
             r = http.request(
                 "GET",
-                f"{self.base_url}/headers",
+                f"{self.base_url}/multi_headers",
                 headers={
                     **headers,
                     "Extra": "extra",
                     "Foo": "new",
                 },
             )
-            returned_headers = r.json()
-            assert returned_headers["Foo"] == "new"
-            assert returned_headers["Multi"] == "1, 2"
-            assert returned_headers["Baz"] == "quux"
-            assert returned_headers["Extra"] == "extra"
+            returned_headers = r.json()["headers"]
+            print(returned_headers)
+            assert returned_headers[-4:] == [
+                ["Foo", "new"],
+                ["Multi", "1, 2"],
+                ["Baz", "quux"],
+                ["Extra", "extra"],
+            ]
 
     def test_body(self) -> None:
         with PoolManager() as http:
