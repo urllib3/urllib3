@@ -131,6 +131,8 @@ class RequestMethods:
         """
         if headers is None:
             headers = self.headers
+        else:
+            headers.update(self.headers)
 
         extra_kw: Dict[str, Any] = {"headers": headers}
         extra_kw.update(urlopen_kw)
@@ -187,6 +189,8 @@ class RequestMethods:
         """
         if headers is None:
             headers = self.headers
+        else:
+            headers.update(self.headers)
 
         extra_kw: Dict[str, Any] = {"headers": {}}
         body: Union[bytes, str]
