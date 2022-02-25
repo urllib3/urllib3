@@ -1656,10 +1656,10 @@ class TestHeaders(SocketDummyServerTestCase):
             ]
             assert expected_response_headers == actual_response_headers
 
-    def test_headers_sent_with_add(self) -> None:
+    def test_headers_sent_with_add(self):
         buf = b""
 
-        def socket_handler(listener: socket.socket) -> None:
+        def socket_handler(listener):
             sock = listener.accept()[0]
 
             while not buf.endswith(b"\r\n\r\n"):
