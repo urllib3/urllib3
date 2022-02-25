@@ -35,7 +35,8 @@ urllib3 is powerful and easy to use:
 .. code-block:: pycon
 
    >>> import urllib3
-   >>> resp = urllib3.request("GET", "https://httpbin.org/robots.txt")
+   >>> http = urllib3.PoolManager()
+   >>> resp = http.request("GET", "http://httpbin.org/robots.txt")
    >>> resp.status
    200
    >>> resp.data
