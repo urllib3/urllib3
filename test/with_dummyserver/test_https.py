@@ -339,7 +339,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ) as https_pool:
             conn = https_pool._get_conn()
             try:
-                with pytest.raises(SSLError):
+                with pytest.raises(ssl.SSLError):
                     conn.connect()
 
                 assert conn.sock
