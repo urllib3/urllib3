@@ -447,17 +447,16 @@ class HTTPSConnection(HTTPConnection):
         self._connecting_to_proxy = bool(self.proxy)
 
         sock: Union[socket.socket, "ssl.SSLSocket"]
-        sock = self._new_conn()
+        self.sock = sock = self._new_conn()
         hostname: str = self.host
         tls_in_tls = False
 
         if self._is_using_tunnel():
             if self.tls_in_tls_required:
-                sock = self._connect_tls_proxy(hostname, sock)
+                self.sock = sock = self._connect_tls_proxy(hostname, sock)
                 tls_in_tls = True
 
             self._connecting_to_proxy = False
-            self.sock = sock
 
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
