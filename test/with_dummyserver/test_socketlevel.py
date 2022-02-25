@@ -1656,6 +1656,33 @@ class TestHeaders(SocketDummyServerTestCase):
             ]
             assert expected_response_headers == actual_response_headers
 
+    def test_headers_sent_with_add(self) -> None:
+        buf = b""
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+
+            sock.send(b"HTTP/1.1 200 OK\r\n\r\n")
+            sock.close()
+
+        headers = urllib3.HTTPHeaderDict()
+        headers.add("A", "1")
+        headers.add("B", "2")
+        headers.add("C", "3")
+        headers.add("A", "4")
+        headers.add("C", "5")
+
+        self._start_server(socket_handler)
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/", retries=0, headers=headers)
+            assert r.status == 200
+
+        assert b"\r\nA: 1, 4\r\nB: 2\r\nC: 3, 5\r\n" in buf
+
 
 @pytest.mark.skipif(
     issubclass(httplib.HTTPMessage, MimeToolMessage),
