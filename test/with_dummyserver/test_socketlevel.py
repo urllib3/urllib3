@@ -1668,7 +1668,7 @@ class TestHeaders(SocketDummyServerTestCase):
             sock.send(b"HTTP/1.1 200 OK\r\n\r\n")
             sock.close()
 
-        headers = urllib3.HTTPHeaderDict()
+        headers = HTTPHeaderDict()
         headers.add("A", "1")
         headers.add("B", "2")
         headers.add("C", "3")
