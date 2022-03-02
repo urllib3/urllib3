@@ -329,6 +329,23 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 or "self signed certificate in certificate chain" in str(e.value.reason)
             ), f"Expected 'certificate verify failed', instead got: {e.value.reason!r}"
 
+    def test_wrap_socket_failure_resource_leak(self) -> None:
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=self.bad_ca_path,
+            ssl_minimum_version=self.tls_version(),
+        ) as https_pool:
+            conn = https_pool._get_conn()
+            try:
+                with pytest.raises(ssl.SSLError):
+                    conn.connect()
+
+                assert conn.sock
+            finally:
+                conn.close()
+
     def test_verified_without_ca_certs(self) -> None:
         # default is cert_reqs=None which is ssl.CERT_NONE
         with HTTPSConnectionPool(
