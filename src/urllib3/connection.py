@@ -344,7 +344,7 @@ class HTTPConnection(_HTTPConnection):
                 # as it indicates the end of the body.
                 if not chunk:
                     continue
-                if not isinstance(chunk, bytes):
+                if isinstance(chunk, str):
                     chunk = chunk.encode("utf-8")
                 if chunked:
                     self.send(b"%x\r\n%b\r\n" % (len(chunk), chunk))
