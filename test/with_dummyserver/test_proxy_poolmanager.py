@@ -581,6 +581,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_proxy_https_target_tls_error(
         self, proxy_scheme: str, use_forwarding_for_https: str
     ) -> None:
+        if proxy_scheme == "https" and use_forwarding_for_https:
+            pytest.skip("Test is expected to fail due to urllib3/urllib3#2577")
+
         proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
         proxy_ctx = ssl.create_default_context()
         proxy_ctx.load_verify_locations(DEFAULT_CA)
