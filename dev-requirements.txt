@@ -8,5 +8,4 @@ flaky==3.7.0
 trustme==0.9.0
 cryptography==35.0.0
 backports.zoneinfo==0.2.1;python_version<"3.9"
-# https://github.com/twisted/towncrier/pull/356
-git+https://github.com/twisted/towncrier.git
+towncrier==21.9.0 
