@@ -370,7 +370,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 },
             )
             returned_headers = r.json()["headers"]
-            print(returned_headers)
             assert returned_headers[-4:] == [
                 ["Foo", "new"],
                 ["Multi", "1, 2"],
