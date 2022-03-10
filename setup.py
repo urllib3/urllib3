@@ -88,7 +88,7 @@ setup(
         "brotli": [
             "brotli>=1.0.9; (os_name != 'nt' or python_version >= '3') and platform_python_implementation == 'CPython'",
             "brotlicffi>=0.8.0; (os_name != 'nt' or python_version >= '3') and platform_python_implementation != 'CPython'",
-            "brotlipy>=0.6.0; os_name == 'nt' and python_version < '3'"
+            "brotlipy>=0.6.0; os_name == 'nt' and python_version < '3'",
         ],
         "secure": [
             "pyOpenSSL>=0.14",
