@@ -86,8 +86,9 @@ setup(
     python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4",
     extras_require={
         "brotli": [
-            "brotli>=1.0.9; platform_python_implementation == 'CPython'",
-            "brotlicffi>=0.8.0; platform_python_implementation != 'CPython'",
+            "brotli>=1.0.9; (os_name != 'nt' or python_version >= '3') and platform_python_implementation == 'CPython'",
+            "brotlicffi>=0.8.0; (os_name != 'nt' or python_version >= '3') and platform_python_implementation != 'CPython'",
+            "brotlipy>=0.6.0; os_name == 'nt' and python_version < '3' and extra == 'brotli'"
         ],
         "secure": [
             "pyOpenSSL>=0.14",
