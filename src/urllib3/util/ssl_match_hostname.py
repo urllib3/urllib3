@@ -6,6 +6,7 @@
 
 import ipaddress
 import re
+from ipaddress import IPv4Address, IPv6Address
 from typing import TYPE_CHECKING, Any, Match, Optional, Tuple, Union
 
 if TYPE_CHECKING:
@@ -74,7 +75,7 @@ def _dnsname_match(
     return pat.match(hostname)
 
 
-def _ipaddress_match(ipname: Any, host_ip: str) -> bool:
+def _ipaddress_match(ipname: str, host_ip: Union[IPv4Address, IPv6Address]) -> bool:
     """Exact matching of IP addresses.
 
     RFC 6125 explicitly doesn't define an algorithm for this
