@@ -85,7 +85,8 @@ Alternatively, you can grab the latest source code from `GitHub <https://github.
 
 .. code-block:: bash
 
-  $ git clone git://github.com/urllib3/urllib3.git
+  $ git clone https://github.com/urllib3/urllib3.git
+  $ cd urllib3
   $ pip install .
 
 Usage
