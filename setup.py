@@ -82,7 +82,7 @@ setup(
     ],
     package_dir={"": "src"},
     requires=[],
-    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.* <4",
+    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, <4",
     extras_require={
         "brotli": [
             "brotli>=1.0.9; (os_name != 'nt' or python_version >= '3') and platform_python_implementation == 'CPython'",
