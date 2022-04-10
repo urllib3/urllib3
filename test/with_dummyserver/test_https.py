@@ -334,6 +334,22 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 "Expected 'certificate verify failed', instead got: %r" % e.value.reason
             )
 
+    def test_wrap_socket_failure_resource_leak(self):
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=self.bad_ca_path,
+        ) as https_pool:
+            conn = https_pool._get_conn()
+            try:
+                with pytest.raises(ssl.SSLError):
+                    conn.connect()
+
+                assert conn.sock
+            finally:
+                conn.close()
+
     def test_verified_without_ca_certs(self):
         # default is cert_reqs=None which is ssl.CERT_NONE
         with HTTPSConnectionPool(
