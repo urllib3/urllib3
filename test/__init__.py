@@ -3,7 +3,6 @@ import logging
 import os
 import platform
 import socket
-import ssl
 import sys
 import warnings
 
