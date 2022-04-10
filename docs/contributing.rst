@@ -62,10 +62,12 @@ suite::
   .......
   .......
   nox > Session test-2.7 was successful.
-  nox > Session test-3.4 was successful.
   nox > Session test-3.6 was successful.
   nox > Session test-3.7 was successful.
   nox > Session test-3.8 was successful.
+  nox > Session test-3.9 was successful.
+  nox > Session test-3.10 was successful.
+  nox > Session test-3.11 was successful.
   nox > Session test-pypy was successful.
 
 Our test suite `runs continuously on Travis CI
