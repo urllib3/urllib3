@@ -11,7 +11,6 @@ from test import (
     LONG_TIMEOUT,
     SHORT_TIMEOUT,
     TARPIT_HOST,
-    notOpenSSL098,
     notSecureTransport,
     onlyPy279OrNewer,
     requires_network,
@@ -291,7 +290,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @onlyPy279OrNewer
     @notSecureTransport  # SecureTransport does not support cert directories
-    @notOpenSSL098  # OpenSSL 0.9.8 does not support cert directories
     def test_ca_dir_verified(self, tmpdir):
         # OpenSSL looks up certificates by the hash for their name, see c_rehash
         # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
