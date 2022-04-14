@@ -216,6 +216,7 @@ class Retry:
         remove_headers_on_redirect: Collection[
             str
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
+        log_level: int = logging.WARNING,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -239,6 +240,7 @@ class Retry:
         self.remove_headers_on_redirect = frozenset(
             h.lower() for h in remove_headers_on_redirect
         )
+        self.log_level = log_level
 
     def new(self, **kw: Any) -> "Retry":
         params = dict(
@@ -257,6 +259,7 @@ class Retry:
             history=self.history,
             remove_headers_on_redirect=self.remove_headers_on_redirect,
             respect_retry_after_header=self.respect_retry_after_header,
+            log_level=self.log_level,
         )
 
         params.update(kw)

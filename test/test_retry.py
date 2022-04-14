@@ -1,3 +1,4 @@
+import logging
 from test import DUMMY_POOL
 from typing import Optional
 from unittest import mock
@@ -84,10 +85,12 @@ class TestRetry:
         assert retry.read is None
         assert retry.redirect is None
         assert retry.other is None
+        assert retry.log_level is logging.WARNING
 
         error = ConnectTimeoutError()
-        retry = Retry(connect=1)
+        retry = Retry(connect=1, log_level=logging.INFO)
         retry = retry.increment(error=error)
+        assert retry.log_level == logging.INFO
         with pytest.raises(MaxRetryError):
             retry.increment(error=error)
 
