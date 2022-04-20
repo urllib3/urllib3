@@ -797,7 +797,7 @@ class TestResponse:
         assert isinstance(orig_ex, httplib_IncompleteRead)
 
     def test_invalid_chunk_length(self) -> None:
-        stream = [b"foooo", b"bbbbaaaaar", b""]
+        stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedInvalidChunkLength(stream)
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
         r.fp = fp  # type: ignore[assignment]
