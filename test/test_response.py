@@ -797,7 +797,7 @@ class TestResponse:
         assert isinstance(orig_ex, httplib_IncompleteRead)
 
     def test_invalid_chunk_length(self) -> None:
-        stream = [b"foooo", b"bbbbaaaaar"]
+        stream = [b"foooo", b"bbbbaaaaar", b""]
         fp = MockChunkedInvalidChunkLength(stream)
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
         r.fp = fp  # type: ignore[assignment]
@@ -817,6 +817,20 @@ class TestResponse:
         assert str(ctx.value) == msg
         assert isinstance(orig_ex, InvalidChunkLength)
         assert orig_ex.length == fp.BAD_LENGTH_LINE.encode()
+
+    def test_invalid_chunk_length_empty_byte(self) -> None:
+        stream = [b"foo", b"bar", b"baz", b""]
+        fp = MockChunkedEncodingResponse(stream)
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        expected_response = [b"foo", b"bar", b"baz"]
+        response = list(resp.read_chunked())
+        assert expected_response == response
 
     def test_chunked_response_without_crlf_on_end(self) -> None:
         stream = [b"foo", b"bar", b"baz"]

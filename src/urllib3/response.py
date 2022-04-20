@@ -815,6 +815,7 @@ class HTTPResponse(BaseHTTPResponse):
             return None
         line = self._fp.fp.readline()  # type: ignore[union-attr]
         line = line.split(b";", 1)[0]
+        line = len(line) > 0 and line or b"0"
         try:
             self.chunk_left = int(line, 16)
         except ValueError:
