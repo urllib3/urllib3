@@ -71,7 +71,7 @@ HAS_SNI = True
 
 # Use system TLS ciphers on OpenSSL 1.1.1+
 USE_DEFAULT_SSLCONTEXT_CIPHERS = util.ssl_._is_ge_openssl_v1_1_1(
-    openssl_backend.openssl_version_text(), openssl_backend.openssl_version_number()  # type: ignore[no-untyped-call]
+    openssl_backend.openssl_version_text(), openssl_backend.openssl_version_number()
 )
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
