@@ -1,20 +1,28 @@
-From 633cd3b445e1f0617c30b4c25dcbf865eadcd44b Mon Sep 17 00:00:00 2001
+From 3da76f0f850bca8cd3e463a8e3011992bc605762 Mon Sep 17 00:00:00 2001
 From: Quentin Pradet <quentin.pradet@gmail.com>
-Date: Mon, 2 May 2022 23:25:00 +0400
+Date: Mon, 2 May 2022 23:34:00 +0400
 Subject: [PATCH] Mark 100 Continue tests as failing
 
 This appears to be an issue in botocore that they plan to fix at some
 point. See https://github.com/urllib3/urllib3/pull/2565 for more
 details.
 ---
- tests/unit/test_awsrequest.py | 6 ++++++
- 1 file changed, 6 insertions(+)
+ tests/unit/test_awsrequest.py | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
 diff --git a/tests/unit/test_awsrequest.py b/tests/unit/test_awsrequest.py
-index 5005d50fd..766e0b583 100644
+index 5005d50fd..b9ea692b8 100644
 --- a/tests/unit/test_awsrequest.py
 +++ b/tests/unit/test_awsrequest.py
-@@ -334,6 +334,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+@@ -19,6 +19,7 @@ import socket
+ import tempfile
+ 
+ from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
++import pytest
+ 
+ from botocore.awsrequest import (
+     AWSHTTPConnection,
+@@ -334,6 +335,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
          conn.response_class.return_value = self.mock_response
          return conn
  
@@ -22,7 +30,7 @@ index 5005d50fd..766e0b583 100644
      def test_expect_100_continue_returned(self):
          with mock.patch('urllib3.util.wait_for_read') as wait_mock:
              # Shows the server first sending a 100 continue response
-@@ -350,6 +351,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+@@ -350,6 +352,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
              # Now we should verify that our final response is the 200 OK
              self.assertEqual(response.status, 200)
  
@@ -30,7 +38,7 @@ index 5005d50fd..766e0b583 100644
      def test_handles_expect_100_with_different_reason_phrase(self):
          with mock.patch('urllib3.util.wait_for_read') as wait_mock:
              # Shows the server first sending a 100 continue response
-@@ -369,6 +371,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+@@ -369,6 +372,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
              # continue.
              self.assertIn(b'body', s.sent_data)
  
@@ -38,7 +46,7 @@ index 5005d50fd..766e0b583 100644
      def test_expect_100_sends_connection_header(self):
          # When using squid as an HTTP proxy, it will also send
          # a Connection: keep-alive header back with the 100 continue
-@@ -393,6 +396,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+@@ -393,6 +397,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
              response = conn.getresponse()
              self.assertEqual(response.status, 500)
  
@@ -46,7 +54,7 @@ index 5005d50fd..766e0b583 100644
      def test_expect_100_continue_sends_307(self):
          # This is the case where we send a 100 continue and the server
          # immediately sends a 307
-@@ -413,6 +417,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+@@ -413,6 +418,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
              # Now we should verify that our final response is the 307.
              self.assertEqual(response.status, 307)
  
@@ -54,7 +62,7 @@ index 5005d50fd..766e0b583 100644
      def test_expect_100_continue_no_response_from_server(self):
          with mock.patch('urllib3.util.wait_for_read') as wait_mock:
              # Shows the server first sending a 100 continue response
-@@ -510,6 +515,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+@@ -510,6 +516,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
          response = conn.getresponse()
          self.assertEqual(response.status, 200)
  
