@@ -1,6 +1,10 @@
 Connections
 ===========
 
+.. autoclass:: urllib3.connection.ProxyConfig
+    :members:
+    :show-inheritance:
+
 .. autoclass:: urllib3.connection.HTTPConnection
     :members:
     :exclude-members: putrequest

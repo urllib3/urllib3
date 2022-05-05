@@ -179,7 +179,7 @@ class Timeout:
         passed to this function.
 
         :param timeout: The legacy timeout value.
-        :type timeout: integer, float, sentinel default object, or None
+        :type timeout: integer, float, :attr:`urllib3.util.Timeout.DEFAULT_TIMEOUT`, or None
         :return: Timeout object
         :rtype: :class:`Timeout`
         """

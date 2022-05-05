@@ -82,3 +82,6 @@ html_theme_options = {
 }
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+
+# Warn about all references to unknown targets
+nitpicky = True

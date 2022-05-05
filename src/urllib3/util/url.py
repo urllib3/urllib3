@@ -364,7 +364,7 @@ def parse_url(url: str) -> Url:
 
     :param str url: URL to parse into a :class:`.Url` namedtuple.
 
-    Partly backwards-compatible with :mod:`urlparse`.
+    Partly backwards-compatible with :mod:`urllib.parse`.
 
     Example:
 

@@ -30,7 +30,7 @@ so that you don't have to:
 
     http = urllib3.PoolManager()
 
-To make a request use :meth:`~poolmanager.PoolManager.request`:
+To make a request use :meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -49,7 +49,7 @@ To make a request use :meth:`~poolmanager.PoolManager.request`:
 ``request()`` returns a :class:`~response.HTTPResponse` object, the
 :ref:`response_content` section explains how to handle various responses.
 
-You can use :meth:`~poolmanager.PoolManager.request` to make requests using any
+You can use :meth:`~urllib3.PoolManager.request` to make requests using any
 HTTP verb:
 
 .. code-block:: python
@@ -179,7 +179,7 @@ Request Data
 Headers
 ~~~~~~~
 
-You can specify headers as a dictionary in the ``headers`` argument in :meth:`~poolmanager.PoolManager.request`:
+You can specify headers as a dictionary in the ``headers`` argument in :meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -258,7 +258,7 @@ Query Parameters
 
 For ``GET``, ``HEAD``, and ``DELETE`` requests, you can simply pass the
 arguments as a dictionary in the ``fields`` argument to
-:meth:`~poolmanager.PoolManager.request`:
+:meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -299,7 +299,7 @@ Form Data
 
 For ``PUT`` and ``POST`` requests, urllib3 will automatically form-encode the
 dictionary in the ``fields`` argument provided to
-:meth:`~poolmanager.PoolManager.request`:
+:meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -323,7 +323,7 @@ You can send a JSON request by specifying the data as ``json`` argument,
 urllib3 automatically encodes data using ``json`` module with ``UTF-8`` 
 encoding. Also by default ``"Content-Type"`` in headers is set to 
 ``"application/json"`` if not specified when calling
-:meth:`~poolmanager.PoolManager.request`:
+:meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -471,7 +471,7 @@ Using Timeouts
 
 Timeouts allow you to control how long (in seconds) requests are allowed to run
 before being aborted. In simple cases, you can specify a timeout as a ``float``
-to :meth:`~poolmanager.PoolManager.request`:
+to :meth:`~urllib3.PoolManager.request`:
 
 .. code-block:: python
 
@@ -532,14 +532,14 @@ the timeout at the :class:`~urllib3.poolmanager.PoolManager` level:
     )
 
 You still override this pool-level timeout by specifying ``timeout`` to
-:meth:`~poolmanager.PoolManager.request`.
+:meth:`~urllib3.PoolManager.request`.
 
 Retrying Requests
 -----------------
 
 urllib3 can automatically retry idempotent requests. This same mechanism also
 handles redirects. You can control the retries using the ``retries`` parameter
-to :meth:`~poolmanager.PoolManager.request`. By default, urllib3 will retry
+to :meth:`~urllib3.PoolManager.request`. By default, urllib3 will retry
 requests 3 times and follow up to 3 redirects.
 
 To change the number of retries just specify an integer:
@@ -630,7 +630,7 @@ specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
     )
 
 You still override this pool-level retry policy by specifying ``retries`` to
-:meth:`~poolmanager.PoolManager.request`.
+:meth:`~urllib3.PoolManager.request`.
 
 Errors & Exceptions
 -------------------
