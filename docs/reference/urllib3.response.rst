@@ -13,7 +13,7 @@ Response
     :members:
     :undoc-members:
     :show-inheritance:
-    :inherited-members:
+    :inherited-members: json
 
     .. autoattribute:: auto_close
     .. autoattribute:: status

@@ -12,12 +12,6 @@ To aid the limited functionality of the :mod:`http.client` module, urllib3
 provides various helper methods which are used with the higher level components
 but can also be used independently.
 
-.. autoclass:: urllib3.util.timeout._TYPE_DEFAULT
-
-.. autoclass:: urllib3.util.timeout._DEFAULT_TIMEOUT
-
-.. autoclass:: urllib3.util.timeout._TYPE_TIMEOUT
-
 .. automodule:: urllib3.util
     :members:
     :show-inheritance:

@@ -7,12 +7,12 @@ Pool Manager
     :show-inheritance:
     :inherited-members:
 
-.. autoclass:: urllib3.poolmanager.PoolKey
+.. autoclass:: urllib3.ProxyManager
     :members:
     :undoc-members:
     :show-inheritance:
 
-.. autoclass:: urllib3.ProxyManager
+.. autoclass:: urllib3.poolmanager.PoolKey
     :members:
     :undoc-members:
     :show-inheritance:
