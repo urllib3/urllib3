@@ -473,7 +473,7 @@ class HTTPSConnection(HTTPConnection):
         if self.server_hostname is not None:
             server_hostname = self.server_hostname
 
-        is_time_off = datetime.date.today() < RECENT_DATE
+        is_time_off = datetime.date.fromtimestamp(time.time()) < RECENT_DATE
         if is_time_off:
             warnings.warn(
                 (
