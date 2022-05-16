@@ -1,4 +1,5 @@
 -r ../dev-requirements.txt
+pip==22.0.4
 sphinx>3.0.0
 requests>=2,<2.16
 furo
