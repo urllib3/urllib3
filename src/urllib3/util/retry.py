@@ -128,7 +128,7 @@ class Retry:
         If ``total`` is not set, it's a good idea to set this to 0 to account
         for unexpected edge cases and avoid infinite retry loops.
 
-    :param iterable allowed_methods:
+    :param Collection allowed_methods:
         Set of uppercased HTTP method verbs that we should retry on.
 
         By default, we only retry on methods which are considered to be
@@ -137,7 +137,7 @@ class Retry:
 
         Set to a ``None`` value to retry on any verb.
 
-    :param iterable status_forcelist:
+    :param Collection status_forcelist:
         A set of integer HTTP status codes that we should force a retry on.
         A retry is initiated if the request method is in ``allowed_methods``
         and the response status code is in ``status_forcelist``.
@@ -151,9 +151,9 @@ class Retry:
 
             {backoff factor} * (2 ** ({number of total retries} - 1))
 
-        seconds. If the backoff_factor is 0.1, then :func:`.sleep` will sleep
+        seconds. If the backoff_factor is 0.1, then :func:`Retry.sleep` will sleep
         for [0.0s, 0.2s, 0.4s, ...] between retries. It will never be longer
-        than :attr:`Retry.backoff_max`.
+        than `backoff_max`.
 
         By default, backoff is disabled (set to 0).
 
@@ -174,7 +174,7 @@ class Retry:
         Whether to respect Retry-After header on status codes defined as
         :attr:`Retry.RETRY_AFTER_STATUS_CODES` or not.
 
-    :param iterable remove_headers_on_redirect:
+    :param Collection remove_headers_on_redirect:
         Sequence of headers to remove from the request when a response
         indicating a redirect is returned before firing off the redirected
         request.
