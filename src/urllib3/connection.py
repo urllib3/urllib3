@@ -388,7 +388,7 @@ class HTTPSConnection(HTTPConnection):
                     SystemTimeWarning,
                 )
         except Exception as ex:
-            warnings.warn('is_time_off warning is throwing exception on garbage collection')
+            warnings.warn("is_time_off warning is throwing exception on garbage collection")
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
