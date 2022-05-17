@@ -173,4 +173,4 @@ def docs(session: nox.Session) -> None:
     session.chdir("docs")
     if os.path.exists("_build"):
         shutil.rmtree("_build")
-    session.run("sphinx-build", "-b", "html", ".", "_build/html")
+    session.run("sphinx-build", "-b", "html", "-W", ".", "_build/html")
