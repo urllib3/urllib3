@@ -377,15 +377,18 @@ class HTTPSConnection(HTTPConnection):
         if self.server_hostname is not None:
             server_hostname = self.server_hostname
 
-        is_time_off = datetime.date.today() < RECENT_DATE
-        if is_time_off:
-            warnings.warn(
-                (
-                    "System time is way off (before {0}). This will probably "
-                    "lead to SSL verification errors"
-                ).format(RECENT_DATE),
-                SystemTimeWarning,
-            )
+        try:
+            is_time_off = datetime.date.today() < RECENT_DATE
+            if is_time_off:
+                warnings.warn(
+                    (
+                        "System time is way off (before {0}). This will probably "
+                        "lead to SSL verification errors"
+                    ).format(RECENT_DATE),
+                    SystemTimeWarning,
+                )
+        except Exception as ex:
+            warnings.warn('is_time_off warning is throwing exception on garbage collection')
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
