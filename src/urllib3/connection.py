@@ -387,7 +387,7 @@ class HTTPSConnection(HTTPConnection):
                     ).format(RECENT_DATE),
                     SystemTimeWarning,
                 )
-        except ImportError as e:
+        except ImportError:
             warnings.warn(
                 "is_time_off warning is throwing exception on garbage collection"
             )
