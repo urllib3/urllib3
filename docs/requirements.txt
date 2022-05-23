@@ -1,8 +1,4 @@
 -r ../dev-requirements.txt
-# We pin the pip version to 22.0.4 because of a bug in 22.1
-# It can be removed when the bug fixed.
-# https://github.com/pypa/pip/issues/11110
-pip==22.0.4
 sphinx>3.0.0
 requests>=2,<2.16
 furo
