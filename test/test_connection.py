@@ -10,7 +10,9 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     CertificateError,
     HTTPSConnection,
     _match_hostname,
+    _wrap_proxy_error,
 )
+from urllib3.exceptions import HTTPError, ProxyError
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
@@ -183,3 +185,18 @@ class TestConnection:
     def test_HTTPSConnection_default_socket_options(self) -> None:
         conn = HTTPSConnection("not.a.real.host", port=443)
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
+
+    @pytest.mark.parametrize(
+        "proxy_scheme, err_part",
+        [
+            ("http", "Unable to connect to proxy"),
+            (
+                "https",
+                "Unable to connect to proxy. Your proxy appears to only use HTTP and not HTTPS",
+            ),
+        ],
+    )
+    def test_wrap_proxy_error(self, proxy_scheme: str, err_part: str) -> None:
+        new_err = _wrap_proxy_error(HTTPError("unknown protocol"), proxy_scheme)
+        assert isinstance(new_err, ProxyError) is True
+        assert err_part in new_err.args[0]

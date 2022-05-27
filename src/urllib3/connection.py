@@ -60,6 +60,7 @@ from .util.ssl_ import (
     ssl_wrap_socket,
 )
 from .util.ssl_match_hostname import CertificateError, match_hostname
+from .util.url import Url
 
 # Not a no-op, we're adding this to the namespace so it can be imported.
 ConnectionError = ConnectionError
@@ -141,7 +142,7 @@ class HTTPConnection(_HTTPConnection):
         socket_options: Optional[
             connection._TYPE_SOCKET_OPTIONS
         ] = default_socket_options,
-        proxy: Optional[str] = None,
+        proxy: Optional[Url] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
         # Pre-set source_address.
@@ -386,7 +387,7 @@ class HTTPSConnection(HTTPConnection):
         socket_options: Optional[
             connection._TYPE_SOCKET_OPTIONS
         ] = HTTPConnection.default_socket_options,
-        proxy: Optional[str] = None,
+        proxy: Optional[Url] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
 
@@ -685,7 +686,7 @@ def _match_hostname(
         raise
 
 
-def _wrap_proxy_error(err: Exception) -> ProxyError:
+def _wrap_proxy_error(err: Exception, proxy_scheme: Optional[str]) -> ProxyError:
     # Look for the phrase 'wrong version number', if found
     # then we should warn the user that we're very sure that
     # this proxy is HTTP-only and they have a configuration issue.
@@ -702,7 +703,7 @@ def _wrap_proxy_error(err: Exception) -> ProxyError:
     )
     new_err = ProxyError(
         f"Unable to connect to proxy"
-        f"{http_proxy_warning if is_likely_http_proxy else ''}",
+        f"{http_proxy_warning if is_likely_http_proxy and proxy_scheme == 'https' else ''}",
         err,
     )
     new_err.__cause__ = err

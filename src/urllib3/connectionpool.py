@@ -420,8 +420,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 new_e = SSLError(e)
             if isinstance(
                 new_e, (OSError, NewConnectionError, TimeoutError, SSLError)
-            ) and (conn and conn._connecting_to_proxy):
-                new_e = _wrap_proxy_error(new_e)
+            ) and (conn and conn._connecting_to_proxy and conn.proxy):
+                new_e = _wrap_proxy_error(new_e, conn.proxy.scheme)
             raise new_e
 
         # conn.request() calls http.client.*.request, not the method in
@@ -786,8 +786,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     SSLError,
                     HTTPException,
                 ),
-            ) and (conn and conn._connecting_to_proxy):
-                new_e = _wrap_proxy_error(new_e)
+            ) and (conn and conn._connecting_to_proxy and conn.proxy):
+                new_e = _wrap_proxy_error(new_e, conn.proxy.scheme)
             elif isinstance(new_e, (OSError, HTTPException)):
                 new_e = ProtocolError("Connection aborted.", new_e)
 
