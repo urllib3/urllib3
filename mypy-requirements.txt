@@ -1,4 +1,4 @@
-mypy==0.950
+mypy==0.960
 idna>=2.0.0
 cryptography>=1.3.4
 tornado>=6.1
