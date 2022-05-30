@@ -3,6 +3,8 @@
 
 import sys
 
+from setuptools import setup
+
 sys.stderr.write(
     """
 ===============================
@@ -16,3 +18,13 @@ Please use `python -m pip install .` instead.
 """
 )
 sys.exit(1)
+
+
+# The below code will never execute, however GitHub is particularly
+# picky about where it finds Python packaging metadata.
+# See: https://github.com/github/feedback/discussions/6456
+
+setup(
+    name="urllib3",
+    requires=[],
+)
