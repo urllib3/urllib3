@@ -9,6 +9,7 @@ import warnings
 from socket import error as SocketError
 from socket import timeout as SocketTimeout
 
+from .exceptions import ProxyError, SSLError
 from .packages import six
 from .packages.six.moves.http_client import HTTPConnection as _HTTPConnection
 from .packages.six.moves.http_client import HTTPException  # noqa: F401
@@ -548,6 +549,19 @@ def _match_hostname(cert, asserted_hostname):
         # the cert when catching the exception, if they want to
         e._peer_cert = cert
         raise
+
+
+def _wrap_proxy_error(err, conn_proxy):
+    http_proxy_warning = (
+        "Your proxy appears to only use HTTP and not HTTPS, "
+        "try changing your proxy URL to be HTTP. See: "
+        "https://urllib3.readthedocs.io/en/1.26.x/advanced-usage.html"
+        "#https-proxy-error-http-proxy"
+    )
+    return ProxyError(
+        http_proxy_warning if conn_proxy and conn_proxy.scheme == "https" else "",
+        SSLError(err),
+    )
 
 
 def _get_default_user_agent():
