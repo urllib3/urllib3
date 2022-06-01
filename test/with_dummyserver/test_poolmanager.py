@@ -344,6 +344,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert returned_headers.get("Baz") == "quux"
 
     def test_headers_http_header_dict(self) -> None:
+        # Test uses a list of headers to assert the order
+        # that headers are sent in the request too.
+
         headers = HTTPHeaderDict()
         headers.add("Foo", "bar")
         headers.add("Multi", "1")
@@ -546,6 +549,22 @@ class TestPoolManager(HTTPDummyServerTestCase):
         with pytest.raises(TypeError, match=match):
             body = {"attribute": "value"}
             request(method="POST", url=f"{self.base_url}/echo", body="", json=body)
+
+    def test_top_level_request_with_invalid_body(self) -> None:
+        class BadBody:
+            def __repr__(self) -> str:
+                return "<BadBody>"
+
+        with pytest.raises(TypeError) as e:
+            request(
+                method="POST",
+                url=f"{self.base_url}/echo",
+                body=BadBody(),  # type: ignore[arg-type]
+            )
+        assert str(e.value) == (
+            "'body' must be a bytes-like object, file-like "
+            "object, or iterable. Instead was <BadBody>"
+        )
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")

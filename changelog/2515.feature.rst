@@ -1,5 +1,1 @@
-Added the ``chunked`` parameter to ``urllib3.connection.HTTPConnection.request()``.
-
-Changed ``urllib3.connection.HTTPConnection.request_chunked()`` to be an alias for `HTTPConnection.request(..., chunked=True)``.
-
-Changed ``urllib3.connection.HTTPConnection.request()`` to use ``http.client.HTTPConnection.putrequest()``, ``putheader()``, ``.endheaders()``, and ``.send()`` methods directly.
+Changed ``HTTPConnection.request()`` to always use lowercase chunk boundaries when sending requests with ``Transfer-Encoding: chunked``.
