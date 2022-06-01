@@ -3,13 +3,7 @@ import datetime
 import mock
 import pytest
 
-from urllib3.connection import (
-    RECENT_DATE,
-    CertificateError,
-    _match_hostname,
-    _wrap_proxy_error,
-)
-from urllib3.exceptions import HTTPError, ProxyError
+from urllib3.connection import RECENT_DATE, CertificateError, _match_hostname
 
 
 class TestConnection(object):
@@ -143,25 +137,3 @@ class TestConnection(object):
         # according to the rules defined in that file.
         two_years = datetime.timedelta(days=365 * 2)
         assert RECENT_DATE > (datetime.datetime.today() - two_years).date()
-
-    @pytest.mark.parametrize(
-        "proxy_scheme, err",
-        [
-            ("http", ""),
-            (
-                "https",
-                (
-                    "Your proxy appears to only use HTTP and not HTTPS, "
-                    "try changing your proxy URL to be HTTP. See: "
-                    "https://urllib3.readthedocs.io/en/1.26.x/advanced-usage.html#https-proxy-error-http-proxy"
-                ),
-            ),
-        ],
-    )
-    def test_wrap_proxy_error(self, proxy_scheme, err):
-        conn_proxy = mock.Mock()
-        conn_proxy.scheme = proxy_scheme
-        new_err = _wrap_proxy_error(HTTPError("unknown protocol"), conn_proxy)
-        assert isinstance(new_err, ProxyError) is True
-        # exit(new_err.args[0])
-        assert str(new_err.args[0]) == err

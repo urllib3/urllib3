@@ -17,7 +17,6 @@ from .connection import (
     HTTPException,
     HTTPSConnection,
     VerifiedHTTPSConnection,
-    _wrap_proxy_error,
     port_by_scheme,
 )
 from .exceptions import (
@@ -768,8 +767,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 isinstance(e, BaseSSLError)
                 and self.proxy
                 and _is_ssl_error_message_from_http_proxy(e)
+                and conn.proxy
+                and conn.proxy.scheme == "https"
             ):
-                e = _wrap_proxy_error(e, conn.proxy)
+                e = ProxyError(
+                    "Your proxy appears to only use HTTP and not HTTPS, "
+                    "try changing your proxy URL to be HTTP. See: "
+                    "https://urllib3.readthedocs.io/en/1.26.x/advanced-usage.html"
+                    "#https-proxy-error-http-proxy",
+                    SSLError(e),
+                )
             elif isinstance(e, (BaseSSLError, CertificateError)):
                 e = SSLError(e)
             elif isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
