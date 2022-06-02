@@ -127,9 +127,6 @@ minimize breakages down the road.
 ---------------------------------
 
 - Top-level ``urllib3.request()`` API
-- Open Possibility to Alternate HTTP Implementations
-- Translated Guides
-- Support Zstandard Compression
 - Streaming ``multipart/form-encoded`` Request Data
 - More Powerful and Configurable Retry Logic
 
