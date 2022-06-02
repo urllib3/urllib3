@@ -57,7 +57,7 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test-3.9
-          - python-version: 3.11-dev
+          - python-version: 3.11.0b3
             os: ubuntu-latest
             experimental: true
             nox-session: test-3.11
