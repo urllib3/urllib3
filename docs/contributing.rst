@@ -70,8 +70,8 @@ suite::
   nox > Session test-3.11 was successful.
   nox > Session test-pypy was successful.
 
-Our test suite `runs continuously on Travis CI
-<https://travis-ci.org/urllib3/urllib3>`_ with every pull request.
+Our test suite `runs continuously on GitHub Actions
+<https://github.com/urllib3/urllib3/actions>`_ with every pull request.
 
 To run specific tests or quickly re-run without nox recreating the env, do the following::
 
@@ -94,6 +94,63 @@ further parameterize pytest for local testing.
 
 For all valid arguments, check `the pytest documentation
 <https://docs.pytest.org/en/stable/usage.html#stopping-after-the-first-or-n-failures>`_.
+
+Getting paid for your contributions
+-----------------------------------
+
+urllib3 has a `pool of money hosted on Open Collective <https://opencollective.com/urllib3#category-BUDGET>`_
+which the team uses to pay contributors for their work. **That could be you, too!** If you close an issue
+that is marked with the `"Paid $X00" label <https://github.com/urllib3/urllib3/issues?q=is%3Aopen+is%3Aissue+label%3A%22Paid%3A+%24100+%F0%9F%92%B5%22%2C%22Paid%3A+%24200+%F0%9F%92%B5%22%2C%22Paid%3A+%24300+%F0%9F%92%B5%22%2C%22Paid%3A+%24400+%F0%9F%92%B5%22%2C%22Paid%3A+%24500+%F0%9F%92%B5%22>`_ then you're eligible to be paid for your work.
+
+- Ensure that you're able to `receive funds from Open Collective for working on OSS <https://docs.opencollective.com/help/expenses-and-getting-paid/submitting-expenses>`_.
+  Consider your employment contract and taxes for possible restrictions.
+- **Don't "claim" issues or ask whether someone is already working on an issue.**
+  Instead, focus on creating a pull request which solves the issue. Once you
+  create a pull request we can assign your account to the issue to
+  ensure others don't start working on it in parallel.
+- The amount you will be paid for the completing an issue is shown in the label (either $100, $200, $300, etc).
+- If you have questions about how to create an invoice on Open Collective
+  `try reading their FAQ <https://docs.opencollective.com/help/expenses-and-getting-paid/expenses>`_.
+- If you have a proposal to work on urllib3 that's not listed in the issue tracker please open an issue
+  with your proposal and our team will discuss whether we'd pay for your work on your proposal.
+- If you have other questions get in contact with a maintainer in the `urllib3 Discord channel <https://discord.gg/urllib3>`_ or via email.
+- The list above isn't an exhaustive list of criteria or rules for how/when money is distributed.
+  The final say on whether money will be distributed is up to maintainers.
+
+Contributing to documentation
+-----------------------------
+
+You can build the docs locally using ``nox``:
+
+.. code-block:: bash
+
+  $ nox -rs docs
+
+While writing documentation you should follow these guidelines:
+
+- Use the top-level ``urllib3.request()`` function for smaller code examples. For more involved examples use PoolManager, etc.
+- Use double quotes for all strings. (Output, Declaration etc.)
+- Use keyword arguments everywhere except for method and url. (ie ``http.request("GET", "https://example.com", headers={...})`` )
+- Use HTTPS in URLs everywhere unless HTTP is needed.
+- Rules for code examples and naming variables:
+
+  - ``PoolManager`` instances should be named ``http``. (ie ``http = urllib3.PoolManager(...)``)
+  - ``ProxyManager`` instances should be named ``proxy``.
+  - ``ConnectionPool`` instances should be named ``pool``.
+  - ``Connection`` instances should be named ``conn``.
+  - ``HTTPResponse`` instances should be named ``resp``.
+  -  Only use ``example.com`` or ``httpbin.org`` for example URLs
+
+- Comments within snippets should be useful, if what's being done is apparent
+  (such as parsing JSON, making a request) then it can be skipped for that section.
+- Comments should always go above a code section rather than below with the exception of print
+  statements where the comment containing the result goes below.
+- Imports should be their own section separated from the rest of the example with a line of whitespace.
+- Imports should minimized if possible. Use import urllib3 instead of from urllib3 import X. 
+- Sort imports similarly to isort, standard library first and third-party (like urllib3) come after.
+- No whitespace is required between the sections as normally would be in case of isort.
+- Add print statements along with a comment below them showing the output, potentially compressed.
+- This helps users using the copy-paste button immediately see the results from a script.
 
 Releases
 --------
