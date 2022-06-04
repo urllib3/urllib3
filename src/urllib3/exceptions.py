@@ -93,8 +93,9 @@ class MaxRetryError(RequestError):
 
     :param pool: The connection pool
     :type pool: :class:`~urllib3.connectionpool.HTTPConnectionPool`
-    :param string url: The requested Url
-    :param exceptions.Exception reason: The underlying error
+    :param str url: The requested Url
+    :param reason: The underlying error
+    :type reason: :class:`Exception`
 
     """
 

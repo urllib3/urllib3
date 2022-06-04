@@ -6,9 +6,10 @@ import sys
 import warnings
 from itertools import chain
 from test import ImportBlocker, ModuleStash, notBrotli, onlyBrotli
-from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, NoReturn, Optional, Tuple, Union
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
+from urllib.parse import urlparse
 
 import pytest
 
@@ -23,7 +24,7 @@ from urllib3.exceptions import (
 )
 from urllib3.util import is_fp_closed
 from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
-from urllib3.util.proxy import connection_requires_http_tunnel, create_proxy_ssl_context
+from urllib3.util.proxy import connection_requires_http_tunnel
 from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.ssl_ import (
@@ -360,13 +361,53 @@ class TestUtil:
         returned_url = parse_url(url)
         assert returned_url.request_uri == expected_request_uri
 
+    url_authority_map: List[Tuple[str, Optional[str]]] = [
+        ("http://user:pass@google.com/mail", "user:pass@google.com"),
+        ("http://user:pass@google.com:80/mail", "user:pass@google.com:80"),
+        ("http://user@google.com:80/mail", "user@google.com:80"),
+        ("http://user:pass@192.168.1.1/path", "user:pass@192.168.1.1"),
+        ("http://user:pass@192.168.1.1:80/path", "user:pass@192.168.1.1:80"),
+        ("http://user@192.168.1.1:80/path", "user@192.168.1.1:80"),
+        ("http://user:pass@[::1]/path", "user:pass@[::1]"),
+        ("http://user:pass@[::1]:80/path", "user:pass@[::1]:80"),
+        ("http://user@[::1]:80/path", "user@[::1]:80"),
+        ("http://user:pass@localhost/path", "user:pass@localhost"),
+        ("http://user:pass@localhost:80/path", "user:pass@localhost:80"),
+        ("http://user@localhost:80/path", "user@localhost:80"),
+    ]
+
     url_netloc_map = [
         ("http://google.com/mail", "google.com"),
         ("http://google.com:80/mail", "google.com:80"),
+        ("http://192.168.0.1/path", "192.168.0.1"),
+        ("http://192.168.0.1:80/path", "192.168.0.1:80"),
+        ("http://[::1]/path", "[::1]"),
+        ("http://[::1]:80/path", "[::1]:80"),
+        ("http://localhost", "localhost"),
+        ("http://localhost:80", "localhost:80"),
         ("google.com/foobar", "google.com"),
         ("google.com:12345", "google.com:12345"),
         ("/", None),
     ]
+
+    combined_netloc_authority_map = url_authority_map + url_netloc_map
+
+    # We compose this list due to variances between parse_url
+    # and urlparse when URIs don't provide a scheme.
+    url_authority_with_schemes_map = [
+        u for u in combined_netloc_authority_map if u[0].startswith("http")
+    ]
+
+    @pytest.mark.parametrize("url, expected_authority", combined_netloc_authority_map)
+    def test_authority(self, url: str, expected_authority: Optional[str]) -> None:
+        assert parse_url(url).authority == expected_authority
+
+    @pytest.mark.parametrize("url, expected_authority", url_authority_with_schemes_map)
+    def test_authority_matches_urllib_netloc(
+        self, url: str, expected_authority: Optional[str]
+    ) -> None:
+        """Validate this matches the behavior of urlparse().netloc"""
+        assert urlparse(url).netloc == expected_authority
 
     @pytest.mark.parametrize("url, expected_netloc", url_netloc_map)
     def test_netloc(self, url: str, expected_netloc: Optional[str]) -> None:
@@ -530,13 +571,13 @@ class TestUtil:
 
         # Pass non-integer position
         with pytest.raises(ValueError):
-            rewind_body(body, body_pos=None)
+            rewind_body(body, body_pos=None)  # type: ignore[arg-type]
         with pytest.raises(ValueError):
-            rewind_body(body, body_pos=object())
+            rewind_body(body, body_pos=object())  # type: ignore[arg-type]
 
     def test_rewind_body_failed_seek(self) -> None:
         class BadSeek(io.StringIO):
-            def seek(self, offset: int, whence: int = 0) -> int:
+            def seek(self, offset: int, whence: int = 0) -> NoReturn:
                 raise OSError
 
         with pytest.raises(UnrewindableBodyError):
@@ -747,10 +788,6 @@ class TestUtil:
         assert not connection_requires_http_tunnel(
             proxy, proxy_config, destination_scheme
         )
-
-    def test_create_proxy_ssl_context(self) -> None:
-        ssl_context = create_proxy_ssl_context(ssl_version=None, cert_reqs=None)
-        ssl_context.verify_mode = ssl.CERT_REQUIRED
 
     def test_assert_header_parsing_no_error_on_multipart(self) -> None:
         from http import client
@@ -976,8 +1013,8 @@ class TestUtilSSL:
             ("OpenSSL 1.1.1l", 0x101010CF, "cpython", (3, 9, 3), True),
             # Python OK -> reliable
             ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), True),
-            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 6, 9), True),
-            ("LibreSSL 3.3.5", 0x101010CF, "pypy", (3, 6, 9), True),
+            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 6, 9), False),
+            ("LibreSSL 3.3.5", 0x101010CF, "pypy", (3, 6, 9), False),
             # OpenSSL OK -> reliable
             ("OpenSSL", 0x101010CF, "cpython", (3, 9, 2), True),
             # unreliable

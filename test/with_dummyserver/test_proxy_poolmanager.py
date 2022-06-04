@@ -4,6 +4,8 @@ import socket
 import ssl
 import tempfile
 from test import LONG_TIMEOUT, SHORT_TIMEOUT, onlySecureTransport, withPyOpenSSL
+from test.conftest import ServerConfig
+from typing import Tuple
 
 import pytest
 import trustme
@@ -513,7 +515,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         target_url = self.https_url if target_scheme == "https" else self.http_url
 
         with proxy_from_url(
-            proxy_url, ca_certs=DEFAULT_CA, timeout=SHORT_TIMEOUT
+            proxy_url,
+            ca_certs=DEFAULT_CA,
+            timeout=SHORT_TIMEOUT,
+            use_forwarding_for_https=use_forwarding_for_https,
         ) as proxy:
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", target_url)
@@ -554,7 +559,11 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     ) -> None:
         target_url = self.https_url if target_scheme == "https" else self.http_url
         proxy_ctx = ssl.create_default_context()
-        with proxy_from_url(self.https_proxy_url, proxy_ssl_context=proxy_ctx) as proxy:
+        with proxy_from_url(
+            self.https_proxy_url,
+            proxy_ssl_context=proxy_ctx,
+            use_forwarding_for_https=use_forwarding_for_https,
+        ) as proxy:
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", target_url)
             assert type(e.value.reason) == ProxyError
@@ -572,13 +581,19 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_proxy_https_target_tls_error(
         self, proxy_scheme: str, use_forwarding_for_https: str
     ) -> None:
+        if proxy_scheme == "https" and use_forwarding_for_https:
+            pytest.skip("Test is expected to fail due to urllib3/urllib3#2577")
+
         proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
         proxy_ctx = ssl.create_default_context()
         proxy_ctx.load_verify_locations(DEFAULT_CA)
         ctx = ssl.create_default_context()
 
         with proxy_from_url(
-            proxy_url, proxy_ssl_context=proxy_ctx, ssl_context=ctx
+            proxy_url,
+            proxy_ssl_context=proxy_ctx,
+            ssl_context=ctx,
+            use_forwarding_for_https=use_forwarding_for_https,
         ) as proxy:
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", self.https_url)
@@ -633,3 +648,99 @@ class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
 
             r = http.request("GET", f"{self.https_url}/")
             assert r.status == 200
+
+
+class TestHTTPSProxyVerification:
+    def test_https_proxy_hostname_verification(
+        self, no_localhost_san_server: ServerConfig
+    ) -> None:
+        bad_server = no_localhost_san_server
+        bad_proxy_url = f"https://{bad_server.host}:{bad_server.port}"
+
+        # An exception will be raised before we contact the destination domain.
+        test_url = "testing.com"
+        with proxy_from_url(bad_proxy_url, ca_certs=bad_server.ca_certs) as https:
+            with pytest.raises(MaxRetryError) as e:
+                https.request("GET", "http://%s/" % test_url)
+            assert isinstance(e.value.reason, ProxyError)
+
+            ssl_error = e.value.reason.original_error
+            assert isinstance(ssl_error, SSLError)
+            assert "hostname 'localhost' doesn't match" in str(
+                ssl_error
+            ) or "Hostname mismatch" in str(ssl_error)
+
+            with pytest.raises(MaxRetryError) as e:
+                https.request("GET", "https://%s/" % test_url)
+            assert isinstance(e.value.reason, ProxyError)
+
+            ssl_error = e.value.reason.original_error
+            assert isinstance(ssl_error, SSLError)
+            assert "hostname 'localhost' doesn't match" in str(
+                ssl_error
+            ) or "Hostname mismatch" in str(ssl_error)
+
+    def test_https_proxy_ipv4_san(
+        self, ipv4_san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
+    ) -> None:
+        proxy, server = ipv4_san_proxy_with_server
+        proxy_url = f"https://{proxy.host}:{proxy.port}"
+        destination_url = f"https://{server.host}:{server.port}"
+        with proxy_from_url(proxy_url, ca_certs=proxy.ca_certs) as https:
+            r = https.request("GET", destination_url)
+            assert r.status == 200
+
+    def test_https_proxy_ipv6_san(
+        self, ipv6_san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
+    ) -> None:
+        proxy, server = ipv6_san_proxy_with_server
+        proxy_url = f"https://[{proxy.host}]:{proxy.port}"
+        destination_url = f"https://{server.host}:{server.port}"
+        with proxy_from_url(proxy_url, ca_certs=proxy.ca_certs) as https:
+            r = https.request("GET", destination_url)
+            assert r.status == 200
+
+    @pytest.mark.parametrize("target_scheme", ["http", "https"])
+    def test_https_proxy_no_san(
+        self,
+        no_san_proxy_with_server: Tuple[ServerConfig, ServerConfig],
+        target_scheme: str,
+    ) -> None:
+        proxy, server = no_san_proxy_with_server
+        proxy_url = f"https://{proxy.host}:{proxy.port}"
+        destination_url = f"{target_scheme}://{server.host}:{server.port}"
+
+        with proxy_from_url(proxy_url, ca_certs=proxy.ca_certs) as https:
+            with pytest.raises(MaxRetryError) as e:
+                https.request("GET", destination_url)
+            assert isinstance(e.value.reason, ProxyError)
+
+            ssl_error = e.value.reason.original_error
+            assert isinstance(ssl_error, SSLError)
+            assert "no appropriate subjectAltName fields were found" in str(
+                ssl_error
+            ) or "Hostname mismatch, certificate is not valid for 'localhost'" in str(
+                ssl_error
+            )
+
+    def test_https_proxy_no_san_hostname_checks_common_name(
+        self, no_san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
+    ) -> None:
+        proxy, server = no_san_proxy_with_server
+        proxy_url = f"https://{proxy.host}:{proxy.port}"
+        destination_url = f"https://{server.host}:{server.port}"
+
+        proxy_ctx = urllib3.util.ssl_.create_urllib3_context()
+        try:
+            proxy_ctx.hostname_checks_common_name = True
+        # PyPy doesn't like us setting 'hostname_checks_common_name'
+        # but also has it enabled by default so we need to handle that.
+        except AttributeError:
+            pass
+        if getattr(proxy_ctx, "hostname_checks_common_name", False) is not True:
+            pytest.skip("Test requires 'SSLContext.hostname_checks_common_name=True'")
+
+        with proxy_from_url(
+            proxy_url, ca_certs=proxy.ca_certs, proxy_ssl_context=proxy_ctx
+        ) as https:
+            https.request("GET", destination_url)

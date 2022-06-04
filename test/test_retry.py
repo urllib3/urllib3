@@ -131,7 +131,7 @@ class TestRetry:
 
     def test_backoff(self) -> None:
         """Backoff is computed correctly"""
-        max_backoff = Retry.BACKOFF_MAX
+        max_backoff = Retry.DEFAULT_BACKOFF_MAX
 
         retry = Retry(total=100, backoff_factor=0.2)
         assert retry.get_backoff_time() == 0  # First request
@@ -153,6 +153,30 @@ class TestRetry:
         for _ in range(10):
             retry = retry.increment(method="GET")
 
+        assert retry.get_backoff_time() == max_backoff
+
+    def test_configurable_backoff_max(self) -> None:
+        """Configurable backoff is computed correctly"""
+        max_backoff = 1
+
+        retry = Retry(total=100, backoff_factor=0.2, backoff_max=max_backoff)
+        assert retry.get_backoff_time() == 0  # First request
+
+        retry = retry.increment(method="GET")
+        assert retry.get_backoff_time() == 0  # First retry
+
+        retry = retry.increment(method="GET")
+        assert retry.backoff_factor == 0.2
+        assert retry.total == 98
+        assert retry.get_backoff_time() == 0.4  # Start backoff
+
+        retry = retry.increment(method="GET")
+        assert retry.get_backoff_time() == 0.8
+
+        retry = retry.increment(method="GET")
+        assert retry.get_backoff_time() == max_backoff
+
+        retry = retry.increment(method="GET")
         assert retry.get_backoff_time() == max_backoff
 
     def test_zero_backoff(self) -> None:

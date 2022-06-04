@@ -26,7 +26,9 @@ if TYPE_CHECKING:
     from typing_extensions import Literal
     from .multipart import MultipartEncoder
 
-from .util.proxy import create_proxy_ssl_context
+    from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
+    from .util.ssltransport import SSLTransport
+
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_bytes, to_str
 
@@ -34,7 +36,7 @@ try:  # Compiled with SSL?
     import ssl
 
     BaseSSLError = ssl.SSLError
-except (ImportError, AttributeError):  # Platform-specific: No SSL.
+except (ImportError, AttributeError):
     ssl = None  # type: ignore[assignment]
 
     class BaseSSLError(BaseException):  # type: ignore[no-redef]
@@ -50,15 +52,16 @@ from .exceptions import (
     SystemTimeWarning,
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
+from .util.ssl_ import assert_fingerprint as _assert_fingerprint
 from .util.ssl_ import (
-    _TYPE_PEER_CERT_RET,
-    assert_fingerprint,
     create_urllib3_context,
+    is_ipaddress,
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
 )
 from .util.ssl_match_hostname import CertificateError, match_hostname
+from .util.url import Url
 
 # Not a no-op, we're adding this to the namespace so it can be imported.
 ConnectionError = ConnectionError
@@ -120,6 +123,10 @@ class HTTPConnection(_HTTPConnection):
     #: Whether this connection verifies the host's certificate.
     is_verified: bool = False
 
+    #: Whether this proxy connection (if used) verifies the proxy host's
+    #: certificate. If no HTTPS proxy is being used will be ``None``.
+    proxy_is_verified: Optional[bool] = None
+
     source_address: Optional[Tuple[str, int]]
     socket_options: Optional[connection._TYPE_SOCKET_OPTIONS]
     _tunnel_host: Optional[str]
@@ -136,7 +143,7 @@ class HTTPConnection(_HTTPConnection):
         socket_options: Optional[
             connection._TYPE_SOCKET_OPTIONS
         ] = default_socket_options,
-        proxy: Optional[str] = None,
+        proxy: Optional[Url] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
         # Pre-set source_address.
@@ -199,7 +206,7 @@ class HTTPConnection(_HTTPConnection):
         """
 
         try:
-            conn = connection.create_connection(
+            sock = connection.create_connection(
                 (self._dns_host, self.port),
                 self.timeout,
                 source_address=self.source_address,
@@ -218,7 +225,7 @@ class HTTPConnection(_HTTPConnection):
                 self, f"Failed to establish a new connection: {e}"
             ) from e
 
-        return conn
+        return sock
 
     def _is_using_tunnel(self) -> Optional[str]:
         return self._tunnel_host
@@ -381,7 +388,7 @@ class HTTPSConnection(HTTPConnection):
         socket_options: Optional[
             connection._TYPE_SOCKET_OPTIONS
         ] = HTTPConnection.default_socket_options,
-        proxy: Optional[str] = None,
+        proxy: Optional[Url] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
 
@@ -440,18 +447,18 @@ class HTTPSConnection(HTTPConnection):
 
     def connect(self) -> None:
         self._connecting_to_proxy = bool(self.proxy)
-        # Add certificate verification
-        conn = self._new_conn()
+
+        sock: Union[socket.socket, "ssl.SSLSocket"]
+        self.sock = sock = self._new_conn()
         hostname: str = self.host
         tls_in_tls = False
 
         if self._is_using_tunnel():
             if self.tls_in_tls_required:
-                conn = self._connect_tls_proxy(hostname, conn)
+                self.sock = sock = self._connect_tls_proxy(hostname, sock)
                 tls_in_tls = True
 
             self._connecting_to_proxy = False
-            self.sock = conn
 
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
@@ -478,115 +485,196 @@ class HTTPSConnection(HTTPConnection):
                 SystemTimeWarning,
             )
 
-        # Wrap socket using verification with the root certs in
-        # trusted_root_certs
-        default_ssl_context = False
-        if self.ssl_context is None:
-            default_ssl_context = True
-            self.ssl_context = create_urllib3_context(
-                ssl_version=resolve_ssl_version(self.ssl_version),
-                ssl_minimum_version=self.ssl_minimum_version,
-                ssl_maximum_version=self.ssl_maximum_version,
-                cert_reqs=resolve_cert_reqs(self.cert_reqs),
-            )
-            # In some cases, we want to verify hostnames ourselves
-            if (
-                # `ssl` can't verify fingerprints or alternate hostnames
-                self.assert_fingerprint
-                or self.assert_hostname
-                # We still support OpenSSL 1.0.2, which prevents us from verifying
-                # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
-                or ssl_.IS_PYOPENSSL
-                or not ssl_.HAS_NEVER_CHECK_COMMON_NAME
-            ):
-                self.ssl_context.check_hostname = False
-
-        context = self.ssl_context
-        context.verify_mode = resolve_cert_reqs(self.cert_reqs)
-
-        # Try to load OS default certs if none are given.
-        # Works well on Windows.
-        if (
-            not self.ca_certs
-            and not self.ca_cert_dir
-            and not self.ca_cert_data
-            and default_ssl_context
-            and hasattr(context, "load_default_certs")
-        ):
-            context.load_default_certs()
-
-        self.sock = ssl_wrap_socket(
-            sock=conn,
-            keyfile=self.key_file,
-            certfile=self.cert_file,
-            key_password=self.key_password,
+        sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+            sock=sock,
+            cert_reqs=self.cert_reqs,
+            ssl_version=self.ssl_version,
+            ssl_minimum_version=self.ssl_minimum_version,
+            ssl_maximum_version=self.ssl_maximum_version,
             ca_certs=self.ca_certs,
             ca_cert_dir=self.ca_cert_dir,
             ca_cert_data=self.ca_cert_data,
+            cert_file=self.cert_file,
+            key_file=self.key_file,
+            key_password=self.key_password,
             server_hostname=server_hostname,
-            ssl_context=context,
+            ssl_context=self.ssl_context,
             tls_in_tls=tls_in_tls,
+            assert_hostname=self.assert_hostname,
+            assert_fingerprint=self.assert_fingerprint,
         )
+        self.sock = sock_and_verified.socket
+        self.is_verified = sock_and_verified.is_verified
         self._connecting_to_proxy = False
 
-        if self.assert_fingerprint:
-            assert_fingerprint(
-                self.sock.getpeercert(binary_form=True), self.assert_fingerprint
-            )
-        elif (
-            context.verify_mode != ssl.CERT_NONE
-            and not context.check_hostname
-            and self.assert_hostname is not False
-        ):
-            cert = self.sock.getpeercert()
-            _match_hostname(cert, self.assert_hostname or server_hostname)
-
-        self.is_verified = context.verify_mode == ssl.CERT_REQUIRED or bool(
-            self.assert_fingerprint
-        )
-
-    def _connect_tls_proxy(self, hostname: str, conn: socket.socket) -> "ssl.SSLSocket":
+    def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> "ssl.SSLSocket":
         """
         Establish a TLS connection to the proxy using the provided SSL context.
         """
-
         proxy_config = cast(
             ProxyConfig, self.proxy_config
         )  # `_connect_tls_proxy` is called when self._is_using_tunnel() is truthy.
         ssl_context = proxy_config.ssl_context
-
-        if ssl_context:
-            # If the user provided a proxy context, we assume CA and client
-            # certificates have already been set
-            return ssl_wrap_socket(
-                sock=conn,
-                server_hostname=hostname,
-                ssl_context=ssl_context,
-            )
-
-        ssl_context = create_proxy_ssl_context(
-            self.ssl_version,
-            self.cert_reqs,
-            self.ca_certs,
-            self.ca_cert_dir,
-            self.ca_cert_data,
-        )
-
-        # If no cert was provided, use only the default options for server
-        # certificate validation
-        return ssl_wrap_socket(
-            sock=conn,
+        sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+            sock,
+            cert_reqs=self.cert_reqs,
+            ssl_version=self.ssl_version,
+            ssl_minimum_version=self.ssl_minimum_version,
+            ssl_maximum_version=self.ssl_maximum_version,
             ca_certs=self.ca_certs,
             ca_cert_dir=self.ca_cert_dir,
             ca_cert_data=self.ca_cert_data,
             server_hostname=hostname,
             ssl_context=ssl_context,
+            # Features that aren't implemented for proxies yet:
+            assert_fingerprint=None,
+            assert_hostname=None,
+            cert_file=None,
+            key_file=None,
+            key_password=None,
+            tls_in_tls=False,
+        )
+        self.proxy_is_verified = sock_and_verified.is_verified
+        return sock_and_verified.socket  # type: ignore[return-value]
+
+
+class _WrappedAndVerifiedSocket(NamedTuple):
+    """
+    Wrapped socket and whether the connection is
+    verified after the TLS handshake
+    """
+
+    socket: Union["ssl.SSLSocket", "SSLTransport"]
+    is_verified: bool
+
+
+def _ssl_wrap_socket_and_match_hostname(
+    sock: socket.socket,
+    *,
+    cert_reqs: Union[None, str, int],
+    ssl_version: Union[None, str, int],
+    ssl_minimum_version: Optional[int],
+    ssl_maximum_version: Optional[int],
+    cert_file: Optional[str],
+    key_file: Optional[str],
+    key_password: Optional[str],
+    ca_certs: Optional[str],
+    ca_cert_dir: Optional[str],
+    ca_cert_data: Union[None, str, bytes],
+    assert_hostname: Union[None, str, "Literal[False]"],
+    assert_fingerprint: Optional[str],
+    server_hostname: Optional[str],
+    ssl_context: Optional["ssl.SSLContext"],
+    tls_in_tls: bool = False,
+) -> _WrappedAndVerifiedSocket:
+    """Logic for constructing an SSLContext from all TLS parameters, passing
+    that down into ssl_wrap_socket, and then doing certificate verification
+    either via hostname or fingerprint. This function exists to guarantee
+    that both proxies and targets have the same behavior when connecting via TLS.
+    """
+    default_ssl_context = False
+    if ssl_context is None:
+        default_ssl_context = True
+        context = create_urllib3_context(
+            ssl_version=resolve_ssl_version(ssl_version),
+            ssl_minimum_version=ssl_minimum_version,
+            ssl_maximum_version=ssl_maximum_version,
+            cert_reqs=resolve_cert_reqs(cert_reqs),
+        )
+    else:
+        context = ssl_context
+
+    context.verify_mode = resolve_cert_reqs(cert_reqs)
+
+    # In some cases, we want to verify hostnames ourselves
+    if (
+        # `ssl` can't verify fingerprints or alternate hostnames
+        assert_fingerprint
+        or assert_hostname
+        # We still support OpenSSL 1.0.2, which prevents us from verifying
+        # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
+        or ssl_.IS_PYOPENSSL
+        or not ssl_.HAS_NEVER_CHECK_COMMON_NAME
+    ):
+        context.check_hostname = False
+
+    # Try to load OS default certs if none are given.
+    if (
+        not ca_certs
+        and not ca_cert_dir
+        and not ca_cert_data
+        and default_ssl_context
+        and hasattr(context, "load_default_certs")
+    ):
+        context.load_default_certs()
+
+    # Our upstream implementation of ssl.match_hostname()
+    # only applies this normalization to IP addresses so it doesn't
+    # match DNS SANs so we do the same thing!
+    if server_hostname is not None:
+        stripped_hostname = server_hostname.strip("[]")
+        if is_ipaddress(stripped_hostname):
+            server_hostname = stripped_hostname
+
+    ssl_sock = ssl_wrap_socket(
+        sock=sock,
+        keyfile=key_file,
+        certfile=cert_file,
+        key_password=key_password,
+        ca_certs=ca_certs,
+        ca_cert_dir=ca_cert_dir,
+        ca_cert_data=ca_cert_data,
+        server_hostname=server_hostname,
+        ssl_context=context,
+        tls_in_tls=tls_in_tls,
+    )
+
+    if assert_fingerprint:
+        _assert_fingerprint(ssl_sock.getpeercert(binary_form=True), assert_fingerprint)
+    elif (
+        context.verify_mode != ssl.CERT_NONE
+        and not context.check_hostname
+        and assert_hostname is not False
+    ):
+        cert: "_TYPE_PEER_CERT_RET_DICT" = ssl_sock.getpeercert()  # type: ignore[assignment]
+
+        # Need to signal to our match_hostname whether to use 'commonName' or not.
+        # If we're using our own constructed SSLContext we explicitly set 'False'
+        # because PyPy hard-codes 'True' from SSLContext.hostname_checks_common_name.
+        if default_ssl_context:
+            hostname_checks_common_name = False
+        else:
+            hostname_checks_common_name = (
+                getattr(context, "hostname_checks_common_name", False) or False
+            )
+
+        _match_hostname(
+            cert,
+            assert_hostname or server_hostname,  # type: ignore[arg-type]
+            hostname_checks_common_name,
         )
 
+    return _WrappedAndVerifiedSocket(
+        socket=ssl_sock,
+        is_verified=context.verify_mode == ssl.CERT_REQUIRED
+        or bool(assert_fingerprint),
+    )
 
-def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
+
+def _match_hostname(
+    cert: Optional["_TYPE_PEER_CERT_RET_DICT"],
+    asserted_hostname: str,
+    hostname_checks_common_name: bool = False,
+) -> None:
+    # Our upstream implementation of ssl.match_hostname()
+    # only applies this normalization to IP addresses so it doesn't
+    # match DNS SANs so we do the same thing!
+    stripped_hostname = asserted_hostname.strip("[]")
+    if is_ipaddress(stripped_hostname):
+        asserted_hostname = stripped_hostname
+
     try:
-        match_hostname(cert, asserted_hostname)
+        match_hostname(cert, asserted_hostname, hostname_checks_common_name)
     except CertificateError as e:
         log.warning(
             "Certificate did not match expected hostname: %s. Certificate: %s",
@@ -599,19 +687,24 @@ def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
         raise
 
 
-def _wrap_proxy_error(err: Exception) -> ProxyError:
+def _wrap_proxy_error(err: Exception, proxy_scheme: Optional[str]) -> ProxyError:
     # Look for the phrase 'wrong version number', if found
     # then we should warn the user that we're very sure that
     # this proxy is HTTP-only and they have a configuration issue.
     error_normalized = " ".join(re.split("[^a-z]", str(err).lower()))
-    is_likely_http_proxy = "wrong version number" in error_normalized
+    is_likely_http_proxy = (
+        "wrong version number" in error_normalized
+        or "unknown protocol" in error_normalized
+    )
     http_proxy_warning = (
         ". Your proxy appears to only use HTTP and not HTTPS, "
-        "did you intend to set a proxy URL using HTTPS instead of HTTP?"
+        "try changing your proxy URL to be HTTP. See: "
+        "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
+        "#https-proxy-error-http-proxy"
     )
     new_err = ProxyError(
         f"Unable to connect to proxy"
-        f"{http_proxy_warning if is_likely_http_proxy else ''}",
+        f"{http_proxy_warning if is_likely_http_proxy and proxy_scheme == 'https' else ''}",
         err,
     )
     new_err.__cause__ = err

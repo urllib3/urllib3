@@ -1,8 +1,8 @@
 """
-TLS with SNI_-support for Python 2. Follow these instructions if you would
-like to verify TLS certificates in Python 2. Note, the default libraries do
-*not* do certificate checking; you need to do additional work to validate
-certificates yourself.
+Module for using pyOpenSSL as a TLS backend. This module was relevant before
+the standard library ``ssl`` module supported SNI, but now that we've dropped
+support for Python 2.7 all relevant Python versions support SNI so
+**this module is no longer recommended**.
 
 This needs the following packages installed:
 
@@ -10,7 +10,7 @@ This needs the following packages installed:
 * `cryptography`_ (minimum 1.3.4, from pyopenssl)
 * `idna`_ (minimum 2.0, from cryptography)
 
-However, pyopenssl depends on cryptography, which depends on idna, so while we
+However, pyOpenSSL depends on cryptography, which depends on idna, so while we
 use all three directly here we end up having relatively few packages required.
 
 You can install them with the following command:
@@ -33,14 +33,6 @@ like this:
     except ImportError:
         pass
 
-Now you can use :mod:`urllib3` as you normally would, and it will support SNI
-when the required modules are installed.
-
-Activating this module also has the positive side effect of disabling SSL/TLS
-compression in Python 2 (see `CRIME attack`_).
-
-.. _sni: https://en.wikipedia.org/wiki/Server_Name_Indication
-.. _crime attack: https://en.wikipedia.org/wiki/CRIME_(security_exploit)
 .. _pyopenssl: https://www.pyopenssl.org
 .. _cryptography: https://cryptography.io
 .. _idna: https://github.com/kjd/idna
@@ -79,7 +71,7 @@ HAS_SNI = True
 
 # Use system TLS ciphers on OpenSSL 1.1.1+
 USE_DEFAULT_SSLCONTEXT_CIPHERS = util.ssl_._is_ge_openssl_v1_1_1(
-    openssl_backend.openssl_version_text(), openssl_backend.openssl_version_number()  # type: ignore[no-untyped-call]
+    openssl_backend.openssl_version_text(), openssl_backend.openssl_version_number()
 )
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
@@ -88,9 +80,6 @@ _openssl_versions = {
     util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
-
-if hasattr(ssl, "PROTOCOL_SSLv3") and hasattr(OpenSSL.SSL, "SSLv3_METHOD"):
-    _openssl_versions[ssl.PROTOCOL_SSLv3] = OpenSSL.SSL.SSLv3_METHOD
 
 if hasattr(ssl, "PROTOCOL_TLSv1_1") and hasattr(OpenSSL.SSL, "TLSv1_1_METHOD"):
     _openssl_versions[ssl.PROTOCOL_TLSv1_1] = OpenSSL.SSL.TLSv1_1_METHOD
@@ -109,40 +98,41 @@ _openssl_to_stdlib_verify = {v: k for k, v in _stdlib_to_openssl_verify.items()}
 
 # The SSLvX values are the most likely to be missing in the future
 # but we check them all just to be sure.
-_OP_NO_SSLv2: int = getattr(OpenSSL.SSL, "OP_NO_SSLv2", 0)
-_OP_NO_SSLv3: int = getattr(OpenSSL.SSL, "OP_NO_SSLv3", 0)
+_OP_NO_SSLv2_OR_SSLv3: int = getattr(OpenSSL.SSL, "OP_NO_SSLv2", 0) | getattr(
+    OpenSSL.SSL, "OP_NO_SSLv3", 0
+)
 _OP_NO_TLSv1: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1", 0)
 _OP_NO_TLSv1_1: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_1", 0)
 _OP_NO_TLSv1_2: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_2", 0)
 _OP_NO_TLSv1_3: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_3", 0)
 
 _openssl_to_ssl_minimum_version: Dict[int, int] = {
-    ssl.TLSVersion.MINIMUM_SUPPORTED: _OP_NO_SSLv2,
-    ssl.TLSVersion.SSLv3: _OP_NO_SSLv2,
-    ssl.TLSVersion.TLSv1: _OP_NO_SSLv2 | _OP_NO_SSLv3,
-    ssl.TLSVersion.TLSv1_1: _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1,
-    ssl.TLSVersion.TLSv1_2: _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1,
+    ssl.TLSVersion.MINIMUM_SUPPORTED: _OP_NO_SSLv2_OR_SSLv3,
+    ssl.TLSVersion.TLSv1: _OP_NO_SSLv2_OR_SSLv3,
+    ssl.TLSVersion.TLSv1_1: _OP_NO_SSLv2_OR_SSLv3 | _OP_NO_TLSv1,
+    ssl.TLSVersion.TLSv1_2: _OP_NO_SSLv2_OR_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1,
     ssl.TLSVersion.TLSv1_3: (
-        _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2
+        _OP_NO_SSLv2_OR_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2
     ),
     ssl.TLSVersion.MAXIMUM_SUPPORTED: (
-        _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2
+        _OP_NO_SSLv2_OR_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2
     ),
 }
 _openssl_to_ssl_maximum_version: Dict[int, int] = {
     ssl.TLSVersion.MINIMUM_SUPPORTED: (
-        _OP_NO_SSLv2 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3
-    ),
-    ssl.TLSVersion.SSLv3: (
-        _OP_NO_SSLv2 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3
+        _OP_NO_SSLv2_OR_SSLv3
+        | _OP_NO_TLSv1
+        | _OP_NO_TLSv1_1
+        | _OP_NO_TLSv1_2
+        | _OP_NO_TLSv1_3
     ),
     ssl.TLSVersion.TLSv1: (
-        _OP_NO_SSLv2 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3
+        _OP_NO_SSLv2_OR_SSLv3 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3
     ),
-    ssl.TLSVersion.TLSv1_1: _OP_NO_SSLv2 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3,
-    ssl.TLSVersion.TLSv1_2: _OP_NO_SSLv2 | _OP_NO_TLSv1_3,
-    ssl.TLSVersion.TLSv1_3: _OP_NO_SSLv2,
-    ssl.TLSVersion.MAXIMUM_SUPPORTED: _OP_NO_SSLv2,
+    ssl.TLSVersion.TLSv1_1: _OP_NO_SSLv2_OR_SSLv3 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3,
+    ssl.TLSVersion.TLSv1_2: _OP_NO_SSLv2_OR_SSLv3 | _OP_NO_TLSv1_3,
+    ssl.TLSVersion.TLSv1_3: _OP_NO_SSLv2_OR_SSLv3,
+    ssl.TLSVersion.MAXIMUM_SUPPORTED: _OP_NO_SSLv2_OR_SSLv3,
 }
 
 # OpenSSL will only write 16K at a time

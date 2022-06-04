@@ -9,3 +9,7 @@ Connections
 .. autoclass:: urllib3.connection.HTTPSConnection
     :members:
     :show-inheritance:
+
+.. autoclass:: urllib3.connection.ProxyConfig
+    :members:
+    :show-inheritance:

@@ -55,6 +55,7 @@ SSL_KEYWORDS = (
     "ca_cert_dir",
     "ssl_context",
     "key_password",
+    "server_hostname",
 )
 # Default value for `blocksize` - a new parameter introduced to
 # http.client.HTTPConnection & http.client.HTTPSConnection in Python 3.7

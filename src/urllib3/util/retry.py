@@ -128,7 +128,7 @@ class Retry:
         If ``total`` is not set, it's a good idea to set this to 0 to account
         for unexpected edge cases and avoid infinite retry loops.
 
-    :param iterable allowed_methods:
+    :param Collection allowed_methods:
         Set of uppercased HTTP method verbs that we should retry on.
 
         By default, we only retry on methods which are considered to be
@@ -137,7 +137,7 @@ class Retry:
 
         Set to a ``None`` value to retry on any verb.
 
-    :param iterable status_forcelist:
+    :param Collection status_forcelist:
         A set of integer HTTP status codes that we should force a retry on.
         A retry is initiated if the request method is in ``allowed_methods``
         and the response status code is in ``status_forcelist``.
@@ -151,9 +151,9 @@ class Retry:
 
             {backoff factor} * (2 ** ({number of total retries} - 1))
 
-        seconds. If the backoff_factor is 0.1, then :func:`.sleep` will sleep
+        seconds. If the backoff_factor is 0.1, then :func:`Retry.sleep` will sleep
         for [0.0s, 0.2s, 0.4s, ...] between retries. It will never be longer
-        than :attr:`Retry.BACKOFF_MAX`.
+        than `backoff_max`.
 
         By default, backoff is disabled (set to 0).
 
@@ -174,7 +174,7 @@ class Retry:
         Whether to respect Retry-After header on status codes defined as
         :attr:`Retry.RETRY_AFTER_STATUS_CODES` or not.
 
-    :param iterable remove_headers_on_redirect:
+    :param Collection remove_headers_on_redirect:
         Sequence of headers to remove from the request when a response
         indicating a redirect is returned before firing off the redirected
         request.
@@ -191,8 +191,8 @@ class Retry:
     #: Default headers to be used for ``remove_headers_on_redirect``
     DEFAULT_REMOVE_HEADERS_ON_REDIRECT = frozenset(["Authorization"])
 
-    #: Maximum backoff time.
-    BACKOFF_MAX = 120
+    #: Default maximum backoff time.
+    DEFAULT_BACKOFF_MAX = 120
 
     # Backward compatibility; assigned outside of the class.
     DEFAULT: ClassVar["Retry"]
@@ -208,6 +208,7 @@ class Retry:
         allowed_methods: Optional[Collection[str]] = DEFAULT_ALLOWED_METHODS,
         status_forcelist: Optional[Collection[int]] = None,
         backoff_factor: float = 0,
+        backoff_max: float = DEFAULT_BACKOFF_MAX,
         raise_on_redirect: bool = True,
         raise_on_status: bool = True,
         history: Optional[Tuple[RequestHistory, ...]] = None,
@@ -230,6 +231,7 @@ class Retry:
         self.status_forcelist = status_forcelist or set()
         self.allowed_methods = allowed_methods
         self.backoff_factor = backoff_factor
+        self.backoff_max = backoff_max
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
         self.history = history or ()
@@ -249,6 +251,7 @@ class Retry:
             allowed_methods=self.allowed_methods,
             status_forcelist=self.status_forcelist,
             backoff_factor=self.backoff_factor,
+            backoff_max=self.backoff_max,
             raise_on_redirect=self.raise_on_redirect,
             raise_on_status=self.raise_on_status,
             history=self.history,
@@ -293,7 +296,7 @@ class Retry:
             return 0
 
         backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
-        return float(min(self.BACKOFF_MAX, backoff_value))
+        return float(min(self.backoff_max, backoff_value))
 
     def parse_retry_after(self, retry_after: str) -> float:
         seconds: float

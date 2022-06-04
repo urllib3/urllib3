@@ -6,9 +6,11 @@
 
 import ipaddress
 import re
-from typing import Any, Match, Optional, Union
+from ipaddress import IPv4Address, IPv6Address
+from typing import TYPE_CHECKING, Any, Match, Optional, Tuple, Union
 
-from .ssl_ import _TYPE_PEER_CERT_RET
+if TYPE_CHECKING:
+    from .ssl_ import _TYPE_PEER_CERT_RET_DICT
 
 __version__ = "3.5.0.1"
 
@@ -73,7 +75,7 @@ def _dnsname_match(
     return pat.match(hostname)
 
 
-def _ipaddress_match(ipname: Any, host_ip: str) -> bool:
+def _ipaddress_match(ipname: str, host_ip: Union[IPv4Address, IPv6Address]) -> bool:
     """Exact matching of IP addresses.
 
     RFC 6125 explicitly doesn't define an algorithm for this
@@ -85,7 +87,11 @@ def _ipaddress_match(ipname: Any, host_ip: str) -> bool:
     return bool(ip == host_ip)
 
 
-def match_hostname(cert: _TYPE_PEER_CERT_RET, hostname: str) -> None:
+def match_hostname(
+    cert: Optional["_TYPE_PEER_CERT_RET_DICT"],
+    hostname: str,
+    hostname_checks_common_name: bool = False,
+) -> None:
     """Verify that *cert* (in decoded format as returned by
     SSLSocket.getpeercert()) matches the *hostname*.  RFC 2818 and RFC 6125
     rules are followed, but IP addresses are not accepted for *hostname*.
@@ -101,13 +107,15 @@ def match_hostname(cert: _TYPE_PEER_CERT_RET, hostname: str) -> None:
         )
     try:
         # Divergence from upstream: ipaddress can't handle byte str
-        host_ip = ipaddress.ip_address(hostname.strip("[]"))
+        host_ip = ipaddress.ip_address(hostname)
     except ValueError:
         # Not an IP address (common case)
         host_ip = None
     dnsnames = []
-    san = cert.get("subjectAltName", ())  # type: ignore[union-attr]
-    for key, value in san:  # type: ignore[misc]
+    san: Tuple[Tuple[str, str], ...] = cert.get("subjectAltName", ())
+    key: str
+    value: str
+    for key, value in san:
         if key == "DNS":
             if host_ip is None and _dnsname_match(value, hostname):
                 return
@@ -116,6 +124,17 @@ def match_hostname(cert: _TYPE_PEER_CERT_RET, hostname: str) -> None:
             if host_ip is not None and _ipaddress_match(value, host_ip):
                 return
             dnsnames.append(value)
+
+    # We only check 'commonName' if it's enabled and we're not verifying
+    # an IP address. IP addresses aren't valid within 'commonName'.
+    if hostname_checks_common_name and host_ip is None and not dnsnames:
+        for sub in cert.get("subject", ()):
+            for key, value in sub:
+                if key == "commonName":
+                    if _dnsname_match(value, hostname):
+                        return
+                    dnsnames.append(value)
+
     if len(dnsnames) > 1:
         raise CertificateError(
             "hostname %r "

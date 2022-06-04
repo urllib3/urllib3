@@ -23,7 +23,7 @@ jobs:
         run: |
           python3 -m pip install -U pip setuptools wheel build twine rstcheck
           python3 -m build
-          rstcheck README.rst CHANGES.rst
+          rstcheck CHANGES.rst
           python3 -m twine check dist/*
   test:
     env:
@@ -40,10 +40,14 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test-pypy
+          - python-version: "pypy-3.8"
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test-pypy
           - python-version: "2.7"
             os: ubuntu-latest
             experimental: false
-            nox-session: unsupported_python2
+            nox-session: unsupported_setup_py
           - python-version: "3.9"
             os: ubuntu-latest
             experimental: false
@@ -95,7 +99,7 @@ jobs:
           NOX_SESSION: ${{ matrix.nox-session }}
 
       - name: Upload Coverage
-        if: ${{ matrix.nox-session != 'unsupported_python2' }}
+        if: ${{ matrix.nox-session != 'unsupported_setup_py' }}
         uses: "actions/upload-artifact@v2"
         with:
           name: coverage-data
@@ -125,7 +129,7 @@ jobs:
         run: |
           python -m coverage combine
           python -m coverage html --skip-covered --skip-empty
-          python -m coverage report -i --fail-under=100 
+          python -m coverage report --ignore-errors --show-missing --fail-under=100
       - name: "Upload report if check failed"
         uses: actions/upload-artifact@v2
         with:

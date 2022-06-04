@@ -82,3 +82,24 @@ html_theme_options = {
 }
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+
+# Show typehints as content of the function or method
+autodoc_typehints = "description"
+
+# Warn about all references to unknown targets
+nitpicky = True
+# Except for these ones, which we expect to point to unknown targets:
+nitpick_ignore = [
+    ("py:class", "Literal"),
+    ("py:class", "email.errors.MessageDefect"),
+    ("py:class", "http.client.HTTPMessage"),
+    ("py:class", "RequestHistory"),
+    ("py:class", "SSLTransportType"),
+    ("py:class", "VerifyMode"),
+    ("py:class", "_ssl._SSLContext"),
+    ("py:class", "urllib3._collections.HTTPHeaderDict"),
+    ("py:class", "urllib3._collections.RecentlyUsedContainer"),
+    ("py:class", "urllib3._request_methods.RequestMethods"),
+    ("py:class", "urllib3.contrib.socks._TYPE_SOCKS_OPTIONS"),
+    ("py:class", "urllib3.util.timeout._TYPE_DEFAULT"),
+]

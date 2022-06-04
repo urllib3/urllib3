@@ -265,7 +265,7 @@ class BaseHTTPResponse(io.IOBase):
         raise NotImplementedError()
 
     def stream(
-        self, amt: Optional[int] = 2 ** 16, decode_content: Optional[bool] = None
+        self, amt: Optional[int] = 2**16, decode_content: Optional[bool] = None
     ) -> Iterator[bytes]:
         raise NotImplementedError()
 
@@ -419,7 +419,7 @@ class HTTPResponse(BaseHTTPResponse):
         connection: Optional[HTTPConnection] = None,
         msg: Optional[_HttplibHTTPMessage] = None,
         retries: Optional[Retry] = None,
-        enforce_content_length: bool = False,
+        enforce_content_length: bool = True,
         request_method: Optional[str] = None,
         request_url: Optional[str] = None,
         auto_close: bool = True,
@@ -703,7 +703,7 @@ class HTTPResponse(BaseHTTPResponse):
         return data
 
     def stream(
-        self, amt: Optional[int] = 2 ** 16, decode_content: Optional[bool] = None
+        self, amt: Optional[int] = 2**16, decode_content: Optional[bool] = None
     ) -> Generator[bytes, None, None]:
         """
         A generator wrapper for the read() method. A call will block until
@@ -770,7 +770,7 @@ class HTTPResponse(BaseHTTPResponse):
     @property
     def closed(self) -> bool:
         if not self.auto_close:
-            return io.IOBase.closed.__get__(self)  # type: ignore[no-any-return, attr-defined]
+            return io.IOBase.closed.__get__(self)  # type: ignore[no-any-return]
         elif self._fp is None:
             return True
         elif hasattr(self._fp, "isclosed"):

@@ -32,7 +32,7 @@ from dummyserver.server import (
     encrypt_key_pem,
 )
 from dummyserver.testcase import HTTPSDummyServerTestCase
-from urllib3 import HTTPSConnectionPool, PoolManager
+from urllib3 import HTTPSConnectionPool
 from urllib3.connection import RECENT_DATE, VerifiedHTTPSConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -42,6 +42,7 @@ from urllib3.exceptions import (
     SSLError,
     SystemTimeWarning,
 )
+from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import Timeout
 
 from .. import has_alpn
@@ -327,6 +328,23 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 # PyPy is more specific
                 or "self signed certificate in certificate chain" in str(e.value.reason)
             ), f"Expected 'certificate verify failed', instead got: {e.value.reason!r}"
+
+    def test_wrap_socket_failure_resource_leak(self) -> None:
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=self.bad_ca_path,
+            ssl_minimum_version=self.tls_version(),
+        ) as https_pool:
+            conn = https_pool._get_conn()
+            try:
+                with pytest.raises(ssl.SSLError):
+                    conn.connect()
+
+                assert conn.sock
+            finally:
+                conn.close()
 
     def test_verified_without_ca_certs(self) -> None:
         # default is cert_reqs=None which is ssl.CERT_NONE
@@ -988,23 +1006,93 @@ class TestHTTPS_Hostname:
                 e.value
             ) or "no appropriate subjectAltName" in str(e.value)
 
-    def test_strip_square_brackets_before_validating(
-        self, ipv6_san_server: ServerConfig
+    def test_common_name_without_san_with_different_common_name(
+        self, no_san_server_with_different_commmon_name: ServerConfig
     ) -> None:
-        """Test that the fix for #760 works."""
+        ctx = urllib3.util.ssl_.create_urllib3_context()
+        try:
+            ctx.hostname_checks_common_name = True
+        except AttributeError:
+            pytest.skip("Couldn't set 'SSLContext.hostname_checks_common_name'")
+
         with HTTPSConnectionPool(
-            "[::1]",
+            no_san_server_with_different_commmon_name.host,
+            no_san_server_with_different_commmon_name.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=no_san_server_with_different_commmon_name.ca_certs,
+            ssl_context=ctx,
+        ) as https_pool:
+            with pytest.raises(MaxRetryError) as e:
+                https_pool.request("GET", "/")
+            assert "mismatch, certificate is not valid for 'localhost'" in str(
+                e.value
+            ) or "hostname 'localhost' doesn't match 'example.com'" in str(e.value)
+
+    @pytest.mark.parametrize("use_assert_hostname", [True, False])
+    def test_hostname_checks_common_name_respected(
+        self, no_san_server: ServerConfig, use_assert_hostname: bool
+    ) -> None:
+        ctx = urllib3.util.ssl_.create_urllib3_context()
+        if not hasattr(ctx, "hostname_checks_common_name"):
+            pytest.skip("Test requires 'SSLContext.hostname_checks_common_name'")
+        ctx.load_verify_locations(no_san_server.ca_certs)
+        try:
+            ctx.hostname_checks_common_name = True
+        except AttributeError:
+            pytest.skip("Couldn't set 'SSLContext.hostname_checks_common_name'")
+
+        err: Optional[MaxRetryError]
+        try:
+            with HTTPSConnectionPool(
+                no_san_server.host,
+                no_san_server.port,
+                cert_reqs="CERT_REQUIRED",
+                ssl_context=ctx,
+                assert_hostname=no_san_server.host if use_assert_hostname else None,
+            ) as https_pool:
+                https_pool.request("GET", "/")
+        except MaxRetryError as e:
+            err = e
+        else:
+            err = None
+
+        # commonName is only valid for DNS names, not IP addresses.
+        if no_san_server.host == "localhost":
+            assert err is None
+
+        # IP addresses should fail for commonName.
+        else:
+            assert err is not None
+            assert type(err.reason) == SSLError
+            assert isinstance(
+                err.reason.args[0], (ssl.SSLCertVerificationError, CertificateError)
+            )
+
+
+class TestHTTPS_IPV4SAN:
+    def test_can_validate_ip_san(self, ipv4_san_server: ServerConfig) -> None:
+        """Ensure that urllib3 can validate SANs with IP addresses in them."""
+        with HTTPSConnectionPool(
+            ipv4_san_server.host,
+            ipv4_san_server.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=ipv4_san_server.ca_certs,
+        ) as https_pool:
+            r = https_pool.request("GET", "/")
+            assert r.status == 200
+
+
+class TestHTTPS_IPV6SAN:
+    @pytest.mark.parametrize("host", ["::1", "[::1]"])
+    def test_can_validate_ipv6_san(
+        self, ipv6_san_server: ServerConfig, host: str
+    ) -> None:
+        """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
+        with HTTPSConnectionPool(
+            host,
             ipv6_san_server.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=ipv6_san_server.ca_certs,
         ) as https_pool:
             r = https_pool.request("GET", "/")
-            assert r.status == 200
-
-    def test_request_from_poolmanager(self, san_server: ServerConfig) -> None:
-        with PoolManager(
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=san_server.ca_certs,
-        ) as pool:
-            r = pool.request("GET", san_server.base_url)
             assert r.status == 200
