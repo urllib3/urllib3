@@ -5,6 +5,7 @@ import os
 import typing
 
 from .. import _collections, fields, filepost
+from ..fields import RequestField
 
 P = typing.TypeVar("P", bound="Part")
 
@@ -214,9 +215,7 @@ class MultipartEncoder:
         self._boundary: str = f"--{self._boundary_value}"
         self._enc: str = encoding
         # Pre-encoded boundary
-        self._encoded_boundary: bytes = (
-            encode_with(self._boundary + "\r\n", self._enc),
-        )
+        self._encoded_boundary: bytes = encode_with(self._boundary + "\r\n", self._enc)
         self._fields = fields
         self._iter_read_size = default_iter_size
         self._finished: bool = False
@@ -242,7 +241,7 @@ class MultipartEncoder:
         return self._boundary_value
 
     @property
-    def default_iter_read_size(self) -> str:
+    def default_iter_read_size(self) -> int:
         """Default amount to read when used as an iterator."""
         return self._iter_read_size
 
@@ -339,7 +338,7 @@ class MultipartEncoder:
             return None
         return p
 
-    def _iter_fields(self) -> typing.Generator[fields.RequestField, None, None]:
+    def _iter_fields(self) -> typing.Generator[RequestField, None, None]:
         _fields = self._fields
         if hasattr(self._fields, "items"):
             self._fields = typing.cast(
