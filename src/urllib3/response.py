@@ -27,6 +27,11 @@ try:
 except ImportError:
     brotli = None
 
+try:
+    import pyzstd as zstd  # type: ignore[import]
+except ImportError:
+    zstd = None
+
 from ._collections import HTTPHeaderDict
 from .connection import _TYPE_BODY, BaseSSLError, HTTPConnection, HTTPException
 from .exceptions import (
@@ -148,6 +153,23 @@ if brotli is not None:
             return b""
 
 
+if zstd is not None:
+
+    class ZstdDecoder(ContentDecoder):
+        def __init__(self) -> None:
+            self._obj =  zstd.EndlessZstdDecompressor()
+
+        def decompress(self, data: bytes) -> bytes:
+            return self._obj.decompress(data) if data else data
+
+        def flush(self) -> bytes:
+            if self._obj.needs_input and not self._obj.at_frame_edge:
+                raise DecodeError(
+                    "Received response with content-encoding: zstd, but "
+                    "failed to decode it.")
+            return b""
+
+
 class MultiDecoder(ContentDecoder):
     """
     From RFC7231:
@@ -179,6 +201,9 @@ def _get_decoder(mode: str) -> ContentDecoder:
     if brotli is not None and mode == "br":
         return BrotliDecoder()
 
+    if zstd is not None and mode == "zstd":
+        return ZstdDecoder()
+
     return DeflateDecoder()
 
 
@@ -186,11 +211,16 @@ class BaseHTTPResponse(io.IOBase):
     CONTENT_DECODERS = ["gzip", "deflate"]
     if brotli is not None:
         CONTENT_DECODERS += ["br"]
+    if zstd is not None:
+        CONTENT_DECODERS += ["zstd"]
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
     DECODER_ERROR_CLASSES: Tuple[Type[Exception], ...] = (IOError, zlib.error)
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
+
+    if zstd is not None:
+        DECODER_ERROR_CLASSES += (zstd.ZstdError,)
 
     def __init__(
         self,

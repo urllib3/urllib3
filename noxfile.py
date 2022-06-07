@@ -16,7 +16,7 @@ SOURCE_FILES = [
 
 def tests_impl(
     session: nox.Session,
-    extras: str = "socks,secure,brotli",
+    extras: str = "socks,secure,brotli,zstd",
     byte_string_comparisons: bool = True,
 ) -> None:
     # Install deps and the package itself.
@@ -168,7 +168,7 @@ def mypy(session: nox.Session) -> None:
 @nox.session
 def docs(session: nox.Session) -> None:
     session.install("-r", "docs/requirements.txt")
-    session.install(".[socks,secure,brotli]")
+    session.install(".[socks,secure,brotli,zstd]")
 
     session.chdir("docs")
     if os.path.exists("_build"):

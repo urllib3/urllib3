@@ -24,7 +24,12 @@ except ImportError:
     pass
 else:
     ACCEPT_ENCODING += ",br"
-
+try:
+    import pyzstd as _unused_module_zstd  # type: ignore[import] # noqa: F401
+except ImportError:
+    pass
+else:
+    ACCEPT_ENCODING += ",zstd"
 
 class _TYPE_FAILEDTELL(Enum):
     token = 0

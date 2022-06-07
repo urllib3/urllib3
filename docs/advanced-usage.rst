@@ -225,7 +225,7 @@ starts with ``http://`` instead of ``https://``:
 
      # Do this:
      http = urllib3.ProxyManager("http://...")
-     
+
      # Not this:
      http = urllib3.ProxyManager("https://...")
 
@@ -243,11 +243,11 @@ and not ``https://``:
      $ env | grep "_PROXY"
      HTTP_PROXY=http://127.0.0.1:8888
      HTTPS_PROXY=https://127.0.0.1:8888  # <--- This setting is the problem!
-     
+
      # Make the fix in your current session and test your script
      $ export HTTPS_PROXY="http://127.0.0.1:8888"
      $ python test-proxy.py  # This should now pass.
-     
+
      # Persist your change in your shell 'profile' (~/.bashrc, ~/.profile, ~/.bash_profile, etc)
      # You may need to logout and log back in to ensure this works across all programs.
      $ vim ~/.bashrc
@@ -449,10 +449,10 @@ For the best security it's a good idea to set this value to the version of TLS t
 server. For example if the server requires TLS 1.0 you'd configure urllib3 like so:
 
 .. code-block:: python
-    
+
     import ssl
     import urllib3
-    
+
     http = urllib3.PoolManager(
         ssl_minimum_version=ssl.TLSVersion.TLSv1
     )
@@ -500,7 +500,7 @@ understand the risks and wish to disable these warnings, you can use :func:`~url
 .. code-block:: python
 
     import urllib3
-    
+
     urllib3.disable_warnings()
 
 Alternatively you can capture the warnings with the standard :mod:`logging` module:
@@ -537,6 +537,32 @@ Here's an example using brotli encoding via the ``Accept-Encoding`` header:
         "https://www.google.com/",
         headers={"Accept-Encoding": "br"}
     )
+
+Zstandard Encoding
+---------------
+
+`Zstandard <https://datatracker.ietf.org/doc/html/rfc8878>`_
+is a compression algorithm created by Facebook with better compression
+than brotli, gzip and deflate (see `benchmarks <https://facebook.github.io/zstd/#benchmarks>`_)
+and is supported by urllib3 if the `pyZstd <https://pypi.org/pyzstd>`_ package is installed.
+You may also request the package be installed via the ``urllib3[zstd]`` extra:
+
+.. code-block:: bash
+
+    $ python -m pip install urllib3[zstd]
+
+Here's an example using zstd encoding via the ``Accept-Encoding`` header:
+
+.. code-block:: python
+
+    import urllib3
+
+    urllib3.request(
+        "GET",
+        "https://facebook.com/",
+        headers={"Accept-Encoding": "zstd"}
+    )
+
 
 Decrypting Captured TLS Sessions with Wireshark
 -----------------------------------------------

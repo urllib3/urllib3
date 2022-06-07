@@ -31,6 +31,11 @@ try:
 except ImportError:
     brotli = None
 
+try:
+    import pyzstd as zstd  # type: ignore[import]
+except ImportError:
+    zstd = None
+
 import functools
 
 from urllib3 import util
@@ -143,6 +148,18 @@ def onlyBrotli() -> Callable[[_TestFuncT], _TestFuncT]:
 def notBrotli() -> Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         brotli is not None, reason="only run if a brotli library is absent"
+    )
+
+
+def onlyZstd() -> Callable[[_TestFuncT], _TestFuncT]:
+    return pytest.mark.skipif(
+        zstd is None, reason="only run if pyzstd library is present"
+    )
+
+
+def notZstd() -> Callable[[_TestFuncT], _TestFuncT]:
+    return pytest.mark.skipif(
+        zstd is not None, reason="only run if a pyzstd library is absent"
     )
 
 
