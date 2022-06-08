@@ -539,7 +539,7 @@ Here's an example using brotli encoding via the ``Accept-Encoding`` header:
     )
 
 Zstandard Encoding
----------------
+------------------
 
 `Zstandard <https://datatracker.ietf.org/doc/html/rfc8878>`_
 is a compression algorithm created by Facebook with better compression
