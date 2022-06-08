@@ -267,7 +267,9 @@ class TestResponse:
         data = zstd.compress(b"foobarbaz")
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={"content-encoding": "zstd"}, preload_content=False)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
 
         ret = b""
 

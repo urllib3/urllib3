@@ -31,6 +31,7 @@ except ImportError:
 else:
     ACCEPT_ENCODING += ",zstd"
 
+
 class _TYPE_FAILEDTELL(Enum):
     token = 0
 

@@ -157,16 +157,17 @@ if zstd is not None:
 
     class ZstdDecoder(ContentDecoder):
         def __init__(self) -> None:
-            self._obj =  zstd.EndlessZstdDecompressor()
+            self._obj = zstd.EndlessZstdDecompressor()
 
         def decompress(self, data: bytes) -> bytes:
-            return self._obj.decompress(data) if data else data
+            return self._obj.decompress(data) if data else data  # type: ignore[no-any-return]
 
         def flush(self) -> bytes:
             if self._obj.needs_input and not self._obj.at_frame_edge:
                 raise DecodeError(
                     "Received response with content-encoding: zstd, but "
-                    "failed to decode it.")
+                    "failed to decode it."
+                )
             return b""
 
 
