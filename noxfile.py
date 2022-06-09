@@ -1,7 +1,6 @@
 import os
 import shutil
 import subprocess
-import sys
 
 import nox
 
@@ -20,19 +19,7 @@ def tests_impl(
     extras: str = "socks,secure,brotli",
     byte_string_comparisons: bool = True,
 ) -> None:
-    is_github_actions = "GITHUB_ACTIONS" in os.environ
-
     # Install deps and the package itself.
-    # Compile cryptography with the system OpenSSL and libffi libraries
-    # on Linux CPython runs of GitHub Actions instead of downloading its
-    # wheel.
-    is_cpython_on_linux = (
-        sys.implementation.name == "cpython" and sys.platform == "linux"
-    )
-    if is_github_actions and is_cpython_on_linux:
-        session.install(
-            "-r", "dev-cryptography-requirement.txt", "--no-binary", ":all:"
-        )
     session.install("-r", "dev-requirements.txt")
     session.install(f".[{extras}]")
 
@@ -57,7 +44,7 @@ def tests_impl(
         "pytest",
         "-r",
         "a",
-        f"--color={'yes' if is_github_actions else 'auto'}",
+        f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
         "--tb=native",
         "--no-success-flaky-report",
         *(session.posargs or ("test/",)),
