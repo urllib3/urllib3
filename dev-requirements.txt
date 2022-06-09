@@ -1,3 +1,4 @@
+-r dev-cryptography-requirement.txt
 coverage==6.4
 tornado==6.1
 PySocks==1.7.1
@@ -6,6 +7,5 @@ pytest-timeout==2.1.0
 pytest-freezegun==0.4.2
 flaky==3.7.0
 trustme==0.9.0
-cryptography==35.0.0
 backports.zoneinfo==0.2.1;python_version<"3.9"
 towncrier==21.9.0 
