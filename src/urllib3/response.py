@@ -1,6 +1,7 @@
 import io
 import json as _json
 import logging
+import sys
 import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
@@ -658,14 +659,40 @@ class HTTPResponse(BaseHTTPResponse):
         flush_decoder = False
         fp_closed = getattr(self._fp, "closed", False)
 
+        if ((3, 8, 0, "a", 4) <= sys.version_info < (3, 9, 7)) or (
+            (3, 10, 0, "b", 1) <= sys.version_info < (3, 10, 0, "rc", 1)
+        ):
+
+            def read(amt: Optional[int] = None) -> bytes:
+                if self._fp is None:
+                    return b""
+                chunks = []
+                c_int_max = (2**31) - 1
+                while True:
+                    if amt is not None:
+                        chunk_amt = min(amt, c_int_max)
+                        amt -= chunk_amt
+                    else:
+                        chunk_amt = c_int_max
+                    data = self._fp.read(chunk_amt)
+                    if not data:
+                        break
+                    chunks.append(data)
+                    if amt == 0:
+                        break
+                return b"".join(chunks)
+
+        else:
+            read = self._fp.read
+
         with self._error_catcher():
             if amt is None:
                 # cStringIO doesn't like amt=None
-                data = self._fp.read() if not fp_closed else b""
+                data = read() if not fp_closed else b""
                 flush_decoder = True
             else:
                 cache_content = False
-                data = self._fp.read(amt) if not fp_closed else b""
+                data = read(amt) if not fp_closed else b""
                 if (
                     amt != 0 and not data
                 ):  # Platform-specific: Buggy versions of Python.
