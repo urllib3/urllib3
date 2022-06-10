@@ -106,6 +106,9 @@ class TestUtil(object):
             "http://[2010:836b:4179::836b:4179]",
             ("http", "[2010:836b:4179::836b:4179]", None),
         ),
+        # Scoped IPv6 (with ZoneID), both RFC 6874 compliant and not.
+        ("http://[a::b%25zone]", ("http", "[a::b%zone]", None)),
+        ("http://[a::b%zone]", ("http", "[a::b%zone]", None)),
         # Hosts
         ("HTTP://GOOGLE.COM/mail/", ("http", "google.com", None)),
         ("GOogle.COM/mail", ("http", "google.com", None)),
@@ -181,6 +184,10 @@ class TestUtil(object):
             ),
             ("HTTPS://Example.Com/?Key=Value", "https://example.com/?Key=Value"),
             ("Https://Example.Com/#Fragment", "https://example.com/#Fragment"),
+            # IPv6 addresses with zone IDs. Both RFC 6874 (%25) as well as
+            # non-standard (unquoted %) variants.
+            ("[::1%zone]", "[::1%zone]"),
+            ("[::1%25zone]", "[::1%zone]"),
             ("[::1%25]", "[::1%25]"),
             ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%etH0%FF]/%AB%AF"),
             (
