@@ -74,7 +74,7 @@ jobs:
             experimental: true
             nox-session: test-3.11
         exclude:
-          # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython => 3.9 is compatible with it
+          # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython >= 3.9 is compatible with it
           # https://github.com/python/cpython/issues/83001
           - python-version: "3.7"
             os: ubuntu-22.04
