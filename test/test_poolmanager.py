@@ -2,7 +2,7 @@ import socket
 from test import resolvesLocalhostFQDN
 from typing import Optional
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -428,3 +428,29 @@ class TestPoolManager:
         )
         assert pool_blocksize.conn_kw["blocksize"] == expected_blocksize
         assert pool_blocksize._get_conn().blocksize == expected_blocksize  # type: ignore[attr-defined]
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "[a::b%zone]",
+            "[a::b%25zone]",
+            "http://[a::b%zone]",
+            "http://[a::b%25zone]",
+        ],
+    )
+    @patch("urllib3.util.connection.create_connection")
+    def test_e2e_connect_to_ipv6_scoped(
+        self, create_connection: MagicMock, url: str
+    ) -> None:
+        """Checks that IPv6 scoped addresses are properly handled end-to-end.
+
+        This is not strictly speaking a pool manager unit test - this test
+        lives here in absence of a better code location for e2e/integration
+        tests.
+        """
+        p = PoolManager()
+        conn_pool = p.connection_from_url(url)
+        conn = conn_pool._get_conn()
+        conn.connect()
+
+        assert create_connection.call_args[0][0] == ("a::b%zone", 80)
