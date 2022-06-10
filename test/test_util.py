@@ -831,6 +831,28 @@ class TestUtil(object):
         socket.return_value = Mock()
         create_connection((host, 80))
 
+    @patch("socket.getaddrinfo")
+    @patch("socket.socket")
+    def test_create_connection_with_scoped_ipv6(self, socket, getaddrinfo):
+        # Check that providing create_connection with a scoped IPv6 address
+        # properly propagates the scope to getaddrinfo, and that the returned
+        # scoped ID makes it to the socket creation call.
+        fake_scoped_sa6 = ("a::b", 80, 0, 42)
+        getaddrinfo.return_value = [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                fake_scoped_sa6,
+            )
+        ]
+        socket.return_value = fake_sock = Mock()
+
+        create_connection(("a::b%iface", 80))
+        assert getaddrinfo.call_args[0][0] == "a::b%iface"
+        fake_sock.connect.assert_called_once_with(fake_scoped_sa6)
+
 
 class TestUtilSSL(object):
     """Test utils that use an SSL backend."""
