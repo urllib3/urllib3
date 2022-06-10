@@ -100,7 +100,7 @@ jobs:
 
       - name: Upload Coverage
         if: ${{ matrix.nox-session != 'unsupported_setup_py' }}
-        uses: "actions/upload-artifact@v2"
+        uses: "actions/upload-artifact@v3"
         with:
           name: coverage-data
           path: ".coverage.*"
@@ -131,7 +131,7 @@ jobs:
           python -m coverage html --skip-covered --skip-empty
           python -m coverage report --ignore-errors --show-missing --fail-under=100
       - name: "Upload report if check failed"
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-report
           path: htmlcov
