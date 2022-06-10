@@ -486,12 +486,15 @@ class PyOpenSSLContext:
         keyfile: Optional[str] = None,
         password: Optional[str] = None,
     ) -> None:
-        self._ctx.use_certificate_chain_file(certfile)
-        if password is not None:
-            if not isinstance(password, bytes):
-                password = password.encode("utf-8")  # type: ignore[assignment]
-            self._ctx.set_passwd_cb(lambda *_: password)
-        self._ctx.use_privatekey_file(keyfile or certfile)
+        try:
+            self._ctx.use_certificate_chain_file(certfile)
+            if password is not None:
+                if not isinstance(password, bytes):
+                    password = password.encode("utf-8")  # type: ignore[assignment]
+                self._ctx.set_passwd_cb(lambda *_: password)
+            self._ctx.use_privatekey_file(keyfile or certfile)
+        except OpenSSL.SSL.Error as e:
+            raise ssl.SSLError(f"Unable to load certificate chain: {e!r}") from e
 
     def set_alpn_protocols(self, protocols: List[Union[bytes, str]]) -> None:
         protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
