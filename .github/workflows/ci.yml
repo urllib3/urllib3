@@ -65,11 +65,11 @@ jobs:
             os: ubuntu-20.04  # CPython 3.9.2 is not available for ubuntu-22.04.
             experimental: false
             nox-session: test-3.9
-          - python-version: 3.11-dev
+          - python-version: "3.11.0-beta - 3.11.0"
             os: ubuntu-20.04
             experimental: true
             nox-session: test-3.11
-          - python-version: 3.11-dev
+          - python-version: "3.11.0-beta - 3.11.0"
             os: ubuntu-22.04
             experimental: true
             nox-session: test-3.11
