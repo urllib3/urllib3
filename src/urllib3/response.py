@@ -659,16 +659,24 @@ class HTTPResponse(BaseHTTPResponse):
         flush_decoder = False
         fp_closed = getattr(self._fp, "closed", False)
 
-        if ((3, 8, 0, "a", 4) <= sys.version_info < (3, 9, 7)) or (
-            (3, 10, 0, "b", 1) <= sys.version_info < (3, 10, 0, "rc", 1)
+        # Reading more than 2 GiB (`int` max value in C) via SSL on some
+        # CPython 3.8, 3.9, and 3.10 versions leads to an overflow error
+        # that has to be prevented if `amt` or `self.length_remaining`
+        # indicate that it may happen.
+        c_int_max = (2**31) - 1
+        if (
+            (amt and amt > c_int_max)
+            or (self.length_remaining and self.length_remaining > c_int_max)
+        ) and (
+            (3, 8, 0, "a", 4) <= sys.version_info < (3, 9, 7)
+            or (3, 10, 0, "b", 1) <= sys.version_info < (3, 10, 0, "rc", 1)
         ):
 
             def read(amt: Optional[int] = None) -> bytes:
                 if self._fp is None:
                     return b""
                 chunks = []
-                c_int_max = (2**31) - 1
-                while True:
+                while amt is None or amt != 0:
                     if amt is not None:
                         chunk_amt = min(amt, c_int_max)
                         amt -= chunk_amt
@@ -678,8 +686,6 @@ class HTTPResponse(BaseHTTPResponse):
                     if not data:
                         break
                     chunks.append(data)
-                    if amt == 0:
-                        break
                 return b"".join(chunks)
 
         else:
