@@ -449,7 +449,7 @@ For the best security it's a good idea to set this value to the version of TLS t
 server. For example if the server requires TLS 1.0 you'd configure urllib3 like so:
 
 .. code-block:: python
-
+    
     import ssl
     import urllib3
     
