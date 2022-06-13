@@ -352,21 +352,21 @@ class TestClientCerts(SocketDummyServerTestCase):
     def test_load_keyfile_with_invalid_password(self) -> None:
         assert ssl_.SSLContext is not None
         context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
-
-        # Different error is raised depending on context.
-        if ssl_.IS_PYOPENSSL:
-            from OpenSSL.SSL import Error  # type: ignore[import]
-
-            expected_error = Error
-        else:
-            expected_error = ssl.SSLError
-
-        with pytest.raises(expected_error):
+        with pytest.raises(ssl.SSLError):
             context.load_cert_chain(
                 certfile=self.cert_path,
                 keyfile=self.password_key_path,
                 password=b"letmei",
             )
+
+    # For SecureTransport, the validation that would raise an error in
+    # this case is deferred.
+    @notSecureTransport()
+    def test_load_invalid_cert_file(self) -> None:
+        assert ssl_.SSLContext is not None
+        context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
+        with pytest.raises(ssl.SSLError):
+            context.load_cert_chain(certfile=self.password_key_path)
 
 
 class TestSocketClosing(SocketDummyServerTestCase):

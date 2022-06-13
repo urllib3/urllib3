@@ -295,6 +295,9 @@ def _normalize_host(host: Optional[str], scheme: Optional[str]) -> Optional[str]
         if scheme in _NORMALIZABLE_SCHEMES:
             is_ipv6 = _IPV6_ADDRZ_RE.match(host)
             if is_ipv6:
+                # IPv6 hosts of the form 'a::b%zone' are encoded in a URL as
+                # such per RFC 6874: 'a::b%25zone'. Unquote the ZoneID
+                # separator as necessary to return a valid RFC 4007 scoped IP.
                 match = _ZONE_ID_RE.search(host)
                 if match:
                     start, end = match.span(1)
@@ -357,7 +360,7 @@ def parse_url(url: str) -> Url:
     """
     Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
     performed to parse incomplete urls. Fields not provided will be None.
-    This parser is RFC 3986 compliant.
+    This parser is RFC 3986 and RFC 6874 compliant.
 
     The parser logic and helper functions are based heavily on
     work done in the ``rfc3986`` module.
