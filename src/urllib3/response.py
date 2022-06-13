@@ -160,10 +160,9 @@ if zstd is not None:
             self._obj = zstd.ZstdDecompressor().decompressobj()
 
         def decompress(self, data: bytes) -> bytes:
-            if data == b"":
+            if not data:
                 return b""
-            else:
-                return self._obj.decompress(data)  # type: ignore[no-any-return]
+            return self._obj.decompress(data)  # type: ignore[no-any-return]
 
         def flush(self) -> bytes:
             return self._obj.flush()  # type: ignore[no-any-return]
