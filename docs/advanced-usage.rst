@@ -225,7 +225,7 @@ starts with ``http://`` instead of ``https://``:
 
      # Do this:
      http = urllib3.ProxyManager("http://...")
-
+     
      # Not this:
      http = urllib3.ProxyManager("https://...")
 
@@ -243,11 +243,11 @@ and not ``https://``:
      $ env | grep "_PROXY"
      HTTP_PROXY=http://127.0.0.1:8888
      HTTPS_PROXY=https://127.0.0.1:8888  # <--- This setting is the problem!
-
+     
      # Make the fix in your current session and test your script
      $ export HTTPS_PROXY="http://127.0.0.1:8888"
      $ python test-proxy.py  # This should now pass.
-
+     
      # Persist your change in your shell 'profile' (~/.bashrc, ~/.profile, ~/.bash_profile, etc)
      # You may need to logout and log back in to ensure this works across all programs.
      $ vim ~/.bashrc
@@ -452,7 +452,7 @@ server. For example if the server requires TLS 1.0 you'd configure urllib3 like 
 
     import ssl
     import urllib3
-
+    
     http = urllib3.PoolManager(
         ssl_minimum_version=ssl.TLSVersion.TLSv1
     )
@@ -500,7 +500,7 @@ understand the risks and wish to disable these warnings, you can use :func:`~url
 .. code-block:: python
 
     import urllib3
-
+    
     urllib3.disable_warnings()
 
 Alternatively you can capture the warnings with the standard :mod:`logging` module:
