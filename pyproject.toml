@@ -43,7 +43,7 @@ brotli = [
   "brotlicffi>=0.8.0; platform_python_implementation != 'CPython'"
 ]
 zstd = [
-  "pyzstd",
+  "zstandard",
 ]
 secure = [
   "pyOpenSSL>=0.14",

@@ -32,7 +32,7 @@ except ImportError:
     brotli = None
 
 try:
-    import pyzstd as zstd  # type: ignore[import]
+    import zstandard as zstd  # type: ignore[import]
 except ImportError:
     zstd = None
 
@@ -153,13 +153,13 @@ def notBrotli() -> Callable[[_TestFuncT], _TestFuncT]:
 
 def onlyZstd() -> Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
-        zstd is None, reason="only run if pyzstd library is present"
+        zstd is None, reason="only run if zstandard library is present"
     )
 
 
 def notZstd() -> Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
-        zstd is not None, reason="only run if a pyzstd library is absent"
+        zstd is not None, reason="only run if a zstandard library is absent"
     )
 
 
