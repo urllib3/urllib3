@@ -5,7 +5,7 @@ import ssl
 import sys
 import warnings
 from itertools import chain
-from test import ImportBlocker, ModuleStash, onlyZstd, notBrotli, notZstd, onlyBrotli
+from test import ImportBlocker, ModuleStash, notBrotli, notZstd, onlyBrotli, onlyZstd
 from typing import TYPE_CHECKING, Dict, List, NoReturn, Optional, Tuple, Union
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch

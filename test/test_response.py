@@ -6,7 +6,7 @@ import zlib
 from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
 from io import BufferedReader, BytesIO, TextIOWrapper
-from test import onlyZstd, onlyBrotli
+from test import onlyBrotli, onlyZstd
 from typing import Any, Generator, List, Optional
 from unittest import mock
 
