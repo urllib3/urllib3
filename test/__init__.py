@@ -151,7 +151,7 @@ def notBrotli() -> Callable[[_TestFuncT], _TestFuncT]:
     )
 
 
-def hasZstd() -> Callable[[_TestFuncT], _TestFuncT]:
+def onlyZstd() -> Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         zstd is None, reason="only run if a python-zstandard library is installed"
     )

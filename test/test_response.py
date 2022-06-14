@@ -6,7 +6,7 @@ import zlib
 from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
 from io import BufferedReader, BytesIO, TextIOWrapper
-from test import hasZstd, onlyBrotli
+from test import onlyZstd, onlyBrotli
 from typing import Any, Generator, List, Optional
 from unittest import mock
 
@@ -254,7 +254,7 @@ class TestResponse:
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "br"})
 
-    @hasZstd()
+    @onlyZstd()
     def test_decode_zstd(self) -> None:
         data = zstd.compress(b"foo")
 
@@ -262,7 +262,7 @@ class TestResponse:
         r = HTTPResponse(fp, headers={"content-encoding": "zstd"})
         assert r.data == b"foo"
 
-    @hasZstd()
+    @onlyZstd()
     def test_chunked_decoding_zstd(self) -> None:
         data = zstd.compress(b"foobarbaz")
 
@@ -279,7 +279,7 @@ class TestResponse:
                 break
         assert ret == b"foobarbaz"
 
-    @hasZstd()
+    @onlyZstd()
     def test_decode_zstd_error(self) -> None:
         fp = BytesIO(b"fooooooooooooooo")
 
