@@ -427,7 +427,7 @@ class TestPoolManager:
             "http://example.com", {"blocksize": input_blocksize}
         )
         assert pool_blocksize.conn_kw["blocksize"] == expected_blocksize
-        assert pool_blocksize._get_conn().blocksize == expected_blocksize  # type: ignore[attr-defined]
+        assert pool_blocksize._get_conn().blocksize == expected_blocksize
 
     @pytest.mark.parametrize(
         "url",
