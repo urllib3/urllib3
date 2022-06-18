@@ -1,0 +1,1 @@
+Set timeout on connection's socket when reusing from a pool.

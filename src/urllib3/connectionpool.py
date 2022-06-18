@@ -707,6 +707,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn = self._get_conn(timeout=pool_timeout)
 
             conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
+            if conn.sock:
+                # Update the socket timeout for the connection being reused
+                sock_timeout = Timeout.resolve_default_timeout(
+                    timeout_obj.connect_timeout
+                )
+                conn.sock.settimeout(sock_timeout)
 
             is_new_proxy_conn = self.proxy is not None and not getattr(
                 conn, "sock", None

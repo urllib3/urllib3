@@ -6,7 +6,7 @@ import time
 import warnings
 from test import LONG_TIMEOUT, SHORT_TIMEOUT
 from threading import Event
-from typing import Dict, List, NoReturn, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, NoReturn, Optional, Tuple, Type, Union
 from unittest import mock
 from urllib.parse import urlencode
 
@@ -384,6 +384,38 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         timeout = Timeout(total=None)
         with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
             pool.request("GET", "/")
+
+    @pytest.mark.parametrize(
+        "timeout_kwargs, sock_connect_timeout",
+        [
+            (
+                {
+                    "timeout": Timeout(
+                        connect=LONG_TIMEOUT * 1.1, read=LONG_TIMEOUT * 1.2
+                    )
+                },
+                LONG_TIMEOUT * 1.1,
+            ),
+            ({"timeout": Timeout(read=LONG_TIMEOUT * 1.1)}, None),
+        ],
+    )
+    def test_urlopen_update_sock_timeout_on_conn_reuse(
+        self, timeout_kwargs: Dict[str, Any], sock_connect_timeout: Optional[float]
+    ) -> None:
+        # Note the "read" timeout is slightly different to "connect" so that the presence of it's call to
+        # settimeout can be differentiated and asserted
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            # Initial request to create conn with sock timeout SHORT in the pool
+            pool.urlopen("GET", "/", timeout=LONG_TIMEOUT)
+
+            # Spy existing conn's socket settimeout
+            assert pool.pool is not None
+            conn = pool.pool.get_nowait()
+            conn_spy = mock.Mock(wraps=conn)
+            pool._put_conn(conn_spy)
+
+            pool.urlopen("GET", "/", **timeout_kwargs)
+            conn_spy.sock.settimeout.assert_any_call(sock_connect_timeout)
 
     def test_tunnel(self) -> None:
         # note the actual httplib.py has no tests for this functionality
