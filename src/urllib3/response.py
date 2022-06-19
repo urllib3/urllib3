@@ -165,7 +165,10 @@ if zstd is not None:
             return self._obj.decompress(data)  # type: ignore[no-any-return]
 
         def flush(self) -> bytes:
-            return self._obj.flush()  # type: ignore[no-any-return]
+            ret = self._obj.flush()
+            if not self._obj.eof:
+                raise DecodeError("Invalid zstandard data")
+            return ret  # type: ignore[no-any-return]
 
 
 class MultiDecoder(ContentDecoder):

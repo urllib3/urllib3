@@ -281,7 +281,7 @@ class TestResponse:
 
     @onlyZstd()
     def test_decode_zstd_error(self) -> None:
-        fp = BytesIO(b"fooooooooooooooo")
+        fp = BytesIO(b"foo")
 
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "zstd"})
