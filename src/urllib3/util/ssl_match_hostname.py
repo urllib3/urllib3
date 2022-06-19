@@ -6,7 +6,6 @@
 
 import ipaddress
 import re
-import sys
 from ipaddress import IPv4Address, IPv6Address
 from typing import TYPE_CHECKING, Any, Match, Optional, Tuple, Union
 
