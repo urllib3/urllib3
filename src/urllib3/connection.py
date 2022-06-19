@@ -623,13 +623,15 @@ def _ssl_wrap_socket_and_match_hostname(
     ):
         context.load_default_certs()
 
-    # Our upstream implementation of ssl.match_hostname()
-    # only applies this normalization to IP addresses so it doesn't
-    # match DNS SANs so we do the same thing!
+    # Ensure that IPv6 addresses are in the proper format and don't have a
+    # scope ID. Python's SSL module fails to recognize scoped IPv6 addresses
+    # and interprets them as DNS hostnames.
     if server_hostname is not None:
-        stripped_hostname = server_hostname.strip("[]")
-        if is_ipaddress(stripped_hostname):
-            server_hostname = stripped_hostname
+        normalized = server_hostname.strip("[]")
+        if "%" in normalized:
+            normalized = normalized[: normalized.rfind("%")]
+        if is_ipaddress(normalized):
+            server_hostname = normalized
 
     ssl_sock = ssl_wrap_socket(
         sock=sock,
