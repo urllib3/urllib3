@@ -53,6 +53,7 @@ Alternatively, you can grab the latest source code from `GitHub <https://github.
 
     $ git clone https://github.com/urllib3/urllib3.git
     $ cd urllib3
+    $ git checkout 1.26.x
     $ pip install .
 
 
