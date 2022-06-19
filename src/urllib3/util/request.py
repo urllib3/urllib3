@@ -1,8 +1,21 @@
+import io
 from base64 import b64encode
 from enum import Enum
-from typing import IO, TYPE_CHECKING, Any, AnyStr, Dict, List, Optional, Union
+from typing import (
+    IO,
+    TYPE_CHECKING,
+    Any,
+    AnyStr,
+    Dict,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Union,
+)
 
 from ..exceptions import UnrewindableBodyError
+from .util import to_bytes
 
 if TYPE_CHECKING:
     from typing_extensions import Final
@@ -33,6 +46,13 @@ class _TYPE_FAILEDTELL(Enum):
 _FAILEDTELL: "Final[_TYPE_FAILEDTELL]" = _TYPE_FAILEDTELL.token
 
 _TYPE_BODY_POSITION = Union[int, _TYPE_FAILEDTELL]
+
+# When sending a request with these methods we aren't expecting
+# a body so don't need to set an explicit 'Content-Length: 0'
+# The reason we do this in the negative instead of tracking methods
+# which 'should' have a body is because unknown methods should be
+# treated as if they were 'POST' which *does* expect a body.
+_METHODS_NOT_EXPECTING_BODY = {"GET", "HEAD", "DELETE", "TRACE", "OPTIONS", "CONNECT"}
 
 
 def make_headers(
@@ -162,3 +182,78 @@ def rewind_body(body: IO[AnyStr], body_pos: _TYPE_BODY_POSITION) -> None:
         raise ValueError(
             f"body_pos must be of type integer, instead it was {type(body_pos)}."
         )
+
+
+class ChunksAndContentLength(NamedTuple):
+    chunks: Optional[Iterable[bytes]]
+    content_length: Optional[int]
+
+
+def body_to_chunks(
+    body: Optional[Any], method: str, blocksize: int
+) -> ChunksAndContentLength:
+    """Takes the HTTP request method, body, and blocksize and
+    transforms them into an iterable of chunks to pass to
+    socket.sendall() and an optional 'Content-Length' header.
+
+    A 'Content-Length' of 'None' indicates the length of the body
+    can't be determined so should use 'Transfer-Encoding: chunked'
+    for framing instead.
+    """
+
+    chunks: Optional[Iterable[bytes]]
+    content_length: Optional[int]
+
+    # No body, we need to make a recommendation on 'Content-Length'
+    # based on whether that request method is expected to have
+    # a body or not.
+    if body is None:
+        chunks = None
+        if method.upper() not in _METHODS_NOT_EXPECTING_BODY:
+            content_length = 0
+        else:
+            content_length = None
+
+    # Bytes or strings become bytes
+    elif isinstance(body, (str, bytes)):
+        chunks = (to_bytes(body),)
+        content_length = len(chunks[0])
+
+    # File-like object, TODO: use seek() and tell() for length?
+    elif hasattr(body, "read"):
+
+        def chunk_readable() -> Iterable[bytes]:
+            nonlocal body, blocksize
+            encode = isinstance(body, io.TextIOBase)
+            while True:
+                datablock = body.read(blocksize)  # type: ignore[union-attr]
+                if not datablock:
+                    break
+                if encode:
+                    datablock = datablock.encode("iso-8859-1")
+                yield datablock
+
+        chunks = chunk_readable()
+        content_length = None
+
+    # Otherwise we need to start checking via duck-typing.
+    else:
+        try:
+            # Check if the body implements the buffer API.
+            mv = memoryview(body)
+        except TypeError:
+            try:
+                # Check if the body is an iterable
+                chunks = iter(body)
+                content_length = None
+            except TypeError:
+                raise TypeError(
+                    f"'body' must be a bytes-like object, file-like "
+                    f"object, or iterable. Instead was {body!r}"
+                ) from None
+        else:
+            # Since it implements the buffer API can be passed directly to socket.sendall()
+            chunks = (body,)
+            content_length = mv.nbytes
+
+    return ChunksAndContentLength(chunks=chunks, content_length=content_length)

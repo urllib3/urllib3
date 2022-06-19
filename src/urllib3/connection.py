@@ -4,7 +4,6 @@ import os
 import re
 import socket
 import warnings
-from copy import copy
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
@@ -29,7 +28,7 @@ if TYPE_CHECKING:
     from .util.ssltransport import SSLTransport
 
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
-from .util.util import to_bytes, to_str
+from .util.util import to_str
 
 try:  # Compiled with SSL?
     import ssl
@@ -51,6 +50,7 @@ from .exceptions import (
     SystemTimeWarning,
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
+from .util.request import body_to_chunks
 from .util.ssl_ import assert_fingerprint as _assert_fingerprint
 from .util.ssl_ import (
     create_urllib3_context,
@@ -126,6 +126,7 @@ class HTTPConnection(_HTTPConnection):
     #: certificate. If no HTTPS proxy is being used will be ``None``.
     proxy_is_verified: Optional[bool] = None
 
+    blocksize: int
     source_address: Optional[Tuple[str, int]]
     socket_options: Optional[connection._TYPE_SOCKET_OPTIONS]
     _tunnel_host: Optional[str]
@@ -288,25 +289,72 @@ class HTTPConnection(_HTTPConnection):
         url: str,
         body: Optional[_TYPE_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
+        chunked: bool = False,
     ) -> None:
+
         if headers is None:
             headers = {}
-        else:
-            # Avoid modifying the headers passed into .request()
-            headers = copy(headers)
-            # Don't send bytes keys to httplib to avoid bytes/str comparison
-            # HTTPHeaderDict is already safe, but other types are not
-            for key, value in list(headers.items()):
-                if isinstance(key, bytes):
-                    headers.pop(key)
-                    # httplib would have decoded to latin-1 anyway
-                    headers[key.decode("latin-1")] = value
+        header_keys = frozenset(to_str(k.lower()) for k in headers)
+        skip_accept_encoding = "accept-encoding" in header_keys
+        skip_host = "host" in header_keys
+        self.putrequest(
+            method, url, skip_accept_encoding=skip_accept_encoding, skip_host=skip_host
+        )
 
-        if "user-agent" not in (to_str(k.lower()) for k in headers):
-            updated_headers = {"User-Agent": _get_default_user_agent()}
-            updated_headers.update(headers)
-            headers = updated_headers
-        super().request(method, url, body=body, headers=headers)
+        # Transform the body into an iterable of sendall()-able chunks
+        # and detect if an explicit Content-Length is doable.
+        chunks_and_cl = body_to_chunks(body, method=method, blocksize=self.blocksize)
+        chunks = chunks_and_cl.chunks
+        content_length = chunks_and_cl.content_length
+
+        # When chunked is explicit set to 'True' we respect that.
+        if chunked:
+            if "transfer-encoding" not in header_keys:
+                self.putheader("Transfer-Encoding", "chunked")
+        else:
+            # Detect whether a framing mechanism is already in use. If so
+            # we respect that value, otherwise we pick chunked vs content-length
+            # depending on the type of 'body'.
+            if "content-length" in header_keys:
+                chunked = False
+            elif "transfer-encoding" in header_keys:
+                chunked = True
+
+            # Otherwise we go off the recommendation of 'body_to_chunks()'.
+            else:
+                chunked = False
+                if content_length is None:
+                    if chunks is not None:
+                        chunked = True
+                        self.putheader("Transfer-Encoding", "chunked")
+                else:
+                    self.putheader("Content-Length", str(content_length))
+
+        # Now that framing headers are out of the way we send all the other headers.
+        if "user-agent" not in header_keys:
+            self.putheader("User-Agent", _get_default_user_agent())
+        for header, value in headers.items():
+            self.putheader(header, value)
+        self.endheaders()
+
+        # If we're given a body we start sending that in chunks.
+        if chunks is not None:
+            for chunk in chunks:
+                # Sending empty chunks isn't allowed for TE: chunked
+                # as it indicates the end of the body.
+                if not chunk:
+                    continue
+                if isinstance(chunk, str):
+                    chunk = chunk.encode("utf-8")
+                if chunked:
+                    self.send(b"%x\r\n%b\r\n" % (len(chunk), chunk))
+                else:
+                    self.send(chunk)
+
+        # Regardless of whether we have a body or not, if we're in
+        # chunked mode we want to send an explicit empty chunk.
+        if chunked:
+            self.send(b"0\r\n\r\n")
 
     def request_chunked(
         self,
@@ -319,39 +367,7 @@ class HTTPConnection(_HTTPConnection):
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
-        if headers is None:
-            headers = {}
-        header_keys = {to_str(k.lower()) for k in headers}
-        skip_accept_encoding = "accept-encoding" in header_keys
-        skip_host = "host" in header_keys
-        self.putrequest(
-            method, url, skip_accept_encoding=skip_accept_encoding, skip_host=skip_host
-        )
-        if "user-agent" not in header_keys:
-            self.putheader("User-Agent", _get_default_user_agent())
-        for header, value in headers.items():
-            self.putheader(header, value)
-        if "transfer-encoding" not in header_keys:
-            self.putheader("Transfer-Encoding", "chunked")
-        self.endheaders()
-
-        if body is not None:
-            if isinstance(body, (str, bytes)):
-                body = (to_bytes(body),)
-            for chunk in body:
-                if not chunk:
-                    continue
-                if not isinstance(chunk, bytes):
-                    chunk = chunk.encode("utf8")
-                len_str = hex(len(chunk))[2:]
-                to_send = bytearray(len_str.encode())
-                to_send += b"\r\n"
-                to_send += chunk
-                to_send += b"\r\n"
-                self.send(to_send)
-
-        # After the if clause, to always have a closed body
-        self.send(b"0\r\n\r\n")
+        self.request(method, url, body=body, headers=headers, chunked=True)
 
 
 class HTTPSConnection(HTTPConnection):
