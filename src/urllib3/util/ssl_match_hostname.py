@@ -113,13 +113,13 @@ def match_hostname(
         # Divergence from upstream: ipaddress can't handle byte str
         #
         # The ipaddress module shipped with Python < 3.9 does not support
-        # scoped IPv6 addresses. Strip the zone ID as a workaround -- it is
-        # ignored for the purpose of certificate SAN checks anyway.
-        if sys.version_info < (3, 9, 0) and "%" in hostname:
-            hostname_stripped = hostname[: hostname.rfind("%")]
+        # scoped IPv6 addresses so we unconditionally strip the Zone IDs for
+        # now. Once we drop support for Python 3.9 we can remove this branch.
+        if "%" in hostname:
+            host_ip = ipaddress.ip_address(hostname[: hostname.rfind("%")])
         else:
-            hostname_stripped = hostname
-        host_ip = ipaddress.ip_address(hostname_stripped)
+            host_ip = ipaddress.ip_address(hostname)
+
     except ValueError:
         # Not an IP address (common case)
         host_ip = None
