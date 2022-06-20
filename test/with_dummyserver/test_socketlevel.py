@@ -10,7 +10,6 @@ import socket
 import ssl
 import tempfile
 import time
-import urllib3.exceptions
 from collections import OrderedDict
 from pathlib import Path
 from test import (
@@ -30,6 +29,7 @@ from unittest import mock
 import pytest
 import trustme
 
+import urllib3.exceptions
 from dummyserver.server import (
     DEFAULT_CA,
     DEFAULT_CERTS,
@@ -1517,15 +1517,18 @@ class TestSSL(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
         with HTTPSConnectionPool(
-                self.host,
-                self.port,
-                cert_reqs="REQUIRED",
-                ca_certs=DEFAULT_CA,
+            self.host,
+            self.port,
+            cert_reqs="REQUIRED",
+            ca_certs=DEFAULT_CA,
         ) as pool:
             with pytest.raises(urllib3.exceptions.ProtocolError) as e:
                 pool.request("GET", "/", retries=False)
 
-        assert str(e.value) == "('Connection broken: IncompleteRead(0 bytes read, 2147483648 more expected)', IncompleteRead(0 bytes read, 2147483648 more expected))"
+        assert (
+            str(e.value)
+            == "('Connection broken: IncompleteRead(0 bytes read, 2147483648 more expected)', IncompleteRead(0 bytes read, 2147483648 more expected))"
+        )
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
