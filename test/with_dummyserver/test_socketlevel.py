@@ -10,6 +10,7 @@ import socket
 import ssl
 import tempfile
 import time
+import urllib3.exceptions
 from collections import OrderedDict
 from pathlib import Path
 from test import (
@@ -1490,6 +1491,41 @@ class TestSSL(SocketDummyServerTestCase):
             with pytest.raises(SSLError):
                 pool.request("GET", "/", retries=False, timeout=LONG_TIMEOUT)
         assert server_closed.wait(LONG_TIMEOUT), "The socket was not terminated"
+
+    def test_openssl_overflow_on_read(self) -> None:
+        """
+        Ensure OpenSSL read doesn't fail with OverflowError when reading > (2**31)-1 bytes.
+        """
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            sock = ssl.wrap_socket(
+                sock,
+                server_side=True,
+                keyfile=DEFAULT_CERTS["keyfile"],
+                certfile=DEFAULT_CERTS["certfile"],
+                ca_certs=DEFAULT_CA,
+            )
+
+            sock.send(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-type: text/plain\r\n"
+                b"Content-Length: 2147483648\r\n"
+                b"\r\n"
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPSConnectionPool(
+                self.host,
+                self.port,
+                cert_reqs="REQUIRED",
+                ca_certs=DEFAULT_CA,
+        ) as pool:
+            with pytest.raises(urllib3.exceptions.ProtocolError) as e:
+                pool.request("GET", "/", retries=False)
+
+        assert str(e.value) == "('Connection broken: IncompleteRead(0 bytes read, 2147483648 more expected)', IncompleteRead(0 bytes read, 2147483648 more expected))"
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
