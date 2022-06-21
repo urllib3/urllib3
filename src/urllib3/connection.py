@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
+from .response import HTTPResponse
 
 try:  # Compiled with SSL?
     import ssl
@@ -368,6 +369,22 @@ class HTTPConnection(_HTTPConnection):
         body with chunked encoding and not as one block
         """
         self.request(method, url, body=body, headers=headers, chunked=True)
+
+    def getresponse(self):
+
+        # Get the response from http.client.HTTPConnection
+        httplib_response = super().getresponse()
+
+        # Wrap http.client.HTTPResponse as a urllib3.response.HTTPResponse
+        response = HTTPResponse.from_httplib(
+            httplib_response,
+            pool=self,
+            connection=response_conn,
+            retries=retries,
+            **response_kw,
+        ) # Post of these parameters will need to change since we are not calling from inside of urllib3 ConnectionPool anymore
+
+        return response
 
 
 class HTTPSConnection(HTTPConnection):
