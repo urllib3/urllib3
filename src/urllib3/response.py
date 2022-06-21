@@ -466,6 +466,7 @@ class HTTPResponse(BaseHTTPResponse):
         request_method: Optional[str] = None,
         request_url: Optional[str] = None,
         auto_close: bool = True,
+        length: Optional[int] = None
     ) -> None:
         super().__init__(
             headers=headers,
@@ -495,6 +496,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         self._pool = pool
         self._connection = connection
+        self.length = length
 
         if hasattr(body, "read"):
             self._fp = body  # type: ignore[assignment]
@@ -774,7 +776,7 @@ class HTTPResponse(BaseHTTPResponse):
 
     @classmethod
     def from_httplib(
-        ResponseCls: Type["HTTPResponse"], r: _HttplibHTTPResponse, **response_kw: Any
+        ResponseCls: Type["HTTPResponse"], r: _HttplibHTTPResponse, retries: Retry,**response_kw: Any
     ) -> "HTTPResponse":
         """
         Given an :class:`http.client.HTTPResponse` instance ``r``, return a
@@ -795,6 +797,7 @@ class HTTPResponse(BaseHTTPResponse):
             version=r.version,
             reason=r.reason,
             original_response=r,
+            length=r.length,
             **response_kw,
         )
         return resp
