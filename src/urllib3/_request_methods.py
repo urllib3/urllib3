@@ -2,7 +2,7 @@ import json as _json
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 from urllib.parse import urlencode
 
-from .connection import _TYPE_BODY
+from .util.typing import _TYPE_BODY
 from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .response import BaseHTTPResponse
 
