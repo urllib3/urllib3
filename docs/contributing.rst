@@ -99,7 +99,7 @@ Getting paid for your contributions
 
 urllib3 has a `pool of money hosted on Open Collective <https://opencollective.com/urllib3#category-BUDGET>`_
 which the team uses to pay contributors for their work. **That could be you, too!** If you complete all tasks in an issue
-that is marked with the `"💰 Bounty $X00" label <https://github.com/urllib3/urllib3/issues?q=is%3Aopen+is%3Aissue+label%3A%22Paid%3A+%24100+%F0%9F%92%B5%22%2C%22Paid%3A+%24200+%F0%9F%92%B5%22%2C%22Paid%3A+%24300+%F0%9F%92%B5%22%2C%22Paid%3A+%24400+%F0%9F%92%B5%22%2C%22Paid%3A+%24500+%F0%9F%92%B5%22>`_ then you're eligible to be paid for your work.
+that is marked with the `"💰 Bounty $X00" label <https://github.com/urllib3/urllib3/issues?q=is%3Aopen+is%3Aissue+label%3A%22%F0%9F%92%B0+Bounty+%24100%22%2C%22%F0%9F%92%B0+Bounty+%24200%22%2C%22%F0%9F%92%B0+Bounty+%24300%22%2C%22%F0%9F%92%B0+Bounty+%24400%22%2C%22%F0%9F%92%B0+Bounty+%24500%22+no%3Aassignee>`_ then you're eligible to be paid for your work.
 
 - Ensure that you're able to `receive funds from Open Collective for working on OSS <https://docs.opencollective.com/help/expenses-and-getting-paid/submitting-expenses>`_.
   Consider your employment contract and taxes for possible restrictions.
@@ -108,9 +108,12 @@ that is marked with the `"💰 Bounty $X00" label <https://github.com/urllib3/ur
   If you're interested in bounties you should look for issues which
   aren't assigned to anyone.
 - **Don't "claim" issues or ask whether someone is already working on an issue.**
-  Instead, focus on creating a pull request which solves the issue. Once you
+  Instead, focus on researching and working on the tasks in the issue. Once you
   have made considerable progress on the tasks in an issue we can assign your
   account to the issue to ensure others don't start working on it in parallel.
+- If you've been assigned to an issue and haven't made progress or given an update
+  in over a week you will be unassigned from the issue to allow others a chance
+  at solving the issue.
 - The amount you will be paid for the completing an issue is shown in the label (either $100, $200, $300, etc).
 - If you have questions about how to create an invoice on Open Collective
   `try reading their FAQ <https://docs.opencollective.com/help/expenses-and-getting-paid/expenses>`_.
