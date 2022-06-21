@@ -6,9 +6,10 @@ import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Type, TypeVar, Union, overload
 
 from ._request_methods import RequestMethods
+from .response import HTTPResponse
 from .connection import (
     _TYPE_BODY,
     BaseSSLError,
@@ -375,8 +376,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         url: str,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
+        response_kw: Optional[Dict[str, Any]] = None,
         **httplib_request_kw: Any,
-    ) -> _HttplibHTTPResponse:
+    ) -> HTTPResponse:
         """
         Perform a request on a given urllib connection object taken from our
         pool.
@@ -461,7 +463,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            httplib_response = conn.getresponse()
+            if response_kw == None:
+                response_kw = {}
+            response = conn.getresponse(**response_kw)
         except (BaseSSLError, OSError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
@@ -475,12 +479,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             url,
             # HTTP version
             conn._http_vsn_str,  # type: ignore[attr-defined]
-            httplib_response.status,
-            httplib_response.length,
+            response.status,
+            response.length,
         )
 
         try:
-            assert_header_parsing(httplib_response.msg)
+            assert_header_parsing(response.msg)
         except (HeaderParsingError, TypeError) as hpe:
             log.warning(
                 "Failed to parse headers (url=%s): %s",
@@ -489,7 +493,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 exc_info=True,
             )
 
-        return httplib_response
+        return response
 
     def _absolute_url(self, path: str) -> str:
         return Url(scheme=self.scheme, host=self.host, port=self.port, path=path).url
@@ -723,17 +727,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                         )
                         raise
 
-            # Make the request on the httplib connection object.
-            httplib_response = self._make_request(
-                conn,
-                method,
-                url,
-                timeout=timeout_obj,
-                body=body,
-                headers=headers,
-                chunked=chunked,
-            )
-
             # If we're going to release the connection in ``finally:``, then
             # the response doesn't need to know about the connection. Otherwise
             # it will also try to release it and we'll have a double-release
@@ -743,13 +736,22 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Pass method to Response for length checking
             response_kw["request_method"] = method
 
-            # Import httplib's response into our own wrapper object
-            response = self.ResponseCls.from_httplib(
-                httplib_response,
+            response_kw.update(
                 pool=self,
                 connection=response_conn,
-                retries=retries,
-                **response_kw,
+                retries=retries
+            )
+
+            # Make the request on the HTTPConnection object
+            response = self._make_request(
+                conn,
+                method,
+                url,
+                timeout=timeout_obj,
+                body=body,
+                headers=headers,
+                chunked=chunked,
+                response_kw=response_kw
             )
 
             # Everything went great!

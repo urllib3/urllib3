@@ -45,7 +45,8 @@ except (AttributeError, ImportError, ValueError):  # Defensive:
     zstd = None
 
 from ._collections import HTTPHeaderDict
-from .connection import _TYPE_BODY, BaseSSLError, HTTPConnection, HTTPException
+from .connection import BaseSSLError, HTTPConnection, HTTPException
+from .util.typing import _TYPE_BODY
 from .exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
@@ -218,7 +219,6 @@ def _get_decoder(mode: str) -> ContentDecoder:
         return ZstdDecoder()
 
     return DeflateDecoder()
-
 
 class BaseHTTPResponse(io.IOBase):
     CONTENT_DECODERS = ["gzip", "deflate"]

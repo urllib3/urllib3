@@ -29,7 +29,8 @@ if TYPE_CHECKING:
 
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
-from .response import HTTPResponse
+# Needed to move this far below to avoid circular import issues
+# from .response import HTTPResponse
 
 try:  # Compiled with SSL?
     import ssl
@@ -79,12 +80,13 @@ RECENT_DATE = datetime.date(2022, 1, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
-_TYPE_BODY = Union[bytes, IO[Any], Iterable[bytes], str]
+from .util.typing import _TYPE_BODY
 
 
 class ProxyConfig(NamedTuple):
     ssl_context: Optional["ssl.SSLContext"]
     use_forwarding_for_https: bool
+
 
 
 class HTTPConnection(_HTTPConnection):
@@ -370,17 +372,14 @@ class HTTPConnection(_HTTPConnection):
         """
         self.request(method, url, body=body, headers=headers, chunked=True)
 
-    def getresponse(self):
+    def getresponse(self, **response_kw: Any):
 
         # Get the response from http.client.HTTPConnection
         httplib_response = super().getresponse()
-
+        from .response import HTTPResponse
         # Wrap http.client.HTTPResponse as a urllib3.response.HTTPResponse
         response = HTTPResponse.from_httplib(
             httplib_response,
-            pool=self,
-            connection=response_conn,
-            retries=retries,
             **response_kw,
         ) # Post of these parameters will need to change since we are not calling from inside of urllib3 ConnectionPool anymore
 
