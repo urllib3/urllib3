@@ -798,6 +798,7 @@ class HTTPResponse(BaseHTTPResponse):
             reason=r.reason,
             original_response=r,
             length=r.length,
+            retries=retries,
             **response_kw,
         )
         return resp

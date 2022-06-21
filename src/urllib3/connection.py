@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
+    from .util.retry import Retry
 
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
@@ -372,7 +373,7 @@ class HTTPConnection(_HTTPConnection):
         """
         self.request(method, url, body=body, headers=headers, chunked=True)
 
-    def getresponse(self, **response_kw: Any):
+    def getresponse(self, retries: "Retry",**response_kw: Any):
 
         # Get the response from http.client.HTTPConnection
         httplib_response = super().getresponse()
@@ -380,6 +381,7 @@ class HTTPConnection(_HTTPConnection):
         # Wrap http.client.HTTPResponse as a urllib3.response.HTTPResponse
         response = HTTPResponse.from_httplib(
             httplib_response,
+            retries,
             **response_kw,
         ) # Post of these parameters will need to change since we are not calling from inside of urllib3 ConnectionPool anymore
 

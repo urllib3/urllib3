@@ -377,6 +377,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
         response_kw: Optional[Dict[str, Any]] = None,
+        retries: Optional[Retry] = None,
         **httplib_request_kw: Any,
     ) -> HTTPResponse:
         """
@@ -465,7 +466,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             if response_kw == None:
                 response_kw = {}
-            response = conn.getresponse(**response_kw)
+            response = conn.getresponse(retries,**response_kw)
         except (BaseSSLError, OSError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
@@ -739,7 +740,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             response_kw.update(
                 pool=self,
                 connection=response_conn,
-                retries=retries
             )
 
             # Make the request on the HTTPConnection object
@@ -751,7 +751,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 body=body,
                 headers=headers,
                 chunked=chunked,
-                response_kw=response_kw
+                response_kw=response_kw,
+                retries=retries
             )
 
             # Everything went great!
