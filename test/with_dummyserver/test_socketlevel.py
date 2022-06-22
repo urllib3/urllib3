@@ -1525,6 +1525,7 @@ class TestSSL(SocketDummyServerTestCase):
             cert_reqs="REQUIRED",
             ca_certs=DEFAULT_CA,
         ) as pool:
+            close_event.wait(timeout=LONG_TIMEOUT)
             with pytest.raises(urllib3.exceptions.ProtocolError) as e:
                 pool.request("GET", "/", retries=False)
 
