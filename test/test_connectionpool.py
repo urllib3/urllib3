@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from dummyserver.server import DEFAULT_CA
-from urllib3.connection import HTTPConnection
+from urllib3.connection import HTTPConnection, _HTTPConnection
 from urllib3.connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
@@ -558,21 +558,24 @@ class TestConnectionPool:
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout)
 
-    def test_custom_http_response_class(self) -> None:
+    @patch.object(_HTTPConnection, "getresponse")
+    def test_custom_http_response_class(self, super_getresponse: Mock) -> None:
         class CustomHTTPResponse(HTTPResponse):
             pass
 
         class CustomConnectionPool(HTTPConnectionPool):
             ResponseCls = CustomHTTPResponse
 
-            def _make_request(self, *args: Any, **kwargs: Any) -> HTTPResponse:
-                httplib_response = HTTPResponse()
-                httplib_response._fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
-                httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()  # type: ignore[assignment]
-                return httplib_response
+        # httplib_response = httplib.HTTPResponse(MockSock)
+        # httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
+        # httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()  # type: ignore[assignment]
+
+        super_getresponse.return_value = "Testing"
 
         with CustomConnectionPool(host="localhost", maxsize=1, block=True) as pool:
-            response = pool.request(
-                "GET", "/", retries=False, chunked=True, preload_content=False
+            conn = Mock()
+            response = pool._make_request(
+                conn, "GET", "/", retries=False, chunked=True, preload_content=False
             )
+
             assert isinstance(response, CustomHTTPResponse)
