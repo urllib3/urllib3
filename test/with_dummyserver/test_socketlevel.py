@@ -1496,10 +1496,11 @@ class TestSSL(SocketDummyServerTestCase):
         """
         Ensure OpenSSL read doesn't fail with OverflowError when reading > (2**31)-1 bytes.
         """
+        close_event = Event()
 
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
-            sock = ssl.wrap_socket(
+            ssl_sock = ssl.wrap_socket(
                 sock,
                 server_side=True,
                 keyfile=DEFAULT_CERTS["keyfile"],
@@ -1507,13 +1508,15 @@ class TestSSL(SocketDummyServerTestCase):
                 ca_certs=DEFAULT_CA,
             )
 
-            sock.send(
+            ssl_sock.send(
                 b"HTTP/1.1 200 OK\r\n"
                 b"Content-type: text/plain\r\n"
                 b"Content-Length: 2147483648\r\n"
                 b"\r\n"
             )
+            ssl_sock.close()
             sock.close()
+            close_event.set()
 
         self._start_server(socket_handler)
         with HTTPSConnectionPool(
