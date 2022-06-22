@@ -374,9 +374,11 @@ class HTTPConnection(_HTTPConnection):
         self, retries: Optional["Retry"], **response_kw: Any
     ) -> "HTTPResponse":
 
+        # This is needed here to avoid circular import errors
+        from .response import HTTPResponse
+
         # Get the response from http.client.HTTPConnection
         httplib_response = super().getresponse()
-        from .response import HTTPResponse
 
         # Wrap http.client.HTTPResponse as a urllib3.response.HTTPResponse
         response = HTTPResponse.from_httplib(
