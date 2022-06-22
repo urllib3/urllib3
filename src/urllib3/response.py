@@ -46,7 +46,6 @@ except (AttributeError, ImportError, ValueError):  # Defensive:
 
 from ._collections import HTTPHeaderDict
 from .connection import BaseSSLError, HTTPConnection, HTTPException
-from .util.typing import _TYPE_BODY
 from .exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
@@ -61,6 +60,7 @@ from .exceptions import (
 )
 from .util.response import is_fp_closed, is_response_to_head
 from .util.retry import Retry
+from .util.typing import _TYPE_BODY
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
@@ -219,6 +219,7 @@ def _get_decoder(mode: str) -> ContentDecoder:
         return ZstdDecoder()
 
     return DeflateDecoder()
+
 
 class BaseHTTPResponse(io.IOBase):
     CONTENT_DECODERS = ["gzip", "deflate"]
@@ -466,7 +467,7 @@ class HTTPResponse(BaseHTTPResponse):
         request_method: Optional[str] = None,
         request_url: Optional[str] = None,
         auto_close: bool = True,
-        length: Optional[int] = None
+        length: Optional[int] = None,
     ) -> None:
         super().__init__(
             headers=headers,
@@ -776,7 +777,10 @@ class HTTPResponse(BaseHTTPResponse):
 
     @classmethod
     def from_httplib(
-        ResponseCls: Type["HTTPResponse"], r: _HttplibHTTPResponse, retries: Retry,**response_kw: Any
+        ResponseCls: Type["HTTPResponse"],
+        r: _HttplibHTTPResponse,
+        retries: Retry,
+        **response_kw: Any,
     ) -> "HTTPResponse":
         """
         Given an :class:`http.client.HTTPResponse` instance ``r``, return a

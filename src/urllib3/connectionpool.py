@@ -3,13 +3,21 @@ import logging
 import queue
 import sys
 import warnings
-from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Type, TypeVar, Union, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Mapping,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+)
 
 from ._request_methods import RequestMethods
-from .response import HTTPResponse
 from .connection import (
     _TYPE_BODY,
     BaseSSLError,
@@ -464,9 +472,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            if response_kw == None:
+            if response_kw is None:
                 response_kw = {}
-            response = conn.getresponse(retries,**response_kw)
+            response = conn.getresponse(retries, **response_kw)
         except (BaseSSLError, OSError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
@@ -752,7 +760,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 headers=headers,
                 chunked=chunked,
                 response_kw=response_kw,
-                retries=retries
+                retries=retries,
             )
 
             # Everything went great!

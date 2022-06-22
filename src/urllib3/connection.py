@@ -8,11 +8,9 @@ from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
 from typing import (
-    IO,
     TYPE_CHECKING,
     Any,
     Callable,
-    Iterable,
     Mapping,
     NamedTuple,
     Optional,
@@ -30,6 +28,7 @@ if TYPE_CHECKING:
 
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
+
 # Needed to move this far below to avoid circular import issues
 # from .response import HTTPResponse
 
@@ -63,6 +62,7 @@ from .util.ssl_ import (
     ssl_wrap_socket,
 )
 from .util.ssl_match_hostname import CertificateError, match_hostname
+from .util.typing import _TYPE_BODY
 from .util.url import Url
 
 # Not a no-op, we're adding this to the namespace so it can be imported.
@@ -81,13 +81,9 @@ RECENT_DATE = datetime.date(2022, 1, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
-from .util.typing import _TYPE_BODY
-
-
 class ProxyConfig(NamedTuple):
     ssl_context: Optional["ssl.SSLContext"]
     use_forwarding_for_https: bool
-
 
 
 class HTTPConnection(_HTTPConnection):
@@ -373,17 +369,18 @@ class HTTPConnection(_HTTPConnection):
         """
         self.request(method, url, body=body, headers=headers, chunked=True)
 
-    def getresponse(self, retries: "Retry",**response_kw: Any):
+    def getresponse(self, retries: "Retry", **response_kw: Any):
 
         # Get the response from http.client.HTTPConnection
         httplib_response = super().getresponse()
         from .response import HTTPResponse
+
         # Wrap http.client.HTTPResponse as a urllib3.response.HTTPResponse
         response = HTTPResponse.from_httplib(
             httplib_response,
             retries,
             **response_kw,
-        ) # Post of these parameters will need to change since we are not calling from inside of urllib3 ConnectionPool anymore
+        )
 
         return response
 
