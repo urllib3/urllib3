@@ -779,7 +779,7 @@ class HTTPResponse(BaseHTTPResponse):
     def from_httplib(
         ResponseCls: Type["HTTPResponse"],
         r: _HttplibHTTPResponse,
-        retries: Retry,
+        retries: Optional[Retry],
         **response_kw: Any,
     ) -> "HTTPResponse":
         """

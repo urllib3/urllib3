@@ -22,6 +22,7 @@ from typing import (
 if TYPE_CHECKING:
     from typing_extensions import Literal
 
+    from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
     from .util.retry import Retry
@@ -369,7 +370,9 @@ class HTTPConnection(_HTTPConnection):
         """
         self.request(method, url, body=body, headers=headers, chunked=True)
 
-    def getresponse(self, retries: "Retry", **response_kw: Any):
+    def getresponse(  # type: ignore[override]
+        self, retries: Optional["Retry"], **response_kw: Any
+    ) -> "HTTPResponse":
 
         # Get the response from http.client.HTTPConnection
         httplib_response = super().getresponse()

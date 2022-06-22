@@ -19,7 +19,6 @@ from typing import (
 
 from ._request_methods import RequestMethods
 from .connection import (
-    _TYPE_BODY,
     BaseSSLError,
     BrokenPipeError,
     DummyConnection,
@@ -55,6 +54,7 @@ from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
+from .util.typing import _TYPE_BODY
 from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
 from .util.url import parse_url
@@ -493,7 +493,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         )
 
         try:
-            assert_header_parsing(response.msg)
+            if response.msg:
+                # I'm not sure if we can just skip header parsing?
+                assert_header_parsing(response.msg)
         except (HeaderParsingError, TypeError) as hpe:
             log.warning(
                 "Failed to parse headers (url=%s): %s",

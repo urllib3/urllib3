@@ -565,10 +565,10 @@ class TestConnectionPool:
         class CustomConnectionPool(HTTPConnectionPool):
             ResponseCls = CustomHTTPResponse
 
-            def _make_request(self, *args: Any, **kwargs: Any) -> httplib.HTTPResponse:
-                httplib_response = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-                httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
-                httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()
+            def _make_request(self, *args: Any, **kwargs: Any) -> HTTPResponse:
+                httplib_response = HTTPResponse()
+                httplib_response._fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
+                httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()  # type: ignore[assignment]
                 return httplib_response
 
         with CustomConnectionPool(host="localhost", maxsize=1, block=True) as pool:
