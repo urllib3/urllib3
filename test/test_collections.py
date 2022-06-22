@@ -251,6 +251,33 @@ class TestHTTPHeaderDict(object):
         assert d["e"] == "foofoo"
         assert len(d) == 2
 
+    def test_header_repeats(self, d):
+        d["other-header"] = "hello"
+        d.add("other-header", "world")
+        # our default behavior: iteration just duplicates headers
+        assert list(d.items()) == [
+            ("Cookie", "foo"),
+            ("Cookie", "bar"),
+            ("other-header", "hello"),
+            ("other-header", "world"),
+        ]
+
+        d.respect_duplicates_in_items = True
+        # header-respecting iter will merge items by default
+        assert list(d.items()) == [
+            ("Cookie", "foo, bar"),
+            ("other-header", "hello, world"),
+        ]
+
+        d.add("other-header", "!", combine=False)
+
+        assert list(d.items()) == [
+            ("Cookie", "foo, bar"),
+            ("other-header", "hello"),
+            ("other-header", "world"),
+            ("other-header", "!"),
+        ]
+
     @pytest.mark.parametrize("args", [(1, 2), (1, 2, 3, 4, 5)])
     def test_extend_with_wrong_number_of_args_is_typeerror(self, d, args):
         with pytest.raises(TypeError) as err:

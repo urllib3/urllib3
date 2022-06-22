@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 from .filepost import encode_multipart_formdata
 from .packages.six.moves.urllib.parse import urlencode
+from ._collections import HTTPHeaderDict
 
 __all__ = ["RequestMethods"]
 
@@ -70,6 +71,11 @@ class RequestMethods(object):
 
         urlopen_kw["request_url"] = url
 
+        # XXX hack for getting proper behavior from HTTPDict in particular
+        if isinstance(headers, HTTPHeaderDict):
+            # XXX perf optimization: don't clone here if not needed
+            headers = headers.copy()
+            headers.respect_duplicates_in_items = True
         if method in self._encode_url_methods:
             return self.request_encode_url(
                 method, url, fields=fields, headers=headers, **urlopen_kw
@@ -141,9 +147,10 @@ class RequestMethods(object):
         string can be explicitly set with the ``multipart_boundary`` parameter.
         """
         if headers is None:
-            headers = self.headers
+            # we copy the headers here as the object might get edited
+            headers = dict(self.headers)
 
-        extra_kw = {"headers": {}}
+        extra_kw = {"headers": headers}
 
         if fields:
             if "body" in urlopen_kw:
@@ -162,9 +169,8 @@ class RequestMethods(object):
                 )
 
             extra_kw["body"] = body
-            extra_kw["headers"] = {"Content-Type": content_type}
+            extra_kw["headers"]["Content-Type"] = content_type
 
-        extra_kw["headers"].update(headers)
         extra_kw.update(urlopen_kw)
 
         return self.urlopen(method, url, **extra_kw)

@@ -141,6 +141,14 @@ class HTTPHeaderDict(MutableMapping):
     def __init__(self, headers=None, **kwargs):
         super(HTTPHeaderDict, self).__init__()
         self._container = OrderedDict()
+        # XXX this is tracking our header duplication choices
+        # present => duplicate header
+        # not preset => merge with commas
+        self._duplicate_headers = set()
+        # XXX backwards compatibility bit regarding items
+        # used for making iteration work according to what http.client
+        # expects
+        self.respect_duplicates_in_items = False
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
@@ -212,7 +220,7 @@ class HTTPHeaderDict(MutableMapping):
         except KeyError:
             pass
 
-    def add(self, key, val):
+    def add(self, key, val, combine=None):
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
@@ -220,6 +228,22 @@ class HTTPHeaderDict(MutableMapping):
         >>> headers.add('Foo', 'baz')
         >>> headers['foo']
         'bar, baz'
+
+        If you have respect_duplicates_in_items set:
+
+        - if you add an element with combine=True, then iterating with headers.items()
+          will merge the elements into one comma-separated item
+
+        - if you add an element with combine=False, then iterating with headers.items()
+          will iterate over each value as its own item
+
+        >>> headers = HTTPHeaderDict(foo='bar', password='hunter')
+        >>> headers.respect_duplicates_in_items = True
+        >>> headers.add('Foo', 'baz', combine=False)
+        >>> headers.add('PASSWORD', '2', combine=True)
+        >>> list(headers.items())
+        [('foo', 'bar'), ('foo', 'baz'), ('password', 'hunter, 2')]
+
         """
         key_lower = key.lower()
         new_vals = [key, val]
@@ -227,6 +251,15 @@ class HTTPHeaderDict(MutableMapping):
         vals = self._container.setdefault(key_lower, new_vals)
         if new_vals is not vals:
             vals.append(val)
+        if combine is None:
+            # when a value is not provided for combine, we do not change
+            # the header duplication for a key
+            pass
+        else:
+            if combine:
+                self._duplicate_headers.discard(key_lower)
+            else:
+                self._duplicate_headers.add(key_lower)
 
     def extend(self, *args, **kwargs):
         """Generic import function for any type of header-like object.
@@ -286,6 +319,8 @@ class HTTPHeaderDict(MutableMapping):
                 # Don't need to convert tuples
                 val = list(val)
             self._container[key.lower()] = [key] + val
+        self._duplicate_headers = set(other._duplicate_headers)
+        self.respect_duplicates_in_items = other.respect_duplicates_in_items
 
     def copy(self):
         clone = type(self)()
@@ -305,8 +340,25 @@ class HTTPHeaderDict(MutableMapping):
             val = self._container[key.lower()]
             yield val[0], ", ".join(val[1:])
 
+    def itervarying(self):
+        """
+        Iterate over all header, merging or including duplicates depending on
+        the value of the combined parameter over time
+        """
+        for key in self:
+            normalized_key = key.lower()
+            vals = self._container[normalized_key]
+            if normalized_key in self._duplicate_headers:
+                for val in vals[1:]:
+                    yield vals[0], val
+            else:
+                yield vals[0], ", ".join(vals[1:])
+
     def items(self):
-        return list(self.iteritems())
+        if self.respect_duplicates_in_items:
+            return self.itervarying()
+        else:
+            return list(self.iteritems())
 
     @classmethod
     def from_httplib(cls, message):  # Python 2

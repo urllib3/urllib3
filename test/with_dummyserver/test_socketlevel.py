@@ -1656,7 +1656,8 @@ class TestHeaders(SocketDummyServerTestCase):
             ]
             assert expected_response_headers == actual_response_headers
 
-    def test_headers_sent_with_add(self):
+    @pytest.mark.parametrize("method_type", ["POST", "GET"])
+    def test_headers_sent_with_add(self, method_type):
         data_sent = []
 
         def socket_handler(listener):
@@ -1674,16 +1675,17 @@ class TestHeaders(SocketDummyServerTestCase):
         headers.add("A", "1")
         headers.add("B", "2")
         headers.add("C", "3")
-        headers.add("A", "4")
+        headers.add("A", "4", combine=False)
         headers.add("C", "5")
 
         self._start_server(socket_handler)
 
         with HTTPConnectionPool(self.host, self.port) as pool:
-            r = pool.request("GET", "/", retries=0, headers=headers)
+            # the request building logic differs between GET and POST, so we will
+            # test both of these to make sure that things are OK
+            r = pool.request(method_type, "/", retries=0, headers=headers)
             assert r.status == 200
-
-        assert b"\r\nA: 1, 4\r\nB: 2\r\nC: 3, 5\r\n" in data_sent[0]
+            assert b"\r\nA: 1\r\nA: 4\r\nB: 2\r\nC: 3, 5\r\n" in data_sent[0]
 
 
 @pytest.mark.skipif(
