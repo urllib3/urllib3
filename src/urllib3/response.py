@@ -780,6 +780,7 @@ class HTTPResponse(BaseHTTPResponse):
         ResponseCls: Type["HTTPResponse"],
         r: _HttplibHTTPResponse,
         retries: Optional[Retry],
+        response_class: Optional[Type["HTTPResponse"]] = None,
         **response_kw: Any,
     ) -> "HTTPResponse":
         """
@@ -793,6 +794,9 @@ class HTTPResponse(BaseHTTPResponse):
 
         if not isinstance(headers, HTTPHeaderDict):
             headers = HTTPHeaderDict(headers.items())  # type: ignore[assignment]
+
+        if response_class:
+            ResponseCls = response_class
 
         resp = ResponseCls(
             body=r,

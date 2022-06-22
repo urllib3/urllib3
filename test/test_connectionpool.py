@@ -11,7 +11,11 @@ from unittest.mock import Mock, patch
 import pytest
 
 from dummyserver.server import DEFAULT_CA
-from urllib3.connection import HTTPConnection, _HTTPConnection
+from urllib3 import Retry
+from urllib3.connection import (  # type: ignore[attr-defined]
+    HTTPConnection,
+    _HTTPConnection,
+)
 from urllib3.connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
@@ -572,16 +576,29 @@ class TestConnectionPool:
         class CustomConnectionPool(HTTPConnectionPool):
             ResponseCls = CustomHTTPResponse
 
-        # httplib_response = httplib.HTTPResponse(MockSock)
-        # httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
-        # httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()  # type: ignore[assignment]
+            def _validate_conn(self, _: Any) -> None:
+                return
 
-        super_getresponse.return_value = "Testing"
+        httplib_response = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
+        httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()
+
+        super_getresponse.return_value = httplib_response
 
         with CustomConnectionPool(host="localhost", maxsize=1, block=True) as pool:
-            conn = Mock()
+            conn = HTTPConnection("localhost")
+            conn.sock = False
+            conn.request_chunked = Mock()  # type: ignore[assignment]
+
+            retry = Retry(False)
+
             response = pool._make_request(
-                conn, "GET", "/", retries=False, chunked=True, preload_content=False
+                conn,
+                "GET",
+                "/",
+                retries=retry,
+                chunked=True,
+                response_kw=dict(preload_content=False),
             )
 
             assert isinstance(response, CustomHTTPResponse)
