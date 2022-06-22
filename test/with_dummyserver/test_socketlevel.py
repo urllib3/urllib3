@@ -1496,7 +1496,7 @@ class TestSSL(SocketDummyServerTestCase):
         """
         Ensure OpenSSL read doesn't fail with OverflowError when reading > (2**31)-1 bytes.
         """
-        close_event = Event()
+        done_event = Event()
 
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -1514,9 +1514,9 @@ class TestSSL(SocketDummyServerTestCase):
                 b"Content-Length: 2147483648\r\n"
                 b"\r\n"
             )
+            done_event.wait(1)
             ssl_sock.close()
             sock.close()
-            close_event.set()
 
         self._start_server(socket_handler)
         with HTTPSConnectionPool(
@@ -1525,14 +1525,15 @@ class TestSSL(SocketDummyServerTestCase):
             cert_reqs="REQUIRED",
             ca_certs=DEFAULT_CA,
         ) as pool:
-            close_event.wait(timeout=LONG_TIMEOUT)
             with pytest.raises(urllib3.exceptions.ProtocolError) as e:
                 pool.request("GET", "/", retries=False)
 
-        assert (
-            str(e.value)
-            == "('Connection broken: IncompleteRead(0 bytes read, 2147483648 more expected)', IncompleteRead(0 bytes read, 2147483648 more expected))"
-        )
+            assert (
+                str(e.value)
+                == "('Connection broken: IncompleteRead(0 bytes read, 2147483648 more expected)', IncompleteRead(0 bytes read, 2147483648 more expected))"
+            )
+
+            done_event.set()
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
