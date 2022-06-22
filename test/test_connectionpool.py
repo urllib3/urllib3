@@ -5,7 +5,7 @@ from queue import Empty
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
-from typing import Any, Optional, Type
+from typing import Any, Dict, Optional, Type
 from unittest.mock import Mock, patch
 
 import pytest
@@ -510,14 +510,20 @@ class TestConnectionPool:
                 super().__init__()
                 self._ex: Optional[Type[BaseException]] = ex
 
-            def __call__(self, *args: Any, **kwargs: Any) -> httplib.HTTPResponse:
+            def __call__(
+                self,
+                *args: Any,
+                response_kw: Optional[Dict[str, Any]] = None,
+                retries: Optional[Retry] = None,
+                **kwargs: Any,
+            ) -> HTTPResponse:
                 if self._ex:
                     ex, self._ex = self._ex, None
                     raise ex()
                 response = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
                 response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
                 response.headers = response.msg = httplib.HTTPMessage()
-                return response
+                return HTTPResponse.from_httplib(response, retries, **response_kw)  # type: ignore[arg-type]
 
         def _test(exception: Type[BaseException]) -> None:
             with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
