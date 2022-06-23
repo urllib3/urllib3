@@ -5,7 +5,7 @@ import ssl
 import sys
 import warnings
 from itertools import chain
-from test import ImportBlocker, ModuleStash, notBrotli, onlyBrotli
+from test import ImportBlocker, ModuleStash, notBrotli, notZstd, onlyBrotli, onlyZstd
 from typing import TYPE_CHECKING, Dict, List, NoReturn, Optional, Tuple, Union
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
@@ -517,25 +517,45 @@ class TestUtil:
         [
             pytest.param(
                 {"accept_encoding": True},
+                {"accept-encoding": "gzip,deflate,br,zstd"},
+                marks=[onlyBrotli(), onlyZstd()],  # type: ignore[list-item]
+            ),
+            pytest.param(
+                {"accept_encoding": True},
                 {"accept-encoding": "gzip,deflate,br"},
-                marks=onlyBrotli(),  # type: ignore[arg-type]
+                marks=[onlyBrotli(), notZstd()],  # type: ignore[list-item]
+            ),
+            pytest.param(
+                {"accept_encoding": True},
+                {"accept-encoding": "gzip,deflate,zstd"},
+                marks=[notBrotli(), onlyZstd()],  # type: ignore[list-item]
             ),
             pytest.param(
                 {"accept_encoding": True},
                 {"accept-encoding": "gzip,deflate"},
-                marks=notBrotli(),  # type: ignore[arg-type]
+                marks=[notBrotli(), notZstd()],  # type: ignore[list-item]
             ),
             ({"accept_encoding": "foo,bar"}, {"accept-encoding": "foo,bar"}),
             ({"accept_encoding": ["foo", "bar"]}, {"accept-encoding": "foo,bar"}),
             pytest.param(
                 {"accept_encoding": True, "user_agent": "banana"},
+                {"accept-encoding": "gzip,deflate,br,zstd", "user-agent": "banana"},
+                marks=[onlyBrotli(), onlyZstd()],  # type: ignore[list-item]
+            ),
+            pytest.param(
+                {"accept_encoding": True, "user_agent": "banana"},
                 {"accept-encoding": "gzip,deflate,br", "user-agent": "banana"},
-                marks=onlyBrotli(),  # type: ignore[arg-type]
+                marks=[onlyBrotli(), notZstd()],  # type: ignore[list-item]
+            ),
+            pytest.param(
+                {"accept_encoding": True, "user_agent": "banana"},
+                {"accept-encoding": "gzip,deflate,zstd", "user-agent": "banana"},
+                marks=[notBrotli(), onlyZstd()],  # type: ignore[list-item]
             ),
             pytest.param(
                 {"accept_encoding": True, "user_agent": "banana"},
                 {"accept-encoding": "gzip,deflate", "user-agent": "banana"},
-                marks=notBrotli(),  # type: ignore[arg-type]
+                marks=[notBrotli(), notZstd()],  # type: ignore[list-item]
             ),
             ({"user_agent": "banana"}, {"user-agent": "banana"}),
             ({"keep_alive": True}, {"connection": "keep-alive"}),

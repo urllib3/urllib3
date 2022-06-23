@@ -538,6 +538,37 @@ Here's an example using brotli encoding via the ``Accept-Encoding`` header:
         headers={"Accept-Encoding": "br"}
     )
 
+Zstandard Encoding
+------------------
+
+`Zstandard <https://datatracker.ietf.org/doc/html/rfc8878>`_
+is a compression algorithm created by Facebook with better compression
+than brotli, gzip and deflate (see `benchmarks <https://facebook.github.io/zstd/#benchmarks>`_)
+and is supported by urllib3 if the `zstandard package <https://pypi.org/project/zstandard/>`_ is installed.
+You may also request the package be installed via the ``urllib3[zstd]`` extra:
+
+.. code-block:: bash
+
+    $ python -m pip install urllib3[zstd]
+
+.. note::
+
+    Zstandard support in urllib3 requires using v0.18.0 or later of the ``zstandard`` package.
+    If the version installed is less than v0.18.0 then Zstandard support won't be enabled.
+
+Here's an example using zstd encoding via the ``Accept-Encoding`` header:
+
+.. code-block:: python
+
+    import urllib3
+
+    urllib3.request(
+        "GET",
+        "https://www.facebook.com/",
+        headers={"Accept-Encoding": "zstd"}
+    )
+
+
 Decrypting Captured TLS Sessions with Wireshark
 -----------------------------------------------
 Python 3.8 and higher support logging of TLS pre-master secrets.

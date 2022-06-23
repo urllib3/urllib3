@@ -1,6 +1,7 @@
 import io
 import json as _json
 import logging
+import re
 import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
@@ -26,6 +27,22 @@ try:
         import brotli  # type: ignore[import]
 except ImportError:
     brotli = None
+
+try:
+    import zstandard as zstd  # type: ignore[import]
+
+    # The package 'zstandard' added the 'eof' property starting
+    # in v0.18.0 which we require to ensure a complete and
+    # valid zstd stream was fed into the ZstdDecoder.
+    # See: https://github.com/urllib3/urllib3/pull/2624
+    _zstd_version = _zstd_version = tuple(
+        map(int, re.search(r"^([0-9]+)\.([0-9]+)", zstd.__version__).groups())  # type: ignore[union-attr]
+    )
+    if _zstd_version < (0, 18):  # Defensive:
+        zstd = None
+
+except (AttributeError, ImportError, ValueError):  # Defensive:
+    zstd = None
 
 from ._collections import HTTPHeaderDict
 from .connection import _TYPE_BODY, BaseSSLError, HTTPConnection, HTTPException
@@ -148,6 +165,24 @@ if brotli is not None:
             return b""
 
 
+if zstd is not None:
+
+    class ZstdDecoder(ContentDecoder):
+        def __init__(self) -> None:
+            self._obj = zstd.ZstdDecompressor().decompressobj()
+
+        def decompress(self, data: bytes) -> bytes:
+            if not data:
+                return b""
+            return self._obj.decompress(data)  # type: ignore[no-any-return]
+
+        def flush(self) -> bytes:
+            ret = self._obj.flush()
+            if not self._obj.eof:
+                raise DecodeError("Zstandard data is incomplete")
+            return ret  # type: ignore[no-any-return]
+
+
 class MultiDecoder(ContentDecoder):
     """
     From RFC7231:
@@ -179,6 +214,9 @@ def _get_decoder(mode: str) -> ContentDecoder:
     if brotli is not None and mode == "br":
         return BrotliDecoder()
 
+    if zstd is not None and mode == "zstd":
+        return ZstdDecoder()
+
     return DeflateDecoder()
 
 
@@ -186,11 +224,16 @@ class BaseHTTPResponse(io.IOBase):
     CONTENT_DECODERS = ["gzip", "deflate"]
     if brotli is not None:
         CONTENT_DECODERS += ["br"]
+    if zstd is not None:
+        CONTENT_DECODERS += ["zstd"]
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
     DECODER_ERROR_CLASSES: Tuple[Type[Exception], ...] = (IOError, zlib.error)
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
+
+    if zstd is not None:
+        DECODER_ERROR_CLASSES += (zstd.ZstdError,)
 
     def __init__(
         self,
