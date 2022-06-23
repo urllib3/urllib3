@@ -564,7 +564,7 @@ Here's an example using zstd encoding via the ``Accept-Encoding`` header:
 
     urllib3.request(
         "GET",
-        "https://facebook.com/",
+        "https://www.facebook.com/",
         headers={"Accept-Encoding": "zstd"}
     )
 
