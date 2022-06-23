@@ -280,8 +280,9 @@ class TestResponse:
         assert ret == b"foobarbaz"
 
     @onlyZstd()
-    def test_decode_zstd_error(self) -> None:
-        fp = BytesIO(b"foo")
+    @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
+    def test_decode_zstd_error(self, data: bytes) -> None:
+        fp = BytesIO(data)
 
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "zstd"})

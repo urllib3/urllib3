@@ -38,10 +38,10 @@ try:
     _zstd_version = _zstd_version = tuple(
         map(int, re.search(r"^([0-9]+)\.([0-9]+)", zstd.__version__).groups())  # type: ignore[union-attr]
     )
-    if _zstd_version < (0, 18):
+    if _zstd_version < (0, 18):  # Defensive:
         zstd = None
 
-except (AttributeError, ImportError, ValueError):
+except (AttributeError, ImportError, ValueError):  # Defensive:
     zstd = None
 
 from ._collections import HTTPHeaderDict
@@ -179,7 +179,7 @@ if zstd is not None:
         def flush(self) -> bytes:
             ret = self._obj.flush()
             if not self._obj.eof:
-                raise DecodeError("Invalid zstandard data")
+                raise DecodeError("Zstandard data is incomplete")
             return ret  # type: ignore[no-any-return]
 
 
