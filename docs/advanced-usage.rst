@@ -551,6 +551,11 @@ You may also request the package be installed via the ``urllib3[zstd]`` extra:
 
     $ python -m pip install urllib3[zstd]
 
+.. note::
+
+    Zstandard support in urllib3 requires using v0.18.0 or later of the ``zstandard`` package.
+    If the version installed is less than v0.18.0 then Zstandard support won't be enabled.
+
 Here's an example using zstd encoding via the ``Accept-Encoding`` header:
 
 .. code-block:: python

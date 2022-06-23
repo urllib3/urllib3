@@ -1,6 +1,7 @@
 import io
 import json as _json
 import logging
+import re
 import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
@@ -29,7 +30,18 @@ except ImportError:
 
 try:
     import zstandard as zstd  # type: ignore[import]
-except ImportError:
+
+    # The package 'zstandard' added the 'eof' property starting
+    # in v0.18.0 which we require to ensure a complete and
+    # valid zstd stream was fed into the ZstdDecoder.
+    # See: https://github.com/urllib3/urllib3/pull/2624
+    _zstd_version = _zstd_version = tuple(
+        map(int, re.search(r"^([0-9]+)\.([0-9]+)", zstd.__version__).groups())  # type: ignore[union-attr]
+    )
+    if _zstd_version < (0, 18):
+        zstd = None
+
+except (AttributeError, ImportError, ValueError):
     zstd = None
 
 from ._collections import HTTPHeaderDict
