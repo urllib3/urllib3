@@ -544,7 +544,7 @@ Zstandard Encoding
 `Zstandard <https://datatracker.ietf.org/doc/html/rfc8878>`_
 is a compression algorithm created by Facebook with better compression
 than brotli, gzip and deflate (see `benchmarks <https://facebook.github.io/zstd/#benchmarks>`_)
-and is supported by urllib3 if the `zstandard <https://pypi.org/project/zstandard/>`_ package is installed.
+and is supported by urllib3 if the `zstandard package <https://pypi.org/project/zstandard/>`_ is installed.
 You may also request the package be installed via the ``urllib3[zstd]`` extra:
 
 .. code-block:: bash
