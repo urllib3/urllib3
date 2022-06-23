@@ -34,7 +34,6 @@ from .exceptions import (
     ClosedPoolError,
     EmptyPoolError,
     FullPoolError,
-    HeaderParsingError,
     HostChangedError,
     InsecureRequestWarning,
     LocationValueError,
@@ -50,7 +49,6 @@ from .response import BaseHTTPResponse, HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
 from .util.request import _TYPE_BODY_POSITION, set_file_position
-from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
@@ -496,22 +494,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             response.length,
         )
 
-        try:
-            if response.msg:
-                # I'm not sure if we can just skip header parsing?
-                assert_header_parsing(response.msg)
-        except (HeaderParsingError, TypeError) as hpe:
-            log.warning(
-                "Failed to parse headers (url=%s): %s",
-                self._absolute_url(url),
-                hpe,
-                exc_info=True,
-            )
-
         return response
-
-    def _absolute_url(self, path: str) -> str:
-        return Url(scheme=self.scheme, host=self.host, port=self.port, path=path).url
 
     def close(self) -> None:
         """

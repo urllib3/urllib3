@@ -10,6 +10,7 @@ from socket import timeout as SocketTimeout
 from typing import (
     TYPE_CHECKING,
     Any,
+    Dict,
     Generator,
     Iterator,
     List,
@@ -49,6 +50,7 @@ from .connection import BaseSSLError, HTTPConnection, HTTPException
 from .exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
+    HeaderParsingError,
     HTTPError,
     IncompleteRead,
     InvalidChunkLength,
@@ -58,9 +60,10 @@ from .exceptions import (
     ResponseNotChunked,
     SSLError,
 )
-from .util.response import is_fp_closed, is_response_to_head
+from .util.response import assert_header_parsing, is_fp_closed, is_response_to_head
 from .util.retry import Retry
 from .util.typing import _TYPE_BODY
+from .util.url import Url
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
@@ -792,6 +795,16 @@ class HTTPResponse(BaseHTTPResponse):
         """
         headers = r.msg
 
+        try:
+            assert_header_parsing(headers)
+        except (HeaderParsingError, TypeError) as hpe:
+            log.warning(
+                "Failed to parse headers (url=%s): %s",
+                _absolute_url(**response_kw),
+                hpe,
+                exc_info=True,
+            )
+
         if not isinstance(headers, HTTPHeaderDict):
             headers = HTTPHeaderDict(headers.items())  # type: ignore[assignment]
 
@@ -1000,3 +1013,10 @@ class HTTPResponse(BaseHTTPResponse):
                 buffer.append(chunk)
         if buffer:
             yield b"".join(buffer)
+
+
+# Mypy is upset incompatible type "HTTPConnectionPool"; expected "Type[HTTPConnectionPool]"
+def _absolute_url(
+    request_url: str, pool: Type["HTTPConnectionPool"], **_: Dict[str, Any]
+) -> str:
+    return Url(scheme=pool.scheme, host=pool.host, port=pool.port, path=request_url).url

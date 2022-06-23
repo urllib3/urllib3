@@ -47,6 +47,7 @@ from urllib3.exceptions import (
     SSLError,
 )
 from urllib3.poolmanager import proxy_from_url
+from urllib3.response import _absolute_url
 from urllib3.util import ssl_, ssl_wrap_socket
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
@@ -1666,7 +1667,7 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
                 if (
                     "Failed to parse headers" in record.msg
                     and isinstance(record.args, tuple)
-                    and pool._absolute_url("/") == record.args[0]
+                    and _absolute_url("/", pool) == record.args[0]  # type: ignore[arg-type]
                 ):
                     if (
                         unparsed_data_check is None

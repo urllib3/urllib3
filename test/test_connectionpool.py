@@ -33,7 +33,7 @@ from urllib3.exceptions import (
     SSLError,
     TimeoutError,
 )
-from urllib3.response import HTTPResponse
+from urllib3.response import HTTPResponse, _absolute_url
 from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import _DEFAULT_TIMEOUT, Timeout
 
@@ -455,8 +455,8 @@ class TestConnectionPool:
 
     def test_absolute_url(self) -> None:
         with connection_from_url("http://google.com:80") as c:
-            assert "http://google.com:80/path?query=foo" == c._absolute_url(
-                "path?query=foo"
+            assert "http://google.com:80/path?query=foo" == _absolute_url(
+                "path?query=foo", c  # type: ignore[arg-type]
             )
 
     def test_ca_certs_default_cert_required(self) -> None:
