@@ -29,5 +29,5 @@ representation.
 .. autoclass:: urllib3.response.BrotliDecoder
 .. autoclass:: urllib3.response.DeflateDecoder
 .. autoclass:: urllib3.response.GzipDecoder
-.. autoclass:: urllib3.response.MultiDecoder
 .. autoclass:: urllib3.response.ZstdDecoder
+.. autoclass:: urllib3.response.MultiDecoder
