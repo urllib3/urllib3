@@ -675,7 +675,7 @@ class HTTPResponse(BaseHTTPResponse):
             def read(amt: Optional[int] = None) -> bytes:
                 if self._fp is None:
                     return b""
-                chunks = []
+                buffer = io.BytesIO()
                 while amt is None or amt != 0:
                     if amt is not None:
                         chunk_amt = min(amt, c_int_max)
@@ -685,8 +685,8 @@ class HTTPResponse(BaseHTTPResponse):
                     data = self._fp.read(chunk_amt)
                     if not data:
                         break
-                    chunks.append(data)
-                return b"".join(chunks)
+                    buffer.write(data)
+                return buffer.getvalue()
 
         else:
             read = self._fp.read
