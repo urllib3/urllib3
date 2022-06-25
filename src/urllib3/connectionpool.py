@@ -1020,7 +1020,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         )
 
         if not self.ConnectionCls or self.ConnectionCls is DummyConnection:  # type: ignore[comparison-overlap]
-            raise SSLError(
+            raise ImportError(
                 "Can't connect to HTTPS URL because the SSL module is not available."
             )
 
