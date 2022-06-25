@@ -32,7 +32,11 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os:
+          - macos-latest
+          - windows-latest
+          - ubuntu-20.04  # OpenSSL 1.1.1
+          - ubuntu-22.04  # OpenSSL 3.0
         experimental: [false]
         nox-session: ['']
         include:
@@ -54,16 +58,27 @@ jobs:
             nox-session: test_brotlipy
           # Test CPython with a broken hostname_checks_common_name (the fix is in 3.9.3)
           - python-version: "3.9.2"
-            os: ubuntu-latest
+            os: ubuntu-20.04  # CPython 3.9.2 is not available for ubuntu-22.04.
             experimental: false
             nox-session: test-3.9
           - python-version: 3.11-dev
-            os: ubuntu-latest
+            os: ubuntu-20.04
             experimental: true
             nox-session: test-3.11
+          - python-version: 3.11-dev
+            os: ubuntu-22.04
+            experimental: true
+            nox-session: test-3.11
+        exclude:
+          # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
+          # https://github.com/python/cpython/issues/83001
+          - python-version: "3.7"
+            os: ubuntu-22.04
+          - python-version: "3.8"
+            os: ubuntu-22.04
 
     runs-on: ${{ matrix.os }}
-    name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
+    name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
     timeout-minutes: 20
     steps:
@@ -74,10 +89,9 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
 
       - name: Set Up Python (Development version) - ${{ matrix.python-version }}
-        uses: deadsnakes/action@v2.0.2
+        uses: deadsnakes/action@v2.1.1
         if: endsWith(matrix.python-version, '-dev')
         with:
           python-version: ${{ matrix.python-version }}

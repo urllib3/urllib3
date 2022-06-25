@@ -134,7 +134,24 @@ class TestConnection:
             )
             assert e._peer_cert == cert
 
-    def test_match_hostname_ip_address_ipv6(self) -> None:
+    @pytest.mark.parametrize(
+        ["asserted_hostname", "san_ip"],
+        [
+            ("1:2::3:4", "1:2:0:0:0:0:3:4"),
+            ("1:2:0:0::3:4", "1:2:0:0:0:0:3:4"),
+            ("::0.1.0.2", "0:0:0:0:0:0:1:2"),
+            ("::1%42", "0:0:0:0:0:0:0:1"),
+            ("::2%iface", "0:0:0:0:0:0:0:2"),
+        ],
+    )
+    def test_match_hostname_ip_address_ipv6(
+        self, asserted_hostname: str, san_ip: str
+    ) -> None:
+        """Check that hostname matches follow RFC 9110 rules for IPv6."""
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {"subjectAltName": (("IP Address", san_ip),)}
+        match_hostname(cert, asserted_hostname)
+
+    def test_match_hostname_ip_address_ipv6_doesnt_match(self) -> None:
         cert: "_TYPE_PEER_CERT_RET_DICT" = {
             "subjectAltName": (("IP Address", "1:2::2:1"),)
         }

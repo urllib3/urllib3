@@ -427,7 +427,7 @@ class TestPoolManager:
             "http://example.com", {"blocksize": input_blocksize}
         )
         assert pool_blocksize.conn_kw["blocksize"] == expected_blocksize
-        assert pool_blocksize._get_conn().blocksize == expected_blocksize  # type: ignore[attr-defined]
+        assert pool_blocksize._get_conn().blocksize == expected_blocksize
 
     @pytest.mark.parametrize(
         "url",
@@ -454,3 +454,17 @@ class TestPoolManager:
         conn.connect()
 
         assert create_connection.call_args[0][0] == ("a::b%zone", 80)
+
+    @patch("urllib3.connection.ssl_wrap_socket")
+    @patch("urllib3.util.connection.create_connection")
+    def test_e2e_connect_to_ipv6_scoped_tls(
+        self, create_connection: MagicMock, ssl_wrap_socket: MagicMock
+    ) -> None:
+        p = PoolManager()
+        conn_pool = p.connection_from_url(
+            "https://[a::b%zone]", pool_kwargs={"assert_hostname": False}
+        )
+        conn = conn_pool._get_conn()
+        conn.connect()
+
+        assert ssl_wrap_socket.call_args[1]["server_hostname"] == "a::b"

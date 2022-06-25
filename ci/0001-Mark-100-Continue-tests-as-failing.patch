@@ -1,0 +1,60 @@
+diff --git a/tests/unit/test_awsrequest.py b/tests/unit/test_awsrequest.py
+index 22bd9a7..862a244 100644
+--- a/tests/unit/test_awsrequest.py
++++ b/tests/unit/test_awsrequest.py
+@@ -34,6 +34,7 @@ from botocore.compat import file_type, six
+ from botocore.exceptions import UnseekableStreamError
+ from tests import mock, unittest
+ 
++import pytest
+ 
+ class IgnoreCloseBytesIO(io.BytesIO):
+     def close(self):
+@@ -370,6 +371,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+         conn.response_class.return_value = self.mock_response
+         return conn
+ 
++    @pytest.mark.xfail(reason="https://github.com/urllib3/urllib3/pull/2565")
+     def test_expect_100_continue_returned(self):
+         with mock.patch('urllib3.util.wait_for_read') as wait_mock:
+             # Shows the server first sending a 100 continue response
+@@ -387,6 +389,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+             # Now we should verify that our final response is the 200 OK
+             self.assertEqual(response.status, 200)
+ 
++    @pytest.mark.xfail(reason="https://github.com/urllib3/urllib3/pull/2565")
+     def test_handles_expect_100_with_different_reason_phrase(self):
+         with mock.patch('urllib3.util.wait_for_read') as wait_mock:
+             # Shows the server first sending a 100 continue response
+@@ -412,6 +415,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+             # continue.
+             self.assertIn(b'body', s.sent_data)
+ 
++    @pytest.mark.xfail(reason="https://github.com/urllib3/urllib3/pull/2565")
+     def test_expect_100_sends_connection_header(self):
+         # When using squid as an HTTP proxy, it will also send
+         # a Connection: keep-alive header back with the 100 continue
+@@ -439,6 +443,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+             response = conn.getresponse()
+             self.assertEqual(response.status, 500)
+ 
++    @pytest.mark.xfail(reason="https://github.com/urllib3/urllib3/pull/2565")
+     def test_expect_100_continue_sends_307(self):
+         # This is the case where we send a 100 continue and the server
+         # immediately sends a 307
+@@ -461,6 +466,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+             # Now we should verify that our final response is the 307.
+             self.assertEqual(response.status, 307)
+ 
++    @pytest.mark.xfail(reason="https://github.com/urllib3/urllib3/pull/2565")
+     def test_expect_100_continue_no_response_from_server(self):
+         with mock.patch('urllib3.util.wait_for_read') as wait_mock:
+             # Shows the server first sending a 100 continue response
+@@ -566,6 +572,7 @@ class TestAWSHTTPConnection(unittest.TestCase):
+         response = conn.getresponse()
+         self.assertEqual(response.status, 200)
+ 
++    @pytest.mark.xfail(reason="https://github.com/urllib3/urllib3/pull/2565")
+     def test_state_reset_on_connection_close(self):
+         # This simulates what urllib3 does with connections
+         # in its connection pool logic.

@@ -78,13 +78,16 @@ def _dnsname_match(
 def _ipaddress_match(ipname: str, host_ip: Union[IPv4Address, IPv6Address]) -> bool:
     """Exact matching of IP addresses.
 
-    RFC 6125 explicitly doesn't define an algorithm for this
-    (section 1.7.2 - "Out of Scope").
+    RFC 9110 section 4.3.5: "A reference identity of IP-ID contains the decoded
+    bytes of the IP address. An IP version 4 address is 4 octets, and an IP
+    version 6 address is 16 octets. [...] A reference identity of type IP-ID
+    matches if the address is identical to an iPAddress value of the
+    subjectAltName extension of the certificate."
     """
     # OpenSSL may add a trailing newline to a subjectAltName's IP address
     # Divergence from upstream: ipaddress can't handle byte str
     ip = ipaddress.ip_address(ipname.rstrip())
-    return bool(ip == host_ip)
+    return bool(ip.packed == host_ip.packed)
 
 
 def match_hostname(
@@ -107,7 +110,15 @@ def match_hostname(
         )
     try:
         # Divergence from upstream: ipaddress can't handle byte str
-        host_ip = ipaddress.ip_address(hostname)
+        #
+        # The ipaddress module shipped with Python < 3.9 does not support
+        # scoped IPv6 addresses so we unconditionally strip the Zone IDs for
+        # now. Once we drop support for Python 3.9 we can remove this branch.
+        if "%" in hostname:
+            host_ip = ipaddress.ip_address(hostname[: hostname.rfind("%")])
+        else:
+            host_ip = ipaddress.ip_address(hostname)
+
     except ValueError:
         # Not an IP address (common case)
         host_ip = None

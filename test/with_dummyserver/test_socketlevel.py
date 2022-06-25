@@ -21,7 +21,7 @@ from test import (
     resolvesLocalhostFQDN,
 )
 from threading import Event
-from typing import Any, Generator, List, Optional
+from typing import Any, Callable, Generator, List, Optional
 from typing import OrderedDict as OrderedDictType
 from typing import Tuple, Union
 from unittest import mock
@@ -352,21 +352,21 @@ class TestClientCerts(SocketDummyServerTestCase):
     def test_load_keyfile_with_invalid_password(self) -> None:
         assert ssl_.SSLContext is not None
         context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
-
-        # Different error is raised depending on context.
-        if ssl_.IS_PYOPENSSL:
-            from OpenSSL.SSL import Error  # type: ignore[import]
-
-            expected_error = Error
-        else:
-            expected_error = ssl.SSLError
-
-        with pytest.raises(expected_error):
+        with pytest.raises(ssl.SSLError):
             context.load_cert_chain(
                 certfile=self.cert_path,
                 keyfile=self.password_key_path,
                 password=b"letmei",
             )
+
+    # For SecureTransport, the validation that would raise an error in
+    # this case is deferred.
+    @notSecureTransport()
+    def test_load_invalid_cert_file(self) -> None:
+        assert ssl_.SSLContext is not None
+        context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
+        with pytest.raises(ssl.SSLError):
+            context.load_cert_chain(certfile=self.password_key_path)
 
 
 class TestSocketClosing(SocketDummyServerTestCase):
@@ -2035,12 +2035,12 @@ class TestContentFraming(SocketDummyServerTestCase):
         assert b"Transfer-Encoding: chunked\r\n" in sent_bytes
         assert b"User-Agent: python-urllib3/" in sent_bytes
         assert b"content-length" not in sent_bytes.lower()
-
-        # TODO: Remove the .lower() after solving #2515
-        assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes.lower()
+        assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes
 
     @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
-    @pytest.mark.parametrize("body_type", ["file", "generator", "bytes"])
+    @pytest.mark.parametrize(
+        "body_type", ["file", "generator", "bytes", "bytearray", "file_text"]
+    )
     def test_chunked_not_specified(self, method: str, body_type: str) -> None:
         buffer = bytearray()
 
@@ -2079,6 +2079,15 @@ class TestContentFraming(SocketDummyServerTestCase):
             body.seek(0, 0)
             should_be_chunked = True
 
+        elif body_type == "file_text":
+            body = io.StringIO("x" * 10)
+            body.seek(0, 0)
+            should_be_chunked = True
+
+        elif body_type == "bytearray":
+            body = bytearray(b"x" * 10)
+            should_be_chunked = False
+
         else:
             body = b"x" * 10
             should_be_chunked = False
@@ -2098,10 +2107,68 @@ class TestContentFraming(SocketDummyServerTestCase):
         if should_be_chunked:
             assert b"content-length" not in sent_bytes.lower()
             assert b"Transfer-Encoding: chunked\r\n" in sent_bytes
-            # TODO: Remove the .lower() after solving #2515
-            assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes.lower()
+            assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes
 
         else:
             assert b"Content-Length: 10\r\n" in sent_bytes
             assert b"transfer-encoding" not in sent_bytes.lower()
             assert sent_bytes.endswith(b"\r\n\r\nxxxxxxxxxx")
+
+    @pytest.mark.parametrize(
+        "header_transform",
+        [str.lower, str.title, str.upper],
+    )
+    @pytest.mark.parametrize(
+        ["header", "header_value", "expected"],
+        [
+            ("content-length", "10", b": 10\r\n\r\nxxxxxxxx"),
+            (
+                "transfer-encoding",
+                "chunked",
+                b": chunked\r\n\r\n8\r\nxxxxxxxx\r\n0\r\n\r\n",
+            ),
+        ],
+    )
+    def test_framing_set_via_headers(
+        self,
+        header_transform: Callable[[str], str],
+        header: str,
+        header_value: str,
+        expected: bytes,
+    ) -> None:
+        buffer = bytearray()
+
+        def socket_handler(listener: socket.socket) -> None:
+            nonlocal buffer
+            sock = listener.accept()[0]
+            sock.settimeout(0)
+
+            start = time.time()
+            while time.time() - start < (LONG_TIMEOUT / 2):
+                try:
+                    buffer += sock.recv(65536)
+                except OSError:
+                    continue
+
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: example.com\r\n"
+                b"Content-Length: 0\r\n\r\n"
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        with HTTPConnectionPool(
+            self.host, self.port, timeout=LONG_TIMEOUT, retries=False
+        ) as pool:
+            resp = pool.request(
+                "POST",
+                "/",
+                body=b"xxxxxxxx",
+                headers={header_transform(header): header_value},
+            )
+            assert resp.status == 200
+
+            sent_bytes = bytes(buffer)
+            assert sent_bytes.endswith(expected)
