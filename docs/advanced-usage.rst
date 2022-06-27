@@ -99,13 +99,16 @@ You can use this file-like object to do things like decode the content using
 :mod:`codecs`::
 
     >>> import codecs
+    >>> import json
+    >>> import urllib3
     >>> reader = codecs.getreader('utf-8')
+    >>> http = urllib3.PoolManager()
     >>> r = http.request(
     ...     'GET',
     ...     'http://httpbin.org/ip',
     ...     preload_content=False)
-    >>> json.load(reader(r))
-    {'origin': '127.0.0.1'}
+    >>> print(json.load(reader(r)))
+    # {'origin': '127.0.0.1'}
     >>> r.release_conn()
 
 .. _proxies:
