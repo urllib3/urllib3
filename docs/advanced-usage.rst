@@ -87,7 +87,20 @@ chunks of the response content.
 
 .. note:: When using ``preload_content=False``, you should call
     :meth:`~response.HTTPResponse.release_conn` to release the http connection
-    back to the connection pool so that it can be re-used.
+    back to the connection pool so that it can be re-used. Releases the
+    connection back into the pool, should only be called if all data is read.
+
+* Additional notes for when using ``preload_content=False``;
+
+  You can call the :meth:`~response.HTTPResponse.close` to close the connection,
+  but this call doesn’t return it to the pool and throws away data on the wire.
+
+  You can call the  :meth:`~response.HTTPResponse.drain_conn` which throws away
+  data still on the wire, and you need to call
+  before :meth:`~response.HTTPResponse.release_conn` if there is unread data.
+
+  When using ``preload_content=False`` (the default setting) that the
+  ConnectionPool will release the connection for you.
 
 However, you can also treat the :class:`~response.HTTPResponse` instance as
 a file-like object. This allows you to do buffering:
