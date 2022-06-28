@@ -695,7 +695,8 @@ class HTTPResponse(BaseHTTPResponse):
                 buffer.write(data)
             return buffer.getvalue()
         else:
-            return self._fp.read(amt)
+            # StringIO doesn't like amt=None
+            return self._fp.read(amt) if amt is not None else self._fp.read()
 
     def read(
         self,
@@ -734,13 +735,11 @@ class HTTPResponse(BaseHTTPResponse):
         fp_closed = getattr(self._fp, "closed", False)
 
         with self._error_catcher():
+            data = self._fp_read(amt) if not fp_closed else b""
             if amt is None:
-                # StringIO doesn't like amt=None
-                data = self._fp_read() if not fp_closed else b""
                 flush_decoder = True
             else:
                 cache_content = False
-                data = self._fp_read(amt) if not fp_closed else b""
                 if (
                     amt != 0 and not data
                 ):  # Platform-specific: Buggy versions of Python.
