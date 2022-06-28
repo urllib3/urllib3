@@ -78,14 +78,25 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_https_proxy_with_proxy_ssl_context(self) -> None:
         proxy_ssl_context = create_urllib3_context()
         proxy_ssl_context.load_verify_locations(DEFAULT_CA)
+        ctx = ssl.create_default_context()
+        ctx.load_verify_locations(DEFAULT_CA)
         with proxy_from_url(
             self.https_proxy_url,
             proxy_ssl_context=proxy_ssl_context,
-            ca_certs=DEFAULT_CA,
+            ssl_context=ctx,
         ) as https:
             r = https.request("GET", f"{self.https_url}/")
             assert r.status == 200
 
+            r = https.request("GET", f"{self.http_url}/")
+            assert r.status == 200
+
+    def test_https_proxy_with_proxy_ssl_context_to_http_target(self) -> None:
+        proxy_ssl_context = create_urllib3_context()
+        proxy_ssl_context.load_verify_locations(DEFAULT_CA)
+        with proxy_from_url(
+            self.https_proxy_url, proxy_ssl_context=proxy_ssl_context
+        ) as https:
             r = https.request("GET", f"{self.http_url}/")
             assert r.status == 200
 
@@ -394,6 +405,39 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 returned_headers.get("Host") == f"{self.https_host}:{self.https_port}"
             )
 
+    def test_forwarding_for_https_with_proxy_ctx(self) -> None:
+        proxy_ctx = ssl.create_default_context()
+        proxy_ctx.load_verify_locations(DEFAULT_CA)
+        with proxy_from_url(
+            self.https_proxy_url,
+            proxy_ssl_context=proxy_ctx,
+            use_forwarding_for_https=True,
+        ) as proxy:
+            proxy.request("GET", f"{self.https_url}/")
+
+    def test_forwarding_for_https_error_with_ssl_ctx(self) -> None:
+        proxy_ctx = ssl.create_default_context()
+        proxy_ctx.load_verify_locations(DEFAULT_CA)
+        ctx = ssl.create_default_context()
+        ctx.load_verify_locations(DEFAULT_CA)
+        with proxy_from_url(
+            self.https_proxy_url,
+            proxy_ssl_context=proxy_ctx,
+            use_forwarding_for_https=True,
+            ssl_context=ctx,
+        ) as proxy:
+            with pytest.warns(DeprecationWarning):
+                proxy.request("GET", self.https_url)
+
+    def test_forwarding_for_https_error_with_only_ssl_ctx(self) -> None:
+        ctx = ssl.create_default_context()
+        ctx.load_verify_locations(DEFAULT_CA)
+        with proxy_from_url(
+            self.https_proxy_url, use_forwarding_for_https=True, ssl_context=ctx
+        ) as proxy:
+            with pytest.warns(DeprecationWarning):
+                proxy.request("GET", self.https_url)
+
     def test_headerdict(self) -> None:
         default_headers = HTTPHeaderDict(a="b")
         proxy_headers = HTTPHeaderDict()
@@ -571,19 +615,13 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     @requires_network()
     @pytest.mark.parametrize(
-        ["proxy_scheme", "use_forwarding_for_https"],
+        ["proxy_scheme"],
         [
-            ("http", False),
-            ("https", False),
-            ("https", True),
+            ("http",),
+            ("https",),
         ],
     )
-    def test_proxy_https_target_tls_error(
-        self, proxy_scheme: str, use_forwarding_for_https: str
-    ) -> None:
-        if proxy_scheme == "https" and use_forwarding_for_https:
-            pytest.skip("Test is expected to fail due to urllib3/urllib3#2577")
-
+    def test_proxy_https_target_tls_error(self, proxy_scheme: str) -> None:
         proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
         proxy_ctx = ssl.create_default_context()
         proxy_ctx.load_verify_locations(DEFAULT_CA)
@@ -593,7 +631,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             proxy_url,
             proxy_ssl_context=proxy_ctx,
             ssl_context=ctx,
-            use_forwarding_for_https=use_forwarding_for_https,
+            use_forwarding_for_https=False,
         ) as proxy:
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", self.https_url)
