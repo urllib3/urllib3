@@ -666,6 +666,37 @@ class HTTPResponse(BaseHTTPResponse):
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
 
+    def _fp_read(self, amt: Optional[int] = None) -> bytes:
+        """
+        Read a response with the thought that reading more than 2 GiB
+        (`int` max value in C) at a time via SSL on some CPython 3.8 and
+        3.9 versions leads to an overflow error that has to be prevented
+        if `amt` or `self.length_remaining` indicate that it may happen.
+        """
+        if self._fp is None:
+            return b""
+        c_int_max = (2**31) - 1
+        expected_length = amt or self.length_remaining
+        if (
+            expected_length
+            and expected_length > c_int_max
+            and (3, 8) <= sys.version_info < (3, 9, 7)
+        ):
+            buffer = io.BytesIO()
+            while amt is None or amt != 0:
+                if amt is not None:
+                    chunk_amt = min(amt, c_int_max)
+                    amt -= chunk_amt
+                else:
+                    chunk_amt = c_int_max
+                data = self._fp.read(chunk_amt)
+                if not data:
+                    break
+                buffer.write(data)
+            return buffer.getvalue()
+        else:
+            return self._fp.read(amt)
+
     def read(
         self,
         amt: Optional[int] = None,
@@ -702,43 +733,14 @@ class HTTPResponse(BaseHTTPResponse):
         flush_decoder = False
         fp_closed = getattr(self._fp, "closed", False)
 
-        # Reading more than 2 GiB (`int` max value in C) via SSL on some
-        # CPython 3.8 and 3.9 versions leads to an overflow error
-        # that has to be prevented if `amt` or `self.length_remaining`
-        # indicate that it may happen.
-        c_int_max = (2**31) - 1
-        if (
-            (amt and amt > c_int_max)
-            or (self.length_remaining and self.length_remaining > c_int_max)
-        ) and (3, 8) <= sys.version_info < (3, 9, 7):
-
-            def read(amt: Optional[int] = None) -> bytes:
-                if self._fp is None:
-                    return b""
-                buffer = io.BytesIO()
-                while amt is None or amt != 0:
-                    if amt is not None:
-                        chunk_amt = min(amt, c_int_max)
-                        amt -= chunk_amt
-                    else:
-                        chunk_amt = c_int_max
-                    data = self._fp.read(chunk_amt)
-                    if not data:
-                        break
-                    buffer.write(data)
-                return buffer.getvalue()
-
-        else:
-            read = self._fp.read
-
         with self._error_catcher():
             if amt is None:
                 # StringIO doesn't like amt=None
-                data = read() if not fp_closed else b""
+                data = self._fp_read() if not fp_closed else b""
                 flush_decoder = True
             else:
                 cache_content = False
-                data = read(amt) if not fp_closed else b""
+                data = self._fp_read(amt) if not fp_closed else b""
                 if (
                     amt != 0 and not data
                 ):  # Platform-specific: Buggy versions of Python.
