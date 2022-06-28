@@ -424,26 +424,16 @@ class HTTPSConnection(HTTPConnection):
 
         if proxy_config and proxy_config.use_forwarding_for_https:
             if proxy_config.ssl_context is not None and ssl_context is not None:
-                warnings.warn(
-                    "The 'ssl_context' parameter is not used to configure the connection to the proxy when the 'use_forwarding_for_https' parameter is set to True "
-                    "and should not be set. The 'proxy_ssl_context' parameter is used to configure the connection. "
-                    "In a later urllib3 v2.x release, setting ssl_context will result in an error",
-                    DeprecationWarning,
-                    stacklevel=2,
+                raise ValueError(
+                    "The 'ssl_context' parameter cannot be set when use_forwarding_for_https is True"
                 )
             elif proxy_config.ssl_context is None and ssl_context is not None:
-                warnings.warn(
-                    "The 'ssl_context' parameter should not be used to configure the connection to the proxy when the 'use_forwarding_for_https' parameter is set to True, "
-                    "Use the 'proxy_ssl_context' parameter to customize the connection. "
-                    "In a later urllib3 v2.x release, setting ssl_context will result in an error",
-                    DeprecationWarning,
-                    stacklevel=2,
+                raise ValueError(
+                    "The 'ssl_context' parameter cannot be set when use_forwarding_for_https is True. Use the 'proxy_ssl_context' parameter to customize the connection to the proxy"
                 )
-                self.proxy_config = ProxyConfig(
-                    ssl_context, proxy_config.use_forwarding_for_https
-                )
+            else:
 
-            self.ssl_context = proxy_config.ssl_context
+                self.ssl_context = proxy_config.ssl_context
         else:
             self.ssl_context = ssl_context
 

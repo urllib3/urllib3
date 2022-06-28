@@ -426,7 +426,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             use_forwarding_for_https=True,
             ssl_context=ctx,
         ) as proxy:
-            with pytest.warns(DeprecationWarning):
+            with pytest.raises(
+                ValueError, match="The 'ssl_context' parameter cannot be set"
+            ):
                 proxy.request("GET", self.https_url)
 
     def test_forwarding_for_https_error_with_only_ssl_ctx(self) -> None:
@@ -435,7 +437,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         with proxy_from_url(
             self.https_proxy_url, use_forwarding_for_https=True, ssl_context=ctx
         ) as proxy:
-            with pytest.warns(DeprecationWarning):
+            with pytest.raises(
+                ValueError, match="The 'ssl_context' parameter cannot be set"
+            ):
                 proxy.request("GET", self.https_url)
 
     def test_headerdict(self) -> None:
