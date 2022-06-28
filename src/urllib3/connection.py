@@ -551,7 +551,32 @@ class HTTPSConnection(HTTPConnection):
         self.key_file = key_file
         self.cert_file = cert_file
         self.key_password = key_password
-        self.ssl_context = ssl_context
+
+        if proxy_config and proxy_config.use_forwarding_for_https:
+            if proxy_config.ssl_context is not None and ssl_context is not None:
+                warnings.warn(
+                    "The 'ssl_context' parameter is not used to configure the connection to the proxy when the 'use_forwarding_for_https' parameter is set to True "
+                    "and should not be set. The 'proxy_ssl_context' parameter is used to configure the connection. "
+                    "In a later urllib3 v2.x release, setting ssl_context will result in an error",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            elif proxy_config.ssl_context is None and ssl_context is not None:
+                warnings.warn(
+                    "The 'ssl_context' parameter should not be used to configure the connection to the proxy when the 'use_forwarding_for_https' parameter is set to True, "
+                    "Use the 'proxy_ssl_context' parameter to customize the connection. "
+                    "In a later urllib3 v2.x release, setting ssl_context will result in an error",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                self.proxy_config = ProxyConfig(
+                    ssl_context, proxy_config.use_forwarding_for_https
+                )
+
+            self.ssl_context = proxy_config.ssl_context
+        else:
+            self.ssl_context = ssl_context
+
         self.server_hostname = server_hostname
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
@@ -649,6 +674,11 @@ class HTTPSConnection(HTTPConnection):
 
         # Remove trailing '.' from fqdn hostnames to allow certificate validation
         server_hostname_rm_dot = server_hostname.rstrip(".")
+
+        if self._connecting_to_proxy and self.proxy_config:
+            ssl_context = self.proxy_config.ssl_context
+        else:
+            ssl_context = self.ssl_context
 
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock=sock,
