@@ -733,7 +733,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         with self._error_catcher():
             if amt is None:
-                # cStringIO doesn't like amt=None
+                # StringIO doesn't like amt=None
                 data = read() if not fp_closed else b""
                 flush_decoder = True
             else:
