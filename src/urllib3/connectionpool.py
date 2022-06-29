@@ -3,6 +3,7 @@ import logging
 import queue
 import sys
 import warnings
+import weakref
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
 from types import TracebackType
@@ -113,6 +114,16 @@ class ConnectionPool:
 _blocking_errnos = {errno.EAGAIN, errno.EWOULDBLOCK}
 
 
+def close_connections(pool: "queue.LifoQueue[Any]") -> None:
+    try:
+        while True:
+            conn = pool.get(block=False)
+            if conn:
+                conn.close()
+    except queue.Empty:
+        pass  # Done.
+
+
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
     Thread-safe connection pool for one host.
@@ -219,6 +230,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             self.conn_kw["proxy"] = self.proxy
             self.conn_kw["proxy_config"] = self.proxy_config
+
+        # Do not pass 'self' as callback to 'finalize'.
+        # Then the 'finalize' would keep an endless living (leak) to self.
+        # By just passing a reference to the pool allows the garbage collector
+        # to free self if nobody else has a reference to it.
+        pool = self.pool
+
+        # This calls 'close_connections(pools)' just before HTTPConnectionPool
+        # gets gargabe collected.
+        weakref.finalize(self, close_connections, pool)
 
     def _new_conn(self) -> HTTPConnection:
         """
@@ -503,14 +524,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Disable access to the pool
         old_pool, self.pool = self.pool, None
 
-        try:
-            while True:
-                conn = old_pool.get(block=False)
-                if conn:
-                    conn.close()
-
-        except queue.Empty:
-            pass  # Done.
+        close_connections(old_pool)
 
     def is_same_host(self, url: str) -> bool:
         """

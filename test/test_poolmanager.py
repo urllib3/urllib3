@@ -1,3 +1,4 @@
+import gc
 import socket
 from test import resolvesLocalhostFQDN
 from typing import Optional
@@ -8,7 +9,7 @@ import pytest
 
 from urllib3 import connection_from_url
 from urllib3.connectionpool import HTTPSConnectionPool
-from urllib3.exceptions import ClosedPoolError, LocationValueError
+from urllib3.exceptions import LocationValueError
 from urllib3.poolmanager import (
     _DEFAULT_BLOCKSIZE,
     PoolKey,
@@ -69,22 +70,10 @@ class TestPoolManager:
     def test_manager_clear(self) -> None:
         p = PoolManager(5)
 
-        conn_pool = p.connection_from_url("http://google.com")
+        p.connection_from_url("http://google.com")
         assert len(p.pools) == 1
 
-        conn = conn_pool._get_conn()
-
         p.clear()
-        assert len(p.pools) == 0
-
-        with pytest.raises(ClosedPoolError):
-            conn_pool._get_conn()
-
-        conn_pool._put_conn(conn)
-
-        with pytest.raises(ClosedPoolError):
-            conn_pool._get_conn()
-
         assert len(p.pools) == 0
 
     @pytest.mark.parametrize("url", ["http://@", None])
@@ -95,19 +84,8 @@ class TestPoolManager:
 
     def test_contextmanager(self) -> None:
         with PoolManager(1) as p:
-            conn_pool = p.connection_from_url("http://google.com")
+            p.connection_from_url("http://google.com")
             assert len(p.pools) == 1
-            conn = conn_pool._get_conn()
-
-        assert len(p.pools) == 0
-
-        with pytest.raises(ClosedPoolError):
-            conn_pool._get_conn()
-
-        conn_pool._put_conn(conn)
-
-        with pytest.raises(ClosedPoolError):
-            conn_pool._get_conn()
 
         assert len(p.pools) == 0
 
@@ -468,3 +446,30 @@ class TestPoolManager:
         conn.connect()
 
         assert ssl_wrap_socket.call_args[1]["server_hostname"] == "a::b"
+
+    def test_thread_safty(self) -> None:
+        pool_manager = PoolManager(num_pools=2)
+
+        # thread 1 gets a pool for host x
+        pool_1 = pool_manager.connection_from_url("http://host_x:80/")
+
+        # thread 2 gets a pool for host y
+        pool_2 = pool_manager.connection_from_url("http://host_y:80/")
+
+        # thread 3 gets a pool for host z
+        pool_3 = pool_manager.connection_from_url("http://host_z:80")
+
+        # None of the pools should be closed, since all of them are referenced.
+        assert pool_1.pool is not None
+        assert pool_2.pool is not None
+        assert pool_3.pool is not None
+
+        conn_queue = pool_1.pool
+        assert conn_queue.qsize() > 0
+
+        # thread 1 stops.
+        del pool_1
+        gc.collect()
+
+        # Connection should be closed, because reference to pool_1 is gone.
+        assert conn_queue.qsize() == 0

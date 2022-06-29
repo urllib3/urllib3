@@ -215,11 +215,8 @@ class PoolManager(RequestMethods):
         super().__init__(headers)
         self.connection_pool_kw = connection_pool_kw
 
-        def dispose_func(p: Any) -> None:
-            p.close()
-
         self.pools: RecentlyUsedContainer[PoolKey, HTTPConnectionPool]
-        self.pools = RecentlyUsedContainer(num_pools, dispose_func=dispose_func)
+        self.pools = RecentlyUsedContainer(num_pools)
 
         # Locally set the pool classes and keys so other PoolManagers can
         # override them.
