@@ -376,11 +376,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_no_ssl(self) -> None:
         with HTTPSConnectionPool(self.host, self.port) as pool:
             pool.ConnectionCls = None  # type: ignore[assignment]
-            with pytest.raises(SSLError):
+            with pytest.raises(ImportError):
                 pool._new_conn()
-            with pytest.raises(MaxRetryError) as cm:
+            with pytest.raises(ImportError):
                 pool.request("GET", "/", retries=0)
-            assert isinstance(cm.value.reason, SSLError)
 
     def test_unverified_ssl(self) -> None:
         """Test that bare HTTPSConnection can connect, make requests"""
