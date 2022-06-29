@@ -67,8 +67,28 @@ response body will be read immediately into memory and the HTTP connection
 will be released back into the pool without manual intervention.
 
 However, when dealing with large responses it's often better to stream the response
-content using ``preload_content=False``.
+content using ``preload_content=False``. Setting ``preload_content`` to ``False`` means
+that urllib3 will only read from the socket when data is requested.
 
+.. note:: When using ``preload_content=False``, you need to manually release
+    the HTTP connection back to the connection pool so that it can be re-used.
+    To ensure the HTTP connection is in a valid state before being re-used
+    all data should be read off the wire.
+
+    You can call the  :meth:`~response.HTTPResponse.drain_conn` to throw away
+    unread data still on the wire. This call isn't necessary if data has already
+    been completely read from the response.
+
+    After all data is read you can call :meth:`~response.HTTPResponse.release_conn`
+    to release the connection into the pool.
+
+    You can call the :meth:`~response.HTTPResponse.close` to close the connection,
+    but this call doesn’t return the connection to the pool, throws away the unread
+    data on the wire, and leaves the connection in an undefined protocol state.
+    This is desirable if you prefer not reading data from the socket to re-using the
+    HTTP connection.
+
+:meth:`~response.HTTPResponse.stream` lets you iterate over chunks of the response content.
 
 .. code-block:: python
 
@@ -85,26 +105,6 @@ content using ``preload_content=False``.
         # b"\x9e\xa97'\x8e\x1eT ....
 
     resp.release_conn()
-
-Setting ``preload_content`` to ``False`` means that urllib3 will stream the
-response content. :meth:`~response.HTTPResponse.stream` lets you iterate over
-chunks of the response content.
-
-.. note:: When using ``preload_content=False``, you need to manually release
-    the HTTP connection back to the connection pool so that it can be re-used.
-    To ensure the HTTP connection is in a valid state before being re-used
-    all data should be read off the wire.
-
-    You can call the  :meth:`~response.HTTPResponse.drain_conn` which throws away
-    data still on the wire and afterwards call :meth:`~response.HTTPResponse.release_conn`
-    to release the connection into the pool.
-
-    You can call the :meth:`~response.HTTPResponse.close` to close the connection,
-    but this call doesn’t return the connection to the pool, throws away the unread
-    data on the wire, and leaves the connection in an undefined protocol state.
-    This is desirable if you prefer not reading data from the socket to re-using the
-    HTTP connection.
-
 
 However, you can also treat the :class:`~response.HTTPResponse` instance as
 a file-like object. This allows you to do buffering:
