@@ -96,9 +96,9 @@ chunks of the response content.
     all data should be read off the wire.
 
     You can call the  :meth:`~response.HTTPResponse.drain_conn` which throws away
-    data still on the wire, and you need to call before calling
-    :meth:`~response.HTTPResponse.release_conn` to release the connection into the pool.
-    
+    data still on the wire and afterwards call :meth:`~response.HTTPResponse.release_conn`
+    to release the connection into the pool.
+
     You can call the :meth:`~response.HTTPResponse.close` to close the connection,
     but this call doesn’t return the connection to the pool, throws away the unread
     data on the wire, and leaves the connection in an undefined protocol state.
