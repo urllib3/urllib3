@@ -648,7 +648,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param \\**response_kw:
             Additional parameters are passed to
-            :meth:`urllib3.response.HTTPResponse.from_httplib`
+            :meth:`urllib3.connection.HTTPConnection.getresponse`
         """
 
         parsed_url = parse_url(url)
@@ -736,14 +736,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # it will also try to release it and we'll have a double-release
             # mess.
             response_conn = conn if not release_conn else None
-
-            # # Pass method to Response for length checking
-            # response_kw["request_method"] = method
-
-            # response_kw.update(
-            #     pool=self,
-            #     connection=response_conn,
-            # )
 
             # Make the request on the HTTPConnection object
             response = self._make_request(

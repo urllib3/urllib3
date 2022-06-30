@@ -12,10 +12,7 @@ import pytest
 
 from dummyserver.server import DEFAULT_CA
 from urllib3 import Retry
-from urllib3.connection import (  # type: ignore[attr-defined]
-    HTTPConnection,
-    _absolute_url,
-)
+from urllib3.connection import HTTPConnection, _absolute_url
 from urllib3.connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
