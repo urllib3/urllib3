@@ -693,6 +693,7 @@ class HTTPResponse(BaseHTTPResponse):
                 if not data:
                     break
                 buffer.write(data)
+                del data  # to reduce memory consumption.
             return buffer.getvalue()
         else:
             # StringIO doesn't like amt=None
