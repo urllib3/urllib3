@@ -10,7 +10,6 @@ from socket import timeout as SocketTimeout
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Generator,
     Iterator,
     List,
@@ -50,7 +49,6 @@ from .connection import BaseSSLError, HTTPConnection, HTTPException
 from .exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
-    HeaderParsingError,
     HTTPError,
     IncompleteRead,
     InvalidChunkLength,
@@ -60,10 +58,9 @@ from .exceptions import (
     ResponseNotChunked,
     SSLError,
 )
-from .util.response import assert_header_parsing, is_fp_closed, is_response_to_head
+from .util.response import is_fp_closed, is_response_to_head
 from .util.retry import Retry
 from .util.typing import _TYPE_BODY
-from .util.url import Url
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
@@ -778,52 +775,6 @@ class HTTPResponse(BaseHTTPResponse):
                 if data:
                     yield data
 
-    @classmethod
-    def from_httplib(
-        ResponseCls: Type["HTTPResponse"],
-        r: _HttplibHTTPResponse,
-        retries: Optional[Retry],
-        response_class: Optional[Type["HTTPResponse"]] = None,
-        **response_kw: Any,
-    ) -> "HTTPResponse":
-        """
-        Given an :class:`http.client.HTTPResponse` instance ``r``, return a
-        corresponding :class:`urllib3.response.HTTPResponse` object.
-
-        Remaining parameters are passed to the HTTPResponse constructor, along
-        with ``original_response=r``.
-        """
-        headers = r.msg
-
-        try:
-            assert_header_parsing(headers)
-        except (HeaderParsingError, TypeError) as hpe:
-            log.warning(
-                "Failed to parse headers (url=%s): %s",
-                _absolute_url(**response_kw),
-                hpe,
-                exc_info=True,
-            )
-
-        if not isinstance(headers, HTTPHeaderDict):
-            headers = HTTPHeaderDict(headers.items())  # type: ignore[assignment]
-
-        if response_class:
-            ResponseCls = response_class
-
-        resp = ResponseCls(
-            body=r,
-            headers=headers,  # type: ignore[arg-type]
-            status=r.status,
-            version=r.version,
-            reason=r.reason,
-            original_response=r,
-            length=r.length,
-            retries=retries,
-            **response_kw,
-        )
-        return resp
-
     # Overrides from io.IOBase
     def close(self) -> None:
         if not self.closed and self._fp:
@@ -1013,10 +964,3 @@ class HTTPResponse(BaseHTTPResponse):
                 buffer.append(chunk)
         if buffer:
             yield b"".join(buffer)
-
-
-# Mypy is upset incompatible type "HTTPConnectionPool"; expected "Type[HTTPConnectionPool]"
-def _absolute_url(
-    request_url: str, pool: Type["HTTPConnectionPool"], **_: Dict[str, Any]
-) -> str:
-    return Url(scheme=pool.scheme, host=pool.host, port=pool.port, path=request_url).url

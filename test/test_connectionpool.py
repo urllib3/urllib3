@@ -5,7 +5,7 @@ from queue import Empty
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
-from typing import Any, Dict, Optional, Type
+from typing import Any, Optional, Type
 from unittest.mock import Mock, patch
 
 import pytest
@@ -14,7 +14,7 @@ from dummyserver.server import DEFAULT_CA
 from urllib3 import Retry
 from urllib3.connection import (  # type: ignore[attr-defined]
     HTTPConnection,
-    _HTTPConnection,
+    _absolute_url,
 )
 from urllib3.connectionpool import (
     HTTPConnectionPool,
@@ -33,7 +33,7 @@ from urllib3.exceptions import (
     SSLError,
     TimeoutError,
 )
-from urllib3.response import HTTPResponse, _absolute_url
+from urllib3.response import HTTPResponse
 from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import _DEFAULT_TIMEOUT, Timeout
 
@@ -456,7 +456,7 @@ class TestConnectionPool:
     def test_absolute_url(self) -> None:
         with connection_from_url("http://google.com:80") as c:
             assert "http://google.com:80/path?query=foo" == _absolute_url(
-                "path?query=foo", c  # type: ignore[arg-type]
+                c, c.scheme, "path?query=foo"
             )
 
     def test_ca_certs_default_cert_required(self) -> None:
@@ -510,24 +510,45 @@ class TestConnectionPool:
             successful response on subsequent calls.
             """
 
-            def __init__(self, ex: Type[BaseException]) -> None:
+            def __init__(
+                self, ex: Type[BaseException], pool: HTTPConnectionPool
+            ) -> None:
                 super().__init__()
                 self._ex: Optional[Type[BaseException]] = ex
+                self._pool = pool
 
             def __call__(
                 self,
+                conn: HTTPConnection,
+                method: str,
+                url: str,
                 *args: Any,
-                response_kw: Optional[Dict[str, Any]] = None,
-                retries: Optional[Retry] = None,
+                retries: Retry,
                 **kwargs: Any,
             ) -> HTTPResponse:
                 if self._ex:
                     ex, self._ex = self._ex, None
                     raise ex()
-                response = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-                response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
-                response.headers = response.msg = httplib.HTTPMessage()
-                return HTTPResponse.from_httplib(response, retries, **response_kw)  # type: ignore[arg-type]
+                httplib_response = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+                httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
+                httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()
+
+                response = HTTPResponse(
+                    body=httplib_response,
+                    headers=httplib_response.headers,  # type: ignore[arg-type]
+                    status=httplib_response.status,
+                    version=httplib_response.version,
+                    reason=httplib_response.reason,
+                    original_response=httplib_response,
+                    length=httplib_response.length,
+                    retries=retries,
+                    request_method=method,
+                    request_url=url,
+                    preload_content=False,
+                    connection=conn,
+                    pool=self._pool,
+                )
+                return response
 
         def _test(exception: Type[BaseException]) -> None:
             with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
@@ -535,7 +556,9 @@ class TestConnectionPool:
                 # connection is left on the response object, instead of being
                 # released back into the pool.
                 with patch.object(
-                    pool, "_make_request", _raise_once_make_request_function(exception)
+                    pool,
+                    "_make_request",
+                    _raise_once_make_request_function(exception, pool),
                 ):
                     response = pool.urlopen(
                         "GET",
@@ -567,38 +590,3 @@ class TestConnectionPool:
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout)
-
-    @patch.object(_HTTPConnection, "getresponse")
-    def test_custom_http_response_class(self, super_getresponse: Mock) -> None:
-        class CustomHTTPResponse(HTTPResponse):
-            pass
-
-        class CustomConnectionPool(HTTPConnectionPool):
-            ResponseCls = CustomHTTPResponse
-
-            def _validate_conn(self, _: Any) -> None:
-                return
-
-        httplib_response = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-        httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
-        httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()
-
-        super_getresponse.return_value = httplib_response
-
-        with CustomConnectionPool(host="localhost", maxsize=1, block=True) as pool:
-            conn = HTTPConnection("localhost")
-            conn.sock = False
-            conn.request_chunked = Mock()  # type: ignore[assignment]
-
-            retry = Retry(False)
-
-            response = pool._make_request(
-                conn,
-                "GET",
-                "/",
-                retries=retry,
-                chunked=True,
-                response_kw=dict(preload_content=False),
-            )
-
-            assert isinstance(response, CustomHTTPResponse)

@@ -9,7 +9,6 @@ from http.client import HTTPException as HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
 from typing import (
     TYPE_CHECKING,
-    Any,
     Callable,
     Mapping,
     NamedTuple,
@@ -23,11 +22,14 @@ from typing import (
 if TYPE_CHECKING:
     from typing_extensions import Literal
 
+    from .connectionpool import HTTPConnectionPool
     from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
     from .util.retry import Retry
 
+from ._collections import HTTPHeaderDict
+from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
 
@@ -48,6 +50,7 @@ except (ImportError, AttributeError):
 from ._version import __version__
 from .exceptions import (
     ConnectTimeoutError,
+    HeaderParsingError,
     NameResolutionError,
     NewConnectionError,
     ProxyError,
@@ -373,7 +376,15 @@ class HTTPConnection(_HTTPConnection):
         self.request(method, url, body=body, headers=headers, chunked=True)
 
     def getresponse(  # type: ignore[override]
-        self, retries: Optional["Retry"], **response_kw: Any
+        self,
+        request_url: str,
+        request_method: str,
+        pool: "HTTPConnectionPool",
+        retries: Optional["Retry"],
+        preload_content: bool,
+        decode_content: bool,
+        response_conn: Optional["HTTPConnection"],
+        enforce_content_length: bool,
     ) -> "HTTPResponse":
 
         # This is needed here to avoid circular import errors
@@ -382,12 +393,37 @@ class HTTPConnection(_HTTPConnection):
         # Get the response from http.client.HTTPConnection
         httplib_response = super().getresponse()
 
-        # Wrap http.client.HTTPResponse as a urllib3.response.HTTPResponse
-        response = HTTPResponse.from_httplib(
-            httplib_response,
-            retries,
-            response_class=self.ResponseClass_overide,
-            **response_kw,
+        headers = httplib_response.msg
+
+        try:
+            assert_header_parsing(headers)
+        except (HeaderParsingError, TypeError) as hpe:
+            log.warning(
+                "Failed to parse headers (url=%s): %s",
+                _absolute_url(self, pool.scheme, request_url),
+                hpe,
+                exc_info=True,
+            )
+
+        if not isinstance(headers, HTTPHeaderDict):
+            headers = HTTPHeaderDict(headers.items())  # type: ignore[assignment]
+
+        response = HTTPResponse(
+            body=httplib_response,
+            headers=headers,  # type: ignore[arg-type]
+            status=httplib_response.status,
+            version=httplib_response.version,
+            reason=httplib_response.reason,
+            original_response=httplib_response,
+            length=httplib_response.length,
+            retries=retries,
+            request_method=request_method,
+            request_url=request_url,
+            preload_content=preload_content,
+            decode_content=decode_content,
+            connection=response_conn,
+            pool=pool,
+            enforce_content_length=enforce_content_length,
         )
 
         return response
@@ -766,3 +802,9 @@ if not ssl:
 
 
 VerifiedHTTPSConnection = HTTPSConnection
+
+
+def _absolute_url(
+    conn: Union[HTTPConnection, "HTTPConnectionPool"], scheme: str, request_url: str
+) -> str:
+    return Url(scheme=scheme, host=conn.host, port=conn.port, path=request_url).url

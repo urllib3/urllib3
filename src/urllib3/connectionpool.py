@@ -5,17 +5,7 @@ import sys
 import warnings
 from socket import timeout as SocketTimeout
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Mapping,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, overload
 
 from ._request_methods import RequestMethods
 from .connection import (
@@ -45,7 +35,7 @@ from .exceptions import (
     SSLError,
     TimeoutError,
 )
-from .response import BaseHTTPResponse, HTTPResponse
+from .response import HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
 from .util.request import _TYPE_BODY_POSITION, set_file_position
@@ -382,8 +372,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         url: str,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
-        response_kw: Optional[Dict[str, Any]] = None,
         retries: Optional[Retry] = None,
+        response_conn: Optional[HTTPConnection] = None,
         **httplib_request_kw: Any,
     ) -> HTTPResponse:
         """
@@ -402,7 +392,19 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
 
         # Set the ConnectionPools response class on the connection.
-        conn.ResponseClass_overide = self.ResponseCls
+        # conn.ResponseClass_overide = self.ResponseCls
+
+        # This value should already be assigned to the `url` parameter
+        if "request_url" in httplib_request_kw:
+            del httplib_request_kw["request_url"]
+
+        # The key above and all the following keys need removed because conn.request() will complain of
+        # unexpected keyword arugments
+        preload_content: bool = httplib_request_kw.pop("preload_content", True)
+        decode_content: bool = httplib_request_kw.pop("decode_content", True)
+        enforce_content_length: bool = httplib_request_kw.pop(
+            "enforce_content_length", True
+        )
 
         self.num_requests += 1
 
@@ -474,9 +476,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            if response_kw is None:
-                response_kw = {}
-            response = conn.getresponse(retries, **response_kw)
+            response = conn.getresponse(
+                url,
+                method,
+                self,
+                retries,
+                preload_content,
+                decode_content,
+                response_conn,
+                enforce_content_length,
+            )
         except (BaseSSLError, OSError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
@@ -551,7 +560,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         chunked: bool = False,
         body_pos: Optional[_TYPE_BODY_POSITION] = None,
         **response_kw: Any,
-    ) -> BaseHTTPResponse:
+    ) -> HTTPResponse:
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
@@ -731,13 +740,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # mess.
             response_conn = conn if not release_conn else None
 
-            # Pass method to Response for length checking
-            response_kw["request_method"] = method
+            # # Pass method to Response for length checking
+            # response_kw["request_method"] = method
 
-            response_kw.update(
-                pool=self,
-                connection=response_conn,
-            )
+            # response_kw.update(
+            #     pool=self,
+            #     connection=response_conn,
+            # )
 
             # Make the request on the HTTPConnection object
             response = self._make_request(
@@ -748,8 +757,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 body=body,
                 headers=headers,
                 chunked=chunked,
-                response_kw=response_kw,
                 retries=retries,
+                response_conn=response_conn,
+                **response_kw,
             )
 
             # Everything went great!

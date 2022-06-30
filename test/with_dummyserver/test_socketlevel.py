@@ -38,7 +38,7 @@ from dummyserver.server import (
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
 from urllib3._collections import HTTPHeaderDict
-from urllib3.connection import HTTPConnection, _get_default_user_agent
+from urllib3.connection import HTTPConnection, _absolute_url, _get_default_user_agent
 from urllib3.exceptions import (
     MaxRetryError,
     ProtocolError,
@@ -47,7 +47,6 @@ from urllib3.exceptions import (
     SSLError,
 )
 from urllib3.poolmanager import proxy_from_url
-from urllib3.response import _absolute_url
 from urllib3.util import ssl_, ssl_wrap_socket
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
@@ -1667,7 +1666,7 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
                 if (
                     "Failed to parse headers" in record.msg
                     and isinstance(record.args, tuple)
-                    and _absolute_url("/", pool) == record.args[0]  # type: ignore[arg-type]
+                    and _absolute_url(pool, pool.scheme, "/") == record.args[0]
                 ):
                     if (
                         unparsed_data_check is None
