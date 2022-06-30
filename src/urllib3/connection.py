@@ -14,7 +14,6 @@ from typing import (
     NamedTuple,
     Optional,
     Tuple,
-    Type,
     Union,
     cast,
 )
@@ -169,7 +168,6 @@ class HTTPConnection(_HTTPConnection):
         )
 
         self._connecting_to_proxy = False
-        self.ResponseClass_overide: Optional[Type["HTTPResponse"]] = None
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.

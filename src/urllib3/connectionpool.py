@@ -391,9 +391,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             control over your timeouts.
         """
 
-        # Set the ConnectionPools response class on the connection.
-        # conn.ResponseClass_overide = self.ResponseCls
-
         # This value should already be assigned to the `url` parameter
         if "request_url" in httplib_request_kw:
             del httplib_request_kw["request_url"]
