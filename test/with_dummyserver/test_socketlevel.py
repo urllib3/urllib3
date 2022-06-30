@@ -1491,6 +1491,52 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=False, timeout=LONG_TIMEOUT)
         assert server_closed.wait(LONG_TIMEOUT), "The socket was not terminated"
 
+    @pytest.mark.parametrize(
+        "preload_content,read_amt", [(True, None), (False, None), (False, 2**31)]
+    )
+    def test_ssl_no_overflow_error(
+        self, preload_content: bool, read_amt: Optional[int]
+    ) -> None:
+        """
+        Ensure that it is possible to read 2 GiB or more via an SSL
+        socket.
+        https://github.com/urllib3/urllib3/issues/2513
+        """
+        content_length = 2**31  # (`int` max value in C) + 1.
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            ssl_sock = ssl.wrap_socket(
+                sock,
+                server_side=True,
+                keyfile=DEFAULT_CERTS["keyfile"],
+                certfile=DEFAULT_CERTS["certfile"],
+                ca_certs=DEFAULT_CA,
+            )
+
+            while not ssl_sock.recv(65536).endswith(b"\r\n\r\n"):
+                continue
+
+            ssl_sock.send(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Content-Length: %d\r\n\r\n" % content_length
+            )
+
+            # Send the body in chunks to reduce memory consumption.
+            chunks = 64
+            for i in range(chunks):
+                ssl_sock.send(bytes(content_length // chunks))
+
+            ssl_sock.close()
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
+            response = pool.request("GET", "/", preload_content=preload_content)
+            data = response.data if preload_content else response.read(read_amt)
+            assert len(data) == content_length
+
 
 class TestErrorWrapping(SocketDummyServerTestCase):
     def test_bad_statusline(self) -> None:
