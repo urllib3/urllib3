@@ -45,6 +45,7 @@ try:
 except (AttributeError, ImportError, ValueError):  # Defensive:
     zstd = None
 
+from . import util
 from ._collections import HTTPHeaderDict
 from .connection import _TYPE_BODY, BaseSSLError, HTTPConnection, HTTPException
 from .exceptions import (
@@ -669,9 +670,10 @@ class HTTPResponse(BaseHTTPResponse):
     def _fp_read(self, amt: Optional[int] = None) -> bytes:
         """
         Read a response with the thought that reading more than 2 GiB
-        (`int` max value in C) at a time via SSL on some CPython 3.8 and
-        3.9 versions leads to an overflow error that has to be prevented
-        if `amt` or `self.length_remaining` indicate that it may happen.
+        (`int` max value in C) at a time via SSL when pyOpenSSL is used
+        or in any case on some CPython 3.8 and 3.9 versions leads to an
+        overflow error that has to be prevented if `amt` or
+        `self.length_remaining` indicate that it may happen.
         """
         assert self._fp
         c_int_max = (2**31) - 1
@@ -679,7 +681,7 @@ class HTTPResponse(BaseHTTPResponse):
         if (
             expected_length
             and expected_length > c_int_max
-            and (3, 8) <= sys.version_info < (3, 9, 7)
+            and (util.IS_PYOPENSSL or (3, 8) <= sys.version_info < (3, 9, 7))
         ):
             buffer = io.BytesIO()
             while amt is None or amt != 0:
