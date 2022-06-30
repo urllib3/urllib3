@@ -45,7 +45,7 @@ except (AttributeError, ImportError, ValueError):  # Defensive:
     zstd = None
 
 from ._collections import HTTPHeaderDict
-from .connection import BaseSSLError, HTTPConnection, HTTPException
+from .connection import _TYPE_BODY, BaseSSLError, HTTPConnection, HTTPException
 from .exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
@@ -60,7 +60,6 @@ from .exceptions import (
 )
 from .util.response import is_fp_closed, is_response_to_head
 from .util.retry import Retry
-from .util.typing import _TYPE_BODY
 
 if TYPE_CHECKING:
     from typing_extensions import Literal

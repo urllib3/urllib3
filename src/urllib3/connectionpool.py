@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, 
 
 from ._request_methods import RequestMethods
 from .connection import (
+    _TYPE_BODY,
     BaseSSLError,
     BrokenPipeError,
     DummyConnection,
@@ -42,7 +43,6 @@ from .util.request import _TYPE_BODY_POSITION, set_file_position
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
-from .util.typing import _TYPE_BODY
 from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
 from .util.url import parse_url

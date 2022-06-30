@@ -11,6 +11,7 @@ from typing import Any, Mapping, Optional, TextIO, Type, Union
 from . import exceptions
 from ._collections import HTTPHeaderDict
 from ._version import __version__
+from .connection import _TYPE_BODY
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, connection_from_url
 from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .poolmanager import PoolManager, ProxyManager, proxy_from_url
@@ -18,7 +19,6 @@ from .response import BaseHTTPResponse, HTTPResponse
 from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.typing import _TYPE_BODY
 
 __author__ = "Andrey Petrov (andrey.petrov@shazow.net)"
 __license__ = "MIT"

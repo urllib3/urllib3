@@ -8,8 +8,11 @@ from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
 from typing import (
+    IO,
     TYPE_CHECKING,
+    Any,
     Callable,
+    Iterable,
     Mapping,
     NamedTuple,
     Optional,
@@ -66,7 +69,6 @@ from .util.ssl_ import (
     ssl_wrap_socket,
 )
 from .util.ssl_match_hostname import CertificateError, match_hostname
-from .util.typing import _TYPE_BODY
 from .util.url import Url
 
 # Not a no-op, we're adding this to the namespace so it can be imported.
@@ -83,6 +85,8 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2022, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+
+_TYPE_BODY = Union[bytes, IO[Any], Iterable[bytes], str]
 
 
 class ProxyConfig(NamedTuple):
