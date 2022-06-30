@@ -682,7 +682,7 @@ class HTTPResponse(BaseHTTPResponse):
           * CPython < 3.10 only when `amt` does not fit 32-bit int.
         """
         assert self._fp
-        c_int_max = (2**31) - 1
+        c_int_max = 2**31 - 1
         if (
             amt
             and amt > c_int_max
