@@ -673,8 +673,7 @@ class HTTPResponse(BaseHTTPResponse):
         3.9 versions leads to an overflow error that has to be prevented
         if `amt` or `self.length_remaining` indicate that it may happen.
         """
-        if self._fp is None:
-            return b""
+        assert self._fp
         c_int_max = (2**31) - 1
         expected_length = amt or self.length_remaining
         if (
