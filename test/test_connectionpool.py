@@ -540,7 +540,6 @@ class TestConnectionPool:
                     version=httplib_response.version,
                     reason=httplib_response.reason,
                     original_response=httplib_response,
-                    length=httplib_response.length,
                     retries=retries,
                     request_method=method,
                     request_url=url,

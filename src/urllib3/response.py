@@ -467,7 +467,6 @@ class HTTPResponse(BaseHTTPResponse):
         request_method: Optional[str] = None,
         request_url: Optional[str] = None,
         auto_close: bool = True,
-        length: Optional[int] = None,
     ) -> None:
         super().__init__(
             headers=headers,
@@ -497,7 +496,6 @@ class HTTPResponse(BaseHTTPResponse):
 
         self._pool = pool
         self._connection = connection
-        self.length = length
 
         if hasattr(body, "read"):
             self._fp = body  # type: ignore[assignment]

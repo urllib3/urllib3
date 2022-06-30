@@ -497,7 +497,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # HTTP version
             conn._http_vsn_str,  # type: ignore[attr-defined]
             response.status,
-            response.length,
+            response.length_remaining,
         )
 
         return response
