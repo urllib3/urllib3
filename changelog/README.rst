@@ -1,8 +1,8 @@
-This directory contains "newsfragments" which are short files that contain a small
+This directory contains changelog entries: short files that contain a small
 **ReST**-formatted text that will be added to ``CHANGES.rst`` by `towncrier
 <https://towncrier.readthedocs.io/en/actual-freaking-docs/>`__.
 
-The ``CHANGELOG`` will be read by **users**, so this description should be aimed to
+The ``CHANGES.rst`` will be read by **users**, so this description should be aimed to
 urllib3 users instead of describing internal changes which are only relevant to the
 developers.
 
@@ -21,6 +21,9 @@ So for example: ``123.feature.rst``, ``456.bugfix.rst``.
 If your pull request fixes an issue, use that number here. If there is no issue, then
 after you submit the pull request and get the pull request number you can add a
 changelog using that instead.
+
+If your change does not deserve a changelog entry, apply the `Skip Changelog` GitHub
+label to your pull request.
 
 You can also run ``nox -s docs`` to build the documentation with the draft changelog
 (``docs/_build/html/changelog.html``) if you want to get a preview of how your change
