@@ -413,7 +413,7 @@ class BaseHTTPResponse(io.IOBase):
     def info(self) -> HTTPHeaderDict:
         return self.headers
 
-    def geturl(self) -> Optional[Union[str, "Literal[False]"]]:
+    def geturl(self) -> Optional[str]:
         return self.url
 
 
