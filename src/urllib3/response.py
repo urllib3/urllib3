@@ -679,6 +679,8 @@ class HTTPResponse(BaseHTTPResponse):
           * 3.8 <= CPython < 3.9.7 because of a bug
             https://github.com/urllib3/urllib3/issues/2513#issuecomment-1152559900.
           * urllib3 injected with pyOpenSSL-backed SSL-support.
+          * urllib3 injected with SecureTransport-backed SSL-support
+            only when `amt` does not fit 32-bit int.
           * CPython < 3.10 only when `amt` does not fit 32-bit int.
         """
         assert self._fp
@@ -686,7 +688,11 @@ class HTTPResponse(BaseHTTPResponse):
         if (
             amt
             and amt > c_int_max
-            and (util.IS_PYOPENSSL or sys.version_info < (3, 10))
+            and (
+                util.IS_PYOPENSSL
+                or util.IS_SECURETRANSPORT
+                or sys.version_info < (3, 10)
+            )
         ) or (
             self.length_remaining
             and self.length_remaining > c_int_max
