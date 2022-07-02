@@ -1,5 +1,15 @@
+1.26.9 (2022-03-16)
+===================
+
+* Changed ``urllib3[brotli]`` extra to favor installing Brotli libraries that are still
+  receiving updates like ``brotli`` and ``brotlicffi`` instead of ``brotlipy``.
+  This change does not impact behavior of urllib3, only which dependencies are installed.
+* Fixed a socket leaking when ``HTTPSConnection.connect()`` raises an exception.
+* Fixed ``server_hostname`` being forwarded from ``PoolManager`` to ``HTTPConnectionPool``
+  when requesting an HTTP URL. Should only be forwarded when requesting an HTTPS URL.
+
 1.26.8 (2022-01-07)
--------------------
+===================
 
 * Added extra message to ``urllib3.exceptions.ProxyError`` when urllib3 detects that
   a proxy is configured to use HTTPS but the proxy itself appears to only use HTTP.
