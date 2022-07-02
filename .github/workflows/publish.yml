@@ -1,8 +1,9 @@
 name: Publish to PyPI
 
 on:
-  tags:
-    - "*"
+  push:
+    tags:
+      - "*"
 
 jobs:
   publish:
@@ -15,6 +16,8 @@ jobs:
       - uses: "actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b"
 
       - uses: "actions/setup-python@d09bd5e6005b175076f227b13d9730d56e9dcfcb"
+        with:
+          python-version: "3.x"
 
       - name: "Install dependencies"
         run: python -m pip install build
