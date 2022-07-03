@@ -1526,7 +1526,7 @@ class TestSSL(SocketDummyServerTestCase):
             # Send the body in chunks to reduce memory consumption.
             chunks = 64
             for i in range(chunks):
-                ssl_sock.send(bytes(content_length // chunks))
+                ssl_sock.sendall(bytes(content_length // chunks))
 
             ssl_sock.close()
             sock.close()
