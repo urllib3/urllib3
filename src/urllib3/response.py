@@ -679,32 +679,35 @@ class HTTPResponse(BaseHTTPResponse):
           * 3.8 <= CPython < 3.9.7 because of a bug
             https://github.com/urllib3/urllib3/issues/2513#issuecomment-1152559900.
           * urllib3 injected with pyOpenSSL-backed SSL-support.
-          * urllib3 injected with SecureTransport-backed SSL-support
-            only when `amt` does not fit 32-bit int.
           * CPython < 3.10 only when `amt` does not fit 32-bit int.
+
+        Also, take into account that SecureTransport reads at most 16 KiB
+        when `amt` is specified.
         """
         assert self._fp
+        securetransport_max_amt = 16384
         c_int_max = 2**31 - 1
         if (
-            amt
-            and amt > c_int_max
-            and (
-                util.IS_PYOPENSSL
-                or util.IS_SECURETRANSPORT
-                or sys.version_info < (3, 10)
+            (util.IS_SECURETRANSPORT and amt and amt > securetransport_max_amt)
+            or (
+                amt
+                and amt > c_int_max
+                and (util.IS_PYOPENSSL or sys.version_info < (3, 10))
             )
-        ) or (
-            self.length_remaining
-            and self.length_remaining > c_int_max
-            and (util.IS_PYOPENSSL or (3, 8) <= sys.version_info < (3, 9, 7))
+            or (
+                self.length_remaining
+                and self.length_remaining > c_int_max
+                and (util.IS_PYOPENSSL or (3, 8) <= sys.version_info < (3, 9, 7))
+            )
         ):
+            chunk_max_amt = securetransport_max_amt if util.IS_SECURETRANSPORT else c_int_max
             buffer = io.BytesIO()
             while amt is None or amt != 0:
                 if amt is not None:
-                    chunk_amt = min(amt, c_int_max)
+                    chunk_amt = min(amt, chunk_max_amt)
                     amt -= chunk_amt
                 else:
-                    chunk_amt = c_int_max
+                    chunk_amt = chunk_max_amt
                 data = self._fp.read(chunk_amt)
                 if not data:
                     break
