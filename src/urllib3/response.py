@@ -700,7 +700,9 @@ class HTTPResponse(BaseHTTPResponse):
                 and (util.IS_PYOPENSSL or (3, 8) <= sys.version_info < (3, 9, 7))
             )
         ):
-            chunk_max_amt = securetransport_max_amt if util.IS_SECURETRANSPORT else c_int_max
+            chunk_max_amt = (
+                securetransport_max_amt if util.IS_SECURETRANSPORT else c_int_max
+            )
             buffer = io.BytesIO()
             while amt is None or amt != 0:
                 if amt is not None:
