@@ -413,15 +413,15 @@ class HTTPConnection(_HTTPConnection):
             status=httplib_response.status,
             version=httplib_response.version,
             reason=httplib_response.reason,
-            original_response=httplib_response,
-            retries=retries,
-            request_method=request_method,
-            request_url=request_url,
             preload_content=preload_content,
             decode_content=decode_content,
-            connection=response_conn,
+            original_response=httplib_response,
             pool=pool,
+            connection=self,
+            retries=retries,
             enforce_content_length=enforce_content_length,
+            request_method=request_method,
+            request_url=request_url,
         )
 
         return response
