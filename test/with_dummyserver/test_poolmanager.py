@@ -380,6 +380,46 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 ["Extra", "extra"],
             ]
 
+    def test_headers_http_multi_header_multipart(self) -> None:
+        headers = HTTPHeaderDict()
+        headers.add("Multi", "1")
+        headers.add("Multi", "2")
+        old_headers = headers.copy()
+
+        with PoolManager(headers=headers) as http:
+            r = http.request(
+                "POST",
+                f"{self.base_url}/multi_headers",
+                fields={"k": "v"},
+                multipart_boundary="b",
+                encode_multipart=True,
+            )
+            returned_headers = r.json()["headers"]
+            assert returned_headers[4:] == [
+                ["Multi", "1"],
+                ["Multi", "2"],
+                ["Content-Type", "multipart/form-data; boundary=b"],
+            ]
+            # Assert that the previous headers weren't modified.
+            assert headers == old_headers
+
+            # Set a default value for the Content-Type
+            headers["Content-Type"] = "multipart/form-data; boundary=b; field=value"
+            r = http.request(
+                "POST",
+                f"{self.base_url}/multi_headers",
+                fields={"k": "v"},
+                multipart_boundary="b",
+                encode_multipart=True,
+            )
+            returned_headers = r.json()["headers"]
+            assert returned_headers[4:] == [
+                ["Multi", "1"],
+                ["Multi", "2"],
+                # Uses the set value, not the one that would be generated.
+                ["Content-Type", "multipart/form-data; boundary=b; field=value"],
+            ]
+
     def test_body(self) -> None:
         with PoolManager() as http:
             r = http.request("POST", f"{self.base_url}/echo", body=b"test")

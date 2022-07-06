@@ -174,14 +174,17 @@ class HTTPHeaderDictItemView(Set[Tuple[str, str]]):
     >>> d['X-Header-Name']
     'Value1, Value2, Value3'
 
-    However, if we iterate over an HTTPHeaderDict's items, we want to get a
-    distinct item for every different value of a header:
+    However, if we iterate over an HTTPHeaderDict's items, we will optionally combine
+    these values based on whether combine=True was called when building up the dictionary
 
+    >>> d = HTTPHeaderDict({"A": "1", "B": "foo"})
+    >>> d.add("A", "2", combine=True)
+    >>> d.add("B", "bar")
     >>> list(d.items())
     [
-        ('X-Header-Name', 'Value1')
-        ('X-Header-Name', 'Value2')
-        ('X-Header-Name', 'Value3')
+        ('A', '1, 2'),
+        ('B', 'foo'),
+        ('B', 'bar'),
     ]
 
     This class conforms to the interface required by the MutableMapping ABC while
@@ -273,6 +276,13 @@ class HTTPHeaderDict(MutableMapping[str, str]):
             return key.lower() in self._container
         return False
 
+    def setdefault(self, key: str, default: str = "") -> str:
+        if key in self:
+            return self[key]
+        else:
+            self[key] = default
+            return default
+
     def __eq__(self, other: object) -> bool:
         maybe_constructable = ensure_can_construct_http_header_dict(other)
         if maybe_constructable is None:
@@ -301,14 +311,24 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         except KeyError:
             pass
 
-    def add(self, key: str, val: str) -> None:
+    def add(self, key: str, val: str, *, combine: bool = False) -> None:
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
+
+        If this is called with combine=True, instead of adding a new header value
+        as a distinct item during iteration, this will instead append the value to
+        any existing header value with a comma. If no existing header value exists
+        for the key, then the value will simply be added, ignoring the combine parameter.
 
         >>> headers = HTTPHeaderDict(foo='bar')
         >>> headers.add('Foo', 'baz')
         >>> headers['foo']
         'bar, baz'
+        >>> list(headers.items())
+        [('foo', 'bar'), ('foo', 'baz')]
+        >>> headers.add('foo', 'quz', combine=True)
+        >>> list(headers.items())
+        [('foo', 'bar, baz, quz')]
         """
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
@@ -318,7 +338,13 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         # Keep the common case aka no item present as fast as possible
         vals = self._container.setdefault(key_lower, new_vals)
         if new_vals is not vals:
-            vals.append(val)
+            # if there are values here, then there is at least the initial
+            # key/value pair
+            assert len(vals) >= 2
+            if combine:
+                vals[-1] = vals[-1] + ", " + val
+            else:
+                vals.append(val)
 
     def extend(self, *args: ValidHTTPHeaderSource, **kwargs: str) -> None:
         """Generic import function for any type of header-like object.
