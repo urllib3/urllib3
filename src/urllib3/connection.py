@@ -395,10 +395,8 @@ class HTTPConnection(_HTTPConnection):
         # Get the response from http.client.HTTPConnection
         httplib_response = super().getresponse()
 
-        headers = httplib_response.msg
-
         try:
-            assert_header_parsing(headers)
+            assert_header_parsing(httplib_response.msg)
         except (HeaderParsingError, TypeError) as hpe:
             log.warning(
                 "Failed to parse headers (url=%s): %s",
@@ -407,12 +405,11 @@ class HTTPConnection(_HTTPConnection):
                 exc_info=True,
             )
 
-        if not isinstance(headers, HTTPHeaderDict):
-            headers = HTTPHeaderDict(headers.items())  # type: ignore[assignment]
+        headers = HTTPHeaderDict(httplib_response.msg.items())
 
         response = HTTPResponse(
             body=httplib_response,
-            headers=headers,  # type: ignore[arg-type]
+            headers=headers,
             status=httplib_response.status,
             version=httplib_response.version,
             reason=httplib_response.reason,
