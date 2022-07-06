@@ -1643,6 +1643,119 @@ class TestHeaders(SocketDummyServerTestCase):
             ]
             assert expected_response_headers == actual_response_headers
 
+    def _simple_read_http_request(self, sock: socket.socket) -> Tuple[(bytes, bytes)]:
+        """
+        Read in an HTTP Request from a socket, handling both content length and
+        chunked encodings.
+        """
+        buf = b""
+        while b"\r\n\r\n" not in buf:
+            buf += sock.recv(65536)
+        # seperate the headers from the eventual body
+        header_buf, buf = buf.split(b"\r\n\r\n", maxsplit=1)
+        # check for any content
+        content_length: Optional[int] = None
+        chunked_content: bool = False
+        for header_line in header_buf.split(b"\r\n"):
+            if header_line.startswith(b"Content-Length"):
+                content_length = int(header_line.split(b":")[1].decode("ascii"))
+                break
+            if header_line.startswith(b"Transfer-Encoding"):
+                encoding = header_line.split(b":")[1].decode("ascii").strip()
+                if encoding != "chunked":
+                    raise ValueError("Unsupported encoding")
+                chunked_content = True
+        if chunked_content:
+            final_content = b""
+            state = "read-length"
+            next_chunk_length: Optional[int] = None
+            while state != "done":
+                while state == "read-length":
+                    maybe_split = buf.split(b"\r\n", maxsplit=1)
+                    if len(maybe_split) == 2:
+                        # get the length
+                        len_str, buf = maybe_split
+                        next_chunk_length = int(len_str, 16)
+                        state = "read-chunk"
+                    else:
+                        buf += sock.recv(65536)
+                while state == "read-chunk":
+                    if next_chunk_length == 0:
+                        # chunk of 0 length indicates being done
+                        state = "done"
+                        break
+                    assert next_chunk_length is not None
+                    while len(buf) < next_chunk_length + 2:
+                        buf += sock.recv(65536)
+                    # we now have our chunk and the CRLF
+                    final_content += buf[:next_chunk_length]
+                    # trim the CRLF as it's not part of the data
+                    buf = buf[(next_chunk_length + 2) :]
+                    next_chunk_length, state = None, "read-length"
+            # we are now done
+            return header_buf, final_content
+        else:
+            # read unchunked content
+            if content_length is not None and len(buf) < content_length:
+                buf += sock.recv(content_length - len(buf))
+            return header_buf, buf
+
+    @pytest.mark.parametrize(
+        "method_type, body_type",
+        [
+            ("GET", None),
+            ("POST", None),
+            ("POST", "bytes"),
+            ("POST", "bytes-io"),
+        ],
+    )
+    def test_headers_sent_with_add(
+        self, method_type: str, body_type: Optional[str]
+    ) -> None:
+        """
+        Confirm that when adding headers with combine=True that we simply append to the
+        most recent value, rather than create a new header line.
+        """
+        body: Union[None, bytes, io.BytesIO]
+        if body_type is None:
+            body = None
+        elif body_type == "bytes":
+            body = b"my-body"
+        elif body_type == "bytes-io":
+            body = io.BytesIO(b"bytes-io-body")
+            body.seek(0, 0)
+        else:
+            raise ValueError("Unknonw body type")
+        data_sent: List[bytes] = []
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            header_buffer, _ = self._simple_read_http_request(sock)
+            data_sent.append(header_buffer)
+            sock.send(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        headers = HTTPHeaderDict()
+        headers.add("A", "1")
+        headers.add("C", "3")
+        headers.add("B", "2")
+        headers.add("B", "3")
+        headers.add("A", "4", combine=False)
+        headers.add("C", "5", combine=True)
+        headers.add("C", "6")
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            r = pool.request(
+                method_type,
+                "/",
+                body=body,
+                headers=headers,
+            )
+            assert r.status == 200
+            assert b"A: 1\r\nA: 4\r\nC: 3, 5\r\nC: 6\r\nB: 2\r\nB: 3" in data_sent[0]
+
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
     def _test_broken_header_parsing(

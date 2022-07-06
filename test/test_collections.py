@@ -252,6 +252,34 @@ class TestHTTPHeaderDict:
         assert d["e"] == "foofoo"
         assert len(d) == 2
 
+    def test_header_repeat(self, d: HTTPHeaderDict) -> None:
+        d["other-header"] = "hello"
+        d.add("other-header", "world")
+
+        assert list(d.items()) == [
+            ("Cookie", "foo"),
+            ("Cookie", "bar"),
+            ("other-header", "hello"),
+            ("other-header", "world"),
+        ]
+
+        d.add("other-header", "!", combine=True)
+        expected_results = [
+            ("Cookie", "foo"),
+            ("Cookie", "bar"),
+            ("other-header", "hello"),
+            ("other-header", "world, !"),
+        ]
+
+        assert list(d.items()) == expected_results
+        # make sure the values persist over copys
+        assert list(d.copy().items()) == expected_results
+
+        other_dict = HTTPHeaderDict()
+        # we also need for extensions to properly maintain results
+        other_dict.extend(d)
+        assert list(other_dict.items()) == expected_results
+
     def test_extend_from_headerdict(self, d: HTTPHeaderDict) -> None:
         h = HTTPHeaderDict(Cookie="foo", e="foofoo")
         d.extend(h)
