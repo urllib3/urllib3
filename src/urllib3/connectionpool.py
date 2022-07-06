@@ -1118,3 +1118,10 @@ def _normalize_host(host: Optional[str], scheme: Optional[str]) -> Optional[str]
     if host and host.startswith("[") and host.endswith("]"):
         host = host[1:-1]
     return host
+
+
+def url_from_pool(
+    pool: Union[HTTPConnectionPool, HTTPSConnectionPool], path: Optional[str] = None
+) -> str:
+    """Returns the URL from a given connection pool. This is mainly used for testing and logging."""
+    return Url(scheme=pool.scheme, host=pool.host, port=pool.port, path=path).url

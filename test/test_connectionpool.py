@@ -12,11 +12,12 @@ import pytest
 
 from dummyserver.server import DEFAULT_CA
 from urllib3 import Retry
-from urllib3.connection import HTTPConnection, _absolute_url
+from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
     connection_from_url,
+    url_from_pool,
 )
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -450,11 +451,10 @@ class TestConnectionPool:
             assert old_pool_queue is not None
             old_pool_queue.get(block=False)
 
-    def test_absolute_url(self) -> None:
-        with connection_from_url("http://google.com:80") as c:
-            assert "http://google.com:80/path?query=foo" == _absolute_url(
-                c, c.scheme, "path?query=foo"
-            )
+    def test_url_from_pool(self) -> None:
+        with connection_from_url("http://google.com:80") as pool:
+            path = "path?query=foo"
+            assert f"http://google.com:80/{path}" == url_from_pool(pool, path)
 
     def test_ca_certs_default_cert_required(self) -> None:
         with connection_from_url("https://google.com:80", ca_certs=DEFAULT_CA) as pool:

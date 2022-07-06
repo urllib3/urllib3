@@ -400,7 +400,7 @@ class HTTPConnection(_HTTPConnection):
         except (HeaderParsingError, TypeError) as hpe:
             log.warning(
                 "Failed to parse headers (url=%s): %s",
-                _absolute_url(self, pool.scheme, request_url),
+                url_from_connection(self, request_url),
                 hpe,
                 exc_info=True,
             )
@@ -802,7 +802,11 @@ if not ssl:
 VerifiedHTTPSConnection = HTTPSConnection
 
 
-def _absolute_url(
-    conn: Union[HTTPConnection, "HTTPConnectionPool"], scheme: str, request_url: str
+def url_from_connection(
+    conn: Union[HTTPConnection, HTTPSConnection], path: Optional[str] = None
 ) -> str:
-    return Url(scheme=scheme, host=conn.host, port=conn.port, path=request_url).url
+    """Returns the URL from a given connection. This is mainly used for testing and logging."""
+
+    scheme = "https" if isinstance(conn, HTTPSConnection) else "http"
+
+    return Url(scheme=scheme, host=conn.host, port=conn.port, path=path).url

@@ -8,9 +8,11 @@ import pytest
 from urllib3.connection import (  # type: ignore[attr-defined]
     RECENT_DATE,
     CertificateError,
+    HTTPConnection,
     HTTPSConnection,
     _match_hostname,
     _wrap_proxy_error,
+    url_from_connection,
 )
 from urllib3.exceptions import HTTPError, ProxyError
 from urllib3.util.ssl_match_hostname import (
@@ -217,3 +219,9 @@ class TestConnection:
         new_err = _wrap_proxy_error(HTTPError("unknown protocol"), proxy_scheme)
         assert isinstance(new_err, ProxyError) is True
         assert err_part in new_err.args[0]
+
+    def test_url_from_pool(self) -> None:
+        conn = HTTPConnection("google.com", port=80)
+
+        path = "path?query=foo"
+        assert f"http://google.com:80/{path}" == url_from_connection(conn, path)
