@@ -7,9 +7,9 @@
     git tag -s -a '<VERSION>' -m 'Release: <VERSION>'
     git push <REMOTE> --tags
     ```
-* [ ]  Execute the `deploy` GitHub workflow.
-       This requires a review from a maintainer.
-* [ ]  Grab sdist and wheel from PyPI to attach to GitHub release
+* [ ]  Execute the `publish` GitHub workflow. This requires a review from a maintainer.
+* [ ]  Download the sdist and wheel files from PyPI. Attach these files to the GitHub release.
+* [ ]  Download the `.crt` and `.sig` files from the `sigstore-artifacts` artifact in the `publish` workflow execution. Attach these files to the GitHub release.
 * [ ]  Announce on:
   
   * [ ]  GitHub releases
