@@ -1491,6 +1491,47 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=False, timeout=LONG_TIMEOUT)
         assert server_closed.wait(LONG_TIMEOUT), "The socket was not terminated"
 
+    @pytest.mark.parametrize(
+        "preload_content,read_amt", [(True, None), (False, None), (False, 16385)]
+    )
+    def test_requesting_more_than_16_kib(
+        self, preload_content: bool, read_amt: Optional[int]
+    ) -> None:
+        """
+        Ensure that it is possible to read more than 16 KiB via an SSL
+        socket.
+        """
+        content_length = 16385  # 16 KiB + 1 byte.
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            ssl_sock = ssl.wrap_socket(
+                sock,
+                server_side=True,
+                keyfile=DEFAULT_CERTS["keyfile"],
+                certfile=DEFAULT_CERTS["certfile"],
+                ca_certs=DEFAULT_CA,
+            )
+
+            while not ssl_sock.recv(65536).endswith(b"\r\n\r\n"):
+                continue
+
+            ssl_sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Content-Length: %d\r\n\r\n" % content_length
+            )
+            ssl_sock.sendall(bytes(content_length))
+
+            ssl_sock.close()
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
+            response = pool.request("GET", "/", preload_content=preload_content)
+            data = response.data if preload_content else response.read(read_amt)
+            assert len(data) == content_length
+
 
 class TestErrorWrapping(SocketDummyServerTestCase):
     def test_bad_statusline(self) -> None:
