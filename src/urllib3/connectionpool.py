@@ -372,9 +372,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         url: str,
         body: Optional[_TYPE_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
+        retries: Optional[Retry] = None,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
-        retries: Optional[Retry] = None,
         response_conn: Optional[HTTPConnection] = None,
         preload_content: bool = True,
         decode_content: bool = True,
@@ -387,12 +387,61 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         :param conn:
             a connection from one of our connection pools
 
+        :param method:
+            HTTP request method (such as GET, POST, PUT, etc.)
+
+        :param url:
+            The URL to perform the request on.
+
+        :param body:
+            Data to send in the request body, either :class:`str`, :class:`bytes`,
+            an iterable of :class:`str`/:class:`bytes`, or a file-like object.
+
+        :param headers:
+            Dictionary of custom headers to send, such as User-Agent,
+            If-None-Match, etc. If None, pool headers are used. If provided,
+            these headers completely replace any pool-specific headers.
+
+        :param retries:
+            Configure the number of retries to allow before raising a
+            :class:`~urllib3.exceptions.MaxRetryError` exception.
+
+            Pass ``None`` to retry until you receive a response. Pass a
+            :class:`~urllib3.util.retry.Retry` object for fine-grained control
+            over different types of retries.
+            Pass an integer number to retry connection errors that many times,
+            but no other types of errors. Pass zero to never retry.
+
+            If ``False``, then retries are disabled and any exception is raised
+            immediately. Also, instead of raising a MaxRetryError on redirects,
+            the redirect response will be returned.
+
+        :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int.
+
         :param timeout:
-            Socket timeout in seconds for the request. This can be a
-            float or integer, which will set the same timeout value for
-            the socket connect and the socket read, or an instance of
-            :class:`urllib3.util.Timeout`, which gives you more fine-grained
-            control over your timeouts.
+            If specified, overrides the default timeout for this one
+            request. It may be a float (in seconds) or an instance of
+            :class:`urllib3.util.Timeout`.
+
+        :param chunked:
+            If True, urllib3 will send the body using chunked transfer
+            encoding. Otherwise, urllib3 will send the body using the standard
+            content-length form. Defaults to False.
+
+        :param response_conn:
+            Set this to ``None`` if you will handle releasing the connection or
+            set the connection to have the response release it.
+
+        :param preload_content:
+          If True, the response's body will be preloaded during construction.
+
+        :param decode_content:
+            If True, will attempt to decode the body based on the
+            'content-encoding' header.
+
+        :param enforce_content_length:
+            Enforce content length checking. Body returned by server must match
+            value of Content-Length header, if present. Otherwise, raise error.
         """
         self.num_requests += 1
 
