@@ -585,4 +585,4 @@ class TestConnectionPool:
             with patch.object(Timeout, "read_timeout", 0):
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
-                    pool._make_request(conn, "", "", timeout)
+                    pool._make_request(conn, "", "", timeout=timeout)

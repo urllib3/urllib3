@@ -370,11 +370,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn: HTTPConnection,
         method: str,
         url: str,
+        body: Optional[_TYPE_BODY] = None,
+        headers: Optional[Mapping[str, str]] = None,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
         retries: Optional[Retry] = None,
         response_conn: Optional[HTTPConnection] = None,
-        **httplib_request_kw: Any,
+        preload_content: bool = True,
+        decode_content: bool = True,
+        enforce_content_length: bool = True,
     ) -> HTTPResponse:
         """
         Perform a request on a given urllib connection object taken from our
@@ -390,18 +394,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             :class:`urllib3.util.Timeout`, which gives you more fine-grained
             control over your timeouts.
         """
-
-        # This value should already be assigned to the `url` parameter
-        if "request_url" in httplib_request_kw:
-            del httplib_request_kw["request_url"]
-
-        # The key above and all the following keys need removed because conn.request() will complain of
-        # unexpected keyword arugments
-        preload_content: bool = httplib_request_kw.pop("preload_content", True)
-        decode_content: bool = httplib_request_kw.pop("decode_content", True)
-        enforce_content_length: bool = httplib_request_kw.pop(
-            "enforce_content_length", True
-        )
 
         self.num_requests += 1
 
@@ -440,9 +432,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # urllib3.request. It also calls makefile (recv) on the socket.
         try:
             if chunked:
-                conn.request_chunked(method, url, **httplib_request_kw)
+                conn.request_chunked(method, url, body, headers)
             else:
-                conn.request(method, url, **httplib_request_kw)
+                conn.request(method, url, body, headers)
 
         # We are swallowing BrokenPipeError (errno.EPIPE) since the server is
         # legitimately able to close the connection after sending a valid response.
