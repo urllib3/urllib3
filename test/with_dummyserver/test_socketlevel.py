@@ -9,6 +9,7 @@ import shutil
 import socket
 import ssl
 import tempfile
+from test.utils import simple_read_http_request
 import time
 from collections import OrderedDict
 from pathlib import Path
@@ -1643,63 +1644,6 @@ class TestHeaders(SocketDummyServerTestCase):
             ]
             assert expected_response_headers == actual_response_headers
 
-    def _simple_read_http_request(self, sock: socket.socket) -> Tuple[(bytes, bytes)]:
-        """
-        Read in an HTTP Request from a socket, handling both content length and
-        chunked encodings.
-        """
-        buf = b""
-        while b"\r\n\r\n" not in buf:
-            buf += sock.recv(65536)
-        # seperate the headers from the eventual body
-        header_buf, buf = buf.split(b"\r\n\r\n", maxsplit=1)
-        # check for any content
-        content_length: Optional[int] = None
-        chunked_content: bool = False
-        for header_line in header_buf.split(b"\r\n"):
-            if header_line.startswith(b"Content-Length"):
-                content_length = int(header_line.split(b":")[1].decode("ascii"))
-                break
-            if header_line.startswith(b"Transfer-Encoding"):
-                encoding = header_line.split(b":")[1].decode("ascii").strip()
-                if encoding != "chunked":
-                    raise ValueError("Unsupported encoding")
-                chunked_content = True
-        if chunked_content:
-            final_content = b""
-            state = "read-length"
-            next_chunk_length: Optional[int] = None
-            while state != "done":
-                while state == "read-length":
-                    maybe_split = buf.split(b"\r\n", maxsplit=1)
-                    if len(maybe_split) == 2:
-                        # get the length
-                        len_str, buf = maybe_split
-                        next_chunk_length = int(len_str, 16)
-                        state = "read-chunk"
-                    else:
-                        buf += sock.recv(65536)
-                while state == "read-chunk":
-                    if next_chunk_length == 0:
-                        # chunk of 0 length indicates being done
-                        state = "done"
-                        break
-                    assert next_chunk_length is not None
-                    while len(buf) < next_chunk_length + 2:
-                        buf += sock.recv(65536)
-                    # we now have our chunk and the CRLF
-                    final_content += buf[:next_chunk_length]
-                    # trim the CRLF as it's not part of the data
-                    buf = buf[(next_chunk_length + 2) :]
-                    next_chunk_length, state = None, "read-length"
-            # we are now done
-            return header_buf, final_content
-        else:
-            # read unchunked content
-            if content_length is not None and len(buf) < content_length:
-                buf += sock.recv(content_length - len(buf))
-            return header_buf, buf
-
     @pytest.mark.parametrize(
         "method_type, body_type",
         [
@@ -1730,8 +1674,8 @@ class TestHeaders(SocketDummyServerTestCase):
 
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
-            header_buffer, _ = self._simple_read_http_request(sock)
-            data_sent.append(header_buffer)
+            request_data = simple_read_http_request(sock)
+            data_sent.append(request_data)
             sock.send(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
             sock.close()
 
@@ -1855,9 +1799,7 @@ class TestStream(SocketDummyServerTestCase):
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
-            buf = b""
-            while not buf.endswith(b"\r\n\r\n"):
-                buf += sock.recv(65536)
+            simple_read_http_request(sock)
 
             sock.send(
                 b"HTTP/1.1 200 OK\r\n"
@@ -1886,10 +1828,7 @@ class TestBadContentLength(SocketDummyServerTestCase):
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
-            buf = b""
-            while not buf.endswith(b"\r\n\r\n"):
-                buf += sock.recv(65536)
-
+            simple_read_http_request(sock)
             sock.send(
                 b"HTTP/1.1 200 OK\r\n"
                 b"Content-Length: 22\r\n"
@@ -2097,20 +2036,13 @@ class TestContentFraming(SocketDummyServerTestCase):
     def test_chunked_specified(
         self, method: str, chunked: bool, body_type: str
     ) -> None:
-        buffer = bytearray()
+        received_data = []
 
         def socket_handler(listener: socket.socket) -> None:
-            nonlocal buffer
             sock = listener.accept()[0]
-            sock.settimeout(0)
 
-            start = time.time()
-            while time.time() - start < (LONG_TIMEOUT / 2):
-                try:
-                    buffer += sock.recv(65536)
-                except OSError:
-                    continue
-
+            request_data = simple_read_http_request(sock)
+            received_data.append(request_data)
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"
                 b"Server: example.com\r\n"
@@ -2141,7 +2073,8 @@ class TestContentFraming(SocketDummyServerTestCase):
             resp = pool.request(method, "/", chunked=chunked, body=body)
             assert resp.status == 200
 
-        sent_bytes = bytes(buffer)
+        assert len(received_data) == 1
+        sent_bytes = received_data[0]
         assert sent_bytes.count(b":") == 5
         assert b"Host: localhost:" in sent_bytes
         assert b"Accept-Encoding: identity\r\n" in sent_bytes
@@ -2155,19 +2088,13 @@ class TestContentFraming(SocketDummyServerTestCase):
         "body_type", ["file", "generator", "bytes", "bytearray", "file_text"]
     )
     def test_chunked_not_specified(self, method: str, body_type: str) -> None:
-        buffer = bytearray()
+        received_data = []
 
         def socket_handler(listener: socket.socket) -> None:
-            nonlocal buffer
             sock = listener.accept()[0]
-            sock.settimeout(0)
 
-            start = time.time()
-            while time.time() - start < (LONG_TIMEOUT / 2):
-                try:
-                    buffer += sock.recv(65536)
-                except OSError:
-                    continue
+            request_data = simple_read_http_request(sock)
+            received_data.append(request_data)
 
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"
@@ -2211,7 +2138,8 @@ class TestContentFraming(SocketDummyServerTestCase):
             resp = pool.request(method, "/", body=body)
             assert resp.status == 200
 
-        sent_bytes = bytes(buffer)
+        assert len(received_data) == 1
+        sent_bytes = received_data[0]
         assert sent_bytes.count(b":") == 5
         assert b"Host: localhost:" in sent_bytes
         assert b"Accept-Encoding: identity\r\n" in sent_bytes
@@ -2249,20 +2177,14 @@ class TestContentFraming(SocketDummyServerTestCase):
         header_value: str,
         expected: bytes,
     ) -> None:
-        buffer = bytearray()
+
+        received_data = []
 
         def socket_handler(listener: socket.socket) -> None:
-            nonlocal buffer
             sock = listener.accept()[0]
-            sock.settimeout(0)
 
-            start = time.time()
-            while time.time() - start < (LONG_TIMEOUT / 2):
-                try:
-                    buffer += sock.recv(65536)
-                except OSError:
-                    continue
-
+            request_data = simple_read_http_request(sock)
+            received_data.append(request_data)
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"
                 b"Server: example.com\r\n"
@@ -2283,5 +2205,6 @@ class TestContentFraming(SocketDummyServerTestCase):
             )
             assert resp.status == 200
 
-            sent_bytes = bytes(buffer)
+            assert len(received_data) == 1
+            sent_bytes = received_data[0]
             assert sent_bytes.endswith(expected)
