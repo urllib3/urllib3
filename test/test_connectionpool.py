@@ -530,6 +530,8 @@ class TestConnectionPool:
                 httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
                 httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()
 
+                response_conn: Optional[HTTPConnection] = kwargs.get("response_conn")
+
                 response = HTTPResponse(
                     body=httplib_response,
                     headers=httplib_response.headers,  # type: ignore[arg-type]
@@ -541,7 +543,7 @@ class TestConnectionPool:
                     request_method=method,
                     request_url=url,
                     preload_content=False,
-                    connection=conn,
+                    connection=response_conn,
                     pool=self._pool,
                 )
                 return response
