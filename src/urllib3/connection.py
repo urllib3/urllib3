@@ -417,7 +417,7 @@ class HTTPConnection(_HTTPConnection):
             decode_content=decode_content,
             original_response=httplib_response,
             pool=pool,
-            connection=self,
+            connection=response_conn,
             retries=retries,
             enforce_content_length=enforce_content_length,
             request_method=request_method,
