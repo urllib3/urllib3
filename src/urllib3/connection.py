@@ -379,8 +379,8 @@ class HTTPConnection(_HTTPConnection):
 
     def getresponse(  # type: ignore[override]
         self,
-        request_url: str,
-        request_method: str,
+        url: str,
+        method: str,
         pool: "HTTPConnectionPool",
         retries: Optional["Retry"],
         preload_content: bool,
@@ -400,7 +400,7 @@ class HTTPConnection(_HTTPConnection):
         except (HeaderParsingError, TypeError) as hpe:
             log.warning(
                 "Failed to parse headers (url=%s): %s",
-                url_from_connection(self, request_url),
+                url_from_connection(self, url),
                 hpe,
                 exc_info=True,
             )
@@ -420,8 +420,8 @@ class HTTPConnection(_HTTPConnection):
             connection=response_conn,
             retries=retries,
             enforce_content_length=enforce_content_length,
-            request_method=request_method,
-            request_url=request_url,
+            request_method=method,
+            request_url=url,
         )
 
         return response
