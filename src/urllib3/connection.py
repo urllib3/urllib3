@@ -35,9 +35,6 @@ from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
 
-# Needed to move this far below to avoid circular import issues
-# from .response import HTTPResponse
-
 try:  # Compiled with SSL?
     import ssl
 
