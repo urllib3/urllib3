@@ -16,8 +16,8 @@ from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
+    _url_from_pool,
     connection_from_url,
-    url_from_pool,
 )
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -454,7 +454,7 @@ class TestConnectionPool:
     def test_url_from_pool(self) -> None:
         with connection_from_url("http://google.com:80") as pool:
             path = "path?query=foo"
-            assert f"http://google.com:80/{path}" == url_from_pool(pool, path)
+            assert f"http://google.com:80/{path}" == _url_from_pool(pool, path)
 
     def test_ca_certs_default_cert_required(self) -> None:
         with connection_from_url("https://google.com:80", ca_certs=DEFAULT_CA) as pool:

@@ -1112,7 +1112,7 @@ def _normalize_host(host: Optional[str], scheme: Optional[str]) -> Optional[str]
     return host
 
 
-def url_from_pool(
+def _url_from_pool(
     pool: Union[HTTPConnectionPool, HTTPSConnectionPool], path: Optional[str] = None
 ) -> str:
     """Returns the URL from a given connection pool. This is mainly used for testing and logging."""
