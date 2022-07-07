@@ -11,8 +11,8 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     HTTPConnection,
     HTTPSConnection,
     _match_hostname,
+    _url_from_connection,
     _wrap_proxy_error,
-    url_from_connection,
 )
 from urllib3.exceptions import HTTPError, ProxyError
 from urllib3.util.ssl_match_hostname import (
@@ -224,4 +224,4 @@ class TestConnection:
         conn = HTTPConnection("google.com", port=80)
 
         path = "path?query=foo"
-        assert f"http://google.com:80/{path}" == url_from_connection(conn, path)
+        assert f"http://google.com:80/{path}" == _url_from_connection(conn, path)

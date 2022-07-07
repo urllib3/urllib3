@@ -401,7 +401,7 @@ class HTTPConnection(_HTTPConnection):
         except (HeaderParsingError, TypeError) as hpe:
             log.warning(
                 "Failed to parse headers (url=%s): %s",
-                url_from_connection(self, url),
+                _url_from_connection(self, url),
                 hpe,
                 exc_info=True,
             )
@@ -803,7 +803,7 @@ if not ssl:
 VerifiedHTTPSConnection = HTTPSConnection
 
 
-def url_from_connection(
+def _url_from_connection(
     conn: Union[HTTPConnection, HTTPSConnection], path: Optional[str] = None
 ) -> str:
     """Returns the URL from a given connection. This is mainly used for testing and logging."""
