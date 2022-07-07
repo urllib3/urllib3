@@ -466,14 +466,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Receive the response from the server
         try:
             response = conn.getresponse(
-                url,
-                method,
-                self,
-                retries,
-                preload_content,
-                decode_content,
-                response_conn,
-                enforce_content_length,
+                url=url,
+                method=method,
+                pool=self,
+                retries=retries,
+                preload_content=preload_content,
+                decode_content=decode_content,
+                response_conn=response_conn,
+                enforce_content_length=enforce_content_length,
             )
         except (BaseSSLError, OSError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)

@@ -379,6 +379,7 @@ class HTTPConnection(_HTTPConnection):
 
     def getresponse(  # type: ignore[override]
         self,
+        *,
         url: str,
         method: str,
         pool: "HTTPConnectionPool",
