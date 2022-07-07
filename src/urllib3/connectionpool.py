@@ -432,9 +432,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # urllib3.request. It also calls makefile (recv) on the socket.
         try:
             if chunked:
-                conn.request_chunked(method, url, body, headers)
+                conn.request_chunked(method, url, body=body, headers=headers)
             else:
-                conn.request(method, url, body, headers)
+                conn.request(method, url, body=body, headers=headers)
 
         # We are swallowing BrokenPipeError (errno.EPIPE) since the server is
         # legitimately able to close the connection after sending a valid response.
