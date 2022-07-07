@@ -394,7 +394,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             :class:`urllib3.util.Timeout`, which gives you more fine-grained
             control over your timeouts.
         """
-
         self.num_requests += 1
 
         timeout_obj = self._get_timeout(timeout)
