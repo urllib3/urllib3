@@ -1,0 +1,65 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  # Needed to access the workflow's OIDC identity.
+  id-token: "write"
+
+jobs:
+  publish:
+    name: "Publish to PyPI"
+    runs-on: "ubuntu-latest"
+    environment:
+      name: "publish"
+
+    steps:
+      - uses: "actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b"
+
+      - uses: "actions/setup-python@d09bd5e6005b175076f227b13d9730d56e9dcfcb"
+        with:
+          python-version: "3.x"
+
+      - name: "Install dependencies"
+        run: python -m pip install build==0.8.0 sigstore==0.6.2
+
+      - name: "Build dists"
+        run: |
+          SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) \
+          python -m build
+
+      - name: "Sign dists"
+        run: |
+          mkdir -p sigstore-artifacts/
+
+          for dist in dist/*; do
+            dist_name=$(basename "${dist}")
+
+            # Sign the dists and then verify them immediately
+            # with the generated artifacts.
+            python -m \
+              sigstore sign "${dist}" \
+              --output-signature sigstore-artifacts/"${dist_name}.sig" \
+              --output-certificate sigstore-artifacts/"${dist_name}.crt"
+
+            python -m \
+              sigstore verify "${dist}" \
+              --cert "sigstore-artifacts/${dist_name}.crt" \
+              --signature "sigstore-artifacts/${dist_name}.sig" \
+              --cert-oidc-issuer https://token.actions.githubusercontent.com
+
+          done
+
+      - uses: "actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8"
+        with:
+          name: "sigstore-artifacts"
+          path: "sigstore-artifacts/*"
+          if-no-files-found: "error"
+
+      - uses: "pypa/gh-action-pypi-publish@717ba43cfbb0387f6ce311b169a825772f54d295"
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}
