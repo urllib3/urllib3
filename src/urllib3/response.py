@@ -699,17 +699,24 @@ class HTTPResponse(BaseHTTPResponse):
             and (util.IS_PYOPENSSL or (3, 8) <= sys.version_info < (3, 9, 7))
         ):
             buffer = io.BytesIO()
+            # Besides `max_chunk_amt` being a maximum chunk size, it
+            # affects memory overhead of reading a response by this
+            # method in CPython.
+            # `c_int_max` equal to 2 GiB - 1 byte is the actual maximum
+            # chunk size that does not lead to an overflow error, but
+            # 256 MiB is a compromise.
+            max_chunk_amt = 2**28
             while amt is None or amt != 0:
                 if amt is not None:
-                    chunk_amt = min(amt, c_int_max)
+                    chunk_amt = min(amt, max_chunk_amt)
                     amt -= chunk_amt
                 else:
-                    chunk_amt = c_int_max
+                    chunk_amt = max_chunk_amt
                 data = self._fp.read(chunk_amt)
                 if not data:
                     break
                 buffer.write(data)
-                del data  # to reduce memory consumption.
+                del data  # to reduce peak memory usage by `max_chunk_amt`.
             return buffer.getvalue()
         else:
             # StringIO doesn't like amt=None
