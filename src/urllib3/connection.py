@@ -377,15 +377,62 @@ class HTTPConnection(_HTTPConnection):
     def getresponse(  # type: ignore[override]
         self,
         *,
-        url: str,
         method: str,
+        url: str,
         pool: "HTTPConnectionPool",
         retries: Optional["Retry"],
+        response_conn: Optional["HTTPConnection"],
         preload_content: bool,
         decode_content: bool,
-        response_conn: Optional["HTTPConnection"],
         enforce_content_length: bool,
     ) -> "HTTPResponse":
+        """
+        Get the response from the server.
+
+        If the HTTPConnection is in the correct state, returns an instance of HTTPResponse or of whatever object is returned by the response_class variable.
+
+        If a request has not been sent or if a previous response has not be handled, ResponseNotReady is raised. If the HTTP response indicates that the connection should be closed, then it will be closed before the response is returned. When the connection is closed, the underlying socket is closed.
+
+        :param method:
+            HTTP request method (such as GET, POST, PUT, etc.)
+
+        :param url:
+            The URL to perform the request on.
+
+        :param pool: The connection pool
+        :type pool: :class:`~urllib3.connectionpool.HTTPConnectionPool`
+
+        :param retries:
+            Configure the number of retries to allow before raising a
+            :class:`~urllib3.exceptions.MaxRetryError` exception.
+
+            Pass ``None`` to retry until you receive a response. Pass a
+            :class:`~urllib3.util.retry.Retry` object for fine-grained control
+            over different types of retries.
+            Pass an integer number to retry connection errors that many times,
+            but no other types of errors. Pass zero to never retry.
+
+            If ``False``, then retries are disabled and any exception is raised
+            immediately. Also, instead of raising a MaxRetryError on redirects,
+            the redirect response will be returned.
+
+        :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int.
+
+        :param response_conn:
+            Set this to ``None`` if you will handle releasing the connection or
+            set the connection to have the response release it.
+
+        :param preload_content:
+          If True, the response's body will be preloaded during construction.
+
+        :param decode_content:
+            If True, will attempt to decode the body based on the
+            'content-encoding' header.
+
+        :param enforce_content_length:
+            Enforce content length checking. Body returned by server must match
+            value of Content-Length header, if present. Otherwise, raise error.
+        """
 
         # This is needed here to avoid circular import errors
         from .response import HTTPResponse
