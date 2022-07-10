@@ -1531,8 +1531,7 @@ class TestSSL(SocketDummyServerTestCase):
                 b"Content-Length: %d\r\n\r\n" % content_length
             )
 
-            # Send the body in chunks to reduce memory consumption.
-            chunks = 64
+            chunks = 2
             for i in range(chunks):
                 ssl_sock.sendall(bytes(content_length // chunks))
 
@@ -1540,7 +1539,9 @@ class TestSSL(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
+        with HTTPSConnectionPool(
+            self.host, self.port, ca_certs=DEFAULT_CA, retries=False
+        ) as pool:
             response = pool.request("GET", "/", preload_content=preload_content)
             data = response.data if preload_content else response.read(read_amt)
             assert len(data) == content_length
