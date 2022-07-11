@@ -570,40 +570,49 @@ class WrappedSocket:
         if nbytes is None:
             nbytes = len(buffer)
 
-        buffer = (ctypes.c_char * nbytes).from_buffer(buffer)
         processed_bytes = ctypes.c_size_t(0)
+        processed_bytes_total = 0
 
-        with self._raise_on_error():
-            result = Security.SSLRead(
-                self.context, buffer, nbytes, ctypes.byref(processed_bytes)
-            )
+        while nbytes:
+            buffer = (ctypes.c_char * nbytes).from_buffer(buffer, processed_bytes.value)
 
-        # There are some result codes that we want to treat as "not always
-        # errors". Specifically, those are errSSLWouldBlock,
-        # errSSLClosedGraceful, and errSSLClosedNoNotify.
-        if result == SecurityConst.errSSLWouldBlock:
-            # If we didn't process any bytes, then this was just a time out.
-            # However, we can get errSSLWouldBlock in situations when we *did*
-            # read some data, and in those cases we should just read "short"
-            # and return.
-            if processed_bytes.value == 0:
-                # Timed out, no data read.
-                raise socket.timeout("recv timed out")
-        elif result in (
-            SecurityConst.errSSLClosedGraceful,
-            SecurityConst.errSSLClosedNoNotify,
-        ):
-            # The remote peer has closed this connection. We should do so as
-            # well. Note that we don't actually return here because in
-            # principle this could actually be fired along with return data.
-            # It's unlikely though.
-            self.close()
-        else:
-            _assert_no_error(result)
+            with self._raise_on_error():
+                result = Security.SSLRead(
+                    self.context, buffer, nbytes, ctypes.byref(processed_bytes)
+                )
+
+            nbytes -= processed_bytes.value
+            processed_bytes_total += processed_bytes.value
+
+            # There are some result codes that we want to treat as "not always
+            # errors". Specifically, those are errSSLWouldBlock,
+            # errSSLClosedGraceful, and errSSLClosedNoNotify.
+            if result == SecurityConst.errSSLWouldBlock:
+                # If we didn't process any bytes, then this was just a time out.
+                # However, we can get errSSLWouldBlock in situations when we *did*
+                # read some data, and in those cases we should just read "short"
+                # and return.
+                if processed_bytes.value == 0:
+                    # Timed out, no data read.
+                    raise socket.timeout("recv timed out")
+            elif result in (
+                SecurityConst.errSSLClosedGraceful,
+                SecurityConst.errSSLClosedNoNotify,
+            ):
+                # The remote peer has closed this connection. We should do so as
+                # well. Note that we don't actually return here because in
+                # principle this could actually be fired along with return data.
+                # It's unlikely though.
+                self.close()
+                break
+            else:
+                _assert_no_error(result)
+                if processed_bytes.value == 0:
+                    break
 
         # Ok, we read and probably succeeded. We should return whatever data
         # was actually read.
-        return processed_bytes.value
+        return processed_bytes_total
 
     def settimeout(self, timeout: float) -> None:
         self._timeout = timeout
