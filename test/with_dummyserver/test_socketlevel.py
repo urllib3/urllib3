@@ -1507,9 +1507,6 @@ class TestSSL(SocketDummyServerTestCase):
         socket.
         https://github.com/urllib3/urllib3/issues/2513
         """
-        if util.IS_SECURETRANSPORT and read_amt:
-            pytest.xfail("https://github.com/urllib3/urllib3/pull/2674")
-
         content_length = 2**31  # (`int` max value in C) + 1.
 
         def socket_handler(listener: socket.socket) -> None:
