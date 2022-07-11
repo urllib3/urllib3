@@ -479,10 +479,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # conn.request() calls http.client.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
         try:
-            if chunked:
-                conn.request_chunked(method, url, body=body, headers=headers)
-            else:
-                conn.request(method, url, body=body, headers=headers)
+            conn.request(
+                method,
+                url,
+                body=body,
+                headers=headers,
+                chunked=chunked,
+                preload_content=preload_content,
+                decode_content=decode_content,
+                enforce_content_length=enforce_content_length,
+            )
 
         # We are swallowing BrokenPipeError (errno.EPIPE) since the server is
         # legitimately able to close the connection after sending a valid response.
@@ -513,19 +519,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            response = conn.getresponse(
-                url=url,
-                method=method,
-                pool=self,
-                retries=retries,
-                preload_content=preload_content,
-                decode_content=decode_content,
-                response_conn=response_conn,
-                enforce_content_length=enforce_content_length,
-            )
+            response = conn.getresponse()
         except (BaseSSLError, OSError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
+
+        # Set properties that are used by the pooling layer.
+        response.retries = retries
+        response._connection = response_conn
+        response._pool = self
 
         log.debug(
             '%s://%s:%s "%s %s %s" %s %s',

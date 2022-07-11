@@ -17,15 +17,6 @@ def pool() -> Generator[HTTPConnectionPool, None, None]:
     server.teardown_class()
 
 
-def test_requires_kwargs(pool: HTTPConnectionPool) -> None:
-    conn = pool._get_conn()
-
-    with pytest.raises(TypeError) as e:
-        conn.getresponse("GET", "google.com", pool)  # type: ignore
-
-    assert "getresponse() takes 1 positional argument but 4 were given" in str(e)
-
-
 def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
 
@@ -34,16 +25,7 @@ def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
 
     conn.request(method, path)
 
-    response: HTTPResponse = conn.getresponse(
-        method=method,
-        url=path,
-        pool=pool,
-        retries=None,
-        decode_content=False,
-        enforce_content_length=False,
-        preload_content=False,
-        response_conn=None,
-    )
+    response: HTTPResponse = conn.getresponse()
 
     assert isinstance(response, HTTPResponse)
 
@@ -56,19 +38,9 @@ def test_does_not_release_conn(pool: HTTPConnectionPool) -> None:
 
     conn.request(method, path)
 
-    response: HTTPResponse = conn.getresponse(
-        method=method,
-        url=path,
-        pool=pool,
-        retries=None,
-        decode_content=False,
-        enforce_content_length=False,
-        preload_content=True,
-        response_conn=None,
-    )
+    response: HTTPResponse = conn.getresponse()
 
-    response.close()
-
+    response.release_conn()
     assert pool.pool.qsize() == 0  # type: ignore[union-attr]
 
 
@@ -80,17 +52,12 @@ def test_releases_conn(pool: HTTPConnectionPool) -> None:
 
     conn.request(method, path)
 
-    response: HTTPResponse = conn.getresponse(
-        method=method,
-        url=path,
-        pool=pool,
-        retries=None,
-        decode_content=False,
-        enforce_content_length=False,
-        preload_content=True,
-        response_conn=conn,
-    )
+    response: HTTPResponse = conn.getresponse()
+    # If these variables are set by the pool
+    # then the response can release the connection
+    # back into the pool.
+    response._pool = pool
+    response._connection = conn
 
-    response.close()
-
+    response.release_conn()
     assert pool.pool.qsize() == 1  # type: ignore[union-attr]

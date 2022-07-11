@@ -6,6 +6,7 @@ import socket
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
+from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
 from typing import (
     IO,
@@ -24,11 +25,9 @@ from typing import (
 if TYPE_CHECKING:
     from typing_extensions import Literal
 
-    from .connectionpool import HTTPConnectionPool
     from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
-    from .util.retry import Retry
 
 from ._collections import HTTPHeaderDict
 from .util.response import assert_header_parsing
@@ -91,6 +90,16 @@ class ProxyConfig(NamedTuple):
     use_forwarding_for_https: bool
 
 
+class _ResponseOptions(NamedTuple):
+    # TODO: Remove this in favor of a better
+    # HTTP request/response lifecycle tracking.
+    request_method: str
+    request_url: str
+    preload_content: bool
+    decode_content: bool
+    enforce_content_length: bool
+
+
 class HTTPConnection(_HTTPConnection):
     """
     Based on :class:`http.client.HTTPConnection` but provides an extra constructor
@@ -137,6 +146,7 @@ class HTTPConnection(_HTTPConnection):
     _tunnel_host: Optional[str]
     _tunnel: Callable[["HTTPConnection"], None]
     _connecting_to_proxy: bool
+    _response_options: Optional[_ResponseOptions]
 
     def __init__(
         self,
@@ -169,6 +179,7 @@ class HTTPConnection(_HTTPConnection):
         )
 
         self._connecting_to_proxy = False
+        self._response_options = None
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
@@ -295,7 +306,26 @@ class HTTPConnection(_HTTPConnection):
         body: Optional[_TYPE_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
         chunked: bool = False,
+        preload_content: bool = True,
+        decode_content: bool = True,
+        enforce_content_length: bool = True,
     ) -> None:
+
+        # Store these values to be fed into the HTTPResponse
+        # object later. TODO: Remove this in favor of a real
+        # HTTP lifecycle mechanism.
+
+        # We have to store these before we call .request()
+        # because sometimes we can still salvage a response
+        # off the wire even if we aren't able to completely
+        # send the request body.
+        self._response_options = _ResponseOptions(
+            request_method=method,
+            request_url=url,
+            preload_content=preload_content,
+            decode_content=decode_content,
+            enforce_content_length=enforce_content_length,
+        )
 
         if headers is None:
             headers = {}
@@ -376,15 +406,6 @@ class HTTPConnection(_HTTPConnection):
 
     def getresponse(  # type: ignore[override]
         self,
-        *,
-        method: str,
-        url: str,
-        pool: "HTTPConnectionPool",
-        retries: Optional["Retry"],
-        response_conn: Optional["HTTPConnection"],
-        preload_content: bool,
-        decode_content: bool,
-        enforce_content_length: bool,
     ) -> "HTTPResponse":
         """
         Get the response from the server.
@@ -392,47 +413,14 @@ class HTTPConnection(_HTTPConnection):
         If the HTTPConnection is in the correct state, returns an instance of HTTPResponse or of whatever object is returned by the response_class variable.
 
         If a request has not been sent or if a previous response has not be handled, ResponseNotReady is raised. If the HTTP response indicates that the connection should be closed, then it will be closed before the response is returned. When the connection is closed, the underlying socket is closed.
-
-        :param method:
-            HTTP request method (such as GET, POST, PUT, etc.)
-
-        :param url:
-            The URL to perform the request on.
-
-        :param pool: The connection pool
-        :type pool: :class:`~urllib3.connectionpool.HTTPConnectionPool`
-
-        :param retries:
-            Configure the number of retries to allow before raising a
-            :class:`~urllib3.exceptions.MaxRetryError` exception.
-
-            Pass ``None`` to retry until you receive a response. Pass a
-            :class:`~urllib3.util.retry.Retry` object for fine-grained control
-            over different types of retries.
-            Pass an integer number to retry connection errors that many times,
-            but no other types of errors. Pass zero to never retry.
-
-            If ``False``, then retries are disabled and any exception is raised
-            immediately. Also, instead of raising a MaxRetryError on redirects,
-            the redirect response will be returned.
-
-        :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int.
-
-        :param response_conn:
-            Set this to ``None`` if you will handle releasing the connection or
-            set the connection to have the response release it.
-
-        :param preload_content:
-          If True, the response's body will be preloaded during construction.
-
-        :param decode_content:
-            If True, will attempt to decode the body based on the
-            'content-encoding' header.
-
-        :param enforce_content_length:
-            Enforce content length checking. Body returned by server must match
-            value of Content-Length header, if present. Otherwise, raise error.
         """
+        # Raise the same error as http.client.HTTPConnection
+        if self._response_options is None:
+            raise ResponseNotReady()
+
+        # Reset this attribute for being used again.
+        resp_options = self._response_options
+        self._response_options = None
 
         # This is needed here to avoid circular import errors
         from .response import HTTPResponse
@@ -445,7 +433,7 @@ class HTTPConnection(_HTTPConnection):
         except (HeaderParsingError, TypeError) as hpe:
             log.warning(
                 "Failed to parse headers (url=%s): %s",
-                _url_from_connection(self, url),
+                _url_from_connection(self, resp_options.request_url),
                 hpe,
                 exc_info=True,
             )
@@ -458,17 +446,13 @@ class HTTPConnection(_HTTPConnection):
             status=httplib_response.status,
             version=httplib_response.version,
             reason=httplib_response.reason,
-            preload_content=preload_content,
-            decode_content=decode_content,
+            preload_content=resp_options.preload_content,
+            decode_content=resp_options.decode_content,
             original_response=httplib_response,
-            pool=pool,
-            connection=response_conn,
-            retries=retries,
-            enforce_content_length=enforce_content_length,
-            request_method=method,
-            request_url=url,
+            enforce_content_length=resp_options.enforce_content_length,
+            request_method=resp_options.request_method,
+            request_url=resp_options.request_url,
         )
-
         return response
 
 
