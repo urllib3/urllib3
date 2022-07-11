@@ -1502,6 +1502,7 @@ class TestSSL(SocketDummyServerTestCase):
         socket.
         """
         content_length = 16385  # 16 KiB + 1 byte.
+        content = os.urandom(content_length)
 
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -1521,7 +1522,7 @@ class TestSSL(SocketDummyServerTestCase):
                 b"Content-Type: text/plain\r\n"
                 b"Content-Length: %d\r\n\r\n" % content_length
             )
-            ssl_sock.sendall(bytes(content_length))
+            ssl_sock.sendall(content)
 
             ssl_sock.close()
             sock.close()
@@ -1530,7 +1531,7 @@ class TestSSL(SocketDummyServerTestCase):
         with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
             response = pool.request("GET", "/", preload_content=preload_content)
             data = response.data if preload_content else response.read(read_amt)
-            assert len(data) == content_length
+            assert data == content
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
