@@ -1,5 +1,5 @@
 1.26.10 (2022-07-07)
-===================
+====================
 
 * Removed support for Python 3.5
 * Fixed an issue where a ``ProxyError`` recommending configuring the proxy as HTTP
