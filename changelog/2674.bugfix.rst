@@ -1,1 +1,1 @@
-Fixed reading pieces of data larger than 16 KiB on macOS.
+Fixed incomplete reads of data by SecureTransport on macOS.
