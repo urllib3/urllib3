@@ -573,7 +573,7 @@ class WrappedSocket:
         processed_bytes = ctypes.c_size_t(0)
         processed_bytes_total = 0
 
-        while nbytes:
+        while nbytes > 0:
             buffer = (ctypes.c_char * nbytes).from_buffer(buffer, processed_bytes.value)
 
             with self._raise_on_error():
