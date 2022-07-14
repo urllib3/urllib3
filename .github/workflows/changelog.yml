@@ -16,10 +16,18 @@ jobs:
           # needs a non-shallow clone.
           fetch-depth: 0
 
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+          cache: pip
+          cache-dependency-path: requirements/docs.txt
+
       - name: Check changelog
         if: "!contains(github.event.pull_request.labels.*.name, 'Skip Changelog')"
         run: |
-          if ! pipx run towncrier check --compare-with origin/${{ github.base_ref }}; then
+          python -m pip install -r requirements/docs.txt
+
+          if ! python -m towncrier check --compare-with origin/${{ github.base_ref }}; then
           echo "Please see https://github.com/urllib3/urllib3/blob/main/changelog/README.rst for guidance."
             false
           fi

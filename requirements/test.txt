@@ -1,0 +1,52 @@
+attrs==21.4.0
+    # via pytest
+cffi==1.15.1
+    # via cryptography
+coverage==6.4
+    # via -r requirements/coverage.in
+cryptography==37.0.2
+    # via
+    #   -r requirements/test.in
+    #   trustme
+flaky==3.7.0
+    # via -r requirements/test.in
+freezegun==1.2.1
+    # via pytest-freezegun
+idna==3.3
+    # via trustme
+iniconfig==1.1.1
+    # via pytest
+packaging==21.3
+    # via pytest
+pluggy==1.0.0
+    # via pytest
+py==1.11.0
+    # via pytest
+pycparser==2.21
+    # via cffi
+pyparsing==3.0.9
+    # via packaging
+pysocks==1.7.1
+    # via -r requirements/test.in
+pytest==7.0.0
+    # via
+    #   -r requirements/test.in
+    #   pytest-freezegun
+    #   pytest-timeout
+pytest-freezegun==0.4.2
+    # via -r requirements/test.in
+pytest-timeout==2.1.0
+    # via -r requirements/test.in
+python-dateutil==2.8.2
+    # via freezegun
+six==1.16.0
+    # via python-dateutil
+tomli==2.0.1
+    # via pytest
+tornado==6.1
+    # via -r requirements/test.in
+trustme==0.9.0
+    # via -r requirements/test.in
+
+# Added manually, not by pip-compile
+backports.zoneinfo==0.2.1;python_version<"3.9"

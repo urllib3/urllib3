@@ -20,7 +20,7 @@ def tests_impl(
     byte_string_comparisons: bool = True,
 ) -> None:
     # Install deps and the package itself.
-    session.install("-r", "dev-requirements.txt")
+    session.install("-r", "requirements/test.txt")
     session.install(f".[{extras}]")
 
     # Show the pip version.
@@ -76,7 +76,7 @@ def test_brotlipy(session: nox.Session) -> None:
     """Check that if 'brotlipy' is installed instead of 'brotli' or
     'brotlicffi' that we still don't blow up.
     """
-    session.install("brotlipy")
+    session.install("-r", "requirements/brotlipy.txt")
     tests_impl(session, extras="socks,secure", byte_string_comparisons=False)
 
 
@@ -133,7 +133,7 @@ def downstream_requests(session: nox.Session) -> None:
 @nox.session()
 def format(session: nox.Session) -> None:
     """Run code formatters."""
-    session.install("pre-commit")
+    session.install("-r", "requirements/lint.txt")
     session.run("pre-commit", "--version")
 
     process = subprocess.run(
@@ -151,7 +151,7 @@ def format(session: nox.Session) -> None:
 
 @nox.session
 def lint(session: nox.Session) -> None:
-    session.install("pre-commit")
+    session.install("-r", "requirements/lint.txt")
     session.run("pre-commit", "run", "--all-files")
 
     mypy(session)
@@ -160,7 +160,7 @@ def lint(session: nox.Session) -> None:
 @nox.session(python="3.8")
 def mypy(session: nox.Session) -> None:
     """Run mypy."""
-    session.install("-r", "mypy-requirements.txt")
+    session.install("-r", "requirements/lint.txt")
     session.run("mypy", "--version")
     session.run(
         "mypy",
@@ -173,7 +173,7 @@ def mypy(session: nox.Session) -> None:
 
 @nox.session
 def docs(session: nox.Session) -> None:
-    session.install("-r", "docs/requirements.txt")
+    session.install("-r", "requirements/docs.txt")
     session.install(".[socks,secure,brotli,zstd]")
 
     session.chdir("docs")

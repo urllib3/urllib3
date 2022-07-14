@@ -1,0 +1,22 @@
+argcomplete==1.12.3
+    # via nox
+colorlog==6.6.0
+    # via nox
+distlib==0.3.5
+    # via virtualenv
+filelock==3.7.1
+    # via virtualenv
+nox==2022.1.7
+    # via -r requirements/nox.in
+packaging==21.3
+    # via nox
+platformdirs==2.5.2
+    # via virtualenv
+py==1.11.0
+    # via nox
+pyparsing==3.0.9
+    # via packaging
+six==1.16.0
+    # via virtualenv
+virtualenv==20.15.1
+    # via nox

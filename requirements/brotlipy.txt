@@ -1,0 +1,6 @@
+brotlipy==0.7.0
+    # via -r requirements/brotlipy.in
+cffi==1.15.1
+    # via brotlipy
+pycparser==2.21
+    # via cffi
