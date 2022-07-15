@@ -1643,6 +1643,75 @@ class TestHeaders(SocketDummyServerTestCase):
             ]
             assert expected_response_headers == actual_response_headers
 
+    @pytest.mark.parametrize(
+        "method_type, body_type",
+        [
+            ("GET", None),
+            ("POST", None),
+            ("POST", "bytes"),
+            ("POST", "bytes-io"),
+        ],
+    )
+    def test_headers_sent_with_add(
+        self, method_type: str, body_type: Optional[str]
+    ) -> None:
+        """
+        Confirm that when adding headers with combine=True that we simply append to the
+        most recent value, rather than create a new header line.
+        """
+        body: Union[None, bytes, io.BytesIO]
+        if body_type is None:
+            body = None
+        elif body_type == "bytes":
+            body = b"my-body"
+        elif body_type == "bytes-io":
+            body = io.BytesIO(b"bytes-io-body")
+            body.seek(0, 0)
+        else:
+            raise ValueError("Unknonw body type")
+
+        buffer: bytes = b""
+
+        def socket_handler(listener: socket.socket) -> None:
+            nonlocal buffer
+            sock = listener.accept()[0]
+            sock.settimeout(0)
+
+            start = time.time()
+            while time.time() - start < (LONG_TIMEOUT / 2):
+                try:
+                    buffer += sock.recv(65536)
+                except OSError:
+                    continue
+
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: example.com\r\n"
+                b"Content-Length: 0\r\n\r\n"
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        headers = HTTPHeaderDict()
+        headers.add("A", "1")
+        headers.add("C", "3")
+        headers.add("B", "2")
+        headers.add("B", "3")
+        headers.add("A", "4", combine=False)
+        headers.add("C", "5", combine=True)
+        headers.add("C", "6")
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            r = pool.request(
+                method_type,
+                "/",
+                body=body,
+                headers=headers,
+            )
+            assert r.status == 200
+            assert b"A: 1\r\nA: 4\r\nC: 3, 5\r\nC: 6\r\nB: 2\r\nB: 3" in buffer
+
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
     def _test_broken_header_parsing(
