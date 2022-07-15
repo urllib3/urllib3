@@ -277,11 +277,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         return False
 
     def setdefault(self, key: str, default: str = "") -> str:
-        if key in self:
-            return self[key]
-        else:
-            self[key] = default
-            return default
+        return super().setdefault(key, default)
 
     def __eq__(self, other: object) -> bool:
         maybe_constructable = ensure_can_construct_http_header_dict(other)
