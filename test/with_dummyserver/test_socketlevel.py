@@ -1492,6 +1492,9 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=False, timeout=LONG_TIMEOUT)
         assert server_closed.wait(LONG_TIMEOUT), "The socket was not terminated"
 
+    # SecureTransport can read only small pieces of data at the moment.
+    # https://github.com/urllib3/urllib3/pull/2674
+    @notSecureTransport()
     @pytest.mark.skipif(
         os.environ.get("CI") == "true" and sys.implementation.name == "pypy",
         reason="too slow to run in CI",
