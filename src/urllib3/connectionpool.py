@@ -114,16 +114,6 @@ class ConnectionPool:
 _blocking_errnos = {errno.EAGAIN, errno.EWOULDBLOCK}
 
 
-def close_connections(pool: "queue.LifoQueue[Any]") -> None:
-    try:
-        while True:
-            conn = pool.get(block=False)
-            if conn:
-                conn.close()
-    except queue.Empty:
-        pass  # Done.
-
-
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
     Thread-safe connection pool for one host.
@@ -237,9 +227,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # to free self if nobody else has a reference to it.
         pool = self.pool
 
-        # This calls 'close_connections(pools)' just before HTTPConnectionPool
-        # gets gargabe collected.
-        weakref.finalize(self, close_connections, pool)
+        # Close all the HTTPConnections in the pool before the
+        # HTTPConnectionPool object is garbage collected.
+        weakref.finalize(self, _close_pool_connections, pool)
 
     def _new_conn(self) -> HTTPConnection:
         """
@@ -524,7 +514,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Disable access to the pool
         old_pool, self.pool = self.pool, None
 
-        close_connections(old_pool)
+        # Close all the HTTPConnections in the pool.
+        _close_pool_connections(old_pool)
 
     def is_same_host(self, url: str) -> bool:
         """
@@ -1133,3 +1124,14 @@ def _normalize_host(host: Optional[str], scheme: Optional[str]) -> Optional[str]
     if host and host.startswith("[") and host.endswith("]"):
         host = host[1:-1]
     return host
+
+
+def _close_pool_connections(pool: "queue.LifoQueue[Any]") -> None:
+    """Drains a queue of connections and closes each one."""
+    try:
+        while True:
+            conn = pool.get(block=False)
+            if conn:
+                conn.close()
+    except queue.Empty:
+        pass  # Done.
