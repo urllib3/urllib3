@@ -280,7 +280,7 @@ class TestHTTPHeaderDict:
         ]
 
         assert list(d.items()) == expected_results
-        # make sure the values persist over copys
+        # make sure the values persist over copies
         assert list(d.copy().items()) == expected_results
 
         other_dict = HTTPHeaderDict()

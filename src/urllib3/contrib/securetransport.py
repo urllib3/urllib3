@@ -406,7 +406,7 @@ class WrappedSocket:
         self.socket.sendall(rec)
         # close the connection immediately
         # l_onoff = 1, activate linger
-        # l_linger = 0, linger for 0 seoncds
+        # l_linger = 0, linger for 0 seconds
         opts = struct.pack("ii", 1, 0)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, opts)
         self.close()

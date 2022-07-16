@@ -86,7 +86,7 @@ After the ``--`` indicator, any arguments will be passed to pytest.
 To specify an exact test case the following syntax also works:
 ``test/dir/module_name.py::TestClassName::test_method_name``
 (eg.: ``test/with_dummyserver/test_https.py::TestHTTPS::test_simple``).
-The following argument is another valid example to pass to pytest: ``-k test_methode_name``.
+The following argument is another valid example to pass to pytest: ``-k test_method_name``.
 These are useful when developing new test cases and there is no point
 re-running the entire test suite every iteration. It is also possible to
 further parameterize pytest for local testing.
