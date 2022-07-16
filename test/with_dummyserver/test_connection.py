@@ -1,3 +1,4 @@
+from http.client import ResponseNotReady
 from typing import Generator
 
 import pytest
@@ -61,3 +62,18 @@ def test_releases_conn(pool: HTTPConnectionPool) -> None:
 
     response.release_conn()
     assert pool.pool.qsize() == 1  # type: ignore[union-attr]
+
+
+def test_double_getresponse(pool: HTTPConnectionPool) -> None:
+    conn = pool._get_conn()
+
+    method = "GET"
+    path = "/"
+
+    conn.request(method, path)
+
+    _: HTTPResponse = conn.getresponse()
+
+    # Calling getrepsonse() twice should cause an error
+    with pytest.raises(ResponseNotReady):
+        conn.getresponse()
