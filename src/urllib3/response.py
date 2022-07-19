@@ -685,16 +685,12 @@ class HTTPResponse(BaseHTTPResponse):
         c_int_max = 2**31 - 1
         if (
             (
-                amt
-                and amt > c_int_max
-                and (util.IS_PYOPENSSL or sys.version_info < (3, 10))
+                (amt and amt > c_int_max)
+                or (self.length_remaining and self.length_remaining > c_int_max)
             )
-            or (
-                self.length_remaining
-                and self.length_remaining > c_int_max
-                and (util.IS_PYOPENSSL or (3, 8) <= sys.version_info < (3, 9, 7))
-            )
-        ) and not util.IS_SECURETRANSPORT:
+            and not util.IS_SECURETRANSPORT
+            and (util.IS_PYOPENSSL or sys.version_info < (3, 10))
+        ):
             buffer = io.BytesIO()
             # Besides `max_chunk_amt` being a maximum chunk size, it
             # affects memory overhead of reading a response by this
