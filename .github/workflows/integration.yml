@@ -2,6 +2,8 @@ name: Downstream
 
 on: [push, pull_request]
 
+permissions: "read-all"
+
 jobs:
   integration:
     strategy:

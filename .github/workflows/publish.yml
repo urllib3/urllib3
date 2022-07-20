@@ -6,6 +6,7 @@ on:
       - "*"
 
 permissions:
+  contents: "read"
   # Needed to access the workflow's OIDC identity.
   id-token: "write"
 
