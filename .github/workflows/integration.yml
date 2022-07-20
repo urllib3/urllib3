@@ -5,6 +5,8 @@ on:
     paths:
       - "src/urllib3/_version.py"
 
+permissions: "read-all"
+
 jobs:
   integration:
     strategy:
