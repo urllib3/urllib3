@@ -2,6 +2,8 @@ name: CI
 
 on: [push, pull_request]
 
+permissions: "read-all"
+
 defaults:
   run:
     shell: bash

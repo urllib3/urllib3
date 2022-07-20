@@ -2,6 +2,8 @@ name: lint
 
 on: [push, pull_request]
 
+permissions: "read-all"
+
 jobs:
   lint:
     runs-on: ubuntu-20.04
