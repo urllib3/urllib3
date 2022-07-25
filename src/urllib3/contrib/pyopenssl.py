@@ -402,7 +402,7 @@ class WrappedSocket:
         else:
             self._io_refs -= 1
 
-    def getpeercert(self, binary_form: bool = False) -> Dict[str, List[Any]]:
+    def getpeercert(self, binary_form: bool = False) -> Optional[Dict[str, List[Any]]]:
         x509 = self.connection.get_peer_certificate()
 
         if not x509:
