@@ -1,5 +1,7 @@
 macOS SecureTransport
 =====================
+.. warning::
+    DEPRECATED: This module is deprecated and will be removed in a future 2.x release.
 
 `SecureTranport <https://developer.apple.com/documentation/security/secure_transport>`_
 support for urllib3 via ctypes.

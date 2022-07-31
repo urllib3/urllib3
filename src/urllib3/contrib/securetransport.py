@@ -61,6 +61,7 @@ import socket
 import ssl
 import struct
 import threading
+import warnings
 import weakref
 from socket import socket as socket_cls
 from typing import (
@@ -89,6 +90,14 @@ from ._securetransport.low_level import (
     _create_cfstring_array,
     _load_client_cert_chain,
     _temporary_keychain,
+)
+
+warnings.warn(
+        "'securetransport' module is deprecated and will be removed "
+        "in a future release of urllib3 2.x. Read more in doc: "
+        "https://urllib3.readthedocs.io/en/stable/reference/contrib/securetransport.html",
+        DeprecationWarning,
+        stacklevel=2,
 )
 
 if TYPE_CHECKING:
