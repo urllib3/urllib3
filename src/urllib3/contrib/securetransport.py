@@ -93,11 +93,11 @@ from ._securetransport.low_level import (
 )
 
 warnings.warn(
-        "'securetransport' module is deprecated and will be removed "
-        "in a future release of urllib3 2.x. Read more in doc: "
-        "https://urllib3.readthedocs.io/en/stable/reference/contrib/securetransport.html",
-        DeprecationWarning,
-        stacklevel=2,
+    "'securetransport' module is deprecated and will be removed "
+    "in a future release of urllib3 2.x. Read more in doc: "
+    "https://urllib3.readthedocs.io/en/stable/reference/contrib/securetransport.html",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
 if TYPE_CHECKING:
