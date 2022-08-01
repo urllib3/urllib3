@@ -1,8 +1,8 @@
 1.26.11 (2022-07-25)
 ====================
 
-* Fixed an issue where reading more than 2 GiB in a call to HTTPResponse.read would raise an
-  OverflowError on Python 3.9 and earlier.
+* Fixed an issue where reading more than 2 GiB in a call to ``HTTPResponse.read`` would
+  raise an ``OverflowError`` on Python 3.9 and earlier.
 
 1.26.10 (2022-07-07)
 ====================
