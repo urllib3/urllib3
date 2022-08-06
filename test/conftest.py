@@ -159,6 +159,21 @@ def no_san_server_with_different_commmon_name(
 
 
 @pytest.fixture
+def san_proxy_with_server(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[Tuple[ServerConfig, ServerConfig], None, None]:
+    tmpdir = tmp_path_factory.mktemp("certs")
+    ca = trustme.CA()
+    proxy_cert = ca.issue_cert("localhost")
+    server_cert = ca.issue_cert("localhost")
+
+    with run_server_and_proxy_in_thread(
+        "https", "localhost", tmpdir, ca, proxy_cert, server_cert
+    ) as cfg:
+        yield cfg
+
+
+@pytest.fixture
 def no_san_proxy_with_server(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> Generator[Tuple[ServerConfig, ServerConfig], None, None]:
