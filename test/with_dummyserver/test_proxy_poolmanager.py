@@ -705,9 +705,8 @@ class TestHTTPSProxyVerification:
         proxy_url = f"https://{proxy.host}:{proxy.port}"
         destination_url = f"https://{server.host}:{server.port}"
 
-        proxy_hostname = "localhost"
         with proxy_from_url(
-            proxy_url, ca_certs=proxy.ca_certs, proxy_assert_hostname=proxy_hostname
+            proxy_url, ca_certs=proxy.ca_certs, proxy_assert_hostname="localhost"
         ) as https:
             https.request("GET", destination_url)
 
@@ -719,7 +718,6 @@ class TestHTTPSProxyVerification:
         destination_url = f"https://{server.host}:{server.port}"
 
         proxy_hostname = "example.com"
-
         with proxy_from_url(
             proxy_url, ca_certs=proxy.ca_certs, proxy_assert_hostname=proxy_hostname
         ) as https:
