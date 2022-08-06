@@ -84,6 +84,8 @@ _TYPE_BODY = Union[bytes, IO[Any], Iterable[bytes], str]
 class ProxyConfig(NamedTuple):
     ssl_context: Optional["ssl.SSLContext"]
     use_forwarding_for_https: bool
+    assert_hostname: Union[None, str, "Literal[False]"]
+    assert_fingerprint: Optional[str]
 
 
 class HTTPConnection(_HTTPConnection):
@@ -541,9 +543,9 @@ class HTTPSConnection(HTTPConnection):
             ca_cert_data=self.ca_cert_data,
             server_hostname=hostname,
             ssl_context=ssl_context,
+            assert_hostname=proxy_config.assert_hostname,
+            assert_fingerprint=proxy_config.assert_fingerprint,
             # Features that aren't implemented for proxies yet:
-            assert_fingerprint=None,
-            assert_hostname=None,
             cert_file=None,
             key_file=None,
             key_password=None,
