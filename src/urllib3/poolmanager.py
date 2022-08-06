@@ -514,6 +514,12 @@ class ProxyManager(PoolManager):
         private.  IP address, target hostname, SNI, and port are always visible
         to an HTTPS proxy even when this flag is disabled.
 
+    :param proxy_assert_hostname:
+        The hostname of the certificate to verify against.
+
+    :param proxy_assert_fingerprint:
+        The fingerprint of the certificate to verify against.
+
     Example:
 
     .. code-block:: python
