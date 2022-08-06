@@ -656,7 +656,7 @@ class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
 class TestHTTPSProxyVerification:
     @staticmethod
     def _get_proxy_fingerprint_md5(ca_path: str) -> str:
-        proxy_pem_path = pathlib.Path(ca_path).with_stem("proxy")
+        proxy_pem_path = pathlib.Path(ca_path).parent / "proxy.pem"
         proxy_der = ssl.PEM_cert_to_DER_cert(proxy_pem_path.read_text())
         proxy_hashed = hashlib.md5(proxy_der).digest()
         fingerprint = binascii.hexlify(proxy_hashed).decode("ascii")
