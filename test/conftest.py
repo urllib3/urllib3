@@ -59,12 +59,8 @@ def run_server_in_thread(
     scheme: str, host: str, tmpdir: Path, ca: trustme.CA, server_cert: trustme.LeafCert
 ) -> Generator[ServerConfig, None, None]:
     ca_cert_path = str(tmpdir / "ca.pem")
-    server_cert_path = str(tmpdir / "server.pem")
-    server_key_path = str(tmpdir / "server.key")
     ca.cert_pem.write_to_path(ca_cert_path)
-    server_cert.private_key_pem.write_to_path(server_key_path)
-    server_cert.cert_chain_pems[0].write_to_path(server_cert_path)
-    server_certs = {"keyfile": server_key_path, "certfile": server_cert_path}
+    server_certs = _write_cert_to_dir(server_cert, tmpdir)
 
     io_loop = ioloop.IOLoop.current()
     app = web.Application([(r".*", TestingApp)])
