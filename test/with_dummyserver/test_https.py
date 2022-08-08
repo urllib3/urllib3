@@ -958,6 +958,39 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         assert ctx.minimum_version == self.tls_version()
         assert ctx.maximum_version == self.tls_version()
 
+    @notSecureTransport()
+    def test_ssl_session_reuse(self, caplog: pytest.LogCaptureFixture) -> None:
+        if urllib3.util.ssl_.IS_PYOPENSSL:
+            pytest.skip("SSL session reuse not configured for pyOpenSSL")
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ca_certs=DEFAULT_CA,
+            ssl_minimum_version=self.tls_version(),
+            headers={"Connection": "close"},
+            reuse_ssl_sessions=True,
+        ) as pool:
+            pool.request("GET", "/")
+            assert "new socket created, socket.session_reused=" not in caplog.text
+            caplog.clear()
+            pool.request("GET", "/")
+            assert "new socket created, socket.session_reused=" in caplog.text
+
+    def test_ssl_session_no_reuse(self, caplog: pytest.LogCaptureFixture) -> None:
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ca_certs=DEFAULT_CA,
+            ssl_minimum_version=self.tls_version(),
+            headers={"Connection": "close"},
+            reuse_ssl_sessions=False,
+        ) as pool:
+            pool.request("GET", "/")
+            assert "new socket created, socket.session_reused=" not in caplog.text
+            caplog.clear()
+            pool.request("GET", "/")
+            assert "new socket created, socket.session_reused=" not in caplog.text
+
 
 @pytest.mark.usefixtures("requires_tlsv1")
 class TestHTTPS_TLSv1(TestHTTPS):
