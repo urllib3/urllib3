@@ -387,6 +387,7 @@ class HTTPSConnection(HTTPConnection):
     ssl_maximum_version: Optional[int] = None
     assert_fingerprint: Optional[str] = None
     tls_in_tls_required: bool = False
+    ssl_session: Optional["ssl.SSLSession"] = None
 
     def __init__(
         self,
@@ -405,6 +406,7 @@ class HTTPSConnection(HTTPConnection):
         ] = HTTPConnection.default_socket_options,
         proxy: Optional[Url] = None,
         proxy_config: Optional[ProxyConfig] = None,
+        reuse_ssl_sessions: bool = True,
     ) -> None:
 
         super().__init__(
@@ -423,6 +425,7 @@ class HTTPSConnection(HTTPConnection):
         self.key_password = key_password
         self.ssl_context = ssl_context
         self.server_hostname = server_hostname
+        self.reuse_ssl_sessions = reuse_ssl_sessions
         self.ssl_version = None
         self.ssl_minimum_version = None
         self.ssl_maximum_version = None
@@ -517,10 +520,27 @@ class HTTPSConnection(HTTPConnection):
             tls_in_tls=tls_in_tls,
             assert_hostname=self.assert_hostname,
             assert_fingerprint=self.assert_fingerprint,
+            session=self.ssl_session,
         )
         self.sock = sock_and_verified.socket
         self.is_verified = sock_and_verified.is_verified
         self._connecting_to_proxy = False
+
+        if self.reuse_ssl_sessions:
+            ssl_socket = cast(ssl.SSLSocket, sock_and_verified.socket)
+            if self.ssl_session:
+                log.debug(
+                    f"For {self}: new socket created, socket.session_reused={ssl_socket.session_reused}"
+                )
+            if not (self.ssl_context and self.ssl_session):
+                try:
+                    self.ssl_context = ssl_socket.context
+                    self.ssl_session = ssl_socket.session
+                except AttributeError:
+                    log.debug(
+                        f"socket {sock_and_verified.socket} missing `context` and `session` attributes needed for SSL session reuse"
+                    )
+                    self.reuse_ssl_sessions = False
 
     def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> "ssl.SSLSocket":
         """
@@ -581,6 +601,7 @@ def _ssl_wrap_socket_and_match_hostname(
     server_hostname: Optional[str],
     ssl_context: Optional["ssl.SSLContext"],
     tls_in_tls: bool = False,
+    session: Optional["ssl.SSLSession"] = None,
 ) -> _WrappedAndVerifiedSocket:
     """Logic for constructing an SSLContext from all TLS parameters, passing
     that down into ssl_wrap_socket, and then doing certificate verification
@@ -644,6 +665,7 @@ def _ssl_wrap_socket_and_match_hostname(
         server_hostname=server_hostname,
         ssl_context=context,
         tls_in_tls=tls_in_tls,
+        session=session,
     )
 
     if assert_fingerprint:

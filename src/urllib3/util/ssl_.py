@@ -447,6 +447,7 @@ def ssl_wrap_socket(
     key_password: Optional[str] = ...,
     ca_cert_data: Union[None, str, bytes] = ...,
     tls_in_tls: "Literal[False]" = ...,
+    session: Optional["ssl.SSLSession"] = None,
 ) -> "ssl.SSLSocket":
     ...
 
@@ -466,6 +467,7 @@ def ssl_wrap_socket(
     key_password: Optional[str] = ...,
     ca_cert_data: Union[None, str, bytes] = ...,
     tls_in_tls: bool = ...,
+    session: Optional["ssl.SSLSession"] = None,
 ) -> Union["ssl.SSLSocket", "SSLTransportType"]:
     ...
 
@@ -484,6 +486,7 @@ def ssl_wrap_socket(
     key_password: Optional[str] = None,
     ca_cert_data: Union[None, str, bytes] = None,
     tls_in_tls: bool = False,
+    session: Optional["ssl.SSLSession"] = None,
 ) -> Union["ssl.SSLSocket", "SSLTransportType"]:
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
@@ -554,7 +557,9 @@ def ssl_wrap_socket(
             SNIMissingWarning,
         )
 
-    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
+    ssl_sock = _ssl_wrap_socket_impl(
+        sock, context, tls_in_tls, server_hostname, session=session
+    )
     return ssl_sock
 
 
@@ -587,6 +592,7 @@ def _ssl_wrap_socket_impl(
     ssl_context: "ssl.SSLContext",
     tls_in_tls: bool,
     server_hostname: Optional[str] = None,
+    session: Optional["ssl.SSLSession"] = None,
 ) -> Union["ssl.SSLSocket", "SSLTransportType"]:
     if tls_in_tls:
         if not SSLTransport:
@@ -598,4 +604,11 @@ def _ssl_wrap_socket_impl(
         SSLTransport._validate_ssl_context_for_tls_in_tls(ssl_context)
         return SSLTransport(sock, ssl_context, server_hostname)
 
-    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+    if IS_PYOPENSSL or not session:
+        # pyOpenSSL doesn't support the `session` parameter
+        # and it's easier for tests to treat all calls not requiring session the same
+        return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+
+    return ssl_context.wrap_socket(
+        sock, server_hostname=server_hostname, session=session
+    )

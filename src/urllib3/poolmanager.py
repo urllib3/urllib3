@@ -56,6 +56,7 @@ SSL_KEYWORDS = (
     "ssl_context",
     "key_password",
     "server_hostname",
+    "reuse_ssl_sessions",
 )
 # Default value for `blocksize` - a new parameter introduced to
 # http.client.HTTPConnection & http.client.HTTPSConnection in Python 3.7
@@ -100,6 +101,7 @@ class PoolKey(NamedTuple):
     key_assert_fingerprint: Optional[str]
     key_server_hostname: Optional[str]
     key_blocksize: Optional[int]
+    key_reuse_ssl_sessions: Optional[bool]
 
 
 def _default_key_normalizer(

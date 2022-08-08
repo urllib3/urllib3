@@ -942,6 +942,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         assert_hostname: Optional[Union[str, "Literal[False]"]] = None,
         assert_fingerprint: Optional[str] = None,
         ca_cert_dir: Optional[str] = None,
+        reuse_ssl_sessions: bool = True,
         **conn_kw: Any,
     ) -> None:
 
@@ -969,6 +970,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_maximum_version = ssl_maximum_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
+        self.reuse_ssl_sessions = reuse_ssl_sessions
 
     def _prepare_conn(self, conn: HTTPSConnection) -> HTTPConnection:
         """
@@ -1037,6 +1039,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
+            reuse_ssl_sessions=self.reuse_ssl_sessions,
             **self.conn_kw,
         )
 
