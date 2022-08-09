@@ -1,5 +1,6 @@
 import binascii
 import hashlib
+import ipaddress
 import os.path
 import pathlib
 import shutil
@@ -662,6 +663,19 @@ class TestHTTPSProxyVerification:
         fingerprint = binascii.hexlify(proxy_hashed).decode("ascii")
         return fingerprint
 
+    @staticmethod
+    def _get_certificate_formatted_proxy_host(host: str) -> str:
+        try:
+            addr = ipaddress.ip_address(host)
+        except ValueError:
+            return host
+
+        if addr.version != 6:
+            return host
+
+        # Transform ipv6 like '::1' to 0:0:0:0:0:0:0:1 via '0000:0000:0000:0000:0000:0000:0000:0001'
+        return addr.exploded.replace("0000", "0").replace("000", "")
+
     def test_https_proxy_assert_fingerprint_md5(
         self, no_san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
     ) -> None:
@@ -702,11 +716,10 @@ class TestHTTPSProxyVerification:
         self, san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
     ) -> None:
         proxy, server = san_proxy_with_server
-        proxy_url = f"https://{proxy.host}:{proxy.port}"
         destination_url = f"https://{server.host}:{server.port}"
 
         with proxy_from_url(
-            proxy_url, ca_certs=proxy.ca_certs, proxy_assert_hostname="localhost"
+            proxy.base_url, ca_certs=proxy.ca_certs, proxy_assert_hostname=proxy.host
         ) as https:
             https.request("GET", destination_url)
 
@@ -714,17 +727,19 @@ class TestHTTPSProxyVerification:
         self, san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
     ) -> None:
         proxy, server = san_proxy_with_server
-        proxy_url = f"https://{proxy.host}:{proxy.port}"
         destination_url = f"https://{server.host}:{server.port}"
 
         proxy_hostname = "example.com"
         with proxy_from_url(
-            proxy_url, ca_certs=proxy.ca_certs, proxy_assert_hostname=proxy_hostname
+            proxy.base_url,
+            ca_certs=proxy.ca_certs,
+            proxy_assert_hostname=proxy_hostname,
         ) as https:
             with pytest.raises(MaxRetryError) as e:
                 https.request("GET", destination_url)
 
-            msg = f"hostname \\'{proxy_hostname}\\' doesn\\'t match \\'{proxy.host}\\'"
+            proxy_host = self._get_certificate_formatted_proxy_host(proxy.host)
+            msg = f"hostname \\'{proxy_hostname}\\' doesn\\'t match \\'{proxy_host}\\'"
             assert msg in str(e)
 
     def test_https_proxy_hostname_verification(

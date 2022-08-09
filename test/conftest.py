@@ -3,7 +3,6 @@ import platform
 import socket
 import ssl
 import sys
-import threading
 from pathlib import Path
 from typing import AbstractSet, Any, Dict, Generator, NamedTuple, Optional, Tuple
 
@@ -13,7 +12,7 @@ from tornado import ioloop, web
 
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
-from dummyserver.server import HAS_IPV6, run_tornado_app
+from dummyserver.server import HAS_IPV6, run_loop_in_thread, run_tornado_app
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from urllib3.util import ssl_
 
@@ -65,8 +64,7 @@ def run_server_in_thread(
     io_loop = ioloop.IOLoop.current()
     app = web.Application([(r".*", TestingApp)])
     server, port = run_tornado_app(app, io_loop, server_certs, scheme, host)
-    server_thread = threading.Thread(target=io_loop.start)
-    server_thread.start()
+    server_thread = run_loop_in_thread(io_loop)
 
     yield ServerConfig("https", host, port, ca_cert_path)
 
@@ -101,8 +99,7 @@ def run_server_and_proxy_in_thread(
     )
     proxy_config = ServerConfig(proxy_scheme, proxy_host, proxy_port, ca_cert_path)
 
-    server_thread = threading.Thread(target=io_loop.start)
-    server_thread.start()
+    loop_thread = run_loop_in_thread(io_loop)
 
     yield (proxy_config, server_config)
 
@@ -110,7 +107,7 @@ def run_server_and_proxy_in_thread(
     io_loop.add_callback(proxy_app.stop)
     io_loop.add_callback(io_loop.stop)
 
-    server_thread.join()
+    loop_thread.join()
 
 
 @pytest.fixture(params=["localhost", "127.0.0.1", "::1"])
@@ -160,15 +157,15 @@ def no_san_server_with_different_commmon_name(
 
 @pytest.fixture
 def san_proxy_with_server(
-    tmp_path_factory: pytest.TempPathFactory,
+    loopback_host: str, tmp_path_factory: pytest.TempPathFactory
 ) -> Generator[Tuple[ServerConfig, ServerConfig], None, None]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
-    proxy_cert = ca.issue_cert("localhost")
+    proxy_cert = ca.issue_cert(loopback_host)
     server_cert = ca.issue_cert("localhost")
 
     with run_server_and_proxy_in_thread(
-        "https", "localhost", tmpdir, ca, proxy_cert, server_cert
+        "https", loopback_host, tmpdir, ca, proxy_cert, server_cert
     ) as cfg:
         yield cfg
 
