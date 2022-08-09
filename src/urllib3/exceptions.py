@@ -252,12 +252,6 @@ class InsecurePlatformWarning(SecurityWarning):
     pass
 
 
-class SNIMissingWarning(HTTPWarning):
-    """Warned when making a HTTPS request without SNI available."""
-
-    pass
-
-
 class DependencyWarning(HTTPWarning):
     """
     Warned when an attempt is made to import a module with missing optional

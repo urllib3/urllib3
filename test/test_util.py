@@ -13,12 +13,11 @@ from urllib.parse import urlparse
 
 import pytest
 
-from urllib3 import add_stderr_logger, disable_warnings, util
+from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.connection import ProxyConfig
 from urllib3.exceptions import (
     InsecureRequestWarning,
     LocationParseError,
-    SNIMissingWarning,
     TimeoutStateError,
     UnrewindableBodyError,
 )
@@ -1027,21 +1026,6 @@ class TestUtilSSL:
                 server_hostname=server_hostname,
             )
         return mock_context, warn
-
-    def test_ssl_wrap_socket_sni_hostname_use_or_warn(self) -> None:
-        """Test that either an SNI hostname is used or a warning is made."""
-        sock = Mock()
-        context, warn = self._wrap_socket_and_mock_warn(sock, "www.google.com")
-        if util.HAS_SNI:
-            warn.assert_not_called()
-            context.wrap_socket.assert_called_once_with(
-                sock, server_hostname="www.google.com"
-            )
-        else:
-            assert warn.call_count >= 1
-            warnings = [call[0][1] for call in warn.call_args_list]
-            assert SNIMissingWarning in warnings
-            context.wrap_socket.assert_called_once_with(sock)
 
     def test_ssl_wrap_socket_sni_ip_address_no_warn(self) -> None:
         """Test that a warning is not made if server_hostname is an IP address."""

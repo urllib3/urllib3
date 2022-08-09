@@ -105,12 +105,7 @@ if TYPE_CHECKING:
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
-# SNI always works
-HAS_SNI = True
-
-orig_util_HAS_SNI = util.HAS_SNI
 orig_util_SSLContext = util.ssl_.SSLContext
-orig_util_USE_SYSTEM_SSL_CIPHERS = util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS
 
 # This dictionary is used by the read callback to obtain a handle to the
 # calling wrapped socket. This is a pretty silly approach, but for now it'll
@@ -190,11 +185,8 @@ def inject_into_urllib3() -> None:
     """
     util.SSLContext = SecureTransportContext  # type: ignore[assignment]
     util.ssl_.SSLContext = SecureTransportContext  # type: ignore[assignment]
-    util.HAS_SNI = HAS_SNI
-    util.ssl_.HAS_SNI = HAS_SNI
     util.IS_SECURETRANSPORT = True
     util.ssl_.IS_SECURETRANSPORT = True
-    util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS = True
 
 
 def extract_from_urllib3() -> None:
@@ -203,11 +195,8 @@ def extract_from_urllib3() -> None:
     """
     util.SSLContext = orig_util_SSLContext
     util.ssl_.SSLContext = orig_util_SSLContext
-    util.HAS_SNI = orig_util_HAS_SNI
-    util.ssl_.HAS_SNI = orig_util_HAS_SNI
     util.IS_SECURETRANSPORT = False
     util.ssl_.IS_SECURETRANSPORT = False
-    util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS = orig_util_USE_SYSTEM_SSL_CIPHERS
 
 
 def _read_callback(

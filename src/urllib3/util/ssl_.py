@@ -7,35 +7,20 @@ from binascii import unhexlify
 from hashlib import md5, sha1, sha256
 from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union, cast, overload
 
-from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
+from ..exceptions import ProxySchemeUnsupported, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
 
 SSLContext = None
 SSLTransport = None
-HAS_SNI = False
 HAS_NEVER_CHECK_COMMON_NAME = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
 ALPN_PROTOCOLS = ["http/1.1"]
-USE_DEFAULT_SSLCONTEXT_CIPHERS = False
 
 _TYPE_VERSION_INFO = Tuple[int, int, int, str, int]
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
-
-
-def _is_ge_openssl_v1_1_1(
-    openssl_version_text: str, openssl_version_number: int
-) -> bool:
-    """Returns True for OpenSSL 1.1.1+ (>=0x10101000)
-    LibreSSL reports a version number of 0x20000000 for
-    OpenSSL version number so we need to filter out LibreSSL.
-    """
-    return (
-        not openssl_version_text.startswith("LibreSSL")
-        and openssl_version_number >= 0x10101000
-    )
 
 
 def _is_openssl_issue_14579_fixed(
@@ -117,7 +102,6 @@ try:  # Do we have ssl at all?
     from ssl import (  # type: ignore[misc]
         CERT_REQUIRED,
         HAS_NEVER_CHECK_COMMON_NAME,
-        HAS_SNI,
         OP_NO_COMPRESSION,
         OP_NO_TICKET,
         OPENSSL_VERSION,
@@ -130,9 +114,6 @@ try:  # Do we have ssl at all?
         TLSVersion,
     )
 
-    USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
-        OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
-    )
     PROTOCOL_SSLv23 = PROTOCOL_TLS
 
     # Setting SSLContext.hostname_checks_common_name = False didn't work before CPython
@@ -166,43 +147,6 @@ except ImportError:
 
 
 _TYPE_PEER_CERT_RET = Union["_TYPE_PEER_CERT_RET_DICT", bytes, None]
-
-# A secure default.
-# Sources for more information on TLS ciphers:
-#
-# - https://wiki.mozilla.org/Security/Server_Side_TLS
-# - https://www.ssllabs.com/projects/best-practices/index.html
-# - https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/
-#
-# The general intent is:
-# - prefer cipher suites that offer perfect forward secrecy (DHE/ECDHE),
-# - prefer ECDHE over DHE for better performance,
-# - prefer any AES-GCM and ChaCha20 over any AES-CBC for better performance and
-#   security,
-# - prefer AES-GCM over ChaCha20 because hardware-accelerated AES is common,
-# - disable NULL authentication, MD5 MACs, DSS, and other
-#   insecure ciphers for security reasons.
-# - NOTE: TLS 1.3 cipher suites are managed through a different interface
-#   not exposed by CPython (yet!) and are enabled by default if they're available.
-DEFAULT_CIPHERS = ":".join(
-    [
-        "ECDHE+AESGCM",
-        "ECDHE+CHACHA20",
-        "DHE+AESGCM",
-        "DHE+CHACHA20",
-        "ECDH+AESGCM",
-        "DH+AESGCM",
-        "ECDH+AES",
-        "DH+AES",
-        "RSA+AESGCM",
-        "RSA+AES",
-        "!aNULL",
-        "!eNULL",
-        "!MD5",
-        "!DSS",
-        "!AESCCM",
-    ]
-)
 
 
 def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
@@ -282,22 +226,7 @@ def create_urllib3_context(
     ssl_minimum_version: Optional[int] = None,
     ssl_maximum_version: Optional[int] = None,
 ) -> "ssl.SSLContext":
-    """All arguments have the same meaning as ``ssl_wrap_socket``.
-
-    By default, this function does a lot of the same work that
-    ``ssl.create_default_context`` does on Python 3.4+. It:
-
-    - Disables SSLv2, SSLv3, and compression
-    - Sets a restricted set of server ciphers
-
-    If you wish to enable SSLv3, you can do::
-
-        from urllib3.util import ssl_
-        context = ssl_.create_urllib3_context()
-        context.options &= ~ssl_.OP_NO_SSLv3
-
-    You can do the same to enable compression (substituting ``COMPRESSION``
-    for ``SSLv3`` in the last line above).
+    """Creates and configures an :class:`ssl.SSLContext` instance for use with urllib3.
 
     :param ssl_version:
         The desired protocol version to use. This will default to
@@ -371,8 +300,8 @@ def create_urllib3_context(
 
     # Unless we're given ciphers defer to either system ciphers in
     # the case of OpenSSL 1.1.1+ or use our own secure default ciphers.
-    if ciphers is not None or not USE_DEFAULT_SSLCONTEXT_CIPHERS:
-        context.set_ciphers(ciphers or DEFAULT_CIPHERS)
+    if ciphers:
+        context.set_ciphers(ciphers)
 
     # Setting the default here, as we may have no ssl module on import
     cert_reqs = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
@@ -537,22 +466,9 @@ def ssl_wrap_socket(
             context.load_cert_chain(certfile, keyfile, key_password)
 
     try:
-        if hasattr(context, "set_alpn_protocols"):
-            context.set_alpn_protocols(ALPN_PROTOCOLS)
+        context.set_alpn_protocols(ALPN_PROTOCOLS)
     except NotImplementedError:  # Defensive: in CI, we always have set_alpn_protocols
         pass
-
-    if not HAS_SNI and server_hostname and not is_ipaddress(server_hostname):
-        warnings.warn(
-            "An HTTPS request has been made, but the SNI (Server Name "
-            "Indication) extension to TLS is not available on this platform. "
-            "This may cause the server to present an incorrect TLS "
-            "certificate, which can cause validation failures. You can upgrade to "
-            "a newer version of Python to solve this. For more information, see "
-            "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
-            "#tls-warnings",
-            SNIMissingWarning,
-        )
 
     ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
     return ssl_sock

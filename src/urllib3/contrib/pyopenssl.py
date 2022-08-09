@@ -66,14 +66,6 @@ if TYPE_CHECKING:
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
-# SNI always works.
-HAS_SNI = True
-
-# Use system TLS ciphers on OpenSSL 1.1.1+
-USE_DEFAULT_SSLCONTEXT_CIPHERS = util.ssl_._is_ge_openssl_v1_1_1(
-    openssl_backend.openssl_version_text(), openssl_backend.openssl_version_number()
-)
-
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions = {
     util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
@@ -138,9 +130,7 @@ _openssl_to_ssl_maximum_version: Dict[int, int] = {
 # OpenSSL will only write 16K at a time
 SSL_WRITE_BLOCKSIZE = 16384
 
-orig_util_HAS_SNI = util.HAS_SNI
 orig_util_SSLContext = util.ssl_.SSLContext
-orig_util_USE_SYSTEM_SSL_CIPHERS = util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS
 
 
 log = logging.getLogger(__name__)
@@ -153,11 +143,8 @@ def inject_into_urllib3() -> None:
 
     util.SSLContext = PyOpenSSLContext  # type: ignore[assignment]
     util.ssl_.SSLContext = PyOpenSSLContext  # type: ignore[assignment]
-    util.HAS_SNI = HAS_SNI
-    util.ssl_.HAS_SNI = HAS_SNI
     util.IS_PYOPENSSL = True
     util.ssl_.IS_PYOPENSSL = True
-    util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS = USE_DEFAULT_SSLCONTEXT_CIPHERS
 
 
 def extract_from_urllib3() -> None:
@@ -165,11 +152,8 @@ def extract_from_urllib3() -> None:
 
     util.SSLContext = orig_util_SSLContext
     util.ssl_.SSLContext = orig_util_SSLContext
-    util.HAS_SNI = orig_util_HAS_SNI
-    util.ssl_.HAS_SNI = orig_util_HAS_SNI
     util.IS_PYOPENSSL = False
     util.ssl_.IS_PYOPENSSL = False
-    util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS = orig_util_USE_SYSTEM_SSL_CIPHERS
 
 
 def _validate_dependencies_met() -> None:

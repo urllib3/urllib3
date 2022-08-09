@@ -20,6 +20,28 @@ from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 
+# Ensure that Python is compiled with OpenSSL 1.1.1+
+# If the 'ssl' module isn't available at all that's
+# fine, we only care if the module is available.
+try:
+    import ssl
+except ImportError:
+    pass
+else:
+    if ssl.OPENSSL_VERSION_INFO < (1, 1, 1):
+        raise ImportError(
+            "urllib3 v2.0 only supports OpenSSL 1.1.1+, currently "
+            f"the 'ssl' module is compiled with {ssl.OPENSSL_VERSION}."
+        )
+
+    # In theory OpenSSL 1.1.0 made SNI support required
+    # but to be on the safe side we check to make sure.
+    if not ssl.HAS_SNI:  # Defensive:
+        raise ImportError(
+            "urllib3 v2.0 only supports OpenSSL with SNI "
+            "(Server Name Identification) enabled."
+        )
+
 __author__ = "Andrey Petrov (andrey.petrov@shazow.net)"
 __license__ = "MIT"
 __version__ = __version__
@@ -74,8 +96,6 @@ del NullHandler
 warnings.simplefilter("always", exceptions.SecurityWarning, append=True)
 # InsecurePlatformWarning's don't vary between requests, so we keep it default.
 warnings.simplefilter("default", exceptions.InsecurePlatformWarning, append=True)
-# SNIMissingWarnings should go off only once.
-warnings.simplefilter("default", exceptions.SNIMissingWarning, append=True)
 
 
 def disable_warnings(category: Type[Warning] = exceptions.HTTPWarning) -> None:
