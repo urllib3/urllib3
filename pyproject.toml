@@ -1,7 +1,7 @@
 # This file is protected via CODEOWNERS
 
 [build-system]
-requires = ["hatchling~=1.6"]
+requires = ["hatchling>=1.6.0,<2"]
 build-backend = "hatchling.build"
 
 [project]
