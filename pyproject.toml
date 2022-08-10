@@ -1,8 +1,8 @@
 # This file is protected via CODEOWNERS
 
 [build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["hatchling>=1.6.0"]
+build-backend = "hatchling.build"
 
 [project]
 name = "urllib3"
@@ -60,3 +60,6 @@ socks = [
 "Documentation" = "https://urllib3.readthedocs.io"
 "Code" = "https://github.com/urllib3/urllib3"
 "Issue tracker" = "https://github.com/urllib3/urllib3/issues"
+
+[tool.hatch.version]
+path = "src/urllib3/_version.py"
