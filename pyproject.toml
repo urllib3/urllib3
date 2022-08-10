@@ -1,7 +1,7 @@
 # This file is protected via CODEOWNERS
 
 [build-system]
-requires = ["hatchling>=1.6.0"]
+requires = ["hatchling~=1.6"]
 build-backend = "hatchling.build"
 
 [project]
@@ -34,7 +34,7 @@ classifiers = [
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Software Development :: Libraries",
 ]
-requires-python = ">=3.7, <4"
+requires-python = ">=3.7"
 dynamic = ["version"]
 
 [project.optional-dependencies]
