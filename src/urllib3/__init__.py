@@ -20,7 +20,10 @@ from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 
-# note to vendors and OS distributors delete this block
+# === NOTE TO REPACKAGERS AND VENDORS ===
+# Please delete this block, this logic is only
+# for urllib3 being distributed via PyPI.
+# See: https://github.com/urllib3/urllib3/issues/2680
 try:
     import urllib3_secure_extra  # type: ignore # noqa: F401
 except ModuleNotFoundError:
