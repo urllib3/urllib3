@@ -20,9 +20,10 @@ from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 
+# note to vendors and OS distributors delete this block
 try:
     import urllib3_secure_extra  # type: ignore # noqa: F401
-except ImportError:
+except ModuleNotFoundError:
     pass
 else:
     warnings.warn(
