@@ -21,7 +21,7 @@ from .util.retry import Retry
 from .util.timeout import Timeout
 
 try:
-    import urllib3_secure_extra
+    import urllib3_secure_extra  # noqa: F401
 except ImportError:
     pass
 else:
