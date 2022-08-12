@@ -1,6 +1,6 @@
 This directory contains changelog entries: short files that contain a small
 **ReST**-formatted text that will be added to ``CHANGES.rst`` by `towncrier
-<https://towncrier.readthedocs.io/en/actual-freaking-docs/>`__.
+<https://towncrier.readthedocs.io/en/latest/>`__.
 
 The ``CHANGES.rst`` will be read by **users**, so this description should be aimed to
 urllib3 users instead of describing internal changes which are only relevant to the
@@ -14,7 +14,7 @@ Make sure to use full sentences in the **past tense** and use punctuation, examp
 
 Each file should be named like ``<ISSUE>.<TYPE>.rst``, where ``<ISSUE>`` is an issue
 number, and ``<TYPE>`` is one of the `five towncrier default types
-<https://towncrier.readthedocs.io/en/actual-freaking-docs/quickstart.html#creating-news-fragments>`_.
+<https://towncrier.readthedocs.io/en/latest/#news-fragments>`_
 
 So for example: ``123.feature.rst``, ``456.bugfix.rst``.
 
