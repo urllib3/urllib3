@@ -16,7 +16,7 @@ source =
 
 [report]
 exclude_lines =
-    except ModuleNotFoundError::
+    except ModuleNotFoundError:
     except ImportError:
     pass
     import
