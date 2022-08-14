@@ -1920,7 +1920,7 @@ class TestBadContentLength(SocketDummyServerTestCase):
             get_response = conn.request(
                 "GET", url="/", preload_content=False, enforce_content_length=True
             )
-            data = get_response.stream(100)
+            data = get_response.stream(8)
             # Read "good" data before we try to read again.
             # This won't trigger till generator is exhausted.
             next(data)
