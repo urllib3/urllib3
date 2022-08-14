@@ -510,6 +510,8 @@ class HTTPResponse(BaseHTTPResponse):
         # If requested, preload the body.
         if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
+        
+        self._decoded_bytes = bytearray() 
 
     def release_conn(self) -> None:
         if not self._pool or not self._connection:
@@ -715,6 +717,51 @@ class HTTPResponse(BaseHTTPResponse):
             # StringIO doesn't like amt=None
             return self._fp.read(amt) if amt is not None else self._fp.read()
 
+    def _raw_read(
+        self,
+        amt: Optional[int] = None,
+    ) -> bytes:
+        """
+        Read `amt` of bytes from the socket. 
+        """
+
+        if self._fp is None:
+            return None  # type: ignore[return-value]
+
+        fp_closed = getattr(self._fp, "closed", False)
+
+        with self._error_catcher():
+            data = self._fp_read(amt) if not fp_closed else b""
+            if amt is not None:
+                if (
+                    amt != 0 and not data
+                ):  # Platform-specific: Buggy versions of Python.
+                    # Close the connection when no data is returned
+                    #
+                    # This is redundant to what httplib/http.client _should_
+                    # already do.  However, versions of python released before
+                    # December 15, 2012 (http://bugs.python.org/issue16298) do
+                    # not properly close the connection in all cases. There is
+                    # no harm in redundantly calling close.
+                    self._fp.close()
+                    if (
+                        self.enforce_content_length
+                        and self.length_remaining is not None
+                        and self.length_remaining != 0
+                    ):
+                        # This is an edge case that httplib failed to cover due
+                        # to concerns of backward compatibility. We're
+                        # addressing it here to make sure IncompleteRead is
+                        # raised during streaming, so all calls with incorrect
+                        # Content-Length are caught.
+                        raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
+
+        if data:
+            self._fp_bytes_read += len(data)
+            if self.length_remaining is not None:
+                self.length_remaining -= len(data)
+        return data
+
     def read(
         self,
         amt: Optional[int] = None,
@@ -741,57 +788,64 @@ class HTTPResponse(BaseHTTPResponse):
             after having ``.read()`` the file object. (Overridden if ``amt`` is
             set.)
         """
+        if len(self._decoded_bytes) >= amt:
+            # Don't read anything, just return what we have saved.
+            decoded_data = bytes(self._decoded_bytes[:amt])
+            self._decoded_bytes[:amt] = b""
+            return decoded_data
+        else:
+            # Let's read the same amount anyway and cache results
+            ...
+
+        raw_data = self._raw_read(amt)
+
+        if not raw_data and len(self._decoded_bytes) == 0:
+            return raw_data
+        
+        if amt is not None:
+            cache_content = False
+
+        if not decode_content:
+            if cache_content:
+                self._body = raw_data
+            return raw_data
+        
+        # We want to return decoded data if we get here.
         self._init_decoder()
         if decode_content is None:
             decode_content = self.decode_content
 
-        if self._fp is None:
-            return None  # type: ignore[return-value]
-
+        # TODO: flush_decoder = True if amt is None else False
         flush_decoder = False
-        fp_closed = getattr(self._fp, "closed", False)
+        if amt is None:
+            flush_decoder = True
+        if amt != 0 and not raw_data:
+            print("HERE!!")
+            flush_decoder = True
+       
+        decoded_data = self._decode(raw_data, decode_content, flush_decoder)
+        self._decoded_bytes.extend(decoded_data)
+        
+        # print(f"Expected {amt}, got {len(decoded_data)}")
 
-        with self._error_catcher():
-            data = self._fp_read(amt) if not fp_closed else b""
-            if amt is None:
-                flush_decoder = True
-            else:
-                cache_content = False
-                if (
-                    amt != 0 and not data
-                ):  # Platform-specific: Buggy versions of Python.
-                    # Close the connection when no data is returned
-                    #
-                    # This is redundant to what httplib/http.client _should_
-                    # already do.  However, versions of python released before
-                    # December 15, 2012 (http://bugs.python.org/issue16298) do
-                    # not properly close the connection in all cases. There is
-                    # no harm in redundantly calling close.
-                    self._fp.close()
-                    flush_decoder = True
-                    if (
-                        self.enforce_content_length
-                        and self.length_remaining is not None
-                        and self.length_remaining != 0
-                    ):
-                        # This is an edge case that httplib failed to cover due
-                        # to concerns of backward compatibility. We're
-                        # addressing it here to make sure IncompleteRead is
-                        # raised during streaming, so all calls with incorrect
-                        # Content-Length are caught.
-                        raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
-
-        if data:
-            self._fp_bytes_read += len(data)
-            if self.length_remaining is not None:
-                self.length_remaining -= len(data)
-
-            data = self._decode(data, decode_content, flush_decoder)
-
-            if cache_content:
-                self._body = data
-
-        return data
+        if amt == 0:
+            ...
+        # TODO: can we get here in any other case apart from reading the compression header?
+        if self.length_remaining > 0 and len(self._decoded_bytes) < amt:
+            # Still reading the compression header.
+            # Keep reading until we've got enough.
+            while self.length_remaining > 0 and len(self._decoded_bytes) < amt:
+                # remaining_amt = remaining_amt if len(decoded_data) == 0 else remaining_amt - len(decoded_data)
+                # TODO: why do we need to pass decode_content bool to a method that is supposed to decode content?
+                # TODO: is flush_decoder True if and only if amt is None?
+                self._decoded_bytes.extend(self._decode(self._raw_read(amt), decode_content, flush_decoder))
+            # Save additional data and return only as much as was requested originally.
+            # self._decoded_bytes.extend(decoded_data[amt:])
+            # return decoded_data[:amt]
+        
+        return_bytes = bytes(self._decoded_bytes[:amt])
+        self._decoded_bytes[:amt] = b""
+        return return_bytes
 
     def stream(
         self, amt: Optional[int] = 2**16, decode_content: Optional[bool] = None
