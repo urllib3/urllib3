@@ -510,8 +510,9 @@ class HTTPResponse(BaseHTTPResponse):
         # If requested, preload the body.
         if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
-        
-        self._decoded_bytes = bytearray() 
+
+        # A buffer for decoded bytes that are read in the `read` method.
+        self._decoded_bytes = bytearray()
 
     def release_conn(self) -> None:
         if not self._pool or not self._connection:
@@ -722,7 +723,7 @@ class HTTPResponse(BaseHTTPResponse):
         amt: Optional[int] = None,
     ) -> bytes:
         """
-        Read `amt` of bytes from the socket. 
+        Reads `amt` of bytes from the socket.
         """
 
         if self._fp is None:
@@ -762,6 +763,19 @@ class HTTPResponse(BaseHTTPResponse):
                 self.length_remaining -= len(data)
         return data
 
+    def _popleft_decoded_bytes(self, n: int) -> bytes:
+        decoded_data = bytes(self._decoded_bytes[:n])
+        self._decoded_bytes[:n] = b""
+        return decoded_data
+
+    def _popall_decoded_bytes(self) -> bytes:
+        decoded_data = bytes(self._decoded_bytes)
+        self._decoded_bytes = bytearray()
+        return decoded_data
+
+    def _decoded_bytes_in_buffer(self) -> int:
+        return len(self._decoded_bytes)
+
     def read(
         self,
         amt: Optional[int] = None,
@@ -788,64 +802,57 @@ class HTTPResponse(BaseHTTPResponse):
             after having ``.read()`` the file object. (Overridden if ``amt`` is
             set.)
         """
-        if len(self._decoded_bytes) >= amt:
-            # Don't read anything, just return what we have saved.
-            decoded_data = bytes(self._decoded_bytes[:amt])
-            self._decoded_bytes[:amt] = b""
-            return decoded_data
-        else:
-            # Let's read the same amount anyway and cache results
-            ...
-
-        raw_data = self._raw_read(amt)
-
-        if not raw_data and len(self._decoded_bytes) == 0:
-            return raw_data
-        
         if amt is not None:
             cache_content = False
 
-        if not decode_content:
-            if cache_content:
-                self._body = raw_data
-            return raw_data
-        
-        # We want to return decoded data if we get here.
-        self._init_decoder()
         if decode_content is None:
             decode_content = self.decode_content
 
-        # TODO: flush_decoder = True if amt is None else False
-        flush_decoder = False
-        if amt is None:
-            flush_decoder = True
-        if amt != 0 and not raw_data:
-            print("HERE!!")
-            flush_decoder = True
-       
-        decoded_data = self._decode(raw_data, decode_content, flush_decoder)
-        self._decoded_bytes.extend(decoded_data)
-        
-        # print(f"Expected {amt}, got {len(decoded_data)}")
+        if not decode_content:
+            data = self._raw_read(amt)
+            if cache_content:
+                self._body = data
+            return data
 
-        if amt == 0:
-            ...
-        # TODO: can we get here in any other case apart from reading the compression header?
-        if self.length_remaining > 0 and len(self._decoded_bytes) < amt:
-            # Still reading the compression header.
-            # Keep reading until we've got enough.
-            while self.length_remaining > 0 and len(self._decoded_bytes) < amt:
-                # remaining_amt = remaining_amt if len(decoded_data) == 0 else remaining_amt - len(decoded_data)
-                # TODO: why do we need to pass decode_content bool to a method that is supposed to decode content?
-                # TODO: is flush_decoder True if and only if amt is None?
-                self._decoded_bytes.extend(self._decode(self._raw_read(amt), decode_content, flush_decoder))
-            # Save additional data and return only as much as was requested originally.
-            # self._decoded_bytes.extend(decoded_data[amt:])
-            # return decoded_data[:amt]
-        
-        return_bytes = bytes(self._decoded_bytes[:amt])
-        self._decoded_bytes[:amt] = b""
-        return return_bytes
+        if amt is not None and self._decoded_bytes_in_buffer() >= amt:
+            return self._popleft_decoded_bytes(amt)
+
+        data = self._raw_read(amt)
+
+        if not data and self._decoded_bytes_in_buffer() == 0:
+            return data
+
+        self._init_decoder()
+
+        if amt is None or (amt != 0 and not data):
+            flush_decoder = True
+        else:
+            flush_decoder = False
+
+        decoded_data = self._decode(data, decode_content, flush_decoder)
+        self._decoded_bytes.extend(decoded_data)
+
+        if (
+            amt is not None
+            and self._decoded_bytes_in_buffer() < amt
+            and self.length_remaining is not None
+            and self.length_remaining > 0
+        ):
+            # Still reading the compression header. Let's keep reading in
+            # `amt` sized chunks until we've got enough to return.
+            while self.length_remaining > 0 and self._decoded_bytes_in_buffer() < amt:
+                data = self._raw_read(amt)
+                decoded_data = self._decode(data, decode_content, flush_decoder)
+                self._decoded_bytes.extend(decoded_data)
+
+        if amt is None:
+            data = self._popall_decoded_bytes()
+        else:
+            data = self._popleft_decoded_bytes(amt)
+
+        if cache_content:
+            self._body = data
+        return data
 
     def stream(
         self, amt: Optional[int] = 2**16, decode_content: Optional[bool] = None
