@@ -514,7 +514,6 @@ class HTTPResponse(BaseHTTPResponse):
         if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
 
-
     def release_conn(self) -> None:
         if not self._pool or not self._connection:
             return None
