@@ -507,12 +507,13 @@ class HTTPResponse(BaseHTTPResponse):
         # Determine length of response
         self.length_remaining = self._init_length(request_method)
 
+        # A buffer for decoded bytes that are read in the `read` method.
+        self._decoded_bytes = bytearray()
+
         # If requested, preload the body.
         if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
 
-        # A buffer for decoded bytes that are read in the `read` method.
-        self._decoded_bytes = bytearray()
 
     def release_conn(self) -> None:
         if not self._pool or not self._connection:
