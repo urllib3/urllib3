@@ -521,6 +521,7 @@ class HTTPSConnection(HTTPConnection):
             assert_hostname=self.assert_hostname,
             assert_fingerprint=self.assert_fingerprint,
             session=self.ssl_session,
+            ssl_ticket=self.reuse_ssl_sessions,  # request a ticket if the default ssl_context is used
         )
         self.sock = sock_and_verified.socket
         self.is_verified = sock_and_verified.is_verified
@@ -602,6 +603,7 @@ def _ssl_wrap_socket_and_match_hostname(
     ssl_context: Optional["ssl.SSLContext"],
     tls_in_tls: bool = False,
     session: Optional["ssl.SSLSession"] = None,
+    ssl_ticket: bool = False,
 ) -> _WrappedAndVerifiedSocket:
     """Logic for constructing an SSLContext from all TLS parameters, passing
     that down into ssl_wrap_socket, and then doing certificate verification
@@ -617,6 +619,18 @@ def _ssl_wrap_socket_and_match_hostname(
             ssl_maximum_version=ssl_maximum_version,
             cert_reqs=resolve_cert_reqs(cert_reqs),
         )
+        if ssl_ticket:
+            # Unset this sslctx flag, so that we express
+            # to  the server we support tickets on TLSv1.2 and below.
+            # On TLSv1.3, this flag does nothing, and is ignored
+            # by openssl, as the TLS client no longer states
+            # it supports tickets to the server explicitly
+            context.options &= ~ssl.OP_NO_TICKET
+        else:
+            # Set the flag, expressing to the server we don't want a ticket.
+            # This is the desired behavior unless using the
+            # reuse SSL session feature with TLSv1.2
+            context.options |= ssl.OP_NO_TICKET
     else:
         context = ssl_context
 
