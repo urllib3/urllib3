@@ -95,6 +95,7 @@ setup(
             "idna>=2.0.0",
             "certifi",
             "ipaddress; python_version=='2.7'",
+            "urllib3-secure-extra",
         ],
         "socks": ["PySocks>=1.5.6,<2.0,!=1.5.7"],
     },
