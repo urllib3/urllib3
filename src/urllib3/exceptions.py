@@ -360,3 +360,15 @@ class UnrewindableBodyError(HTTPError):
     """urllib3 encountered an error when trying to rewind a body"""
 
     pass
+
+
+class ResponseNotReadable(HTTPError):
+    """Response is not associated with a file object that can be read from"""
+
+    pass
+
+
+class ContentLengthMissing(HTTPWarning):
+    """Content-Length header missing from the response."""
+
+    pass

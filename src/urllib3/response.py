@@ -3,6 +3,7 @@ import json as _json
 import logging
 import re
 import sys
+import warnings
 import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
@@ -50,6 +51,7 @@ from ._collections import HTTPHeaderDict
 from .connection import _TYPE_BODY, BaseSSLError, HTTPConnection, HTTPException
 from .exceptions import (
     BodyNotHttplibCompatible,
+    ContentLengthMissing,
     DecodeError,
     HTTPError,
     IncompleteRead,
@@ -58,6 +60,7 @@ from .exceptions import (
     ProtocolError,
     ReadTimeoutError,
     ResponseNotChunked,
+    ResponseNotReadable,
     SSLError,
 )
 from .util.response import is_fp_closed, is_response_to_head
@@ -511,7 +514,7 @@ class HTTPResponse(BaseHTTPResponse):
         self._decoded_bytes = bytearray()
 
         # If requested, preload the body.
-        if preload_content and not self._body:
+        if preload_content and not self._body and self._fp:
             self._body = self.read(decode_content=decode_content)
 
     def release_conn(self) -> None:
@@ -670,6 +673,9 @@ class HTTPResponse(BaseHTTPResponse):
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
 
+    def readable(self) -> bool:
+        return self._fp is not None
+
     def _fp_read(self, amt: Optional[int] = None) -> bytes:
         """
         Read a response with the thought that reading the number of bytes
@@ -725,9 +731,8 @@ class HTTPResponse(BaseHTTPResponse):
         """
         Reads `amt` of bytes from the socket.
         """
-
         if self._fp is None:
-            return None  # type: ignore[return-value]
+            raise ResponseNotReadable()
 
         fp_closed = getattr(self._fp, "closed", False)
 
@@ -802,6 +807,15 @@ class HTTPResponse(BaseHTTPResponse):
             after having ``.read()`` the file object. (Overridden if ``amt`` is
             set.)
         """
+        if self.length_remaining is None:
+            warnings.warn(
+                "The response is missing a Content-Length header. If reading "
+                "with decode_content=True, the .read() call may return no "
+                "bytes or less bytes than specified even though there may be "
+                "still more data to read.",
+                ContentLengthMissing,
+            )
+
         if amt is not None:
             cache_content = False
 
