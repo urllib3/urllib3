@@ -6,7 +6,7 @@ Here's how you can regenerate the certificates::
     import trustme
 
     ca = trustme.CA()
-    server_cert = ca.issue_cert(u"localhost")
+    server_cert = ca.issue_cert("localhost")
 
     ca.cert_pem.write_to_path("cacert.pem")
     ca.private_key_pem.write_to_path("cacert.key")

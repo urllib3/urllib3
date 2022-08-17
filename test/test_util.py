@@ -799,7 +799,12 @@ class TestUtil:
 
     def test_connection_requires_http_tunnel_http_proxy(self) -> None:
         proxy = parse_url("http://proxy:8080")
-        proxy_config = ProxyConfig(ssl_context=None, use_forwarding_for_https=False)
+        proxy_config = ProxyConfig(
+            ssl_context=None,
+            use_forwarding_for_https=False,
+            assert_hostname=None,
+            assert_fingerprint=None,
+        )
         destination_scheme = "http"
         assert not connection_requires_http_tunnel(
             proxy, proxy_config, destination_scheme
@@ -810,7 +815,12 @@ class TestUtil:
 
     def test_connection_requires_http_tunnel_https_proxy(self) -> None:
         proxy = parse_url("https://proxy:8443")
-        proxy_config = ProxyConfig(ssl_context=None, use_forwarding_for_https=False)
+        proxy_config = ProxyConfig(
+            ssl_context=None,
+            use_forwarding_for_https=False,
+            assert_hostname=None,
+            assert_fingerprint=None,
+        )
         destination_scheme = "http"
         assert not connection_requires_http_tunnel(
             proxy, proxy_config, destination_scheme
