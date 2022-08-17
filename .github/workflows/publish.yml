@@ -18,9 +18,11 @@ jobs:
       name: "publish"
 
     steps:
-      - uses: "actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b"
+      - name: "Checkout repository"
+        uses: "actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b"
 
-      - uses: "actions/setup-python@d09bd5e6005b175076f227b13d9730d56e9dcfcb"
+      - name: "Setup Python"
+        uses: "actions/setup-python@b55428b1882923874294fa556849718a1d7f2ca5"
         with:
           python-version: "3.x"
 
@@ -54,13 +56,15 @@ jobs:
 
           done
 
-      - uses: "actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8"
+      - name: "Upload artifacts"
+        uses: "actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8"
         with:
           name: "sigstore-artifacts"
           path: "sigstore-artifacts/*"
           if-no-files-found: "error"
 
-      - uses: "pypa/gh-action-pypi-publish@37f50c210e3d2f9450da2cd423303d6a14a6e29f"
+      - name: "Publish to PyPI"
+        uses: "pypa/gh-action-pypi-publish@37f50c210e3d2f9450da2cd423303d6a14a6e29f"
         with:
           user: __token__
           password: ${{ secrets.PYPI_TOKEN }}
