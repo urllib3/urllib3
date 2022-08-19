@@ -8,14 +8,12 @@
     git push <REMOTE> --tags
     ```
 * [ ]  Execute the `publish` GitHub workflow. This requires a review from a maintainer.
-* [ ]  Download the sdist and wheel files from PyPI. Attach these files to the GitHub release.
-* [ ]  Download the `.crt` and `.sig` files from the `sigstore-artifacts` artifact in the `publish` workflow execution. Attach these files to the GitHub release.
+* [ ]  Ensure that all expected artifacts are added to the new GitHub release. Should
+       be one `.whl`, one `.tar.gz`, and one `urllib3.intoto.jsonl`. Update the GitHub
+       release to have the content of the release's changelog.
 * [ ]  Announce on:
-  
-  * [ ]  GitHub releases
   * [ ]  Twitter
   * [ ]  Discord
   * [ ]  OpenCollective
-  * [ ]  GitCoin Grants
 * [ ]  Update Tidelift metadata
 * [ ]  If this was a 1.26.x release, add changelog to the `main` branch

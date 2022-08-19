@@ -133,19 +133,6 @@ def downstream_requests(session: nox.Session) -> None:
 @nox.session()
 def format(session: nox.Session) -> None:
     """Run code formatters."""
-    session.install("pre-commit")
-    session.run("pre-commit", "--version")
-
-    process = subprocess.run(
-        ["pre-commit", "run", "--all-files"],
-        env=session.env,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    # Ensure that pre-commit itself ran successfully
-    assert process.returncode in (0, 1)
-
     lint(session)
 
 

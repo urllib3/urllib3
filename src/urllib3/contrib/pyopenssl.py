@@ -53,12 +53,21 @@ except ImportError:
 
 import logging
 import ssl
+import warnings
 from io import BytesIO
 from socket import socket as socket_cls
 from socket import timeout
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from .. import util
+
+warnings.warn(
+    "'urllib3.contrib.pyopenssl' module is deprecated and will be removed "
+    "in a future release of urllib3 2.x. Read more in this issue: "
+    "https://github.com/urllib3/urllib3/issues/2680",
+    category=DeprecationWarning,
+    stacklevel=2,
+)
 
 if TYPE_CHECKING:
     from OpenSSL.crypto import CRL, X509  # type: ignore[import]
