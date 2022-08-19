@@ -1,0 +1,1 @@
+Standarized the ``HTTPResponse.read(n)`` behavior regardeless of compression.
