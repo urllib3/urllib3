@@ -6,7 +6,7 @@ import zlib
 from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
 from io import BufferedReader, BytesIO, TextIOWrapper
-from test import onlyBrotli
+from test import onlyBrotli, onlyZstd
 from typing import Any, Generator, List, Optional
 from unittest import mock
 
@@ -22,7 +22,7 @@ from urllib3.exceptions import (
     ResponseNotChunked,
     SSLError,
 )
-from urllib3.response import HTTPResponse, brotli  # type: ignore[attr-defined]
+from urllib3.response import HTTPResponse, brotli, zstd  # type: ignore[attr-defined]
 from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
 
@@ -253,6 +253,39 @@ class TestResponse:
         fp = BytesIO(b"foo")
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "br"})
+
+    @onlyZstd()
+    def test_decode_zstd(self) -> None:
+        data = zstd.compress(b"foo")
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={"content-encoding": "zstd"})
+        assert r.data == b"foo"
+
+    @onlyZstd()
+    def test_chunked_decoding_zstd(self) -> None:
+        data = zstd.compress(b"foobarbaz")
+
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        ret = b""
+
+        for _ in range(100):
+            ret += r.read(1)
+            if r.closed:
+                break
+        assert ret == b"foobarbaz"
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
+    def test_decode_zstd_error(self, data: bytes) -> None:
+        fp = BytesIO(data)
+
+        with pytest.raises(DecodeError):
+            HTTPResponse(fp, headers={"content-encoding": "zstd"})
 
     def test_multi_decoding_deflate_deflate(self) -> None:
         data = zlib.compress(zlib.compress(b"foo"))

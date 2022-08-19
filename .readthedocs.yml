@@ -9,6 +9,7 @@ python:
         - brotli
         - secure
         - socks
+        - zstd
 
 sphinx:
   fail_on_warning: true

@@ -26,7 +26,7 @@ standard libraries:
 - Client-side TLS/SSL verification.
 - File uploads with multipart encoding.
 - Helpers for retrying requests and dealing with HTTP redirects.
-- Support for gzip, deflate, and brotli encoding.
+- Support for gzip, deflate, brotli, and zstd encoding.
 - Proxy support for HTTP and SOCKS.
 - 100% test coverage.
 

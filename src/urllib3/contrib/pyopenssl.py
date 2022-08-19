@@ -53,12 +53,21 @@ except ImportError:
 
 import logging
 import ssl
+import warnings
 from io import BytesIO
 from socket import socket as socket_cls
 from socket import timeout
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from .. import util
+
+warnings.warn(
+    "'urllib3.contrib.pyopenssl' module is deprecated and will be removed "
+    "in a future release of urllib3 2.x. Read more in this issue: "
+    "https://github.com/urllib3/urllib3/issues/2680",
+    category=DeprecationWarning,
+    stacklevel=2,
+)
 
 if TYPE_CHECKING:
     from OpenSSL.crypto import CRL, X509  # type: ignore[import]
@@ -402,7 +411,7 @@ class WrappedSocket:
         else:
             self._io_refs -= 1
 
-    def getpeercert(self, binary_form: bool = False) -> Dict[str, List[Any]]:
+    def getpeercert(self, binary_form: bool = False) -> Optional[Dict[str, List[Any]]]:
         x509 = self.connection.get_peer_certificate()
 
         if not x509:
@@ -486,12 +495,15 @@ class PyOpenSSLContext:
         keyfile: Optional[str] = None,
         password: Optional[str] = None,
     ) -> None:
-        self._ctx.use_certificate_chain_file(certfile)
-        if password is not None:
-            if not isinstance(password, bytes):
-                password = password.encode("utf-8")  # type: ignore[assignment]
-            self._ctx.set_passwd_cb(lambda *_: password)
-        self._ctx.use_privatekey_file(keyfile or certfile)
+        try:
+            self._ctx.use_certificate_chain_file(certfile)
+            if password is not None:
+                if not isinstance(password, bytes):
+                    password = password.encode("utf-8")  # type: ignore[assignment]
+                self._ctx.set_passwd_cb(lambda *_: password)
+            self._ctx.use_privatekey_file(keyfile or certfile)
+        except OpenSSL.SSL.Error as e:
+            raise ssl.SSLError(f"Unable to load certificate chain: {e!r}") from e
 
     def set_alpn_protocols(self, protocols: List[Union[bytes, str]]) -> None:
         protocols = [util.util.to_bytes(p, "ascii") for p in protocols]

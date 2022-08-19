@@ -1,6 +1,8 @@
 import io
 import json as _json
 import logging
+import re
+import sys
 import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
@@ -27,6 +29,23 @@ try:
 except ImportError:
     brotli = None
 
+try:
+    import zstandard as zstd  # type: ignore[import]
+
+    # The package 'zstandard' added the 'eof' property starting
+    # in v0.18.0 which we require to ensure a complete and
+    # valid zstd stream was fed into the ZstdDecoder.
+    # See: https://github.com/urllib3/urllib3/pull/2624
+    _zstd_version = _zstd_version = tuple(
+        map(int, re.search(r"^([0-9]+)\.([0-9]+)", zstd.__version__).groups())  # type: ignore[union-attr]
+    )
+    if _zstd_version < (0, 18):  # Defensive:
+        zstd = None
+
+except (AttributeError, ImportError, ValueError):  # Defensive:
+    zstd = None
+
+from . import util
 from ._collections import HTTPHeaderDict
 from .connection import _TYPE_BODY, BaseSSLError, HTTPConnection, HTTPException
 from .exceptions import (
@@ -148,6 +167,24 @@ if brotli is not None:
             return b""
 
 
+if zstd is not None:
+
+    class ZstdDecoder(ContentDecoder):
+        def __init__(self) -> None:
+            self._obj = zstd.ZstdDecompressor().decompressobj()
+
+        def decompress(self, data: bytes) -> bytes:
+            if not data:
+                return b""
+            return self._obj.decompress(data)  # type: ignore[no-any-return]
+
+        def flush(self) -> bytes:
+            ret = self._obj.flush()
+            if not self._obj.eof:
+                raise DecodeError("Zstandard data is incomplete")
+            return ret  # type: ignore[no-any-return]
+
+
 class MultiDecoder(ContentDecoder):
     """
     From RFC7231:
@@ -179,6 +216,9 @@ def _get_decoder(mode: str) -> ContentDecoder:
     if brotli is not None and mode == "br":
         return BrotliDecoder()
 
+    if zstd is not None and mode == "zstd":
+        return ZstdDecoder()
+
     return DeflateDecoder()
 
 
@@ -186,11 +226,16 @@ class BaseHTTPResponse(io.IOBase):
     CONTENT_DECODERS = ["gzip", "deflate"]
     if brotli is not None:
         CONTENT_DECODERS += ["br"]
+    if zstd is not None:
+        CONTENT_DECODERS += ["zstd"]
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
     DECODER_ERROR_CLASSES: Tuple[Type[Exception], ...] = (IOError, zlib.error)
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
+
+    if zstd is not None:
+        DECODER_ERROR_CLASSES += (zstd.ZstdError,)
 
     def __init__(
         self,
@@ -368,7 +413,7 @@ class BaseHTTPResponse(io.IOBase):
     def info(self) -> HTTPHeaderDict:
         return self.headers
 
-    def geturl(self) -> Optional[Union[str, "Literal[False]"]]:
+    def geturl(self) -> Optional[str]:
         return self.url
 
 
@@ -622,6 +667,54 @@ class HTTPResponse(BaseHTTPResponse):
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
 
+    def _fp_read(self, amt: Optional[int] = None) -> bytes:
+        """
+        Read a response with the thought that reading the number of bytes
+        larger than can fit in a 32-bit int at a time via SSL in some
+        known cases leads to an overflow error that has to be prevented
+        if `amt` or `self.length_remaining` indicate that a problem may
+        happen.
+
+        The known cases:
+          * 3.8 <= CPython < 3.9.7 because of a bug
+            https://github.com/urllib3/urllib3/issues/2513#issuecomment-1152559900.
+          * urllib3 injected with pyOpenSSL-backed SSL-support.
+          * CPython < 3.10 only when `amt` does not fit 32-bit int.
+        """
+        assert self._fp
+        c_int_max = 2**31 - 1
+        if (
+            (
+                (amt and amt > c_int_max)
+                or (self.length_remaining and self.length_remaining > c_int_max)
+            )
+            and not util.IS_SECURETRANSPORT
+            and (util.IS_PYOPENSSL or sys.version_info < (3, 10))
+        ):
+            buffer = io.BytesIO()
+            # Besides `max_chunk_amt` being a maximum chunk size, it
+            # affects memory overhead of reading a response by this
+            # method in CPython.
+            # `c_int_max` equal to 2 GiB - 1 byte is the actual maximum
+            # chunk size that does not lead to an overflow error, but
+            # 256 MiB is a compromise.
+            max_chunk_amt = 2**28
+            while amt is None or amt != 0:
+                if amt is not None:
+                    chunk_amt = min(amt, max_chunk_amt)
+                    amt -= chunk_amt
+                else:
+                    chunk_amt = max_chunk_amt
+                data = self._fp.read(chunk_amt)
+                if not data:
+                    break
+                buffer.write(data)
+                del data  # to reduce peak memory usage by `max_chunk_amt`.
+            return buffer.getvalue()
+        else:
+            # StringIO doesn't like amt=None
+            return self._fp.read(amt) if amt is not None else self._fp.read()
+
     def read(
         self,
         amt: Optional[int] = None,
@@ -659,13 +752,11 @@ class HTTPResponse(BaseHTTPResponse):
         fp_closed = getattr(self._fp, "closed", False)
 
         with self._error_catcher():
+            data = self._fp_read(amt) if not fp_closed else b""
             if amt is None:
-                # cStringIO doesn't like amt=None
-                data = self._fp.read() if not fp_closed else b""
                 flush_decoder = True
             else:
                 cache_content = False
-                data = self._fp.read(amt) if not fp_closed else b""
                 if (
                     amt != 0 and not data
                 ):  # Platform-specific: Buggy versions of Python.

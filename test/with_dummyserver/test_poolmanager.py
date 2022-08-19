@@ -344,6 +344,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert returned_headers.get("Baz") == "quux"
 
     def test_headers_http_header_dict(self) -> None:
+        # Test uses a list of headers to assert the order
+        # that headers are sent in the request too.
+
         headers = HTTPHeaderDict()
         headers.add("Foo", "bar")
         headers.add("Multi", "1")
@@ -351,26 +354,71 @@ class TestPoolManager(HTTPDummyServerTestCase):
         headers.add("Multi", "2")
 
         with PoolManager(headers=headers) as http:
-            r = http.request("GET", f"{self.base_url}/headers")
-            returned_headers = r.json()
-            assert returned_headers["Foo"] == "bar"
-            assert returned_headers["Multi"] == "1, 2"
-            assert returned_headers["Baz"] == "quux"
+            r = http.request("GET", f"{self.base_url}/multi_headers")
+            returned_headers = r.json()["headers"]
+            assert returned_headers[-4:] == [
+                ["Foo", "bar"],
+                ["Multi", "1"],
+                ["Multi", "2"],
+                ["Baz", "quux"],
+            ]
 
             r = http.request(
                 "GET",
-                f"{self.base_url}/headers",
+                f"{self.base_url}/multi_headers",
                 headers={
                     **headers,
                     "Extra": "extra",
                     "Foo": "new",
                 },
             )
-            returned_headers = r.json()
-            assert returned_headers["Foo"] == "new"
-            assert returned_headers["Multi"] == "1, 2"
-            assert returned_headers["Baz"] == "quux"
-            assert returned_headers["Extra"] == "extra"
+            returned_headers = r.json()["headers"]
+            assert returned_headers[-4:] == [
+                ["Foo", "new"],
+                ["Multi", "1, 2"],
+                ["Baz", "quux"],
+                ["Extra", "extra"],
+            ]
+
+    def test_headers_http_multi_header_multipart(self) -> None:
+        headers = HTTPHeaderDict()
+        headers.add("Multi", "1")
+        headers.add("Multi", "2")
+        old_headers = headers.copy()
+
+        with PoolManager(headers=headers) as http:
+            r = http.request(
+                "POST",
+                f"{self.base_url}/multi_headers",
+                fields={"k": "v"},
+                multipart_boundary="b",
+                encode_multipart=True,
+            )
+            returned_headers = r.json()["headers"]
+            assert returned_headers[4:] == [
+                ["Multi", "1"],
+                ["Multi", "2"],
+                ["Content-Type", "multipart/form-data; boundary=b"],
+            ]
+            # Assert that the previous headers weren't modified.
+            assert headers == old_headers
+
+            # Set a default value for the Content-Type
+            headers["Content-Type"] = "multipart/form-data; boundary=b; field=value"
+            r = http.request(
+                "POST",
+                f"{self.base_url}/multi_headers",
+                fields={"k": "v"},
+                multipart_boundary="b",
+                encode_multipart=True,
+            )
+            returned_headers = r.json()["headers"]
+            assert returned_headers[4:] == [
+                ["Multi", "1"],
+                ["Multi", "2"],
+                # Uses the set value, not the one that would be generated.
+                ["Content-Type", "multipart/form-data; boundary=b; field=value"],
+            ]
 
     def test_body(self) -> None:
         with PoolManager() as http:
@@ -541,6 +589,22 @@ class TestPoolManager(HTTPDummyServerTestCase):
         with pytest.raises(TypeError, match=match):
             body = {"attribute": "value"}
             request(method="POST", url=f"{self.base_url}/echo", body="", json=body)
+
+    def test_top_level_request_with_invalid_body(self) -> None:
+        class BadBody:
+            def __repr__(self) -> str:
+                return "<BadBody>"
+
+        with pytest.raises(TypeError) as e:
+            request(
+                method="POST",
+                url=f"{self.base_url}/echo",
+                body=BadBody(),  # type: ignore[arg-type]
+            )
+        assert str(e.value) == (
+            "'body' must be a bytes-like object, file-like "
+            "object, or iterable. Instead was <BadBody>"
+        )
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")

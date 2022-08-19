@@ -5,7 +5,7 @@ import ssl
 import sys
 import warnings
 from itertools import chain
-from test import ImportBlocker, ModuleStash, notBrotli, onlyBrotli
+from test import ImportBlocker, ModuleStash, notBrotli, notZstd, onlyBrotli, onlyZstd
 from typing import TYPE_CHECKING, Dict, List, NoReturn, Optional, Tuple, Union
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
@@ -112,6 +112,9 @@ class TestUtil:
             "http://[2010:836b:4179::836b:4179]",
             ("http", "[2010:836b:4179::836b:4179]", None),
         ),
+        # Scoped IPv6 (with ZoneID), both RFC 6874 compliant and not.
+        ("http://[a::b%25zone]", ("http", "[a::b%zone]", None)),
+        ("http://[a::b%zone]", ("http", "[a::b%zone]", None)),
         # Hosts
         ("HTTP://GOOGLE.COM/mail/", ("http", "google.com", None)),
         ("GOogle.COM/mail", ("http", "google.com", None)),
@@ -187,6 +190,10 @@ class TestUtil:
             ),
             ("HTTPS://Example.Com/?Key=Value", "https://example.com/?Key=Value"),
             ("Https://Example.Com/#Fragment", "https://example.com/#Fragment"),
+            # IPv6 addresses with zone IDs. Both RFC 6874 (%25) as well as
+            # non-standard (unquoted %) variants.
+            ("[::1%zone]", "[::1%zone]"),
+            ("[::1%25zone]", "[::1%zone]"),
             ("[::1%25]", "[::1%25]"),
             ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%etH0%FF]/%AB%AF"),
             (
@@ -510,25 +517,45 @@ class TestUtil:
         [
             pytest.param(
                 {"accept_encoding": True},
+                {"accept-encoding": "gzip,deflate,br,zstd"},
+                marks=[onlyBrotli(), onlyZstd()],  # type: ignore[list-item]
+            ),
+            pytest.param(
+                {"accept_encoding": True},
                 {"accept-encoding": "gzip,deflate,br"},
-                marks=onlyBrotli(),  # type: ignore[arg-type]
+                marks=[onlyBrotli(), notZstd()],  # type: ignore[list-item]
+            ),
+            pytest.param(
+                {"accept_encoding": True},
+                {"accept-encoding": "gzip,deflate,zstd"},
+                marks=[notBrotli(), onlyZstd()],  # type: ignore[list-item]
             ),
             pytest.param(
                 {"accept_encoding": True},
                 {"accept-encoding": "gzip,deflate"},
-                marks=notBrotli(),  # type: ignore[arg-type]
+                marks=[notBrotli(), notZstd()],  # type: ignore[list-item]
             ),
             ({"accept_encoding": "foo,bar"}, {"accept-encoding": "foo,bar"}),
             ({"accept_encoding": ["foo", "bar"]}, {"accept-encoding": "foo,bar"}),
             pytest.param(
                 {"accept_encoding": True, "user_agent": "banana"},
+                {"accept-encoding": "gzip,deflate,br,zstd", "user-agent": "banana"},
+                marks=[onlyBrotli(), onlyZstd()],  # type: ignore[list-item]
+            ),
+            pytest.param(
+                {"accept_encoding": True, "user_agent": "banana"},
                 {"accept-encoding": "gzip,deflate,br", "user-agent": "banana"},
-                marks=onlyBrotli(),  # type: ignore[arg-type]
+                marks=[onlyBrotli(), notZstd()],  # type: ignore[list-item]
+            ),
+            pytest.param(
+                {"accept_encoding": True, "user_agent": "banana"},
+                {"accept-encoding": "gzip,deflate,zstd", "user-agent": "banana"},
+                marks=[notBrotli(), onlyZstd()],  # type: ignore[list-item]
             ),
             pytest.param(
                 {"accept_encoding": True, "user_agent": "banana"},
                 {"accept-encoding": "gzip,deflate", "user-agent": "banana"},
-                marks=notBrotli(),  # type: ignore[arg-type]
+                marks=[notBrotli(), notZstd()],  # type: ignore[list-item]
             ),
             ({"user_agent": "banana"}, {"user-agent": "banana"}),
             ({"keep_alive": True}, {"connection": "keep-alive"}),
@@ -772,7 +799,12 @@ class TestUtil:
 
     def test_connection_requires_http_tunnel_http_proxy(self) -> None:
         proxy = parse_url("http://proxy:8080")
-        proxy_config = ProxyConfig(ssl_context=None, use_forwarding_for_https=False)
+        proxy_config = ProxyConfig(
+            ssl_context=None,
+            use_forwarding_for_https=False,
+            assert_hostname=None,
+            assert_fingerprint=None,
+        )
         destination_scheme = "http"
         assert not connection_requires_http_tunnel(
             proxy, proxy_config, destination_scheme
@@ -783,7 +815,12 @@ class TestUtil:
 
     def test_connection_requires_http_tunnel_https_proxy(self) -> None:
         proxy = parse_url("https://proxy:8443")
-        proxy_config = ProxyConfig(ssl_context=None, use_forwarding_for_https=False)
+        proxy_config = ProxyConfig(
+            ssl_context=None,
+            use_forwarding_for_https=False,
+            assert_hostname=None,
+            assert_fingerprint=None,
+        )
         destination_scheme = "http"
         assert not connection_requires_http_tunnel(
             proxy, proxy_config, destination_scheme
@@ -848,6 +885,30 @@ class TestUtil:
             # linux: [Errno -2] Name or service not known
             # macos: [Errno 8] nodename nor servname provided, or not known
             create_connection(("badhost.invalid", 80))
+
+    @patch("socket.getaddrinfo")
+    @patch("socket.socket")
+    def test_create_connection_with_scoped_ipv6(
+        self, socket: MagicMock, getaddrinfo: MagicMock
+    ) -> None:
+        # Check that providing create_connection with a scoped IPv6 address
+        # properly propagates the scope to getaddrinfo, and that the returned
+        # scoped ID makes it to the socket creation call.
+        fake_scoped_sa6 = ("a::b", 80, 0, 42)
+        getaddrinfo.return_value = [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                fake_scoped_sa6,
+            )
+        ]
+        socket.return_value = fake_sock = MagicMock()
+
+        create_connection(("a::b%iface", 80))
+        assert getaddrinfo.call_args[0][0] == "a::b%iface"
+        fake_sock.connect.assert_called_once_with(fake_scoped_sa6)
 
     @pytest.mark.parametrize(
         "input,params,expected",

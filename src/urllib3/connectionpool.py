@@ -3,6 +3,7 @@ import logging
 import queue
 import sys
 import warnings
+import weakref
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
 from types import TracebackType
@@ -219,6 +220,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             self.conn_kw["proxy"] = self.proxy
             self.conn_kw["proxy_config"] = self.proxy_config
+
+        # Do not pass 'self' as callback to 'finalize'.
+        # Then the 'finalize' would keep an endless living (leak) to self.
+        # By just passing a reference to the pool allows the garbage collector
+        # to free self if nobody else has a reference to it.
+        pool = self.pool
+
+        # Close all the HTTPConnections in the pool before the
+        # HTTPConnectionPool object is garbage collected.
+        weakref.finalize(self, _close_pool_connections, pool)
 
     def _new_conn(self) -> HTTPConnection:
         """
@@ -503,14 +514,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Disable access to the pool
         old_pool, self.pool = self.pool, None
 
-        try:
-            while True:
-                conn = old_pool.get(block=False)
-                if conn:
-                    conn.close()
-
-        except queue.Empty:
-            pass  # Done.
+        # Close all the HTTPConnections in the pool.
+        _close_pool_connections(old_pool)
 
     def is_same_host(self, url: str) -> bool:
         """
@@ -1020,7 +1025,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         )
 
         if not self.ConnectionCls or self.ConnectionCls is DummyConnection:  # type: ignore[comparison-overlap]
-            raise SSLError(
+            raise ImportError(
                 "Can't connect to HTTPS URL because the SSL module is not available."
             )
 
@@ -1119,3 +1124,14 @@ def _normalize_host(host: Optional[str], scheme: Optional[str]) -> Optional[str]
     if host and host.startswith("[") and host.endswith("]"):
         host = host[1:-1]
     return host
+
+
+def _close_pool_connections(pool: "queue.LifoQueue[Any]") -> None:
+    """Drains a queue of connections and closes each one."""
+    try:
+        while True:
+            conn = pool.get(block=False)
+            if conn:
+                conn.close()
+    except queue.Empty:
+        pass  # Done.

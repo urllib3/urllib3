@@ -62,8 +62,33 @@ multi-threaded applications.
 Streaming and I/O
 -----------------
 
-When dealing with large responses it's often better to stream the response
-content.
+When using ``preload_content=True`` (the default setting) the
+response body will be read immediately into memory and the HTTP connection
+will be released back into the pool without manual intervention.
+
+However, when dealing with large responses it's often better to stream the response
+content using ``preload_content=False``. Setting ``preload_content`` to ``False`` means
+that urllib3 will only read from the socket when data is requested.
+
+.. note:: When using ``preload_content=False``, you need to manually release
+    the HTTP connection back to the connection pool so that it can be re-used.
+    To ensure the HTTP connection is in a valid state before being re-used
+    all data should be read off the wire.
+
+    You can call the  :meth:`~response.HTTPResponse.drain_conn` to throw away
+    unread data still on the wire. This call isn't necessary if data has already
+    been completely read from the response.
+
+    After all data is read you can call :meth:`~response.HTTPResponse.release_conn`
+    to release the connection into the pool.
+
+    You can call the :meth:`~response.HTTPResponse.close` to close the connection,
+    but this call doesn’t return the connection to the pool, throws away the unread
+    data on the wire, and leaves the connection in an undefined protocol state.
+    This is desirable if you prefer not reading data from the socket to re-using the
+    HTTP connection.
+
+:meth:`~response.HTTPResponse.stream` lets you iterate over chunks of the response content.
 
 .. code-block:: python
 
@@ -80,14 +105,6 @@ content.
         # b"\x9e\xa97'\x8e\x1eT ....
 
     resp.release_conn()
-
-Setting ``preload_content`` to ``False`` means that urllib3 will stream the
-response content. :meth:`~response.HTTPResponse.stream` lets you iterate over
-chunks of the response content.
-
-.. note:: When using ``preload_content=False``, you should call
-    :meth:`~response.HTTPResponse.release_conn` to release the http connection
-    back to the connection pool so that it can be re-used.
 
 However, you can also treat the :class:`~response.HTTPResponse` instance as
 a file-like object. This allows you to do buffering:
@@ -537,6 +554,37 @@ Here's an example using brotli encoding via the ``Accept-Encoding`` header:
         "https://www.google.com/",
         headers={"Accept-Encoding": "br"}
     )
+
+Zstandard Encoding
+------------------
+
+`Zstandard <https://datatracker.ietf.org/doc/html/rfc8878>`_
+is a compression algorithm created by Facebook with better compression
+than brotli, gzip and deflate (see `benchmarks <https://facebook.github.io/zstd/#benchmarks>`_)
+and is supported by urllib3 if the `zstandard package <https://pypi.org/project/zstandard/>`_ is installed.
+You may also request the package be installed via the ``urllib3[zstd]`` extra:
+
+.. code-block:: bash
+
+    $ python -m pip install urllib3[zstd]
+
+.. note::
+
+    Zstandard support in urllib3 requires using v0.18.0 or later of the ``zstandard`` package.
+    If the version installed is less than v0.18.0 then Zstandard support won't be enabled.
+
+Here's an example using zstd encoding via the ``Accept-Encoding`` header:
+
+.. code-block:: python
+
+    import urllib3
+
+    urllib3.request(
+        "GET",
+        "https://www.facebook.com/",
+        headers={"Accept-Encoding": "zstd"}
+    )
+
 
 Decrypting Captured TLS Sessions with Wireshark
 -----------------------------------------------
