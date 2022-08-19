@@ -92,12 +92,11 @@ def downstream_botocore(session: nox.Session) -> None:
     session.cd(tmp_dir)
     git_clone(session, "https://github.com/boto/botocore")
     session.chdir("botocore")
-    session.run(
-        "git",
-        "apply",
-        f"{root}/ci/0001-Mark-100-Continue-tests-as-failing.patch",
-        external=True,
-    )
+    for patch in [
+        "0001-Mark-100-Continue-tests-as-failing.patch",
+        "0002-Stop-relying-on-removed-DEFAULT_CIPHERS.patch",
+    ]:
+        session.run("git", "apply", f"{root}/ci/{patch}", external=True)
     session.run("git", "rev-parse", "HEAD", external=True)
     session.run("python", "scripts/ci/install")
 
