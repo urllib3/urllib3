@@ -18,7 +18,7 @@ Response Decoding
 
    .. automethod:: from_response
 
-.. autoclass:: urllib3.multipart.BodyPart
+.. autoclass:: urllib3.multipart.decoder.BodyPart
    :members: content, encoding, headers, text
 
 .. autoexception:: urllib3.multipart.ImproperBodyPartContentError

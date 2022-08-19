@@ -3,10 +3,8 @@ import email.parser
 import typing
 
 from .. import _collections
+from .. import response as _response
 from .encoder import encode_with
-
-if typing.TYPE_CHECKING:
-    from .. import response as _response
 
 
 class ImproperBodyPartContentError(Exception):
@@ -141,7 +139,7 @@ class MultipartDecoder:
     @classmethod
     def from_response(
         cls: typing.Type[MD],
-        response: "_response.HTTPResponse",
+        response: _response.HTTPResponse,
         encoding: str = "utf-8",
     ) -> MD:
         content = response.data
