@@ -28,7 +28,7 @@ try:
 except ImportError:
     pass
 else:
-    if ssl.OPENSSL_VERSION_INFO < (1, 1, 1):
+    if ssl.OPENSSL_VERSION_INFO < (1, 1, 1):  # Defensive:
         raise ImportError(
             "urllib3 v2.0 only supports OpenSSL 1.1.1+, currently "
             f"the 'ssl' module is compiled with {ssl.OPENSSL_VERSION}."
