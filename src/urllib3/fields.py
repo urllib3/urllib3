@@ -35,7 +35,7 @@ def guess_content_type(
     return default
 
 
-def format_header_param_rfc2231(name: str, value: _TYPE_FIELD_VALUE) -> str:
+def format_header_param_rfc2231(name: str, value: Union[str, bytes]) -> str:
     """
     Helper function to format and quote a single header parameter using the
     strategy defined in RFC 2231.
