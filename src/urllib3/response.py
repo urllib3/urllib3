@@ -807,20 +807,20 @@ class HTTPResponse(BaseHTTPResponse):
             after having ``.read()`` the file object. (Overridden if ``amt`` is
             set.)
         """
-        if self.length_remaining is None:
-            warnings.warn(
-                "The response is missing a Content-Length header. If reading "
-                "with decode_content=True, the .read() call may return no "
-                "bytes or less bytes than specified even though there may be "
-                "still more data to read.",
-                ContentLengthMissing,
-            )
-
         if amt is not None:
             cache_content = False
 
         if decode_content is None:
             decode_content = self.decode_content
+
+        if self.length_remaining is None and decode_content:
+            warnings.warn(
+                "The response is missing a Content-Length header. When "
+                "reading with decode_content=True, the HTTPResponse.read "
+                "call may return no bytes or less bytes than specified even "
+                "though there may be still more data to read.",
+                ContentLengthMissing,
+            )
 
         if not decode_content:
             data = self._raw_read(amt)
@@ -852,8 +852,6 @@ class HTTPResponse(BaseHTTPResponse):
             and self.length_remaining is not None
             and self.length_remaining > 0
         ):
-            # Still reading the compression header. Let's keep reading in
-            # `amt` sized chunks until we've got enough to return.
             while self.length_remaining > 0 and self._decoded_bytes_in_buffer() < amt:
                 data = self._raw_read(amt)
                 decoded_data = self._decode(data, decode_content, flush_decoder)

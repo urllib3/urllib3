@@ -14,12 +14,14 @@ import pytest
 
 from urllib3.exceptions import (
     BodyNotHttplibCompatible,
+    ContentLengthMissing,
     DecodeError,
     IncompleteRead,
     InvalidChunkLength,
     InvalidHeader,
     ProtocolError,
     ResponseNotChunked,
+    ResponseNotReadable,
     SSLError,
 )
 from urllib3.response import HTTPResponse, brotli, zstd  # type: ignore[attr-defined]
@@ -116,6 +118,17 @@ class TestResponse:
 
         assert r.data == b"foo"
 
+    def test_warning_on_read_with_no_content_length(self) -> None:
+        data = zlib.compress(b"foo")
+
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+
+        with pytest.warns(ContentLengthMissing):
+            r.read(2)
+
     def test_decode_deflate_case_insensitve(self) -> None:
         data = zlib.compress(b"foo")
 
@@ -124,7 +137,6 @@ class TestResponse:
 
         assert r.data == b"foo"
 
-    # TODO: add more tests with larger payloads that would blow up in the old implementation.
     def test_chunked_decoding_deflate(self) -> None:
         data = zlib.compress(b"foo")
 
@@ -331,10 +343,84 @@ class TestResponse:
 
         assert r.data == b"foo"
 
+    def test_read_multi_decoding_deflate_deflate(self) -> None:
+        msg = b"foobarbaz" * 42
+        data = zlib.compress(zlib.compress(msg))
+
+        fp = BytesIO(data)
+        length = str(len(data))
+        r = HTTPResponse(
+            fp,
+            headers={"content-encoding": "deflate, deflate", "content-length": length},
+            preload_content=False,
+        )
+
+        assert r.read(3) == b"foo"
+        assert r.read(3) == b"bar"
+        assert r.read(3) == b"baz"
+        assert r.read(9) == b"foobarbaz"
+        assert r.read(9 * 3) == b"foobarbaz" * 3
+        assert r.read(9 * 37) == b"foobarbaz" * 37
+        assert r.read() == b""
+
+    def test_read_multi_decoding_deflate_gzip(self) -> None:
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        msg = b"foobarbaz" * 42
+        data = compress.compress(zlib.compress(msg))
+        data += compress.flush()
+
+        fp = BytesIO(data)
+        length = str(len(data))
+        r = HTTPResponse(
+            fp,
+            headers={"content-encoding": "deflate, gzip", "content-length": length},
+            preload_content=False,
+        )
+
+        assert r.read(3) == b"foo"
+        assert r.read(3) == b"bar"
+        assert r.read(3) == b"baz"
+        assert r.read(9) == b"foobarbaz"
+        assert r.read(9 * 3) == b"foobarbaz" * 3
+        assert r.read(9 * 37) == b"foobarbaz" * 37
+        assert r.read() == b""
+
+    def test_read_multi_decoding_gzip_gzip(self) -> None:
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        msg = b"foobarbaz" * 42
+        data = compress.compress(msg)
+        data += compress.flush()
+
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(data)
+        data += compress.flush()
+
+        fp = BytesIO(data)
+        length = str(len(data))
+        r = HTTPResponse(
+            fp,
+            headers={"content-encoding": "gzip, gzip", "content-length": length},
+            preload_content=False,
+        )
+
+        assert r.read(3) == b"foo"
+        assert r.read(3) == b"bar"
+        assert r.read(3) == b"baz"
+        assert r.read(9) == b"foobarbaz"
+        assert r.read(9 * 3) == b"foobarbaz" * 3
+        assert r.read(9 * 37) == b"foobarbaz" * 37
+        assert r.read() == b""
+
     def test_body_blob(self) -> None:
         resp = HTTPResponse(b"foo")
         assert resp.data == b"foo"
         assert resp.closed
+
+    def test_not_readable_response(self) -> None:
+        resp = HTTPResponse(b"foo")
+        assert not resp.readable()
+        with pytest.raises(ResponseNotReadable):
+            resp.read()
 
     def test_io(self, sock: socket.socket) -> None:
         fp = BytesIO(b"foo")
@@ -545,12 +631,11 @@ class TestResponse:
         with pytest.raises(StopIteration):
             next(stream)
 
-    # TODO: investigate the test below.
-    @pytest.mark.skip(reason="not sure if this is the desired behaviour")
     def test_deflate_streaming_tell_intermediate_point(self) -> None:
         # Ensure that ``tell()`` returns the correct number of bytes when
         # part-way through streaming compressed content.
         NUMBER_OF_READS = 10
+        PART_SIZE = 64
 
         class MockCompressedDataReading(BytesIO):
             """
@@ -582,7 +667,7 @@ class TestResponse:
             headers={"content-encoding": "deflate", "content-length": length},
             preload_content=False,
         )
-        stream = resp.stream()
+        stream = resp.stream(PART_SIZE)
 
         parts_positions = [(part, resp.tell()) for part in stream]
         end_of_stream = resp.tell()
@@ -597,11 +682,27 @@ class TestResponse:
         assert uncompressed_data == payload
 
         # Check that the positions in the stream are correct
-        expected = [(i + 1) * payload_part_size for i in range(NUMBER_OF_READS)]
-        assert expected == list(positions)
+        # It is difficult to determine programatically what the positions
+        # returned by `tell` will be because the `HTTPResponse.read` method may
+        # call socket `read` a couple of times if it doesn't have enough data
+        # in the buffer or not call socket `read` at all if it has enough. All
+        # this depends on the message, how it was compressed, what is
+        # `PART_SIZE` and `payload_part_size`.
+        # So for simplicity the expected values are hardcoded.
+        expected = (92, 184, 230, 276, 322, 368, 414, 460)
+        assert expected == positions
 
         # Check that the end of the stream is in the correct place
         assert len(ZLIB_PAYLOAD) == end_of_stream
+
+        # Check that all parts have expected length
+        expected_last_part_size = len(uncompressed_data) % PART_SIZE
+        whole_parts = len(uncompressed_data) // PART_SIZE
+        if expected_last_part_size == 0:
+            expected_lengths = [PART_SIZE] * whole_parts
+        else:
+            expected_lengths = [PART_SIZE] * whole_parts + [expected_last_part_size]
+        assert expected_lengths == [len(part) for part in parts]
 
     def test_deflate_streaming(self) -> None:
         data = zlib.compress(b"foo")
