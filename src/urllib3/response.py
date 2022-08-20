@@ -770,7 +770,7 @@ class HTTPResponse(BaseHTTPResponse):
 
     def _popleft_decoded_bytes(self, n: int) -> bytes:
         decoded_data = bytes(self._decoded_bytes[:n])
-        self._decoded_bytes[:n] = b""
+        del self._decoded_bytes[:n]
         return decoded_data
 
     def _popall_decoded_bytes(self) -> bytes:
