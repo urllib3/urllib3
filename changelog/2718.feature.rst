@@ -1,0 +1,3 @@
+Added optional parameter ``retry_after_replace_zero`` to ``urllib3.util.retry`` 
+module to allow overriding the wait time in the event that the Retry-After
+header on the response is '0'.

@@ -323,6 +323,13 @@ class TestRetry:
         retry = Retry()
         assert retry.parse_retry_after(value) == expected
 
+    @pytest.mark.parameterize(
+        "value, expected"[("0", 10), ("1000", 1000), ("\t42 ", 42)]
+    )
+    def test_retry_after_replace_zero(self, value: str, expected: int) -> None:
+        retry = Retry(retry_after_replace_zero=10)
+        assert retry.parse_retry_after(value) == expected
+
     @pytest.mark.parametrize("respect_retry_after_header", [True, False])
     def test_respect_retry_after_header_propagated(
         self, respect_retry_after_header: bool

@@ -174,6 +174,11 @@ class Retry:
         Whether to respect Retry-After header on status codes defined as
         :attr:`Retry.RETRY_AFTER_STATUS_CODES` or not.
 
+    :param int retry_after_replace_zero:
+        The time in seconds to wait before retrying in the event that the value
+        on the Retry-After header is 0. By default, this is set to None and the
+        Retry-After header will be handled as specified by ``respect_retry_after_header``.
+
     :param Collection remove_headers_on_redirect:
         Sequence of headers to remove from the request when a response
         indicating a redirect is returned before firing off the redirected
@@ -213,6 +218,7 @@ class Retry:
         raise_on_status: bool = True,
         history: Optional[Tuple[RequestHistory, ...]] = None,
         respect_retry_after_header: bool = True,
+        retry_after_replace_zero: Optional[int] = None,
         remove_headers_on_redirect: Collection[
             str
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
@@ -236,6 +242,7 @@ class Retry:
         self.raise_on_status = raise_on_status
         self.history = history or ()
         self.respect_retry_after_header = respect_retry_after_header
+        self.retry_after_replace_zero = retry_after_replace_zero
         self.remove_headers_on_redirect = frozenset(
             h.lower() for h in remove_headers_on_redirect
         )
@@ -257,6 +264,7 @@ class Retry:
             history=self.history,
             remove_headers_on_redirect=self.remove_headers_on_redirect,
             respect_retry_after_header=self.respect_retry_after_header,
+            retry_after_replace_zero=self.retry_after_replace_zero,
         )
 
         params.update(kw)
@@ -302,7 +310,11 @@ class Retry:
         seconds: float
         # Whitespace: https://tools.ietf.org/html/rfc7230#section-3.2.4
         if re.match(r"^\s*[0-9]+\s*$", retry_after):
-            seconds = int(retry_after)
+            seconds = (
+                int(retry_after)
+                if int(retry_after) != 0
+                else self.retry_after_replace_zero or int(retry_after)
+            )
         else:
             retry_date_tuple = email.utils.parsedate_tz(retry_after)
             if retry_date_tuple is None:
