@@ -28,11 +28,17 @@ try:
 except ImportError:
     pass
 else:
-    if ssl.OPENSSL_VERSION_INFO < (1, 1, 1):  # Defensive:
+    # fmt: off
+    if (
+        not ssl.OPENSSL_VERSION.startswith("OpenSSL ")
+        or ssl.OPENSSL_VERSION_INFO < (1, 1, 1,)
+    ):  # Defensive:
         raise ImportError(
             "urllib3 v2.0 only supports OpenSSL 1.1.1+, currently "
-            f"the 'ssl' module is compiled with {ssl.OPENSSL_VERSION}."
+            f"the 'ssl' module is compiled with {ssl.OPENSSL_VERSION}. "
+            "See: https://github.com/urllib3/urllib3/issues/2168"
         )
+    # fmt: on
 
     # In theory OpenSSL 1.1.0 made SNI support required
     # but to be on the safe side we check to make sure.

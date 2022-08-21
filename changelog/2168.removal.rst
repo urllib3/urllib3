@@ -1,6 +1,9 @@
 Removed support for OpenSSL versions earlier than 1.1.1 or that don't have SNI support.
 When an incompatible OpenSSL version is detected an ``ImportError`` is raised.
 
+Removed support for Python with an ``ssl`` module compiled with LibreSSL, CiscoSSL,
+wolfSSL, and all other OpenSSL alternatives. Python is moving to require OpenSSL with PEP 644.
+
 Changed ``urllib3.util.create_urllib3_context`` to not override the system cipher suites with
 a default value. The new default will be cipher suites configured by the operating system.
 
