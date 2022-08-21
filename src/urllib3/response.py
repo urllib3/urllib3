@@ -775,7 +775,7 @@ class HTTPResponse(BaseHTTPResponse):
 
     def _popall_decoded_bytes(self) -> bytes:
         decoded_data = bytes(self._decoded_bytes)
-        self._decoded_bytes = bytearray()
+        del self._decoded_bytes[:]
         return decoded_data
 
     def _decoded_bytes_in_buffer(self) -> int:
