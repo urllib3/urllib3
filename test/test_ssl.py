@@ -42,19 +42,12 @@ class TestSSL:
     def test_is_ipaddress_false(self, addr: Union[bytes, str]) -> None:
         assert not ssl_.is_ipaddress(addr)
 
-    @pytest.mark.parametrize(
-        ["ciphers", "expected_ciphers"],
-        [
-            ("ECDH+AESGCM:ECDH+CHACHA20", "ECDH+AESGCM:ECDH+CHACHA20"),
-        ],
-    )
     def test_create_urllib3_context_set_ciphers(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        ciphers: Optional[str],
-        expected_ciphers: str,
     ) -> None:
 
+        ciphers = "ECDH+AESGCM:ECDH+CHACHA20"
         context = mock.create_autospec(ssl_.SSLContext)
         context.set_ciphers = mock.Mock()
         context.options = 0
@@ -63,7 +56,7 @@ class TestSSL:
         assert ssl_.create_urllib3_context(ciphers=ciphers) is context
 
         assert context.set_ciphers.call_count == 1
-        assert context.set_ciphers.call_args == mock.call(expected_ciphers)
+        assert context.set_ciphers.call_args == mock.call(ciphers)
 
     def test_create_urllib3_no_context(self) -> None:
         with mock.patch("urllib3.util.ssl_.SSLContext", None):
@@ -134,8 +127,7 @@ class TestSSL:
         assert context.post_handshake_auth == expected_pha
 
     def test_create_urllib3_context_default_ciphers(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
+        self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         context = mock.create_autospec(ssl_.SSLContext)
         context.set_ciphers = mock.Mock()

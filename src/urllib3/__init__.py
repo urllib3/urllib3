@@ -31,7 +31,7 @@ else:
     # fmt: off
     if (
         not ssl.OPENSSL_VERSION.startswith("OpenSSL ")
-        or ssl.OPENSSL_VERSION_INFO < (1, 1, 1,)
+        or ssl.OPENSSL_VERSION_INFO < (1, 1, 1)
     ):  # Defensive:
         raise ImportError(
             "urllib3 v2.0 only supports OpenSSL 1.1.1+, currently "
@@ -39,14 +39,6 @@ else:
             "See: https://github.com/urllib3/urllib3/issues/2168"
         )
     # fmt: on
-
-    # In theory OpenSSL 1.1.0 made SNI support required
-    # but to be on the safe side we check to make sure.
-    if not ssl.HAS_SNI:  # Defensive:
-        raise ImportError(
-            "urllib3 v2.0 only supports OpenSSL with SNI "
-            "(Server Name Identification) enabled."
-        )
 
 # === NOTE TO REPACKAGERS AND VENDORS ===
 # Please delete this block, this logic is only
