@@ -1,3 +1,4 @@
+import os
 import socket
 from typing import Optional, Sequence, Tuple, Union
 
@@ -105,11 +106,19 @@ def _set_socket_options(
 def allowed_gai_family() -> socket.AddressFamily:
     """This function is designed to work in the context of
     getaddrinfo, where family=socket.AF_UNSPEC is the default and
-    will perform a DNS search for both IPv6 and IPv4 records."""
+    will perform a DNS search for both IPv6 and IPv4 records.
+    However if `IPV6_ONLY` environment variable is set and the
+    system can bind to an IPv6 address, the address family
+    `socket.AF_INET6` is used."""
 
-    family = socket.AF_INET
     if HAS_IPV6:
-        family = socket.AF_UNSPEC
+        use_ipv6_only = os.environ.get("URLLIB3_USE_IPV6_ONLY")
+        if use_ipv6_only:
+            family = socket.AF_INET6
+        else:
+            family = socket.AF_UNSPEC
+    else:
+        family = socket.AF_INET
     return family
 
 

@@ -776,9 +776,14 @@ class TestUtil:
                 instance.bind.return_value = True
                 assert _has_ipv6("::1")
 
-    def test_ip_family_ipv6_enabled(self) -> None:
+    def test_ip_family_ipv6_enabled__dual_stack(self) -> None:
         with patch("urllib3.util.connection.HAS_IPV6", True):
             assert allowed_gai_family() == socket.AF_UNSPEC
+
+    def test_ip_family_ipv6_enabled__ipv6_only(self) -> None:
+        with patch("os.environ", {"URLLIB3_USE_IPV6_ONLY": "yes"}):
+            with patch("urllib3.util.connection.HAS_IPV6", True):
+                assert allowed_gai_family() == socket.AF_INET6
 
     def test_ip_family_ipv6_disabled(self) -> None:
         with patch("urllib3.util.connection.HAS_IPV6", False):
