@@ -84,8 +84,6 @@ class TestCookies(SocketDummyServerTestCase):
 
 class TestSNI(SocketDummyServerTestCase):
     def test_hostname_in_first_request_packet(self) -> None:
-        if not util.HAS_SNI:
-            pytest.skip("SNI-support not available")
         done_receiving = Event()
         self.buf = b""
 

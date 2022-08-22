@@ -1,8 +1,23 @@
+diff --git a/tests/__init__.py b/tests/__init__.py
+index 04385be1..e69de29b 100644
+--- a/tests/__init__.py
++++ b/tests/__init__.py
+@@ -1,10 +0,0 @@
+-"""Requests test package initialisation."""
+-
+-import warnings
+-
+-from urllib3.exceptions import SNIMissingWarning
+-
+-# urllib3 sets SNIMissingWarning to only go off once,
+-# while this test suite requires it to always fire
+-# so that it occurs during test_requests.test_https_warnings
+-warnings.simplefilter("always", SNIMissingWarning)
 diff --git a/tests/test_requests.py b/tests/test_requests.py
-index b77cba00..5a18d72c 100644
+index 5b4c3f53..2530b13b 100644
 --- a/tests/test_requests.py
 +++ b/tests/test_requests.py
-@@ -874,6 +874,7 @@ class TestRequests:
+@@ -974,6 +974,7 @@ class TestRequests:
          r = requests.get(httpbin(), cert=".")
          assert r.status_code == 200
  
