@@ -1,6 +1,14 @@
 Changes
 =======
 
+1.26.12 (2022-08-22)
+--------------------
+
+* Deprecated the `urllib3[secure]` extra and the `urllib3.contrib.pyopenssl` module.
+  Both will be removed in v2.x. See this `GitHub issue <https://github.com/urllib3/urllib3/issues/2680>`_
+  for justification and info on how to migrate.
+
+
 1.26.11 (2022-07-25)
 --------------------
 
