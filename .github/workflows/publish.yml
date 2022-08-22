@@ -16,6 +16,8 @@ jobs:
     runs-on: "ubuntu-latest"
     environment:
       name: "publish"
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
 
     steps:
       - name: "Checkout repository"
@@ -27,7 +29,7 @@ jobs:
           python-version: "3.x"
 
       - name: "Install dependencies"
-        run: python -m pip install build==0.8.0 sigstore==0.6.2
+        run: python -m pip install build==0.8.0
 
       - name: "Build dists"
         run: |
