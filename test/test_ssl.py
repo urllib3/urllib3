@@ -43,8 +43,7 @@ class TestSSL:
         assert not ssl_.is_ipaddress(addr)
 
     def test_create_urllib3_context_set_ciphers(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
+        self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
 
         ciphers = "ECDH+AESGCM:ECDH+CHACHA20"
