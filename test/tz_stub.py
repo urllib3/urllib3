@@ -7,7 +7,7 @@ from typing import Generator, Optional
 import pytest
 
 try:
-    import zoneinfo  # type: ignore[import]
+    import zoneinfo
 except ImportError:
     # Python < 3.9
     from backports import zoneinfo  # type: ignore[no-redef]
