@@ -76,11 +76,9 @@ class TestResponse:
         assert r.data == b"foo"
         assert r._body == b"foo"
 
-    def test_cache_decoded_content(self) -> None:
-        data = zlib.compress(b"foo")
-
-        fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={"content-encoding": "deflate"})
+    def test_cache_content_from_not_decoded_file(self) -> None:
+        fp = BytesIO(b"foo")
+        r = HTTPResponse(fp, preload_content=False, decode_content=False)
 
         assert r.data == b"foo"
         assert r._body == b"foo"
