@@ -2,6 +2,7 @@ import json as _json
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 from urllib.parse import urlencode
 
+from ._collections import HTTPHeaderDict
 from .connection import _TYPE_BODY
 from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .response import BaseHTTPResponse
@@ -186,7 +187,7 @@ class RequestMethods:
         if headers is None:
             headers = self.headers
 
-        extra_kw: Dict[str, Any] = {"headers": {}}
+        extra_kw: Dict[str, Any] = {"headers": HTTPHeaderDict(headers)}
         body: Union[bytes, str]
 
         if fields:
@@ -206,9 +207,8 @@ class RequestMethods:
                 )
 
             extra_kw["body"] = body
-            extra_kw["headers"] = {"Content-Type": content_type}
+            extra_kw["headers"].setdefault("Content-Type", content_type)
 
-        extra_kw["headers"].update(headers)
         extra_kw.update(urlopen_kw)
 
         return self.urlopen(method, url, **extra_kw)

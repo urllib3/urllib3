@@ -1,3 +1,23 @@
+1.26.12 (2022-08-22)
+====================
+
+* Deprecated the `urllib3[secure]` extra and the `urllib3.contrib.pyopenssl` module.
+  Both will be removed in v2.x. See this `GitHub issue <https://github.com/urllib3/urllib3/issues/2680>`_
+  for justification and info on how to migrate.
+
+1.26.11 (2022-07-25)
+====================
+
+* Fixed an issue where reading more than 2 GiB in a call to ``HTTPResponse.read`` would
+  raise an ``OverflowError`` on Python 3.9 and earlier.
+
+1.26.10 (2022-07-07)
+====================
+
+* Removed support for Python 3.5
+* Fixed an issue where a ``ProxyError`` recommending configuring the proxy as HTTP
+  instead of HTTPS could appear even when an HTTPS proxy wasn't configured.
+
 1.26.9 (2022-03-16)
 ===================
 

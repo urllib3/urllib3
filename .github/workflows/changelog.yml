@@ -4,19 +4,22 @@ on:
   pull_request:
     types: [labeled, unlabeled, opened, reopened, synchronize]
 
+permissions: "read-all"
+
 jobs:
   check-changelog-entry:
     name: changelog entry
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: "Checkout repository"
+        uses: "actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b"
         with:
           # `towncrier check` runs `git diff --name-only origin/main...`, which
           # needs a non-shallow clone.
           fetch-depth: 0
 
-      - name: Check changelog
+      - name: "Check changelog"
         if: "!contains(github.event.pull_request.labels.*.name, 'Skip Changelog')"
         run: |
           if ! pipx run towncrier check --compare-with origin/${{ github.base_ref }}; then
