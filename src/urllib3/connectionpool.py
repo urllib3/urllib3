@@ -4,7 +4,6 @@ import queue
 import sys
 import warnings
 import weakref
-from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, overload
