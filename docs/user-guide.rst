@@ -253,6 +253,35 @@ Cookies provided by the server are stored in the ``Set-Cookie`` header:
     print(resp.headers["Set-Cookie"])
     # session=f3efe9db; Path=/
 
+You can also use the `cookiejar <https://docs.python.org/3/library/http.cookiejar.html>`_
+library for more complex use cases. This library was created for use with ``urllib``,
+so some slight concessions are required to integrate it with ``urllib3``. First, a request
+object is needed for many of the functions. This request object isn't used for parsing
+cookies, so a dummy ``urllib`` request object may be used. Second, the cookies need
+to be explicitly included in the request's header.
+
+.. code-block:: python
+
+    import urllib
+    import urllib3
+
+    from http.cookiejar import CookieJar
+
+    cj = CookieJar()
+
+    # Dummy request object
+    req = urllib.request.Request("http://httpbin.org/cookies/set/foo/bar")
+    resp = urllib3.request("GET", "http://httpbin.org/cookies/set/foo/bar", redirect=False)
+
+    cj.extract_cookies(resp, req)
+
+    resp = urllib3.request("GET",
+                           "http://httpbin.org/cookies",
+                           headers={"Cookie": ";".join([c.name + "=" + c.value for c in cj])})
+
+    print(resp.json())
+    # {'cookies': {'foo': 'bar'}}
+
 Query Parameters
 ~~~~~~~~~~~~~~~~
 
