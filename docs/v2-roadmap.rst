@@ -83,9 +83,9 @@ available.
 **✨ Optimized for Python 3.7+**
 --------------------------------
 
-In v2.0 we'll be specifically be targeting
+In v2.0 we'll be specifically targeting
 CPython 3.7+ and PyPy 7.0+ (compatible with CPython 3.7)
-and dropping support Python versions 2.7, 3.5, and 3.6.
+and dropping support for Python versions 2.7, 3.5, and 3.6.
 
 By dropping end-of-life Python versions we're able to optimize
 the codebase for Python 3.7+ by using new features to improve
