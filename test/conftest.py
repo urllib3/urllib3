@@ -283,7 +283,7 @@ def stub_timezone(request: pytest.FixtureRequest) -> Generator[None, None, None]
     """
     A pytest fixture that runs the test with a stub timezone.
     """
-    with stub_timezone_ctx(request.param):  # type: ignore[attr-defined]
+    with stub_timezone_ctx(request.param):
         yield
 
 
