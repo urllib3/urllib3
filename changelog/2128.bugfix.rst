@@ -1,1 +1,1 @@
-Standarized the ``HTTPResponse.read(n)`` behavior regardless of compression.
+Standardized :meth:`~urllib3.response.HTTPResponse.read` behavior regardless of compression. Specifically, this method will never return more bytes than requested.
