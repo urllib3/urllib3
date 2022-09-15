@@ -215,11 +215,8 @@ class PoolManager(RequestMethods):
         super().__init__(headers)
         self.connection_pool_kw = connection_pool_kw
 
-        def dispose_func(p: Any) -> None:
-            p.close()
-
         self.pools: RecentlyUsedContainer[PoolKey, HTTPConnectionPool]
-        self.pools = RecentlyUsedContainer(num_pools, dispose_func=dispose_func)
+        self.pools = RecentlyUsedContainer(num_pools)
 
         # Locally set the pool classes and keys so other PoolManagers can
         # override them.
@@ -514,6 +511,12 @@ class ProxyManager(PoolManager):
         private.  IP address, target hostname, SNI, and port are always visible
         to an HTTPS proxy even when this flag is disabled.
 
+    :param proxy_assert_hostname:
+        The hostname of the certificate to verify against.
+
+    :param proxy_assert_fingerprint:
+        The fingerprint of the certificate to verify against.
+
     Example:
 
     .. code-block:: python
@@ -544,6 +547,8 @@ class ProxyManager(PoolManager):
         proxy_headers: Optional[Mapping[str, str]] = None,
         proxy_ssl_context: Optional["ssl.SSLContext"] = None,
         use_forwarding_for_https: bool = False,
+        proxy_assert_hostname: Union[None, str, "Literal[False]"] = None,
+        proxy_assert_fingerprint: Optional[str] = None,
         **connection_pool_kw: Any,
     ) -> None:
 
@@ -563,7 +568,12 @@ class ProxyManager(PoolManager):
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
         self.proxy_ssl_context = proxy_ssl_context
-        self.proxy_config = ProxyConfig(proxy_ssl_context, use_forwarding_for_https)
+        self.proxy_config = ProxyConfig(
+            proxy_ssl_context,
+            use_forwarding_for_https,
+            proxy_assert_hostname,
+            proxy_assert_fingerprint,
+        )
 
         connection_pool_kw["_proxy"] = self.proxy
         connection_pool_kw["_proxy_headers"] = self.proxy_headers

@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-from urllib3.exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
+from urllib3.exceptions import ProxySchemeUnsupported, SSLError
 from urllib3.util import ssl_
 
 
@@ -42,55 +42,11 @@ class TestSSL:
     def test_is_ipaddress_false(self, addr: Union[bytes, str]) -> None:
         assert not ssl_.is_ipaddress(addr)
 
-    @pytest.mark.parametrize(
-        ["has_sni", "server_hostname", "should_warn"],
-        [
-            (True, "www.google.com", False),
-            (True, "127.0.0.1", False),
-            (False, "127.0.0.1", False),
-            (False, "www.google.com", True),
-            (True, None, False),
-            (False, None, False),
-        ],
-    )
-    def test_sni_missing_warning_with_ip_addresses(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        has_sni: bool,
-        server_hostname: Optional[str],
-        should_warn: bool,
-    ) -> None:
-        monkeypatch.setattr(ssl_, "HAS_SNI", has_sni)
-
-        sock = mock.Mock()
-        context = mock.create_autospec(ssl_.SSLContext)
-
-        with mock.patch("warnings.warn") as warn:
-            ssl_.ssl_wrap_socket(
-                sock, server_hostname=server_hostname, ssl_context=context
-            )
-
-        if should_warn:
-            assert warn.call_count >= 1
-            warnings = [call[0][1] for call in warn.call_args_list]
-            assert SNIMissingWarning in warnings
-        else:
-            assert warn.call_count == 0
-
-    @pytest.mark.parametrize(
-        ["ciphers", "expected_ciphers"],
-        [
-            (None, ssl_.DEFAULT_CIPHERS),
-            ("ECDH+AESGCM:ECDH+CHACHA20", "ECDH+AESGCM:ECDH+CHACHA20"),
-        ],
-    )
     def test_create_urllib3_context_set_ciphers(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        ciphers: Optional[str],
-        expected_ciphers: str,
+        self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
 
+        ciphers = "ECDH+AESGCM:ECDH+CHACHA20"
         context = mock.create_autospec(ssl_.SSLContext)
         context.set_ciphers = mock.Mock()
         context.options = 0
@@ -98,11 +54,8 @@ class TestSSL:
 
         assert ssl_.create_urllib3_context(ciphers=ciphers) is context
 
-        if ciphers is None and ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS:
-            assert context.set_ciphers.call_count == 0
-        else:
-            assert context.set_ciphers.call_count == 1
-            assert context.set_ciphers.call_args == mock.call(expected_ciphers)
+        assert context.set_ciphers.call_count == 1
+        assert context.set_ciphers.call_args == mock.call(ciphers)
 
     def test_create_urllib3_no_context(self) -> None:
         with mock.patch("urllib3.util.ssl_.SSLContext", None):
@@ -172,24 +125,17 @@ class TestSSL:
 
         assert context.post_handshake_auth == expected_pha
 
-    @pytest.mark.parametrize("use_default_sslcontext_ciphers", [True, False])
     def test_create_urllib3_context_default_ciphers(
-        self, monkeypatch: pytest.MonkeyPatch, use_default_sslcontext_ciphers: bool
+        self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         context = mock.create_autospec(ssl_.SSLContext)
         context.set_ciphers = mock.Mock()
         context.options = 0
         monkeypatch.setattr(ssl_, "SSLContext", lambda *_, **__: context)
-        monkeypatch.setattr(
-            ssl_, "USE_DEFAULT_SSLCONTEXT_CIPHERS", use_default_sslcontext_ciphers
-        )
 
         ssl_.create_urllib3_context()
 
-        if use_default_sslcontext_ciphers:
-            context.set_ciphers.assert_not_called()
-        else:
-            context.set_ciphers.assert_called_with(ssl_.DEFAULT_CIPHERS)
+        context.set_ciphers.assert_not_called()
 
     @pytest.mark.parametrize(
         "kwargs",

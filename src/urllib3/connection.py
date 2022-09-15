@@ -84,6 +84,8 @@ _TYPE_BODY = Union[bytes, IO[Any], Iterable[bytes], str]
 class ProxyConfig(NamedTuple):
     ssl_context: Optional["ssl.SSLContext"]
     use_forwarding_for_https: bool
+    assert_hostname: Union[None, str, "Literal[False]"]
+    assert_fingerprint: Optional[str]
 
 
 class HTTPConnection(_HTTPConnection):
@@ -541,9 +543,9 @@ class HTTPSConnection(HTTPConnection):
             ca_cert_data=self.ca_cert_data,
             server_hostname=hostname,
             ssl_context=ssl_context,
+            assert_hostname=proxy_config.assert_hostname,
+            assert_fingerprint=proxy_config.assert_fingerprint,
             # Features that aren't implemented for proxies yet:
-            assert_fingerprint=None,
-            assert_hostname=None,
             cert_file=None,
             key_file=None,
             key_password=None,
@@ -614,6 +616,9 @@ def _ssl_wrap_socket_and_match_hostname(
         context.check_hostname = False
 
     # Try to load OS default certs if none are given.
+    # We need to do the hasattr() check for our custom
+    # pyOpenSSL and SecureTransport SSLContext objects
+    # because neither support load_default_certs().
     if (
         not ca_certs
         and not ca_cert_dir

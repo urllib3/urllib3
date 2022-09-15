@@ -1,0 +1,34 @@
+From dcc55a54fe2ba3b403923e95ab329009a9f430e2 Mon Sep 17 00:00:00 2001
+From: Quentin Pradet <quentin.pradet@gmail.com>
+Date: Fri, 19 Aug 2022 11:02:11 +0400
+Subject: [PATCH] Stop relying on removed DEFAULT_CIPHERS
+
+---
+ botocore/httpsession.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/botocore/httpsession.py b/botocore/httpsession.py
+index 29b210377..aaecb454b 100644
+--- a/botocore/httpsession.py
++++ b/botocore/httpsession.py
+@@ -19,7 +19,6 @@ from urllib3.exceptions import ReadTimeoutError as URLLib3ReadTimeoutError
+ from urllib3.exceptions import SSLError as URLLib3SSLError
+ from urllib3.util.retry import Retry
+ from urllib3.util.ssl_ import (
+-    DEFAULT_CIPHERS,
+     OP_NO_COMPRESSION,
+     PROTOCOL_TLS,
+     OP_NO_SSLv2,
+@@ -99,7 +98,8 @@ def create_urllib3_context(
+ 
+     context = SSLContext(ssl_version)
+ 
+-    context.set_ciphers(ciphers or DEFAULT_CIPHERS)
++    if ciphers:
++        context.set_ciphers(ciphers)
+ 
+     # Setting the default here, as we may have no ssl module on import
+     cert_reqs = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
+-- 
+2.37.2
+

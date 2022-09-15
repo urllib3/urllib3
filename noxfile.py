@@ -92,12 +92,11 @@ def downstream_botocore(session: nox.Session) -> None:
     session.cd(tmp_dir)
     git_clone(session, "https://github.com/boto/botocore")
     session.chdir("botocore")
-    session.run(
-        "git",
-        "apply",
-        f"{root}/ci/0001-Mark-100-Continue-tests-as-failing.patch",
-        external=True,
-    )
+    for patch in [
+        "0001-Mark-100-Continue-tests-as-failing.patch",
+        "0002-Stop-relying-on-removed-DEFAULT_CIPHERS.patch",
+    ]:
+        session.run("git", "apply", f"{root}/ci/{patch}", external=True)
     session.run("git", "rev-parse", "HEAD", external=True)
     session.run("python", "scripts/ci/install")
 
@@ -133,19 +132,6 @@ def downstream_requests(session: nox.Session) -> None:
 @nox.session()
 def format(session: nox.Session) -> None:
     """Run code formatters."""
-    session.install("pre-commit")
-    session.run("pre-commit", "--version")
-
-    process = subprocess.run(
-        ["pre-commit", "run", "--all-files"],
-        env=session.env,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    # Ensure that pre-commit itself ran successfully
-    assert process.returncode in (0, 1)
-
     lint(session)
 
 
