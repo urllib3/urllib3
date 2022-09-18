@@ -757,17 +757,7 @@ class HTTPResponse(BaseHTTPResponse):
                 flush_decoder = True
             else:
                 cache_content = False
-                if (
-                    amt != 0 and not data
-                ):  # Platform-specific: Buggy versions of Python.
-                    # Close the connection when no data is returned
-                    #
-                    # This is redundant to what httplib/http.client _should_
-                    # already do.  However, versions of python released before
-                    # December 15, 2012 (http://bugs.python.org/issue16298) do
-                    # not properly close the connection in all cases. There is
-                    # no harm in redundantly calling close.
-                    self._fp.close()
+                if amt != 0 and not data:
                     flush_decoder = True
                     if (
                         self.enforce_content_length
