@@ -42,6 +42,7 @@ def tests_impl(
         "--parallel-mode",
         "-m",
         "pytest",
+        "-v",
         "-r",
         "a",
         f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
