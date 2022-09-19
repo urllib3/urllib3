@@ -62,6 +62,8 @@ jobs:
       upload-assets: true
 
   publish:
+    permissions:
+      contents: write # for gh release upload
     name: "Publish"
     if: startsWith(github.ref, 'refs/tags/')
     needs: ["build", "provenance"]
