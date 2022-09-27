@@ -64,3 +64,15 @@ socks = [
 
 [tool.hatch.version]
 path = "src/urllib3/_version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/docs",
+  "/dummyserver",
+  "/src",
+  "/test",
+  "/dev-requirements.txt",
+  "/CHANGES.rst",
+  "/README.md",
+  "/LICENSE.txt",
+]

@@ -1,5 +1,0 @@
-include README.md CHANGES.rst LICENSE.txt dev-requirements.txt Makefile src/urllib3/py.typed
-recursive-include dummyserver *
-recursive-include test *
-recursive-include docs *
-recursive-exclude docs/_build *

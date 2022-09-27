@@ -70,7 +70,7 @@ warnings.warn(
 )
 
 if TYPE_CHECKING:
-    from OpenSSL.crypto import CRL, X509  # type: ignore[import]
+    from OpenSSL.crypto import X509  # type: ignore[import]
 
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
@@ -232,7 +232,7 @@ def _dnsname_to_stdlib(name: str) -> Optional[str]:
     return encoded_name.decode("utf-8")
 
 
-def get_subj_alt_name(peer_cert: "CRL") -> List[Tuple[str, str]]:
+def get_subj_alt_name(peer_cert: "X509") -> List[Tuple[str, str]]:
     """
     Given an PyOpenSSL certificate, provides all the subject alternative names.
     """
