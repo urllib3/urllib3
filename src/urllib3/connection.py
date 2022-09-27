@@ -12,6 +12,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    ClassVar,
     Iterable,
     Mapping,
     NamedTuple,
@@ -132,7 +133,7 @@ class HTTPConnection(_HTTPConnection):
     source_address: Optional[Tuple[str, int]]
     socket_options: Optional[connection._TYPE_SOCKET_OPTIONS]
     _tunnel_host: Optional[str]
-    _tunnel: Callable[["HTTPConnection"], None]
+    _tunnel: ClassVar[Callable[["HTTPConnection"], None]]
     _connecting_to_proxy: bool
 
     def __init__(
@@ -173,7 +174,7 @@ class HTTPConnection(_HTTPConnection):
     # However, there is also a `host` setter so LSP is not violated.
     # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
     @property  # type: ignore[override]
-    def host(self) -> str:  # type: ignore[override]
+    def host(self) -> str:
         """
         Getter method to remove any trailing dots that indicate the hostname is an FQDN.
 
