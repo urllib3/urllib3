@@ -67,7 +67,7 @@ def _can_resolve(host):
 def has_alpn(ctx_cls=None):
     """Detect if ALPN support is enabled."""
     ctx_cls = ctx_cls or util.SSLContext
-    ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)
+    ctx = ctx_cls(ssl_.PROTOCOL_TLS_CLIENT)
     try:
         if hasattr(ctx, "set_alpn_protocols"):
             ctx.set_alpn_protocols(ssl_.ALPN_PROTOCOLS)

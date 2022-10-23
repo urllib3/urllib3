@@ -66,10 +66,20 @@ TLSv1_1_CERTS = DEFAULT_CERTS.copy()
 TLSv1_1_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1_1", None)
 
 TLSv1_2_CERTS = DEFAULT_CERTS.copy()
-TLSv1_2_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1_2", None)
+# python 3.12+ specific
+if not hasattr(ssl, "PROTOCOL_TLSv1_2") and getattr(ssl, "HAS_TLSv1_2", False):
+    TLSv1_2_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLS_SERVER", None)
+    TLSv1_2_CERTS["max_ssl_version"] = ssl.TLSVersion.TLSv1_2
+else:
+    TLSv1_2_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1_2", None)
 
 TLSv1_3_CERTS = DEFAULT_CERTS.copy()
-TLSv1_3_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLS", None)
+# python 3.12+ specific
+if not hasattr(ssl, "PROTOCOL_TLSv1_3") and getattr(ssl, "HAS_TLSv1_3", False):
+    TLSv1_3_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLS_SERVER", None)
+    TLSv1_3_CERTS["max_ssl_version"] = ssl.TLSVersion.TLSv1_3
+else:
+    TLSv1_3_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLS", None)
 
 
 CLIENT_INTERMEDIATE_PEM = "client_intermediate.pem"
@@ -704,7 +714,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA
         ) as https_pool:
-            https_pool.ssl_version = self.certs["ssl_version"]
+            if "max_ssl_version" in self.certs:
+                https_pool.ssl_version = self.certs["max_ssl_version"]
+            else:
+                https_pool.ssl_version = self.certs["ssl_version"]
             r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
 

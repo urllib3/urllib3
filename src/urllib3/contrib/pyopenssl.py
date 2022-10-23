@@ -96,8 +96,13 @@ HAS_SNI = True
 _openssl_versions = {
     util.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,
     PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,
-    ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
+
+if hasattr(ssl, "TLSVersion") and hasattr(ssl.TLSVersion, "TLSv1_3"):
+    _openssl_versions[ssl.TLSVersion.TLSv1_3] = OpenSSL.SSL.SSLv23_METHOD
+
+if hasattr(ssl, "PROTOCOL_TLSv1") and hasattr(OpenSSL.SSL, "TLSv1_METHOD"):
+    _openssl_versions[ssl.PROTOCOL_TLSv1] = OpenSSL.SSL.TLSv1_METHOD
 
 if hasattr(ssl, "PROTOCOL_SSLv3") and hasattr(OpenSSL.SSL, "SSLv3_METHOD"):
     _openssl_versions[ssl.PROTOCOL_SSLv3] = OpenSSL.SSL.SSLv3_METHOD
@@ -105,9 +110,11 @@ if hasattr(ssl, "PROTOCOL_SSLv3") and hasattr(OpenSSL.SSL, "SSLv3_METHOD"):
 if hasattr(ssl, "PROTOCOL_TLSv1_1") and hasattr(OpenSSL.SSL, "TLSv1_1_METHOD"):
     _openssl_versions[ssl.PROTOCOL_TLSv1_1] = OpenSSL.SSL.TLSv1_1_METHOD
 
-if hasattr(ssl, "PROTOCOL_TLSv1_2") and hasattr(OpenSSL.SSL, "TLSv1_2_METHOD"):
-    _openssl_versions[ssl.PROTOCOL_TLSv1_2] = OpenSSL.SSL.TLSv1_2_METHOD
-
+if hasattr(OpenSSL.SSL, "TLSv1_2_METHOD"):
+    if hasattr(ssl, "PROTOCOL_TLSv1_2"):
+        _openssl_versions[ssl.PROTOCOL_TLSv1_2] = OpenSSL.SSL.TLSv1_2_METHOD
+    elif hasattr(ssl, "TLSVersion") and hasattr(ssl.TLSVersion, "TLSv1_2"):
+        _openssl_versions[ssl.TLSVersion.TLSv1_2] = OpenSSL.SSL.TLSv1_2_METHOD
 
 _stdlib_to_openssl_verify = {
     ssl.CERT_NONE: OpenSSL.SSL.VERIFY_NONE,

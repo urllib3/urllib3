@@ -236,7 +236,7 @@ def resolve_ssl_version(candidate):
     like resolve_cert_reqs
     """
     if candidate is None:
-        return PROTOCOL_TLS
+        return PROTOCOL_TLS_CLIENT
 
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)

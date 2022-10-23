@@ -873,13 +873,31 @@ class TestUtilSSL(object):
     @pytest.mark.parametrize(
         "candidate, version",
         [
-            (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1),
-            ("PROTOCOL_TLSv1", ssl.PROTOCOL_TLSv1),
-            ("TLSv1", ssl.PROTOCOL_TLSv1),
-            (ssl.PROTOCOL_SSLv23, ssl.PROTOCOL_SSLv23),
+            ("ssl.PROTOCOL_TLSv1", "ssl.PROTOCOL_TLSv1"),
+            ("PROTOCOL_TLSv1", "ssl.PROTOCOL_TLSv1"),
+            ("TLSv1", "ssl.PROTOCOL_TLSv1"),
+            ("ssl.PROTOCOL_SSLv23", "ssl.PROTOCOL_SSLv23"),
+            ("ssl.PROTOCOL_TLS", "ssl.PROTOCOL_TLS_CLIENT"),
+            ("ssl.PROTOCOL_TLS_CLIENT", "ssl.PROTOCOL_TLS_CLIENT"),
+            ("PROTOCOL_TLS_CLIENT", "ssl.PROTOCOL_TLS_CLIENT"),
         ],
     )
     def test_resolve_ssl_version(self, candidate, version):
+        should_import_candidate = "ssl." in candidate
+        should_import_version = "ssl." in version
+
+        if should_import_candidate:
+            constant_name = candidate.replace('ssl.', '')
+            if not hasattr(ssl, constant_name):
+                pytest.skip('unavailable constant (candidate) ' + candidate)
+            candidate = getattr(ssl, constant_name)
+        if should_import_version:
+            constant_name = version.replace('ssl.', '')
+            if not hasattr(ssl, constant_name):
+                pytest.skip('unavailable constant (version) ' + version)
+            version = getattr(ssl, constant_name)
+        if candidate is NotImplemented or version is NotImplemented:
+            pytest.skip('deprecated/NotImplemented constants')
         assert resolve_ssl_version(candidate) == version
 
     def test_ssl_wrap_socket_loads_the_cert_chain(self):

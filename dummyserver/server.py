@@ -145,9 +145,16 @@ def ssl_options_to_context(
     suppress_ragged_eofs=None,
     ciphers=None,
     alpn_protocols=None,
+    max_ssl_version=None,
 ):
     """Return an equivalent SSLContext based on ssl.wrap_socket args."""
-    ssl_version = resolve_ssl_version(ssl_version)
+    # python 3.12+ specific
+    # fallback to PROTOCOL_TLS_CLIENT cause tornado to hang
+    if ssl_version is None and hasattr(ssl, "PROTOCOL_TLS_SERVER"):
+        ssl_version = ssl.PROTOCOL_TLS_SERVER
+    else:
+        ssl_version = resolve_ssl_version(ssl_version)
+
     cert_none = resolve_cert_reqs("CERT_NONE")
     if cert_reqs is None:
         cert_reqs = cert_none
@@ -157,6 +164,8 @@ def ssl_options_to_context(
     ctx = ssl.SSLContext(ssl_version)
     ctx.load_cert_chain(certfile, keyfile)
     ctx.verify_mode = cert_reqs
+    if max_ssl_version:
+        ctx.maximum_version = max_ssl_version
     if ctx.verify_mode != cert_none:
         ctx.load_verify_locations(cafile=ca_certs)
     if alpn_protocols and hasattr(ctx, "set_alpn_protocols"):

@@ -230,10 +230,11 @@ def supported_tls_versions():
         "PROTOCOL_TLSv1",
         "PROTOCOL_TLSv1_1",
         "PROTOCOL_TLSv1_2",
-        "PROTOCOL_TLS",
+        "PROTOCOL_TLS",  # auto-highest protocol available
+        "PROTOCOL_TLS_CLIENT",  # auto-highest protocol available (python 3.10+)
     ):
         _ssl_version = getattr(ssl, _ssl_version_name, 0)
-        if _ssl_version == 0:
+        if _ssl_version == 0 or _ssl_version is NotImplemented:
             continue
         _sock = socket.create_connection((_server.host, _server.port))
         try:
@@ -266,15 +267,19 @@ def requires_tlsv1_1(supported_tls_versions):
 @pytest.fixture(scope="function")
 def requires_tlsv1_2(supported_tls_versions):
     """Test requires TLSv1.2 available"""
-    if not hasattr(ssl, "PROTOCOL_TLSv1_2") or "TLSv1.2" not in supported_tls_versions:
-        pytest.skip("Test requires TLSv1.2")
+    if hasattr(ssl, "PROTOCOL_TLSv1_2") or (hasattr(ssl, "TLSVersion") and hasattr(ssl.TLSVersion, "TLSv1_2")):
+        return
+    if "TLSv1.2" in supported_tls_versions:
+        return
+    pytest.skip("Test requires TLSv1.2")
 
 
 @pytest.fixture(scope="function")
 def requires_tlsv1_3(supported_tls_versions):
     """Test requires TLSv1.3 available"""
-    if (
-        not getattr(ssl, "HAS_TLSv1_3", False)
-        or "TLSv1.3" not in supported_tls_versions
-    ):
-        pytest.skip("Test requires TLSv1.3")
+    if hasattr(ssl, "PROTOCOL_TLSv1_3") or (hasattr(ssl, "TLSVersion") and hasattr(ssl.TLSVersion, "TLSv1_3")):
+        return
+    if "TLSv1.3" in supported_tls_versions or getattr(ssl, "HAS_TLSv1_3", False):
+        return
+
+    pytest.skip("Test requires TLSv1.3")
