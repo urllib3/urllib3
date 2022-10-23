@@ -887,17 +887,17 @@ class TestUtilSSL(object):
         should_import_version = "ssl." in version
 
         if should_import_candidate:
-            constant_name = candidate.replace('ssl.', '')
+            constant_name = candidate.replace("ssl.", "")
             if not hasattr(ssl, constant_name):
-                pytest.skip('unavailable constant (candidate) ' + candidate)
+                pytest.skip("unavailable constant (candidate) " + candidate)
             candidate = getattr(ssl, constant_name)
         if should_import_version:
-            constant_name = version.replace('ssl.', '')
+            constant_name = version.replace("ssl.", "")
             if not hasattr(ssl, constant_name):
-                pytest.skip('unavailable constant (version) ' + version)
+                pytest.skip("unavailable constant (version) " + version)
             version = getattr(ssl, constant_name)
         if candidate is NotImplemented or version is NotImplemented:
-            pytest.skip('deprecated/NotImplemented constants')
+            pytest.skip("deprecated/NotImplemented constants")
         assert resolve_ssl_version(candidate) == version
 
     def test_ssl_wrap_socket_loads_the_cert_chain(self):

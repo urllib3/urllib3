@@ -267,7 +267,9 @@ def requires_tlsv1_1(supported_tls_versions):
 @pytest.fixture(scope="function")
 def requires_tlsv1_2(supported_tls_versions):
     """Test requires TLSv1.2 available"""
-    if hasattr(ssl, "PROTOCOL_TLSv1_2") or (hasattr(ssl, "TLSVersion") and hasattr(ssl.TLSVersion, "TLSv1_2")):
+    if hasattr(ssl, "PROTOCOL_TLSv1_2") or (
+        hasattr(ssl, "TLSVersion") and hasattr(ssl.TLSVersion, "TLSv1_2")
+    ):
         return
     if "TLSv1.2" in supported_tls_versions:
         return
@@ -277,7 +279,9 @@ def requires_tlsv1_2(supported_tls_versions):
 @pytest.fixture(scope="function")
 def requires_tlsv1_3(supported_tls_versions):
     """Test requires TLSv1.3 available"""
-    if hasattr(ssl, "PROTOCOL_TLSv1_3") or (hasattr(ssl, "TLSVersion") and hasattr(ssl.TLSVersion, "TLSv1_3")):
+    if hasattr(ssl, "PROTOCOL_TLSv1_3") or (
+        hasattr(ssl, "TLSVersion") and hasattr(ssl.TLSVersion, "TLSv1_3")
+    ):
         return
     if "TLSv1.3" in supported_tls_versions or getattr(ssl, "HAS_TLSv1_3", False):
         return
