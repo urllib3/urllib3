@@ -1,0 +1,1 @@
+Added provisional support for Python 3.12 with SSL/TLS breaking changes.
