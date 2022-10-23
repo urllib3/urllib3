@@ -877,7 +877,6 @@ class TestUtilSSL(object):
             ("PROTOCOL_TLSv1", "ssl.PROTOCOL_TLSv1"),
             ("TLSv1", "ssl.PROTOCOL_TLSv1"),
             ("ssl.PROTOCOL_SSLv23", "ssl.PROTOCOL_SSLv23"),
-            ("ssl.PROTOCOL_TLS", "ssl.PROTOCOL_TLS_CLIENT"),
             ("ssl.PROTOCOL_TLS_CLIENT", "ssl.PROTOCOL_TLS_CLIENT"),
             ("PROTOCOL_TLS_CLIENT", "ssl.PROTOCOL_TLS_CLIENT"),
         ],
