@@ -932,6 +932,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         assert_hostname=None,
         assert_fingerprint=None,
         ca_cert_dir=None,
+        max_ssl_version=None,
         **conn_kw
     ):
 
@@ -957,6 +958,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ca_certs = ca_certs
         self.ca_cert_dir = ca_cert_dir
         self.ssl_version = ssl_version
+        self.max_ssl_version = max_ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
 
@@ -978,6 +980,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 assert_fingerprint=self.assert_fingerprint,
             )
             conn.ssl_version = self.ssl_version
+            conn.max_ssl_version = self.max_ssl_version
         return conn
 
     def _prepare_proxy(self, conn):

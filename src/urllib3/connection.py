@@ -291,6 +291,7 @@ class HTTPSConnection(HTTPConnection):
     ca_cert_dir = None
     ca_cert_data = None
     ssl_version = None
+    max_ssl_version = None
     assert_fingerprint = None
     tls_in_tls_required = False
 
@@ -399,6 +400,8 @@ class HTTPSConnection(HTTPConnection):
 
         context = self.ssl_context
         context.verify_mode = resolve_cert_reqs(self.cert_reqs)
+        if self.max_ssl_version and hasattr(context, "maximum_version"):
+            context.maximum_version = self.max_ssl_version
 
         # Try to load OS default certs if none are given.
         # Works well on Windows (requires Python3.4+)

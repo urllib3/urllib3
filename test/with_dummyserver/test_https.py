@@ -722,10 +722,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA
         ) as https_pool:
-            if "max_ssl_version" in self.certs:
-                https_pool.ssl_version = self.certs["max_ssl_version"]
+            if (
+                hasattr(ssl, "PROTOCOL_TLS_SERVER")
+                and self.certs["ssl_version"] == ssl.PROTOCOL_TLS_SERVER
+            ):
+                https_pool.ssl_version = ssl.PROTOCOL_TLS_CLIENT
             else:
                 https_pool.ssl_version = self.certs["ssl_version"]
+            if "max_ssl_version" in self.certs:
+                https_pool.max_ssl_version = self.certs["max_ssl_version"]
             r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
 
