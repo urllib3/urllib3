@@ -67,7 +67,7 @@ TLSv1_1_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1_1", None)
 
 TLSv1_2_CERTS = DEFAULT_CERTS.copy()
 # python 3.12+ specific
-if not hasattr(ssl, "PROTOCOL_TLSv1_2") and getattr(ssl, "HAS_TLSv1_2", False):
+if not hasattr(ssl, "PROTOCOL_TLSv1_2") and getattr(ssl, "HAS_TLSv1_2", False) and hasattr(ssl, "TLSVersion"):
     TLSv1_2_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLS_SERVER", None)
     TLSv1_2_CERTS["max_ssl_version"] = ssl.TLSVersion.TLSv1_2
 else:
@@ -75,7 +75,7 @@ else:
 
 TLSv1_3_CERTS = DEFAULT_CERTS.copy()
 # python 3.12+ specific
-if not hasattr(ssl, "PROTOCOL_TLSv1_3") and getattr(ssl, "HAS_TLSv1_3", False):
+if not hasattr(ssl, "PROTOCOL_TLSv1_3") and getattr(ssl, "HAS_TLSv1_3", False) and hasattr(ssl, "TLSVersion"):
     TLSv1_3_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLS_SERVER", None)
     TLSv1_3_CERTS["max_ssl_version"] = ssl.TLSVersion.TLSv1_3
 else:
