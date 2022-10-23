@@ -10,6 +10,7 @@ from .ssl_ import (
     HAS_SNI,
     IS_PYOPENSSL,
     IS_SECURETRANSPORT,
+    PROTOCOL_TLS,
     PROTOCOL_TLS_CLIENT,
     SSLContext,
     assert_fingerprint,
@@ -21,7 +22,8 @@ from .timeout import Timeout, current_time
 from .url import Url, get_host, parse_url, split_first
 from .wait import wait_for_read, wait_for_write
 
-PROTOCOL_TLS = PROTOCOL_TLS_CLIENT
+if PROTOCOL_TLS is NotImplemented:
+    PROTOCOL_TLS = PROTOCOL_TLS_CLIENT
 
 __all__ = (
     "HAS_SNI",
