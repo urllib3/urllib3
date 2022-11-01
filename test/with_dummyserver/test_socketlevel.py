@@ -16,6 +16,7 @@ from pathlib import Path
 from test import (
     LONG_TIMEOUT,
     SHORT_TIMEOUT,
+    lazy_condition,
     notSecureTransport,
     notWindows,
     requires_ssl_context_keyfile_password,
@@ -1494,7 +1495,14 @@ class TestSSL(SocketDummyServerTestCase):
     # https://github.com/urllib3/urllib3/pull/2674
     @notSecureTransport()
     @pytest.mark.skipif(
-        os.environ.get("CI") == "true" and sys.implementation.name == "pypy",
+        os.environ.get("CI") == "true"
+        and (
+            sys.implementation.name == "pypy"
+            or (
+                lazy_condition(lambda: not ssl_.IS_PYOPENSSL)
+                and sys.version_info.releaselevel != "final"
+            )
+        ),
         reason="too slow to run in CI",
     )
     @pytest.mark.parametrize(
