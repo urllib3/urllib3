@@ -32,7 +32,6 @@ import trustme
 
 from dummyserver.server import (
     DEFAULT_CA,
-    DEFAULT_CERTS,
     DEFAULT_SERVER_CONTEXT,
     encrypt_key_pem,
     get_unreachable_address,
