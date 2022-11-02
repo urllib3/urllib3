@@ -37,6 +37,10 @@ DEFAULT_CERTS: Dict[str, Any] = {
 }
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
+DEFAULT_SERVER_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+DEFAULT_SERVER_CONTEXT.load_cert_chain(
+    DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"]
+)
 
 
 def _resolves_to_ipv6(host: str) -> bool:
