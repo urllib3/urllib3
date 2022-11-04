@@ -1,6 +1,7 @@
 [run]
 source =
     urllib3
+    test
 
 omit =
     *urllib3/packages/*
@@ -11,8 +12,7 @@ omit =
 [paths]
 source =
     src/urllib3
-    */urllib3
-    *\urllib3
+    test
 
 [report]
 exclude_lines =

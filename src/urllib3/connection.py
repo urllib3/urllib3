@@ -24,6 +24,7 @@ from typing import (
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
+    from .multipart import MultipartEncoder
 
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
@@ -79,7 +80,7 @@ RECENT_DATE = datetime.date(2022, 1, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
-_TYPE_BODY = Union[bytes, IO[Any], Iterable[bytes], str]
+_TYPE_BODY = Union[bytes, IO[Any], Iterable[bytes], str, "MultipartEncoder"]
 
 
 class ProxyConfig(NamedTuple):

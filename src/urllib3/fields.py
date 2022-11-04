@@ -1,6 +1,7 @@
 import email.utils
 import mimetypes
 from typing import (
+    BinaryIO,
     Callable,
     Dict,
     Iterable,
@@ -12,7 +13,7 @@ from typing import (
     cast,
 )
 
-_TYPE_FIELD_VALUE = Union[str, bytes]
+_TYPE_FIELD_VALUE = Union[str, bytes, BinaryIO]
 _TYPE_FIELD_VALUE_TUPLE = Union[
     _TYPE_FIELD_VALUE, Tuple[str, _TYPE_FIELD_VALUE], Tuple[str, _TYPE_FIELD_VALUE, str]
 ]
@@ -34,7 +35,7 @@ def guess_content_type(
     return default
 
 
-def format_header_param_rfc2231(name: str, value: _TYPE_FIELD_VALUE) -> str:
+def format_header_param_rfc2231(name: str, value: Union[str, bytes]) -> str:
     """
     Helper function to format and quote a single header parameter using the
     strategy defined in RFC 2231.
@@ -82,7 +83,7 @@ def format_header_param_rfc2231(name: str, value: _TYPE_FIELD_VALUE) -> str:
     return value
 
 
-def format_multipart_header_param(name: str, value: _TYPE_FIELD_VALUE) -> str:
+def format_multipart_header_param(name: str, value: Union[str, bytes]) -> str:
     """
     Format and quote a single multipart header parameter.
 
@@ -120,7 +121,7 @@ def format_multipart_header_param(name: str, value: _TYPE_FIELD_VALUE) -> str:
     return f'{name}="{value}"'
 
 
-def format_header_param_html5(name: str, value: _TYPE_FIELD_VALUE) -> str:
+def format_header_param_html5(name: str, value: Union[str, bytes]) -> str:
     """
     .. deprecated:: 2.0.0
         Renamed to :func:`format_multipart_header_param`. Will be
@@ -138,7 +139,7 @@ def format_header_param_html5(name: str, value: _TYPE_FIELD_VALUE) -> str:
     return format_multipart_header_param(name, value)
 
 
-def format_header_param(name: str, value: _TYPE_FIELD_VALUE) -> str:
+def format_header_param(name: str, value: Union[str, bytes]) -> str:
     """
     .. deprecated:: 2.0.0
         Renamed to :func:`format_multipart_header_param`. Will be
@@ -181,7 +182,7 @@ class RequestField:
         data: _TYPE_FIELD_VALUE,
         filename: Optional[str] = None,
         headers: Optional[Mapping[str, str]] = None,
-        header_formatter: Optional[Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
+        header_formatter: Optional[Callable[[str, Union[str, bytes]], str]] = None,
     ):
         self._name = name
         self._filename = filename
@@ -209,7 +210,7 @@ class RequestField:
         cls,
         fieldname: str,
         value: _TYPE_FIELD_VALUE_TUPLE,
-        header_formatter: Optional[Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
+        header_formatter: Optional[Callable[[str, Union[str, bytes]], str]] = None,
     ) -> "RequestField":
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
@@ -251,7 +252,7 @@ class RequestField:
 
         return request_param
 
-    def _render_part(self, name: str, value: _TYPE_FIELD_VALUE) -> str:
+    def _render_part(self, name: str, value: Union[str, bytes]) -> str:
         """
         Override this method to change how each multipart header
         parameter is formatted. By default, this calls
@@ -270,8 +271,8 @@ class RequestField:
     def _render_parts(
         self,
         header_parts: Union[
-            Dict[str, Optional[_TYPE_FIELD_VALUE]],
-            Sequence[Tuple[str, Optional[_TYPE_FIELD_VALUE]]],
+            Dict[str, Optional[Union[str, bytes]]],
+            Sequence[Tuple[str, Optional[Union[str, bytes]]]],
         ],
     ) -> str:
         """

@@ -2,7 +2,7 @@ import binascii
 import codecs
 import os
 from io import BytesIO
-from typing import Iterable, Mapping, Optional, Sequence, Tuple, Union
+from typing import BinaryIO, Iterable, Mapping, Optional, Sequence, Tuple, Union
 
 from .fields import _TYPE_FIELD_VALUE_TUPLE, RequestField
 
@@ -75,6 +75,8 @@ def encode_multipart_formdata(
 
         if isinstance(data, str):
             writer(body).write(data)
+        elif isinstance(data, BinaryIO):
+            body.write(data.read())
         else:
             body.write(data)
 
