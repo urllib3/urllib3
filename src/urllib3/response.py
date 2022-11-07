@@ -306,10 +306,6 @@ class BaseHTTPResponse(io.IOBase):
         raise NotImplementedError()
 
     @property
-    def closed(self) -> bool:
-        raise NotImplementedError()
-
-    @property
     def connection(self) -> Optional[HTTPConnection]:
         raise NotImplementedError()
 
@@ -406,9 +402,6 @@ class BaseHTTPResponse(io.IOBase):
         return b""
 
     # Compatibility methods for `io` module
-    def readable(self) -> bool:
-        return True
-
     def readinto(self, b: bytearray) -> int:
         temp = self.read(len(b))
         if len(temp) == 0:
@@ -832,6 +825,9 @@ class HTTPResponse(BaseHTTPResponse):
                     yield data
 
     # Overrides from io.IOBase
+    def readable(self) -> bool:
+        return True
+
     def close(self) -> None:
         if not self.closed and self._fp:
             self._fp.close()
