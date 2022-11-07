@@ -826,11 +826,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         self._init_decoder()
 
-        if amt is None or (amt != 0 and not data):
-            flush_decoder = True
-        else:
-            flush_decoder = False
-
+        flush_decoder = amt is None or (amt != 0 and not data)
         decoded_data = self._decode(data, decode_content, flush_decoder)
         self._decoded_bytes.extend(decoded_data)
 
