@@ -338,48 +338,6 @@ class TestResponse:
         assert r.read(9 * 37) == b"foobarbaz" * 37
         assert r.read() == b""
 
-    def test_read_multi_decoding_deflate_gzip(self) -> None:
-        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-        msg = b"foobarbaz" * 42
-        data = compress.compress(zlib.compress(msg))
-        data += compress.flush()
-
-        fp = BytesIO(data)
-        r = HTTPResponse(
-            fp, headers={"content-encoding": "deflate, gzip"}, preload_content=False
-        )
-
-        assert r.read(3) == b"foo"
-        assert r.read(3) == b"bar"
-        assert r.read(3) == b"baz"
-        assert r.read(9) == b"foobarbaz"
-        assert r.read(9 * 3) == b"foobarbaz" * 3
-        assert r.read(9 * 37) == b"foobarbaz" * 37
-        assert r.read() == b""
-
-    def test_read_multi_decoding_gzip_gzip(self) -> None:
-        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-        msg = b"foobarbaz" * 42
-        data = compress.compress(msg)
-        data += compress.flush()
-
-        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-        data = compress.compress(data)
-        data += compress.flush()
-
-        fp = BytesIO(data)
-        r = HTTPResponse(
-            fp, headers={"content-encoding": "gzip, gzip"}, preload_content=False
-        )
-
-        assert r.read(3) == b"foo"
-        assert r.read(3) == b"bar"
-        assert r.read(3) == b"baz"
-        assert r.read(9) == b"foobarbaz"
-        assert r.read(9 * 3) == b"foobarbaz" * 3
-        assert r.read(9 * 37) == b"foobarbaz" * 37
-        assert r.read() == b""
-
     def test_body_blob(self) -> None:
         resp = HTTPResponse(b"foo")
         assert resp.data == b"foo"
