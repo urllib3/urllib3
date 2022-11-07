@@ -23,12 +23,7 @@ from urllib3.exceptions import (
     ResponseNotReadable,
     SSLError,
 )
-from urllib3.response import (  # type: ignore[attr-defined]
-    BaseHTTPResponse,
-    HTTPResponse,
-    brotli,
-    zstd,
-)
+from urllib3.response import HTTPResponse, brotli, zstd  # type: ignore[attr-defined]
 from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
 
@@ -386,17 +381,6 @@ class TestResponse:
         resp = HTTPResponse(b"foo")
         assert resp.data == b"foo"
         assert resp.closed
-
-    def test_base_response_is_not_readable(self) -> None:
-        resp = BaseHTTPResponse(
-            status=0,
-            version=0,
-            reason=None,
-            decode_content=False,
-            request_url=None,
-        )
-
-        assert not resp.readable()
 
     def test_not_readable_response(self) -> None:
         resp = HTTPResponse(b"foo")

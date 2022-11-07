@@ -393,7 +393,7 @@ class BaseHTTPResponse(io.IOBase):
 
     # Compatibility methods for `io` module
     def readable(self) -> bool:
-        return False
+        return True
 
     def readinto(self, b: bytearray) -> int:
         temp = self.read(len(b))
