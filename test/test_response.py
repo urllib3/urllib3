@@ -22,7 +22,12 @@ from urllib3.exceptions import (
     ResponseNotChunked,
     SSLError,
 )
-from urllib3.response import HTTPResponse, brotli, zstd  # type: ignore[attr-defined]
+from urllib3.response import (  # type: ignore[attr-defined]
+    BaseHTTPResponse,
+    HTTPResponse,
+    brotli,
+    zstd,
+)
 from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
 
@@ -323,6 +328,24 @@ class TestResponse:
         resp = HTTPResponse(b"foo")
         assert resp.data == b"foo"
         assert resp.closed
+
+    def test_base_io(self) -> None:
+        resp = BaseHTTPResponse(
+            status=200,
+            version=11,
+            reason=None,
+            decode_content=False,
+            request_url=None,
+        )
+
+        assert not resp.closed
+        assert not resp.readable()
+        assert not resp.writable()
+
+        with pytest.raises(NotImplementedError):
+            resp.read()
+        with pytest.raises(NotImplementedError):
+            resp.close()
 
     def test_io(self, sock: socket.socket) -> None:
         fp = BytesIO(b"foo")
