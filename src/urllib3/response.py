@@ -729,7 +729,7 @@ class HTTPResponse(BaseHTTPResponse):
         Reads `amt` of bytes from the socket.
         """
         if self._fp is None:
-            return None
+            return None  # type: ignore[return-value]
 
         fp_closed = getattr(self._fp, "closed", False)
 
