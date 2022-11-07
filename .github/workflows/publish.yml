@@ -21,10 +21,10 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: "actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b"
+        uses: "actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8"
 
       - name: "Setup Python"
-        uses: "actions/setup-python@b55428b1882923874294fa556849718a1d7f2ca5"
+        uses: "actions/setup-python@13ae5bb136fac2878aff31522b9efb785519f984"
         with:
           python-version: "3.x"
 
@@ -42,7 +42,7 @@ jobs:
           cd dist && echo "::set-output name=hashes::$(sha256sum * | base64 -w0)"
 
       - name: "Upload dists"
-        uses: "actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8"
+        uses: "actions/upload-artifact@83fd05a356d7e2593de66fc9913b3002723633cb"
         with:
           name: "dist"
           path: "dist/"
@@ -65,11 +65,13 @@ jobs:
     name: "Publish"
     if: startsWith(github.ref, 'refs/tags/')
     needs: ["build", "provenance"]
+    permissions:
+      contents: write
     runs-on: "ubuntu-latest"
 
     steps:
     - name: "Download dists"
-      uses: "actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741"
+      uses: "actions/download-artifact@9782bd6a9848b53b110e712e20e42d89988822b7"
       with:
         name: "dist"
         path: "dist/"
