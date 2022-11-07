@@ -421,13 +421,6 @@ package which provides Mozilla's root certificate bundle:
 
     $ python -m pip install certifi
 
-You can also install certifi along with urllib3 by using the ``secure``
-extra:
-
-.. code-block:: bash
-
-    $ python -m pip install urllib3[secure]
-
 Once you have certificates, you can create a :class:`~poolmanager.PoolManager`
 that verifies certificates when making requests:
 
