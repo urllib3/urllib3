@@ -58,7 +58,6 @@ from .exceptions import (
     ProtocolError,
     ReadTimeoutError,
     ResponseNotChunked,
-    ResponseNotReadable,
     SSLError,
 )
 from .util.response import is_fp_closed, is_response_to_head
@@ -512,7 +511,7 @@ class HTTPResponse(BaseHTTPResponse):
         self._decoded_bytes = bytearray()
 
         # If requested, preload the body.
-        if preload_content and not self._body and self._fp:
+        if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
 
     def release_conn(self) -> None:
@@ -730,7 +729,7 @@ class HTTPResponse(BaseHTTPResponse):
         Reads `amt` of bytes from the socket.
         """
         if self._fp is None:
-            raise ResponseNotReadable()
+            return None
 
         fp_closed = getattr(self._fp, "closed", False)
 

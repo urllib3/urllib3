@@ -20,7 +20,6 @@ from urllib3.exceptions import (
     InvalidHeader,
     ProtocolError,
     ResponseNotChunked,
-    ResponseNotReadable,
     SSLError,
 )
 from urllib3.response import HTTPResponse, brotli, zstd  # type: ignore[attr-defined]
@@ -381,12 +380,6 @@ class TestResponse:
         resp = HTTPResponse(b"foo")
         assert resp.data == b"foo"
         assert resp.closed
-
-    def test_not_readable_response(self) -> None:
-        resp = HTTPResponse(b"foo")
-        assert not resp.readable()
-        with pytest.raises(ResponseNotReadable):
-            resp.read()
 
     def test_io(self, sock: socket.socket) -> None:
         fp = BytesIO(b"foo")
