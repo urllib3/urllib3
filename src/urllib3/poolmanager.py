@@ -468,7 +468,7 @@ class PoolManager(RequestMethods):
             kw["headers"] = new_headers
 
         try:
-            retries = retries.increment(method, url, response=response, _pool=conn)  # type: ignore[arg-type]
+            retries = retries.increment(method, url, response=response, _pool=conn)
         except MaxRetryError:
             if retries.raise_on_redirect:
                 response.drain_conn()

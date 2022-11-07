@@ -1,6 +1,7 @@
 import datetime
 import socket
 import typing
+from http.client import ResponseNotReady
 from unittest import mock
 
 import pytest
@@ -8,8 +9,10 @@ import pytest
 from urllib3.connection import (  # type: ignore[attr-defined]
     RECENT_DATE,
     CertificateError,
+    HTTPConnection,
     HTTPSConnection,
     _match_hostname,
+    _url_from_connection,
     _wrap_proxy_error,
 )
 from urllib3.exceptions import HTTPError, ProxyError
@@ -217,3 +220,16 @@ class TestConnection:
         new_err = _wrap_proxy_error(HTTPError("unknown protocol"), proxy_scheme)
         assert isinstance(new_err, ProxyError) is True
         assert err_part in new_err.args[0]
+
+    def test_url_from_pool(self) -> None:
+        conn = HTTPConnection("google.com", port=80)
+
+        path = "path?query=foo"
+        assert f"http://google.com:80/{path}" == _url_from_connection(conn, path)
+
+    def test_getresponse_requires_reponseoptions(self) -> None:
+        conn = HTTPConnection("google.com", port=80)
+
+        # Should error if a request has not been sent
+        with pytest.raises(ResponseNotReady):
+            conn.getresponse()

@@ -40,6 +40,7 @@ from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
+from urllib3.connectionpool import _url_from_pool
 from urllib3.exceptions import (
     MaxRetryError,
     ProtocolError,
@@ -1791,7 +1792,7 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
                 if (
                     "Failed to parse headers" in record.msg
                     and isinstance(record.args, tuple)
-                    and pool._absolute_url("/") == record.args[0]
+                    and _url_from_pool(pool, "/") == record.args[0]
                 ):
                     if (
                         unparsed_data_check is None
