@@ -31,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["2.7", "3.6", "3.7", "3.8", "3.9", "3.10"]
+        python-version: ["2.7", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
         os: [macos-latest, windows-latest, ubuntu-latest]
         experimental: [false]
         nox-session: ['']
@@ -56,10 +56,10 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: app_engine
-          - python-version: 3.11-dev
+          - python-version: "3.12-dev"
             os: ubuntu-latest
             experimental: true
-            nox-session: test-3.11
+            nox-session: test-3.12
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
@@ -68,8 +68,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Set Up Python - ${{ matrix.python-version }}
+      - if: ${{ !endsWith(matrix.python-version, '-dev') }}
+        name: "Setup Python ${{ matrix.python-version }}"
         uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Use deadsnakes for development versions
+      - if: endsWith(matrix.python-version, '-dev')
+        name: "Setup Python ${{ matrix.python-version }}"
+        uses: deadsnakes/action@v2.1.1
         with:
           python-version: ${{ matrix.python-version }}
 
