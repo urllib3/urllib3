@@ -721,7 +721,7 @@ class HTTPResponse(BaseHTTPResponse):
             # StringIO doesn't like amt=None
             return self._fp.read(amt) if amt is not None else self._fp.read()
 
-    def _raw_read(
+    def raw_read(
         self,
         amt: Optional[int] = None,
     ) -> bytes:
@@ -811,7 +811,7 @@ class HTTPResponse(BaseHTTPResponse):
             decode_content = self.decode_content
 
         if not decode_content:
-            data = self._raw_read(amt)
+            data = self.raw_read(amt)
             if cache_content:
                 self._body = data
             return data
@@ -819,7 +819,7 @@ class HTTPResponse(BaseHTTPResponse):
         if amt is not None and self._decoded_bytes_in_buffer() >= amt:
             return self._popleft_decoded_bytes(amt)
 
-        data = self._raw_read(amt)
+        data = self.raw_read(amt)
 
         if not data and self._decoded_bytes_in_buffer() == 0:
             return data
@@ -832,7 +832,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         if amt is not None:
             while self._decoded_bytes_in_buffer() < amt and data:
-                data = self._raw_read(amt)
+                data = self.raw_read(amt)
                 decoded_data = self._decode(data, decode_content, flush_decoder)
                 self._decoded_bytes.extend(decoded_data)
 
