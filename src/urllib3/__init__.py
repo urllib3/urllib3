@@ -109,8 +109,6 @@ del NullHandler
 # mechanisms to silence them.
 # SecurityWarning's always go off by default.
 warnings.simplefilter("always", exceptions.SecurityWarning, append=True)
-# ContentLengthMissing warnings always go off.
-warnings.simplefilter("always", exceptions.ContentLengthMissing, append=True)
 # InsecurePlatformWarning's don't vary between requests, so we keep it default.
 warnings.simplefilter("default", exceptions.InsecurePlatformWarning, append=True)
 

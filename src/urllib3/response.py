@@ -3,7 +3,6 @@ import json as _json
 import logging
 import re
 import sys
-import warnings
 import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
@@ -51,7 +50,6 @@ from ._collections import HTTPHeaderDict
 from .connection import _TYPE_BODY, BaseSSLError, HTTPConnection, HTTPException
 from .exceptions import (
     BodyNotHttplibCompatible,
-    ContentLengthMissing,
     DecodeError,
     HTTPError,
     IncompleteRead,
@@ -813,15 +811,6 @@ class HTTPResponse(BaseHTTPResponse):
         if decode_content is None:
             decode_content = self.decode_content
 
-        if self.length_remaining is None and decode_content:
-            warnings.warn(
-                "The response is missing a Content-Length header. When "
-                "reading with decode_content=True, the HTTPResponse.read "
-                "call may return no bytes or less bytes than specified even "
-                "though there may be still more data to read.",
-                ContentLengthMissing,
-            )
-
         if not decode_content:
             data = self._raw_read(amt)
             if cache_content:
@@ -846,13 +835,8 @@ class HTTPResponse(BaseHTTPResponse):
         decoded_data = self._decode(data, decode_content, flush_decoder)
         self._decoded_bytes.extend(decoded_data)
 
-        if (
-            amt is not None
-            and self._decoded_bytes_in_buffer() < amt
-            and self.length_remaining is not None
-            and self.length_remaining > 0
-        ):
-            while self.length_remaining > 0 and self._decoded_bytes_in_buffer() < amt:
+        if amt is not None:
+            while self._decoded_bytes_in_buffer() < amt and data:
                 data = self._raw_read(amt)
                 decoded_data = self._decode(data, decode_content, flush_decoder)
                 self._decoded_bytes.extend(decoded_data)

@@ -14,7 +14,6 @@ import pytest
 
 from urllib3.exceptions import (
     BodyNotHttplibCompatible,
-    ContentLengthMissing,
     DecodeError,
     IncompleteRead,
     InvalidChunkLength,
@@ -130,17 +129,6 @@ class TestResponse:
 
         assert r.data == b"foo"
 
-    def test_warning_on_read_with_no_content_length(self) -> None:
-        data = zlib.compress(b"foo")
-
-        fp = BytesIO(data)
-        r = HTTPResponse(
-            fp, headers={"content-encoding": "deflate"}, preload_content=False
-        )
-
-        with pytest.warns(ContentLengthMissing):
-            r.read(2)
-
     def test_decode_deflate_case_insensitve(self) -> None:
         data = zlib.compress(b"foo")
 
@@ -153,11 +141,8 @@ class TestResponse:
         data = zlib.compress(b"foo")
 
         fp = BytesIO(data)
-        length = str(len(data))
         r = HTTPResponse(
-            fp,
-            headers={"content-encoding": "deflate", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
         )
 
         assert r.read(1) == b"f"
@@ -172,11 +157,8 @@ class TestResponse:
         data += compress.flush()
 
         fp = BytesIO(data)
-        length = str(len(data))
         r = HTTPResponse(
-            fp,
-            headers={"content-encoding": "deflate", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
         )
 
         assert r.read(1) == b"f"
@@ -191,11 +173,8 @@ class TestResponse:
         data += compress.flush()
 
         fp = BytesIO(data)
-        length = str(len(data))
         r = HTTPResponse(
-            fp,
-            headers={"content-encoding": "gzip", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "gzip"}, preload_content=False
         )
 
         assert r.read(1) == b"f"
@@ -229,11 +208,8 @@ class TestResponse:
         data = data * 3 + b"foo"
 
         fp = BytesIO(data)
-        length = str(len(data))
         r = HTTPResponse(
-            fp,
-            headers={"content-encoding": "gzip", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "gzip"}, preload_content=False
         )
         ret = b""
         for _ in range(100):
@@ -267,12 +243,7 @@ class TestResponse:
         data = brotli.compress(b"foobarbaz")
 
         fp = BytesIO(data)
-        length = str(len(data))
-        r = HTTPResponse(
-            fp,
-            headers={"content-encoding": "br", "content-length": length},
-            preload_content=False,
-        )
+        r = HTTPResponse(fp, headers={"content-encoding": "br"}, preload_content=False)
 
         ret = b""
         for _ in range(100):
@@ -300,11 +271,8 @@ class TestResponse:
         data = zstd.compress(b"foobarbaz")
 
         fp = BytesIO(data)
-        length = str(len(data))
         r = HTTPResponse(
-            fp,
-            headers={"content-encoding": "zstd", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
         )
 
         ret = b""
@@ -360,11 +328,8 @@ class TestResponse:
         data = zlib.compress(zlib.compress(msg))
 
         fp = BytesIO(data)
-        length = str(len(data))
         r = HTTPResponse(
-            fp,
-            headers={"content-encoding": "deflate, deflate", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "deflate, deflate"}, preload_content=False
         )
 
         assert r.read(3) == b"foo"
@@ -382,11 +347,8 @@ class TestResponse:
         data += compress.flush()
 
         fp = BytesIO(data)
-        length = str(len(data))
         r = HTTPResponse(
-            fp,
-            headers={"content-encoding": "deflate, gzip", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "deflate, gzip"}, preload_content=False
         )
 
         assert r.read(3) == b"foo"
@@ -408,11 +370,8 @@ class TestResponse:
         data += compress.flush()
 
         fp = BytesIO(data)
-        length = str(len(data))
         r = HTTPResponse(
-            fp,
-            headers={"content-encoding": "gzip, gzip", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "gzip, gzip"}, preload_content=False
         )
 
         assert r.read(3) == b"foo"
@@ -620,11 +579,8 @@ class TestResponse:
         data += compress.flush()
 
         fp = BytesIO(data)
-        length = str(len(data))
         resp = HTTPResponse(
-            fp,
-            headers={"content-encoding": "gzip", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "gzip"}, preload_content=False
         )
         stream = resp.stream(2)
 
@@ -684,11 +640,8 @@ class TestResponse:
 
         payload_part_size = len(ZLIB_PAYLOAD) // NUMBER_OF_READS
         fp = MockCompressedDataReading(ZLIB_PAYLOAD, payload_part_size)
-        length = str(len(ZLIB_PAYLOAD))
         resp = HTTPResponse(
-            fp,
-            headers={"content-encoding": "deflate", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
         )
         stream = resp.stream(PART_SIZE)
 
@@ -731,11 +684,8 @@ class TestResponse:
         data = zlib.compress(b"foo")
 
         fp = BytesIO(data)
-        length = str(len(data))
         resp = HTTPResponse(
-            fp,
-            headers={"content-encoding": "deflate", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
         )
         stream = resp.stream(2)
 
@@ -749,12 +699,9 @@ class TestResponse:
         data = compress.compress(b"foo")
         data += compress.flush()
 
-        length = str(len(data))
         fp = BytesIO(data)
         resp = HTTPResponse(
-            fp,
-            headers={"content-encoding": "deflate", "content-length": length},
-            preload_content=False,
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
         )
         stream = resp.stream(2)
 
