@@ -66,15 +66,19 @@ class TestLegacyResponse:
 class TestResponse:
     def test_cache_content(self) -> None:
         r = HTTPResponse(b"foo", decode_content=False)
+        assert r._body == b"foo"
         assert r.data == b"foo"
         assert r._body == b"foo"
 
-    def test_cache_content_from_not_decoded_file(self) -> None:
+    @pytest.mark.parametrize("decode_content", [True, False])
+    def test_cache_content_from_file(self, decode_content: bool) -> None:
         fp = BytesIO(b"foo")
-        r = HTTPResponse(fp, preload_content=False, decode_content=False)
+        r = HTTPResponse(fp, preload_content=False, decode_content=decode_content)
 
+        assert not r._body
         assert r.data == b"foo"
         assert r._body == b"foo"
+        assert r.data == b"foo"
 
     def test_default(self) -> None:
         r = HTTPResponse()
