@@ -37,6 +37,9 @@ DEFAULT_CERTS = {
 }
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
+DEFAULT_SERVER_CONTEXT = ssl.SSLContext(
+    ssl.PROTOCOL_SSLv23 if not hasattr(ssl, "PROTOCOL_TLS_SERVER") else ssl.PROTOCOL_TLS_SERVER
+)
 
 
 def _resolves_to_ipv6(host):
