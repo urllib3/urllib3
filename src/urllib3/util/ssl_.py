@@ -99,7 +99,7 @@ _SSL_VERSION_TO_TLS_VERSION: Dict[int, int] = {}
 
 try:  # Do we have ssl at all?
     import ssl
-    from ssl import (  # type: ignore[misc]
+    from ssl import (  # type: ignore[assignment]
         CERT_REQUIRED,
         HAS_NEVER_CHECK_COMMON_NAME,
         OP_NO_COMPRESSION,
@@ -136,7 +136,7 @@ try:  # Do we have ssl at all?
         except AttributeError:  # Defensive:
             continue
 
-    from .ssltransport import SSLTransport  # type: ignore[misc]
+    from .ssltransport import SSLTransport  # type: ignore[assignment]
 except ImportError:
     OP_NO_COMPRESSION = 0x20000  # type: ignore[assignment]
     OP_NO_TICKET = 0x4000  # type: ignore[assignment]

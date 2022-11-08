@@ -189,7 +189,7 @@ class HTTPConnection(_HTTPConnection):
     # If `host` is made a property it violates LSP, because a writeable attribute is overridden with a read-only one.
     # However, there is also a `host` setter so LSP is not violated.
     # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
-    @property  # type: ignore[override]
+    @property
     def host(self) -> str:
         """
         Getter method to remove any trailing dots that indicate the hostname is an FQDN.
