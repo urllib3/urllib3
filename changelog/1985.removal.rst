@@ -1,0 +1,15 @@
+Added the ``scheme`` parameter to ``HTTPConnection.set_tunnel`` to configure the scheme of the origin being tunnelled to.
+
+Added the ``is_closed``, ``is_connected`` and ``has_connected_to_proxy`` properties to ``HTTPConnection``.
+
+Changed all parameters in the ``HTTPConnection`` and ``HTTPSConnection`` constructors to be keyword-only except ``host`` and ``port``.
+
+Changed ``urllib3.util.is_connection_dropped()`` to use ``HTTPConnection.is_connected``.
+
+Removed the ``_proxy_host`` property from ``HTTPConnectionPool`` which was only used in one place. The ``host`` property (which is identical in value) is used instead.
+
+Removed the ``_prepare_conn`` method from ``HTTPConnectionPool``.
+
+Removed ``tls_in_tls_required`` property from `HTTPSConnection`. This is now calculated from the ``scheme`` parameter in ``HTTPConnection.set_tunnel()``.
+
+Deprecated ``HTTPSConnection.set_cert`` method, instead pass parameters to the ``HTTPSConnection`` constructor.
