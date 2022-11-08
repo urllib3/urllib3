@@ -38,7 +38,7 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
         os:
-          - macos-latest
+          - macos-11
           - windows-latest
           - ubuntu-20.04  # OpenSSL 1.1.1
           - ubuntu-22.04  # OpenSSL 3.0
