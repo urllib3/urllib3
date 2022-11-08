@@ -6,6 +6,7 @@ import socket
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
+from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
 from typing import (
     IO,
@@ -25,9 +26,12 @@ from typing import (
 if TYPE_CHECKING:
     from typing_extensions import Literal
 
+    from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
 
+from ._collections import HTTPHeaderDict
+from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
 
@@ -45,6 +49,7 @@ except (ImportError, AttributeError):
 from ._version import __version__
 from .exceptions import (
     ConnectTimeoutError,
+    HeaderParsingError,
     NameResolutionError,
     NewConnectionError,
     ProxyError,
@@ -78,7 +83,6 @@ RECENT_DATE = datetime.date(2022, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
-
 _TYPE_BODY = Union[bytes, IO[Any], Iterable[bytes], str]
 
 
@@ -87,6 +91,16 @@ class ProxyConfig(NamedTuple):
     use_forwarding_for_https: bool
     assert_hostname: Union[None, str, "Literal[False]"]
     assert_fingerprint: Optional[str]
+
+
+class _ResponseOptions(NamedTuple):
+    # TODO: Remove this in favor of a better
+    # HTTP request/response lifecycle tracking.
+    request_method: str
+    request_url: str
+    preload_content: bool
+    decode_content: bool
+    enforce_content_length: bool
 
 
 class HTTPConnection(_HTTPConnection):
@@ -135,6 +149,7 @@ class HTTPConnection(_HTTPConnection):
     _tunnel_host: Optional[str]
     _tunnel: ClassVar[Callable[["HTTPConnection"], None]]
     _connecting_to_proxy: bool
+    _response_options: Optional[_ResponseOptions]
 
     def __init__(
         self,
@@ -167,6 +182,7 @@ class HTTPConnection(_HTTPConnection):
         )
 
         self._connecting_to_proxy = False
+        self._response_options = None
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
@@ -293,7 +309,26 @@ class HTTPConnection(_HTTPConnection):
         body: Optional[_TYPE_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
         chunked: bool = False,
+        preload_content: bool = True,
+        decode_content: bool = True,
+        enforce_content_length: bool = True,
     ) -> None:
+
+        # Store these values to be fed into the HTTPResponse
+        # object later. TODO: Remove this in favor of a real
+        # HTTP lifecycle mechanism.
+
+        # We have to store these before we call .request()
+        # because sometimes we can still salvage a response
+        # off the wire even if we aren't able to completely
+        # send the request body.
+        self._response_options = _ResponseOptions(
+            request_method=method,
+            request_url=url,
+            preload_content=preload_content,
+            decode_content=decode_content,
+            enforce_content_length=enforce_content_length,
+        )
 
         if headers is None:
             headers = {}
@@ -371,6 +406,57 @@ class HTTPConnection(_HTTPConnection):
         body with chunked encoding and not as one block
         """
         self.request(method, url, body=body, headers=headers, chunked=True)
+
+    def getresponse(  # type: ignore[override]
+        self,
+    ) -> "HTTPResponse":
+        """
+        Get the response from the server.
+
+        If the HTTPConnection is in the correct state, returns an instance of HTTPResponse or of whatever object is returned by the response_class variable.
+
+        If a request has not been sent or if a previous response has not be handled, ResponseNotReady is raised. If the HTTP response indicates that the connection should be closed, then it will be closed before the response is returned. When the connection is closed, the underlying socket is closed.
+        """
+        # Raise the same error as http.client.HTTPConnection
+        if self._response_options is None:
+            raise ResponseNotReady()
+
+        # Reset this attribute for being used again.
+        resp_options = self._response_options
+        self._response_options = None
+
+        # This is needed here to avoid circular import errors
+        from .response import HTTPResponse
+
+        # Get the response from http.client.HTTPConnection
+        httplib_response = super().getresponse()
+
+        try:
+            assert_header_parsing(httplib_response.msg)
+        except (HeaderParsingError, TypeError) as hpe:
+            log.warning(
+                "Failed to parse headers (url=%s): %s",
+                _url_from_connection(self, resp_options.request_url),
+                hpe,
+                exc_info=True,
+            )
+
+        headers = HTTPHeaderDict(httplib_response.msg.items())
+
+        response = HTTPResponse(
+            body=httplib_response,
+            headers=headers,
+            status=httplib_response.status,
+            version=httplib_response.version,
+            reason=httplib_response.reason,
+            preload_content=resp_options.preload_content,
+            decode_content=resp_options.decode_content,
+            original_response=httplib_response,
+            enforce_content_length=resp_options.enforce_content_length,
+            request_method=resp_options.request_method,
+            request_url=resp_options.request_url,
+        )
+        return response
 
 
 class HTTPSConnection(HTTPConnection):
@@ -749,3 +835,13 @@ if not ssl:
 
 
 VerifiedHTTPSConnection = HTTPSConnection
+
+
+def _url_from_connection(
+    conn: Union[HTTPConnection, HTTPSConnection], path: Optional[str] = None
+) -> str:
+    """Returns the URL from a given connection. This is mainly used for testing and logging."""
+
+    scheme = "https" if isinstance(conn, HTTPSConnection) else "http"
+
+    return Url(scheme=scheme, host=conn.host, port=conn.port, path=path).url

@@ -452,7 +452,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
             # We grab the HTTPConnection object straight from the Queue,
             # because _get_conn() is where the check & reset occurs
-            # pylint: disable-msg=W0212
             assert pool.pool is not None
             conn = pool.pool.get()
             assert conn.sock is None

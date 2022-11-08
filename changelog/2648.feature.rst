@@ -1,0 +1,3 @@
+Modified ``urllib3.HTTPConnection.getresponse`` to return an instance of ``urllib3.HTTPResponse`` instead of ``http.client.HTTPResponse``.
+
+Removed ``urllib3.HTTPResponse.from_httplib``.
