@@ -460,7 +460,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # socket, so only add this assertion if the attribute is there (i.e.
             # the python ssl module).
             if hasattr(conn.sock, "server_hostname"):
-                assert conn.sock.server_hostname == "localhost"  # type: ignore[union-attr]
+                assert conn.sock.server_hostname == "localhost"
 
     def test_assert_fingerprint_md5(self) -> None:
         with HTTPSConnectionPool(
@@ -781,7 +781,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 conn.connect()
                 if not hasattr(conn.sock, "version"):
                     pytest.skip("SSLSocket.version() not available")
-                assert conn.sock.version() == self.tls_protocol_name  # type: ignore[union-attr]
+                assert conn.sock.version() == self.tls_protocol_name
             finally:
                 conn.close()
 
