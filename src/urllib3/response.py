@@ -674,9 +674,6 @@ class HTTPResponse(BaseHTTPResponse):
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
 
-    def readable(self) -> bool:
-        return self._fp is not None
-
     def _fp_read(self, amt: Optional[int] = None) -> bytes:
         """
         Read a response with the thought that reading the number of bytes
@@ -879,7 +876,7 @@ class HTTPResponse(BaseHTTPResponse):
 
     # Overrides from io.IOBase
     def readable(self) -> bool:
-        return True
+        return self._fp is not None
 
     def close(self) -> None:
         if not self.closed and self._fp:
