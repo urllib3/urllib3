@@ -1091,6 +1091,7 @@ class TestProxyManager(SocketDummyServerTestCase):
             ctx.load_cert_chain(
                 certfile=DEFAULT_CERTS["certfile"], keyfile=DEFAULT_CERTS["keyfile"]
             )
+            ctx.verify_mode = ssl.CERT_REQUIRED
             ctx.load_verify_locations(DEFAULT_CA)
 
             ssl_sock = ctx.wrap_socket(
@@ -1216,6 +1217,7 @@ class TestSSL(SocketDummyServerTestCase):
             ctx.load_cert_chain(
                 certfile=DEFAULT_CERTS["certfile"], keyfile=DEFAULT_CERTS["keyfile"]
             )
+            ctx.verify_mode = ssl.CERT_REQUIRED
             ctx.load_verify_locations(DEFAULT_CA)
 
             ssl_sock = ctx.wrap_socket(
@@ -1302,6 +1304,7 @@ class TestSSL(SocketDummyServerTestCase):
                 ctx.load_cert_chain(
                     certfile=DEFAULT_CERTS["certfile"], keyfile=DEFAULT_CERTS["keyfile"]
                 )
+                ctx.verify_mode = ssl.CERT_REQUIRED
                 ctx.load_verify_locations(DEFAULT_CA)
 
                 ssl_sock = ctx.wrap_socket(
@@ -1408,6 +1411,7 @@ class TestSSL(SocketDummyServerTestCase):
             ctx.load_cert_chain(
                 certfile=DEFAULT_CERTS["certfile"], keyfile=DEFAULT_CERTS["keyfile"]
             )
+            ctx.verify_mode = ssl.CERT_REQUIRED
             ctx.load_verify_locations(DEFAULT_CA)
 
             ssl_sock = ctx.wrap_socket(
@@ -1449,6 +1453,7 @@ class TestSSL(SocketDummyServerTestCase):
             ctx.load_cert_chain(
                 certfile=DEFAULT_CERTS["certfile"], keyfile=DEFAULT_CERTS["keyfile"]
             )
+            ctx.verify_mode = ssl.CERT_REQUIRED
             ctx.load_verify_locations(DEFAULT_CA)
 
             ssl_sock = ctx.wrap_socket(
@@ -1517,6 +1522,7 @@ class TestSSL(SocketDummyServerTestCase):
                 ctx.load_cert_chain(
                     certfile=DEFAULT_CERTS["certfile"], keyfile=DEFAULT_CERTS["keyfile"]
                 )
+                ctx.verify_mode = ssl.CERT_REQUIRED
                 ctx.load_verify_locations(DEFAULT_CA)
 
                 _ = ctx.wrap_socket(
@@ -1568,6 +1574,7 @@ class TestSSL(SocketDummyServerTestCase):
             ctx.load_cert_chain(
                 certfile=DEFAULT_CERTS["certfile"], keyfile=DEFAULT_CERTS["keyfile"]
             )
+            ctx.verify_mode = ssl.CERT_REQUIRED
             ctx.load_verify_locations(DEFAULT_CA)
 
             ssl_sock = ctx.wrap_socket(

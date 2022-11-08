@@ -231,12 +231,12 @@ def resolve_cert_reqs(candidate):
     return candidate
 
 
-def resolve_ssl_version(candidate):
+def resolve_ssl_version(candidate, default=PROTOCOL_TLS_CLIENT):
     """
     like resolve_cert_reqs
     """
     if candidate is None:
-        return PROTOCOL_TLS_CLIENT
+        return default
 
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)

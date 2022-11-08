@@ -37,7 +37,7 @@ DEFAULT_CERTS = {
 }
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
-PROTOCOL_TLS_SERVER = ssl.PROTOCOL_SSLv23 if not hasattr(ssl, "PROTOCOL_TLS_SERVER") else ssl.PROTOCOL_TLS_SERVER
+PROTOCOL_TLS_SERVER = ssl.PROTOCOL_TLS if not hasattr(ssl, "PROTOCOL_TLS_SERVER") else ssl.PROTOCOL_TLS_SERVER
 
 
 def _resolves_to_ipv6(host):
@@ -149,13 +149,7 @@ def ssl_options_to_context(
     max_ssl_version=None,
 ):
     """Return an equivalent SSLContext based on ssl.wrap_socket args."""
-    # python 3.12+ specific
-    # fallback to PROTOCOL_TLS_CLIENT cause tornado to hang
-    if ssl_version is None and hasattr(ssl, "PROTOCOL_TLS_SERVER"):
-        ssl_version = ssl.PROTOCOL_TLS_SERVER
-    else:
-        ssl_version = resolve_ssl_version(ssl_version)
-
+    ssl_version = resolve_ssl_version(ssl_version, default=PROTOCOL_TLS_SERVER)
     cert_none = resolve_cert_reqs("CERT_NONE")
     if cert_reqs is None:
         cert_reqs = cert_none
