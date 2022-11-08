@@ -826,23 +826,24 @@ class HTTPResponse(BaseHTTPResponse):
 
         self._init_decoder()
 
-        flush_decoder = amt is None or (amt != 0 and not data)
-        decoded_data = self._decode(data, decode_content, flush_decoder)
-        self._decoded_bytes.extend(decoded_data)
+        if amt is None:
+            decoded_data = self._decode(data, decode_content, flush_decoder=True)
+            self._decoded_bytes.extend(decoded_data)
+            data = self._popall_decoded_bytes()
 
-        if amt is not None:
+            if cache_content:
+                self._body = data
+        else:
+            flush_decoder = amt != 0 and not data
+            decoded_data = self._decode(data, decode_content, flush_decoder)
+            self._decoded_bytes.extend(decoded_data)
+
             while self._decoded_bytes_in_buffer() < amt and data:
                 data = self._raw_read(amt)
                 decoded_data = self._decode(data, decode_content, flush_decoder)
                 self._decoded_bytes.extend(decoded_data)
-
-        if amt is None:
-            data = self._popall_decoded_bytes()
-        else:
             data = self._popleft_decoded_bytes(amt)
 
-        if cache_content:
-            self._body = data
         return data
 
     def stream(
