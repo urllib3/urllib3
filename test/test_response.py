@@ -65,7 +65,7 @@ class TestLegacyResponse:
 
 class TestResponse:
     def test_cache_content(self) -> None:
-        r = HTTPResponse(b"foo", decode_content=False)
+        r = HTTPResponse(b"foo")
         assert r._body == b"foo"
         assert r.data == b"foo"
         assert r._body == b"foo"
