@@ -33,7 +33,7 @@ from dummyserver.server import (
 )
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from urllib3 import HTTPSConnectionPool
-from urllib3.connection import RECENT_DATE, VerifiedHTTPSConnection
+from urllib3.connection import RECENT_DATE, HTTPSConnection, VerifiedHTTPSConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InsecureRequestWarning,
@@ -763,8 +763,31 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_set_cert_default_cert_required(self) -> None:
         conn = VerifiedHTTPSConnection(self.host, self.port)
-        conn.set_cert()
+        with pytest.warns(DeprecationWarning) as w:
+            conn.set_cert()
         assert conn.cert_reqs == ssl.CERT_REQUIRED
+        assert len(w) == 1 and str(w[0].message) == (
+            "HTTPSConnection.set_cert() is deprecated and will be removed in a future version. "
+            "Instead provide the parameters to the HTTPSConnection constructor."
+        )
+
+    @pytest.mark.parametrize("verify_mode", [ssl.CERT_NONE, ssl.CERT_REQUIRED])
+    def test_set_cert_inherits_cert_reqs_from_ssl_context(self, verify_mode) -> None:
+        ssl_context = urllib3.util.ssl_.create_urllib3_context(cert_reqs=verify_mode)
+        assert ssl_context.verify_mode == verify_mode
+
+        conn = HTTPSConnection(self.host, self.port, ssl_context=ssl_context)
+        with pytest.warns(DeprecationWarning) as w:
+            conn.set_cert()
+
+        assert conn.cert_reqs == verify_mode
+        assert (
+            conn.ssl_context is not None and conn.ssl_context.verify_mode == verify_mode
+        )
+        assert len(w) == 1 and str(w[0].message) == (
+            "HTTPSConnection.set_cert() is deprecated and will be removed in a future version. "
+            "Instead provide the parameters to the HTTPSConnection constructor."
+        )
 
     def test_tls_protocol_name_of_socket(self) -> None:
         if self.tls_protocol_name is None:
