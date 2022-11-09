@@ -80,9 +80,12 @@ if typing.TYPE_CHECKING:
             self,
             method: str,
             url: str,
-            *,
             body: typing.Optional[_TYPE_BODY] = None,
             headers: typing.Optional[typing.Mapping[str, str]] = None,
+            # We know *at least* botocore is depending on the order of the
+            # first 3 parameters so to be safe we only mark the later ones
+            # as keyword-only to ensure we have space to extend.
+            *,
             chunked: bool = False,
             preload_content: bool = True,
             decode_content: bool = True,
