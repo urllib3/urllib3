@@ -75,9 +75,9 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
             try:
                 with pytest.raises(ReadTimeoutError):
                     pool.urlopen("GET", "/")
-                if conn.sock:
+                if not conn.is_closed:
                     with pytest.raises(socket.error):
-                        conn.sock.recv(1024)
+                        conn.sock.recv(1024)  # type: ignore[attr-defined]
             finally:
                 pool._put_conn(conn)
 
@@ -289,7 +289,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             conn = pool._get_conn()
             try:
                 pool._make_request(conn, "GET", "/")
-                tcp_nodelay_setting = conn.sock.getsockopt(
+                tcp_nodelay_setting = conn.sock.getsockopt(  # type: ignore[attr-defined]
                     socket.IPPROTO_TCP, socket.TCP_NODELAY
                 )
                 assert tcp_nodelay_setting
@@ -312,7 +312,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             self.port,
             socket_options=socket_options,
         ) as pool:
-            s = pool._new_conn()._new_conn()  # Get the socket
+            # Get the socket of a new connection.
+            s = pool._new_conn()._new_conn()  # type: ignore[attr-defined]
             try:
                 using_keepalive = (
                     s.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) > 0
@@ -331,7 +332,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool(
             self.host, self.port, socket_options=socket_options
         ) as pool:
-            s = pool._new_conn()._new_conn()
+            s = pool._new_conn()._new_conn()  # type: ignore[attr-defined]
             try:
                 using_nagle = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) == 0
                 assert using_nagle
@@ -349,7 +350,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 # Update the default socket options
                 assert conn.socket_options is not None
                 conn.socket_options += [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]  # type: ignore[operator]
-                s = conn._new_conn()
+                s = conn._new_conn()  # type: ignore[attr-defined]
                 nagle_disabled = (
                     s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) > 0
                 )
@@ -991,10 +992,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 pool.request("GET", "/headers", chunked=chunked)
             else:
                 conn = pool._get_conn()
-                if chunked:
-                    conn.request_chunked("GET", "/headers")
-                else:
-                    conn.request("GET", "/headers")
+                conn.request("GET", "/headers", chunked=chunked)
 
             assert pool.headers == {"key": "val"}
             assert isinstance(pool.headers, header_type)
@@ -1004,10 +1002,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 pool.request("GET", "/headers", headers=headers, chunked=chunked)
             else:
                 conn = pool._get_conn()
-                if chunked:
-                    conn.request_chunked("GET", "/headers", headers=headers)
-                else:
-                    conn.request("GET", "/headers", headers=headers)
+                conn.request("GET", "/headers", headers=headers, chunked=chunked)
 
             assert headers == {"key": "val"}
 
