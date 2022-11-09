@@ -33,7 +33,7 @@ if typing.TYPE_CHECKING:
 
     class BaseHTTPConnection(Protocol):
         default_port: typing.ClassVar[int]
-        default_socket_options: typing.ClassVar[_TYPE_SOCKET_OPTIONS] = ()
+        default_socket_options: typing.ClassVar[_TYPE_SOCKET_OPTIONS]
 
         host: str
         port: int
@@ -58,9 +58,7 @@ if typing.TYPE_CHECKING:
             timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
             source_address: typing.Optional[typing.Tuple[str, int]] = None,
             blocksize: int = 8192,
-            socket_options: typing.Optional[
-                _TYPE_SOCKET_OPTIONS
-            ] = default_socket_options,
+            socket_options: typing.Optional[_TYPE_SOCKET_OPTIONS] = ...,
             proxy: typing.Optional[Url] = None,
             proxy_config: typing.Optional[ProxyConfig] = None,
         ) -> None:
@@ -118,7 +116,7 @@ if typing.TYPE_CHECKING:
 
     class BaseHTTPSConnection(BaseHTTPConnection, Protocol):
         default_port: typing.ClassVar[int]
-        default_socket_options: typing.ClassVar[_TYPE_SOCKET_OPTIONS] = ()
+        default_socket_options: typing.ClassVar[_TYPE_SOCKET_OPTIONS]
 
         # Certificate verification methods
         cert_reqs: typing.Optional[typing.Union[int, str]]
@@ -149,9 +147,7 @@ if typing.TYPE_CHECKING:
             timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
             source_address: typing.Optional[typing.Tuple[str, int]] = None,
             blocksize: int = 8192,
-            socket_options: typing.Optional[
-                _TYPE_SOCKET_OPTIONS
-            ] = default_socket_options,
+            socket_options: typing.Optional[_TYPE_SOCKET_OPTIONS] = ...,
             proxy: typing.Optional[Url] = None,
             proxy_config: typing.Optional[ProxyConfig] = None,
             cert_reqs: typing.Optional[typing.Union[int, str]] = None,

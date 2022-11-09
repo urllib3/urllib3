@@ -602,6 +602,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         chunked: bool = False,
         body_pos: Optional[_TYPE_BODY_POSITION] = None,
         preload_content: bool = True,
+        decode_content: bool = True,
         **response_kw: Any,
     ) -> BaseHTTPResponse:
         """
@@ -674,6 +675,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param bool preload_content:
             If True, the response's body will be preloaded into memory.
+
+        :param bool decode_content:
+            If True, will attempt to decode the body based on the
+            'content-encoding' header.
 
         :param release_conn:
             If False, then the urlopen call will not release the connection
@@ -788,6 +793,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries=retries,
                 response_conn=response_conn,
                 preload_content=preload_content,
+                decode_content=decode_content,
                 **response_kw,
             )
 
@@ -874,6 +880,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 chunked=chunked,
                 body_pos=body_pos,
                 preload_content=preload_content,
+                decode_content=decode_content,
                 **response_kw,
             )
 
@@ -908,6 +915,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 chunked=chunked,
                 body_pos=body_pos,
                 preload_content=preload_content,
+                decode_content=decode_content,
                 **response_kw,
             )
 
@@ -939,6 +947,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 chunked=chunked,
                 body_pos=body_pos,
                 preload_content=preload_content,
+                decode_content=decode_content,
                 **response_kw,
             )
 
