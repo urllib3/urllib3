@@ -84,6 +84,12 @@ class ConnectionPool:
         self.host = _normalize_host(host, scheme=self.scheme)
         self.port = port
 
+        # This property uses 'normalize_host()' (not '_normalize_host()')
+        # to avoid removing square braces around IPv6 addresses.
+        # This value is sent to `HTTPConnection.set_tunnel()` if called
+        # because square braces are required for HTTP CONNECT tunneling.
+        self._tunnel_host = normalize_host(host, scheme=self.scheme).lower()
+
     def __str__(self) -> str:
         return f"{type(self).__name__}(host={self.host!r}, port={self.port!r})"
 
@@ -1023,8 +1029,16 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _prepare_proxy(self, conn: HTTPSConnection) -> None:  # type: ignore[override]
         """Establishes a tunnel connection through HTTP CONNECT."""
+        if self.proxy and self.proxy.scheme == "https":
+            tunnel_scheme = "https"
+        else:
+            tunnel_scheme = "http"
+
         conn.set_tunnel(
-            scheme="https", host=self.host, port=self.port, headers=self.proxy_headers
+            scheme=tunnel_scheme,
+            host=self._tunnel_host,
+            port=self.port,
+            headers=self.proxy_headers,
         )
         conn.connect()
 

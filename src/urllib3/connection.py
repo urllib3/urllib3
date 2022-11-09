@@ -128,7 +128,7 @@ class HTTPConnection(_HTTPConnection):
     source_address: Optional[Tuple[str, int]]
     socket_options: Optional[connection._TYPE_SOCKET_OPTIONS]
 
-    _connected_to_proxy: bool
+    _has_connected_to_proxy: bool
     _response_options: Optional[_ResponseOptions]
     _tunnel_host: Optional[str]
     _tunnel_port: Optional[int]
@@ -159,7 +159,7 @@ class HTTPConnection(_HTTPConnection):
         self.proxy = proxy
         self.proxy_config = proxy_config
 
-        self._connected_to_proxy = False
+        self._has_connected_to_proxy = False
         self._response_options = None
         self._tunnel_host: Optional[str] = None
         self._tunnel_port: Optional[int] = None
@@ -239,10 +239,16 @@ class HTTPConnection(_HTTPConnection):
     def connect(self) -> None:
         self.sock = self._new_conn()
         if self._tunnel_host:
-            # At this point we've connected to our proxy.
-            self._connected_to_proxy = True
+            # If we're tunneling it means we're connected to our proxy.
+            self._has_connected_to_proxy = True
+
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
             self._tunnel()  # type: ignore[attr-defined]
+
+        # If there's a proxy to be connected to we are fully connected.
+        # This is set twice (once above and here) due to forwarding proxies
+        # not using tunnelling.
+        self._has_connected_to_proxy = bool(self.proxy)
 
     @property
     def is_closed(self) -> bool:
@@ -256,9 +262,7 @@ class HTTPConnection(_HTTPConnection):
 
     @property
     def has_connected_to_proxy(self) -> bool:
-        if not self.proxy or self.sock is None:
-            return False
-        return self._connected_to_proxy
+        return self._has_connected_to_proxy
 
     def close(self) -> None:
         try:
@@ -266,7 +270,7 @@ class HTTPConnection(_HTTPConnection):
         finally:
             self.sock = None
             self._response_options = None
-            self._connected_to_proxy = False
+            self._has_connected_to_proxy = False
 
     def putrequest(
         self,
@@ -597,8 +601,8 @@ class HTTPSConnection(HTTPConnection):
                 self.sock = sock = self._connect_tls_proxy(self.host, sock)
                 tls_in_tls = True
 
-            # At this point we've connected to our proxy.
-            self._connected_to_proxy = True
+            # If we're tunneling it means we're connected to our proxy.
+            self._has_connected_to_proxy = True
 
             self._tunnel()  # type: ignore[attr-defined]
             # Override the host with the one we're requesting data from.
@@ -637,6 +641,11 @@ class HTTPSConnection(HTTPConnection):
         )
         self.sock = sock_and_verified.socket
         self.is_verified = sock_and_verified.is_verified
+
+        # If there's a proxy to be connected to we are fully connected.
+        # This is set twice (once above and here) due to forwarding proxies
+        # not using tunnelling.
+        self._has_connected_to_proxy = bool(self.proxy)
 
     def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> "ssl.SSLSocket":
         """

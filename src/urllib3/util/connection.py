@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 def is_connection_dropped(conn: "BaseHTTPConnection") -> bool:  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
-
     :param conn:
         :class:`urllib3.HTTPConnection` object.
     """
