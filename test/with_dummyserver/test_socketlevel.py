@@ -179,6 +179,7 @@ class TestClientCerts(SocketDummyServerTestCase):
             server_side=True,
         )
 
+    @pytest.mark.filterwarnings("default")
     def test_client_certs_two_files(self) -> None:
         """
         Having a client cert in a separate file to its associated key works
@@ -223,6 +224,7 @@ class TestClientCerts(SocketDummyServerTestCase):
 
             assert len(client_certs) == 1
 
+    @pytest.mark.filterwarnings("default")
     def test_client_certs_one_file(self) -> None:
         """
         Having a client cert and its associated private key in just one file

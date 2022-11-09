@@ -617,6 +617,7 @@ class TestUtil:
         logger.debug("Testing add_stderr_logger")
         logger.removeHandler(handler)
 
+    @pytest.mark.filterwarnings("default")
     def test_disable_warnings(self) -> None:
         with warnings.catch_warnings(record=True) as w:
             clear_warnings()

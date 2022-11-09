@@ -785,6 +785,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
+    @pytest.mark.filterwarnings("default")
     def test_ssl_version_is_deprecated(self) -> None:
         if self.tls_protocol_name is None:
             pytest.skip("Skipping base test class")
