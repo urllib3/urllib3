@@ -583,7 +583,9 @@ class TestConnectionPool:
 
     def test_read_timeout_0_does_not_raise_bad_status_line_error(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
-            conn = Mock()
+            conn = Mock(spec=HTTPConnection)
+            # Needed to tell the pool that the connection is alive.
+            conn.is_closed = False
             with patch.object(Timeout, "read_timeout", 0):
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
