@@ -1006,6 +1006,24 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
             assert headers == {"key": "val"}
 
+    def test_request_chunked_is_deprecated(
+        self,
+    ) -> None:
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            conn = pool._get_conn()
+
+            with pytest.warns(DeprecationWarning) as w:
+                conn.request_chunked("GET", "/headers")  # type: ignore[attr-defined]
+            assert len(w) == 1 and str(w[0].message) == (
+                "HTTPConnection.request_chunked() is deprecated and will be removed in a future version. "
+                "Instead use HTTPConnection.request(..., chunked=True)."
+            )
+
+            resp = conn.getresponse()
+            assert resp.status == 200
+            assert resp.json()["Transfer-Encoding"] == "chunked"
+
     def test_bytes_header(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             headers = {"User-Agent": "test header"}

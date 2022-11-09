@@ -410,6 +410,12 @@ class HTTPConnection(_HTTPConnection):
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
+        warnings.warn(
+            "HTTPConnection.request_chunked() is deprecated and will be removed in a "
+            "future version. Instead use HTTPConnection.request(..., chunked=True).",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         self.request(method, url, body=body, headers=headers, chunked=True)
 
     def getresponse(  # type: ignore[override]

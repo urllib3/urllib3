@@ -12,4 +12,6 @@ Removed the ``_prepare_conn`` method from ``HTTPConnectionPool``.
 
 Removed ``tls_in_tls_required`` property from `HTTPSConnection`. This is now calculated from the ``scheme`` parameter in ``HTTPConnection.set_tunnel()``.
 
-Deprecated ``HTTPSConnection.set_cert`` method, instead pass parameters to the ``HTTPSConnection`` constructor.
+Deprecated ``HTTPSConnection.set_cert()`` method. Instead pass parameters to the ``HTTPSConnection`` constructor.
+
+Deprecated ``HTTPConnection.request_chunked()`` method. Instead pass ``chunked=True`` to ``HTTPConnection.request()``.
