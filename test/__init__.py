@@ -298,6 +298,9 @@ class ImportBlockerLoader(Loader):
     def load_module(self, fullname: str) -> ModuleType:
         raise ImportError(f"import of {fullname} is blocked")
 
+    def exec_module(self, module: ModuleType) -> ModuleType:
+        raise ImportError(f"import of {module.__spec__.name} is blocked")
+
 
 class ImportBlocker(MetaPathFinder):
     """
@@ -316,6 +319,14 @@ class ImportBlocker(MetaPathFinder):
         if fullname in self.namestoblock:
             return ImportBlockerLoader()
         return None
+
+    def find_spec(self, name, path, target):
+        import importlib.util
+        loader = self.find_module(name, path)
+        if loader is None:
+            return None
+
+        return importlib.util.spec_from_loader(name, loader)
 
 
 class ModuleStash(MetaPathFinder):
