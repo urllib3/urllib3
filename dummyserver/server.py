@@ -4,6 +4,9 @@
 Dummy server used for unit testing.
 """
 
+import asyncio
+import concurrent.futures
+import contextlib
 import logging
 import os
 import socket
@@ -197,29 +200,9 @@ def run_tornado_app(  # type: ignore[no-untyped-def]
     return http_server, port
 
 
-def run_loop_in_thread(io_loop: tornado.ioloop.IOLoop) -> threading.Thread:
-    t = threading.Thread(target=io_loop.start)
-    t.start()
-    return t
-
-
 def get_unreachable_address() -> Tuple[str, int]:
     # reserved as per rfc2606
     return ("something.invalid", 54321)
-
-
-if __name__ == "__main__":
-    # For debugging dummyserver itself - python -m dummyserver.server
-    from .handlers import TestingApp
-
-    host = "127.0.0.1"
-
-    io_loop = tornado.ioloop.IOLoop.current()
-    app = tornado.web.Application([(r".*", TestingApp)])
-    server, port = run_tornado_app(app, io_loop, None, "http", host)
-    server_thread = run_loop_in_thread(io_loop)
-
-    print(f"Listening on http://{host}:{port}")
 
 
 def encrypt_key_pem(private_key_pem: trustme.Blob, password: bytes) -> trustme.Blob:
@@ -232,3 +215,70 @@ def encrypt_key_pem(private_key_pem: trustme.Blob, password: bytes) -> trustme.B
         serialization.BestAvailableEncryption(password),
     )
     return trustme.Blob(encrypted_key)
+
+
+def main():
+    # For debugging dummyserver itself - python -m dummyserver.server
+    from .handlers import TestingApp
+
+    host = "127.0.0.1"
+
+    async def main():
+        io_loop = tornado.ioloop.IOLoop.current()
+        app = tornado.web.Application([(r".*", TestingApp)])
+        server, port = run_tornado_app(app, io_loop, None, "http", host)
+
+        print(f"Listening on http://{host}:{port}")
+        await asyncio.Event().wait()
+
+    asyncio.run(main())
+
+
+def _run_and_close_tornado(async_fn, *args, **kwargs):
+    tornado_loop = None
+
+    async def inner_fn():
+        nonlocal tornado_loop
+        tornado_loop = tornado.ioloop.IOLoop.current()
+        return await async_fn(*args, **kwargs)
+
+    try:
+        return asyncio.run(inner_fn())
+    finally:
+        tornado_loop.close(all_fds=True)
+
+
+@contextlib.contextmanager
+def run_loop_in_thread():
+    loop_started = concurrent.futures.Future()
+    with concurrent.futures.ThreadPoolExecutor(
+        1, thread_name_prefix="test IOLoop"
+    ) as tpe:
+
+        async def run():
+            io_loop = tornado.ioloop.IOLoop.current()
+            stop_event = asyncio.Event()
+            loop_started.set_result((io_loop, stop_event))
+            await stop_event.wait()
+
+        # run asyncio.run in a thread and collect exceptions from *either*
+        # the loop failing to start, or failing to close
+        ran = tpe.submit(_run_and_close_tornado, run)
+        for f in concurrent.futures.as_completed((loop_started, ran)):
+            if f is loop_started:
+                io_loop, stop_event = loop_started.result()
+                try:
+                    yield io_loop
+                finally:
+                    io_loop.add_callback(stop_event.set)
+
+            elif f is ran:
+                # if this is the first iteration the loop failed to start
+                # if it's the second iteration the loop has finished or
+                # the loop failed to close and we need to raise the exception
+                ran.result()
+                return
+
+
+if __name__ == "__main__":
+    sys.exit(main())
