@@ -283,11 +283,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if conn and is_connection_dropped(conn):
             log.debug("Resetting dropped connection: %s", self.host)
             conn.close()
-            if getattr(conn, "auto_open", 1) == 0:
-                # This is a proxied connection that has been mutated by
-                # http.client._tunnel() and cannot be reused (since it would
-                # attempt to bypass the proxy)
-                conn = None
 
         return conn or self._new_conn()
 
