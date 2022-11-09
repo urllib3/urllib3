@@ -776,9 +776,6 @@ class HTTPResponse(BaseHTTPResponse):
         del self._decoded_bytes[:]
         return decoded_data
 
-    def _decoded_bytes_in_buffer(self) -> int:
-        return len(self._decoded_bytes)
-
     def read(
         self,
         amt: Optional[int] = None,
@@ -817,12 +814,12 @@ class HTTPResponse(BaseHTTPResponse):
                 self._body = data
             return data
 
-        if amt is not None and self._decoded_bytes_in_buffer() >= amt:
+        if amt is not None and len(self._decoded_bytes) >= amt:
             return self._popleft_decoded_bytes(amt)
 
         data = self._raw_read(amt)
 
-        if not data and self._decoded_bytes_in_buffer() == 0:
+        if not data and len(self._decoded_bytes) == 0:
             return data
 
         self._init_decoder()
@@ -839,7 +836,7 @@ class HTTPResponse(BaseHTTPResponse):
             decoded_data = self._decode(data, decode_content, flush_decoder)
             self._decoded_bytes.extend(decoded_data)
 
-            while self._decoded_bytes_in_buffer() < amt and data:
+            while len(self._decoded_bytes) < amt and data:
                 data = self._raw_read(amt)
                 decoded_data = self._decode(data, decode_content, flush_decoder)
                 self._decoded_bytes.extend(decoded_data)
@@ -868,7 +865,7 @@ class HTTPResponse(BaseHTTPResponse):
         if self.chunked and self.supports_chunked_reads():
             yield from self.read_chunked(amt, decode_content=decode_content)
         else:
-            while not is_fp_closed(self._fp) or self._decoded_bytes_in_buffer() > 0:
+            while not is_fp_closed(self._fp) or len(self._decoded_bytes) > 0:
                 data = self.read(amt=amt, decode_content=decode_content)
 
                 if data:
