@@ -28,7 +28,7 @@ from .util import reraise
 
 if TYPE_CHECKING:
     from ..connectionpool import ConnectionPool
-    from ..response import HTTPResponse
+    from ..response import BaseHTTPResponse
 
 log = logging.getLogger(__name__)
 
@@ -315,7 +315,7 @@ class Retry:
 
         return seconds
 
-    def get_retry_after(self, response: "HTTPResponse") -> Optional[float]:
+    def get_retry_after(self, response: "BaseHTTPResponse") -> Optional[float]:
         """Get the value of Retry-After in seconds."""
 
         retry_after = response.getheader("Retry-After")
@@ -325,7 +325,7 @@ class Retry:
 
         return self.parse_retry_after(retry_after)
 
-    def sleep_for_retry(self, response: "HTTPResponse") -> bool:
+    def sleep_for_retry(self, response: "BaseHTTPResponse") -> bool:
         retry_after = self.get_retry_after(response)
         if retry_after:
             time.sleep(retry_after)
@@ -339,7 +339,7 @@ class Retry:
             return
         time.sleep(backoff)
 
-    def sleep(self, response: Optional["HTTPResponse"] = None) -> None:
+    def sleep(self, response: Optional["BaseHTTPResponse"] = None) -> None:
         """Sleep between retry attempts.
 
         This method will respect a server's ``Retry-After`` response header
@@ -422,7 +422,7 @@ class Retry:
         self,
         method: Optional[str] = None,
         url: Optional[str] = None,
-        response: Optional["HTTPResponse"] = None,
+        response: Optional["BaseHTTPResponse"] = None,
         error: Optional[Exception] = None,
         _pool: Optional["ConnectionPool"] = None,
         _stacktrace: Optional[TracebackType] = None,
@@ -431,7 +431,7 @@ class Retry:
 
         :param response: A response object, or None, if the server did not
             return a response.
-        :type response: :class:`~urllib3.response.HTTPResponse`
+        :type response: :class:`~urllib3.response.BaseHTTPResponse`
         :param Exception error: An error encountered during the request, or
             None if the response was received successfully.
 

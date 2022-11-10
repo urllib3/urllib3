@@ -33,7 +33,7 @@ from dummyserver.server import (
 )
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from urllib3 import HTTPSConnectionPool
-from urllib3.connection import RECENT_DATE, VerifiedHTTPSConnection
+from urllib3.connection import RECENT_DATE, HTTPSConnection, VerifiedHTTPSConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InsecureRequestWarning,
@@ -342,7 +342,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 with pytest.raises(ssl.SSLError):
                     conn.connect()
 
-                assert conn.sock
+                assert conn.sock is not None  # type: ignore[attr-defined]
             finally:
                 conn.close()
 
@@ -459,8 +459,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # pyopenssl doesn't let you pull the server_hostname back off the
             # socket, so only add this assertion if the attribute is there (i.e.
             # the python ssl module).
-            if hasattr(conn.sock, "server_hostname"):
-                assert conn.sock.server_hostname == "localhost"
+            if hasattr(conn.sock, "server_hostname"):  # type: ignore[attr-defined]
+                assert conn.sock.server_hostname == "localhost"  # type: ignore[attr-defined]
 
     def test_assert_fingerprint_md5(self) -> None:
         with HTTPSConnectionPool(
@@ -763,8 +763,33 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_set_cert_default_cert_required(self) -> None:
         conn = VerifiedHTTPSConnection(self.host, self.port)
-        conn.set_cert()
+        with pytest.warns(DeprecationWarning) as w:
+            conn.set_cert()
         assert conn.cert_reqs == ssl.CERT_REQUIRED
+        assert len(w) == 1 and str(w[0].message) == (
+            "HTTPSConnection.set_cert() is deprecated and will be removed in a future version. "
+            "Instead provide the parameters to the HTTPSConnection constructor."
+        )
+
+    @pytest.mark.parametrize("verify_mode", [ssl.CERT_NONE, ssl.CERT_REQUIRED])
+    def test_set_cert_inherits_cert_reqs_from_ssl_context(
+        self, verify_mode: int
+    ) -> None:
+        ssl_context = urllib3.util.ssl_.create_urllib3_context(cert_reqs=verify_mode)
+        assert ssl_context.verify_mode == verify_mode
+
+        conn = HTTPSConnection(self.host, self.port, ssl_context=ssl_context)
+        with pytest.warns(DeprecationWarning) as w:
+            conn.set_cert()
+
+        assert conn.cert_reqs == verify_mode
+        assert (
+            conn.ssl_context is not None and conn.ssl_context.verify_mode == verify_mode
+        )
+        assert len(w) == 1 and str(w[0].message) == (
+            "HTTPSConnection.set_cert() is deprecated and will be removed in a future version. "
+            "Instead provide the parameters to the HTTPSConnection constructor."
+        )
 
     def test_tls_protocol_name_of_socket(self) -> None:
         if self.tls_protocol_name is None:
@@ -779,9 +804,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             conn = https_pool._get_conn()
             try:
                 conn.connect()
-                if not hasattr(conn.sock, "version"):
+                if not hasattr(conn.sock, "version"):  # type: ignore[attr-defined]
                     pytest.skip("SSLSocket.version() not available")
-                assert conn.sock.version() == self.tls_protocol_name
+                assert conn.sock.version() == self.tls_protocol_name  # type: ignore[attr-defined]
             finally:
                 conn.close()
 
@@ -879,7 +904,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 conn = https_pool._get_conn()
                 try:
                     conn.connect()
-                    assert conn.sock.version() == self.tls_protocol_name  # type: ignore[union-attr]
+                    assert conn.sock.version() == self.tls_protocol_name  # type: ignore[attr-defined]
                 finally:
                     conn.close()
 

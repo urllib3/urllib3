@@ -290,6 +290,16 @@ def _remove_path_dot_segments(path: str) -> str:
     return "/".join(output)
 
 
+@overload
+def _normalize_host(host: None, scheme: Optional[str]) -> None:
+    ...
+
+
+@overload
+def _normalize_host(host: str, scheme: Optional[str]) -> str:
+    ...
+
+
 def _normalize_host(host: Optional[str], scheme: Optional[str]) -> Optional[str]:
     if host:
         if scheme in _NORMALIZABLE_SCHEMES:

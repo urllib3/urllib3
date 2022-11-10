@@ -46,8 +46,9 @@ except (AttributeError, ImportError, ValueError):  # Defensive:
     zstd = None
 
 from . import util
+from ._base_connection import _TYPE_BODY
 from ._collections import HTTPHeaderDict
-from .connection import _TYPE_BODY, BaseSSLError, HTTPConnection, HTTPException
+from .connection import BaseSSLError, HTTPConnection, HTTPException
 from .exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,

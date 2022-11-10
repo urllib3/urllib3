@@ -9,9 +9,9 @@ from logging import NullHandler
 from typing import Any, Mapping, Optional, TextIO, Type, Union
 
 from . import exceptions
+from ._base_connection import _TYPE_BODY
 from ._collections import HTTPHeaderDict
 from ._version import __version__
-from .connection import _TYPE_BODY
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, connection_from_url
 from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .poolmanager import PoolManager, ProxyManager, proxy_from_url

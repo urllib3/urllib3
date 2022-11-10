@@ -1,25 +1,21 @@
 import socket
-from typing import Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Sequence, Tuple, Union
 
 from ..exceptions import LocationParseError
 from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
-from .wait import wait_for_read
 
 _TYPE_SOCKET_OPTIONS = Sequence[Tuple[int, int, Union[int, bytes]]]
 
+if TYPE_CHECKING:
+    from .._base_connection import BaseHTTPConnection
 
-def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
+
+def is_connection_dropped(conn: "BaseHTTPConnection") -> bool:  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
-
-    :param conn:
-        :class:`http.client.HTTPConnection` object.
+    :param conn: :class:`urllib3.connection.HTTPConnection` object.
     """
-    sock = getattr(conn, "sock", None)
-    if sock is None:  # Connection already closed (such as by httplib).
-        return True
-    # Returns True if readable, which here means it's been dropped
-    return wait_for_read(sock, timeout=0.0)
+    return not conn.is_connected
 
 
 # This function is copied from socket.py in the Python 2.7 standard
