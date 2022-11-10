@@ -80,8 +80,27 @@ include = [
 [tool.pytest.ini_options]
 xfail_strict = true
 python_classes = ["Test", "*TestCase"]
+addopts = ["--strict-markers", "--strict-config"]
 filterwarnings = [
-    "error:There is no current event loop:DeprecationWarning:tornado.ioloop",
+    "error",
+    '''default:'urllib3\[secure\]' extra is deprecated and will be removed in urllib3 v2\.1\.0.*:DeprecationWarning''',
+    '''default:'urllib3\.contrib\.pyopenssl' module is deprecated and will be removed in urllib3 v2\.1\.0.*:DeprecationWarning''',
+    '''default:'urllib3\.contrib\.securetransport' module is deprecated and will be removed in urllib3 v2\.1\.0.*:DeprecationWarning''',
+    '''default:distutils Version classes are deprecated\. Use packaging\.version instead\.:DeprecationWarning''',
+    '''default:The 'pool' property is deprecated and will be removed in urllib3 v2\.1\.0\. use 'conn' instead:DeprecationWarning''',
+    '''default:'ssl_version' option is deprecated and will be removed in urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version':DeprecationWarning''',
+    '''default:.*:urllib3.exceptions.InsecureRequestWarning''',
+    '''default:No IPv6 support. Falling back to IPv4:urllib3.exceptions.HTTPWarning''',
+    '''default:No IPv6 support. skipping:urllib3.exceptions.HTTPWarning''',
+    '''default:ssl\.TLSVersion\.TLSv1 is deprecated:DeprecationWarning''',
+    '''default:ssl\.PROTOCOL_TLS is deprecated:DeprecationWarning''',
+    '''default:ssl\.SSLContext\(\) without protocol argument is deprecated.:DeprecationWarning''',
+    '''default:ssl\.PROTOCOL_TLSv1 is deprecated:DeprecationWarning''',
+    '''default:ssl\.TLSVersion\.TLSv1_1 is deprecated:DeprecationWarning''',
+    '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
+    '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
+    '''default:unclosed .*:ResourceWarning''',
+    '''default:ssl\.wrap_socket\(\) is deprecated, use SSLContext\.wrap_socket\(\):DeprecationWarning''',
 ]
 
 [tool.isort]
