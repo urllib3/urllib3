@@ -631,6 +631,7 @@ class TestUtil:
     def test_disable_warnings(self) -> None:
         with warnings.catch_warnings(record=True) as w:
             clear_warnings()
+            warnings.simplefilter("default", InsecureRequestWarning)
             warnings.warn("This is a test.", InsecureRequestWarning)
             assert len(w) == 1
             disable_warnings()
