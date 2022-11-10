@@ -1,0 +1,3 @@
+Fixed an issue where an ``HTTPConnection`` instance would erroneously reuse the socket
+timeout value from reading the previous response. Instead now if ``HTTPConnection.timeout``
+is updated before sending the next request the new timeout value will be used.

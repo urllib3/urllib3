@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_TYPE_TIMEOUT = Union[Timeout, float, _TYPE_DEFAULT]
+_TYPE_TIMEOUT = Union[Timeout, float, _TYPE_DEFAULT, None]
 
 _SelfT = TypeVar("_SelfT")
 
@@ -460,7 +460,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         timeout_obj = self._get_timeout(timeout)
         timeout_obj.start_connect()
-        conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
+        conn.timeout = Timeout.resolve_default_timeout(timeout_obj.connect_timeout)
 
         try:
             # Trigger any extra validation we need to do.
