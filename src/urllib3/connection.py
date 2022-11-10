@@ -189,7 +189,7 @@ class HTTPConnection(_HTTPConnection):
     # If `host` is made a property it violates LSP, because a writeable attribute is overridden with a read-only one.
     # However, there is also a `host` setter so LSP is not violated.
     # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
-    @property  # type: ignore[override]
+    @property
     def host(self) -> str:
         """
         Getter method to remove any trailing dots that indicate the hostname is an FQDN.
@@ -255,8 +255,6 @@ class HTTPConnection(_HTTPConnection):
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
             self._tunnel()
             self._connecting_to_proxy = False
-            # Mark this connection as not reusable
-            self.auto_open = 0
 
     def connect(self) -> None:
         self._connecting_to_proxy = bool(self.proxy)
@@ -554,28 +552,22 @@ class HTTPSConnection(HTTPConnection):
 
         sock: Union[socket.socket, "ssl.SSLSocket"]
         self.sock = sock = self._new_conn()
-        hostname: str = self.host
+        server_hostname: str = self.host
         tls_in_tls = False
 
         if self._is_using_tunnel():
             if self.tls_in_tls_required:
-                self.sock = sock = self._connect_tls_proxy(hostname, sock)
+                self.sock = sock = self._connect_tls_proxy(self.host, sock)
                 tls_in_tls = True
 
             self._connecting_to_proxy = False
 
-            # Calls self._set_hostport(), so self.host is
-            # self._tunnel_host below.
             self._tunnel()
-            # Mark this connection as not reusable
-            self.auto_open = 0
-
             # Override the host with the one we're requesting data from.
-            hostname = cast(
+            server_hostname = cast(
                 str, self._tunnel_host
             )  # self._tunnel_host is not None, because self._is_using_tunnel() returned a truthy value.
 
-        server_hostname = hostname
         if self.server_hostname is not None:
             server_hostname = self.server_hostname
 

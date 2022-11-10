@@ -283,11 +283,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if conn and is_connection_dropped(conn):
             log.debug("Resetting dropped connection: %s", self.host)
             conn.close()
-            if getattr(conn, "auto_open", 1) == 0:
-                # This is a proxied connection that has been mutated by
-                # http.client._tunnel() and cannot be reused (since it would
-                # attempt to bypass the proxy)
-                conn = None
 
         return conn or self._new_conn()
 
@@ -1065,7 +1060,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             self.port or "443",
         )
 
-        if not self.ConnectionCls or self.ConnectionCls is DummyConnection:  # type: ignore[comparison-overlap]
+        if not self.ConnectionCls or self.ConnectionCls is DummyConnection:  # type: ignore[comparison-overlap, truthy-function]
             raise ImportError(
                 "Can't connect to HTTPS URL because the SSL module is not available."
             )

@@ -1,7 +1,8 @@
+import asyncio
+import contextlib
 import socket
 import ssl
 import threading
-from contextlib import contextmanager
 from typing import Any, Callable, ClassVar, Dict, Generator, Iterable, Optional, Union
 
 import pytest
@@ -160,21 +161,25 @@ class HTTPDummyServerTestCase:
     server: ClassVar[httpserver.HTTPServer]
     port: ClassVar[int]
     server_thread: ClassVar[threading.Thread]
+    _stack: ClassVar[contextlib.ExitStack]
 
     @classmethod
     def _start_server(cls) -> None:
-        cls.io_loop = ioloop.IOLoop.current()
-        app = web.Application([(r".*", TestingApp)])
-        cls.server, cls.port = run_tornado_app(
-            app, cls.io_loop, cls.certs, cls.scheme, cls.host
-        )
-        cls.server_thread = run_loop_in_thread(cls.io_loop)
+        with contextlib.ExitStack() as stack:
+            io_loop = stack.enter_context(run_loop_in_thread())
+
+            async def run_app() -> None:
+                app = web.Application([(r".*", TestingApp)])
+                cls.server, cls.port = run_tornado_app(
+                    app, cls.certs, cls.scheme, cls.host
+                )
+
+            asyncio.run_coroutine_threadsafe(run_app(), io_loop.asyncio_loop).result()  # type: ignore[attr-defined]
+            cls._stack = stack.pop_all()
 
     @classmethod
     def _stop_server(cls) -> None:
-        cls.io_loop.add_callback(cls.server.stop)
-        cls.io_loop.add_callback(cls.io_loop.stop)
-        cls.server_thread.join()
+        cls._stack.close()
 
     @classmethod
     def setup_class(cls) -> None:
@@ -224,44 +229,43 @@ class HTTPDummyProxyTestCase:
     bad_ca_path: ClassVar[str] = ""
 
     server_thread: ClassVar[threading.Thread]
+    _stack: ClassVar[contextlib.ExitStack]
 
     @classmethod
     def setup_class(cls) -> None:
-        cls.io_loop = ioloop.IOLoop.current()
+        with contextlib.ExitStack() as stack:
+            io_loop = stack.enter_context(run_loop_in_thread())
 
-        app = web.Application([(r".*", TestingApp)])
-        cls.http_server, cls.http_port = run_tornado_app(
-            app, cls.io_loop, None, "http", cls.http_host
-        )
+            async def run_app() -> None:
+                app = web.Application([(r".*", TestingApp)])
+                cls.http_server, cls.http_port = run_tornado_app(
+                    app, None, "http", cls.http_host
+                )
 
-        app = web.Application([(r".*", TestingApp)])
-        cls.https_server, cls.https_port = run_tornado_app(
-            app, cls.io_loop, cls.https_certs, "https", cls.http_host
-        )
+                app = web.Application([(r".*", TestingApp)])
+                cls.https_server, cls.https_port = run_tornado_app(
+                    app, cls.https_certs, "https", cls.http_host
+                )
 
-        app = web.Application([(r".*", ProxyHandler)])
-        cls.proxy_server, cls.proxy_port = run_tornado_app(
-            app, cls.io_loop, None, "http", cls.proxy_host
-        )
+                app = web.Application([(r".*", ProxyHandler)])
+                cls.proxy_server, cls.proxy_port = run_tornado_app(
+                    app, None, "http", cls.proxy_host
+                )
 
-        upstream_ca_certs = cls.https_certs.get("ca_certs")
-        app = web.Application(
-            [(r".*", ProxyHandler)], upstream_ca_certs=upstream_ca_certs
-        )
-        cls.https_proxy_server, cls.https_proxy_port = run_tornado_app(
-            app, cls.io_loop, cls.https_certs, "https", cls.proxy_host
-        )
+                upstream_ca_certs = cls.https_certs.get("ca_certs")
+                app = web.Application(
+                    [(r".*", ProxyHandler)], upstream_ca_certs=upstream_ca_certs
+                )
+                cls.https_proxy_server, cls.https_proxy_port = run_tornado_app(
+                    app, cls.https_certs, "https", cls.proxy_host
+                )
 
-        cls.server_thread = run_loop_in_thread(cls.io_loop)
+            asyncio.run_coroutine_threadsafe(run_app(), io_loop.asyncio_loop).result()  # type: ignore[attr-defined]
+            cls._stack = stack.pop_all()
 
     @classmethod
     def teardown_class(cls) -> None:
-        cls.io_loop.add_callback(cls.http_server.stop)
-        cls.io_loop.add_callback(cls.https_server.stop)
-        cls.io_loop.add_callback(cls.proxy_server.stop)
-        cls.io_loop.add_callback(cls.https_proxy_server.stop)
-        cls.io_loop.add_callback(cls.io_loop.stop)
-        cls.server_thread.join()
+        cls._stack.close()
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 not available")
@@ -294,7 +298,7 @@ class ConnectionMarker:
     MARK_FORMAT = b"$#MARK%04x*!"
 
     @classmethod
-    @contextmanager
+    @contextlib.contextmanager
     def mark(cls, monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
         """
         Mark connections under in that context.
