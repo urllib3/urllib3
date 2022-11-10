@@ -36,15 +36,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12-dev"]
         os:
           - macos-11
           - windows-latest
           - ubuntu-20.04  # OpenSSL 1.1.1
           - ubuntu-22.04  # OpenSSL 3.0
-        experimental: [false]
         nox-session: ['']
         include:
+          - experimental: false
           - python-version: "pypy-3.7"
             os: ubuntu-latest
             experimental: false
@@ -67,13 +67,7 @@ jobs:
             experimental: false
             nox-session: test-3.9
           - python-version: 3.12-dev
-            os: ubuntu-20.04
             experimental: true
-            nox-session: test-3.12
-          - python-version: 3.12-dev
-            os: ubuntu-22.04
-            experimental: true
-            nox-session: test-3.12
         exclude:
           # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
           # https://github.com/python/cpython/issues/83001
@@ -90,14 +84,15 @@ jobs:
       - name: "Checkout repository"
         uses: "actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8"
 
-      - if: ${{ !endsWith(matrix.python-version, '-dev') }}
+      - if: ${{ !(endsWith(matrix.python-version, '-dev') && startsWith(matrix.os, 'ubuntu')) }}
         name: "Setup Python ${{ matrix.python-version }}"
         uses: "actions/setup-python@13ae5bb136fac2878aff31522b9efb785519f984"
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Use deadsnakes for development versions
-      - if: endsWith(matrix.python-version, '-dev')
+      # Use deadsnakes for development versions on Ubuntu. GitHub Actions usually provides older
+      # versions because it sticks to alpha/beta releases.
+      - if: ${{ endsWith(matrix.python-version, '-dev') && startsWith(matrix.os, 'ubuntu') }}
         name: "Setup Python ${{ matrix.python-version }}"
         uses: deadsnakes/action@7ab8819e223c70d2bdedd692dfcea75824e0a617
         with:
