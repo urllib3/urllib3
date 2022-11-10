@@ -23,24 +23,6 @@ _TYPE_VERSION_INFO = Tuple[int, int, int, str, int]
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
 
 
-def _is_openssl_issue_14579_fixed(
-    openssl_version_text: str, openssl_version_number: int
-) -> bool:
-    """
-    Returns True for OpenSSL 1.1.1l+ (>=0x101010cf) where this issue was fixed.
-    Before the fix, the SSL_new() API was not copying hostflags like
-    X509_CHECK_FLAG_NEVER_CHECK_SUBJECT, which tripped up CPython.
-    https://github.com/openssl/openssl/issues/14579
-
-    LibreSSL reports a version number of 0x20000000 for
-    OpenSSL version number so we need to filter out LibreSSL.
-    """
-    return (
-        not openssl_version_text.startswith("LibreSSL")
-        and openssl_version_number >= 0x101010CF
-    )
-
-
 def _is_bpo_43522_fixed(
     implementation_name: str, version_info: _TYPE_VERSION_INFO
 ) -> bool:
@@ -71,14 +53,19 @@ def _is_bpo_43522_fixed(
 
 
 def _is_has_never_check_common_name_reliable(
-    openssl_version: str,
     openssl_version_number: int,
     implementation_name: str,
     version_info: _TYPE_VERSION_INFO,
 ) -> bool:
-    return _is_openssl_issue_14579_fixed(
-        openssl_version, openssl_version_number
-    ) or _is_bpo_43522_fixed(implementation_name, version_info)
+    # Before fixing OpenSSL issue #14579, the SSL_new() API was not copying hostflags
+    # like X509_CHECK_FLAG_NEVER_CHECK_SUBJECT, which tripped up CPython.
+    # https://github.com/openssl/openssl/issues/14579
+    # This was released in OpenSSL 1.1.1l+ (>=0x101010cf)
+    is_openssl_issue_14579_fixed = openssl_version_number >= 0x101010CF
+
+    return is_openssl_issue_14579_fixed or _is_bpo_43522_fixed(
+        implementation_name, version_info
+    )
 
 
 if TYPE_CHECKING:
@@ -104,7 +91,6 @@ try:  # Do we have ssl at all?
         HAS_NEVER_CHECK_COMMON_NAME,
         OP_NO_COMPRESSION,
         OP_NO_TICKET,
-        OPENSSL_VERSION,
         OPENSSL_VERSION_NUMBER,
         PROTOCOL_TLS,
         PROTOCOL_TLS_CLIENT,
@@ -119,7 +105,6 @@ try:  # Do we have ssl at all?
     # Setting SSLContext.hostname_checks_common_name = False didn't work before CPython
     # 3.8.9, 3.9.3, and 3.10 (but OK on PyPy) or OpenSSL 1.1.1l+
     if HAS_NEVER_CHECK_COMMON_NAME and not _is_has_never_check_common_name_reliable(
-        OPENSSL_VERSION,
         OPENSSL_VERSION_NUMBER,
         sys.implementation.name,
         sys.version_info,
