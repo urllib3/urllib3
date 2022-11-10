@@ -80,6 +80,9 @@ include = [
 [tool.pytest.ini_options]
 xfail_strict = true
 python_classes = ["Test", "*TestCase"]
+filterwarnings = [
+    "error:There is no current event loop:DeprecationWarning:tornado.ioloop",
+]
 
 [tool.isort]
 profile = "black"
