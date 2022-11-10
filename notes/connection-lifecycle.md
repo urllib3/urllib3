@@ -39,8 +39,8 @@ conn.set_tunnel("example.com", scheme="http", headers={"Proxy-Header": "value"})
 
 Connect to the first origin by calling the `HTTPConnection.connect()` method.
 If an error occurs here you can check whether the error occurred during the
-connection to the proxy if `HTTPConnection.has_connected_to_proxy` is true.
-If the value is false then the error didn't occur while connecting to a proxy.
+connection to the proxy if `HTTPConnection.has_connected_to_proxy` is false.
+If the value is true then the error didn't occur while connecting to a proxy.
 
 ```python
 # Explicitly connect to the origin. This isn't
@@ -49,7 +49,7 @@ If the value is false then the error didn't occur while connecting to a proxy.
 conn.connect()
 ```
 
-After connecting to the origin, the connection can be checked to see if `is_verified` is set to true. If not the `HTTPConnectionPool` would emits a warning. The warning only matters for when verification is disabled, because otherwise an error is raised on unverified TLS handshake.
+After connecting to the origin, the connection can be checked to see if `is_verified` is set to true. If not the `HTTPConnectionPool` would emit a warning. The warning only matters for when verification is disabled, because otherwise an error is raised on unverified TLS handshake.
 
 ```python
 if not conn.is_verified:
@@ -65,7 +65,7 @@ If the read timeout is different from the connect timeout then the
 conn.timeout = 5.0  # (read timeout)
 ```
 
-Then the HTTP request can be sent with `HTTPConnection.request()`. If a `BrokenPipeError` (should we include `SSLEOFError`?) is raised while sending the request body it can be swallowed as a response can still be received from the origin even when the request isn't completely sent.
+Then the HTTP request can be sent with `HTTPConnection.request()`. If a `BrokenPipeError` is raised while sending the request body it can be swallowed as a response can still be received from the origin even when the request isn't completely sent.
 
 ```python
 try:
