@@ -8,3 +8,6 @@
 /build
 /docs/_build
 coverage.xml
+!/.vscode
+!/.devcontainer
+!.python-version

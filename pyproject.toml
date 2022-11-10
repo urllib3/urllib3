@@ -76,3 +76,6 @@ include = [
   "/README.md",
   "/LICENSE.txt",
 ]
+
+[tool.isort]
+profile = "black"
