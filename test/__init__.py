@@ -322,6 +322,7 @@ class ImportBlocker(MetaPathFinder):
 
     def find_spec(self, name, path, target):
         import importlib.util
+
         loader = self.find_module(name, path)
         if loader is None:
             return None
