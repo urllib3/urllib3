@@ -76,28 +76,3 @@ include = [
   "/README.md",
   "/LICENSE.txt",
 ]
-
-[tool.pytest.ini_options]
-addopts = ["--strict-markers", "--strict-config"]
-filterwarnings = [
-    "error",
-    '''ignore:'urllib3\[secure\]' extra is deprecated and will be removed in a future release of urllib3.*:DeprecationWarning''',
-    '''ignore:'urllib3\.contrib\.pyopenssl' module is deprecated and will be removed in a future release of urllib3.*:DeprecationWarning''',
-    '''ignore:distutils Version classes are deprecated\. Use packaging\.version instead\.:DeprecationWarning''',
-    '''ignore:The 'pool' property is deprecated and will be removed in a later urllib3 v2.x release. use 'conn' instead.:DeprecationWarning''',
-    '''ignore:'ssl_version' option is deprecated and will be removed in a future release of urllib3 2.x. Instead use 'ssl_minimum_version':DeprecationWarning''',
-    '''ignore:.*:urllib3.exceptions.InsecureRequestWarning''',
-    '''ignore:No IPv6 support. Falling back to IPv4:urllib3.exceptions.HTTPWarning''',
-    '''ignore:No IPv6 support. skipping:urllib3.exceptions.HTTPWarning''',
-    '''ignore:ssl\.TLSVersion\.TLSv1 is deprecated:DeprecationWarning''',
-    '''ignore:ssl\.PROTOCOL_TLS is deprecated:DeprecationWarning''',
-    '''ignore:ssl\.SSLContext\(\) without protocol argument is deprecated.:DeprecationWarning''',
-    '''ignore:ssl\.PROTOCOL_TLSv1 is deprecated:DeprecationWarning''',
-    '''ignore:ssl\.TLSVersion\.TLSv1_1 is deprecated:DeprecationWarning''',
-    '''ignore:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
-    '''ignore:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
-    '''ignore:unclosed .*:ResourceWarning''',
-    '''ignore:ssl\.wrap_socket\(\) is deprecated, use SSLContext\.wrap_socket\(\):DeprecationWarning''',
-]
-xfail_strict = true
-
