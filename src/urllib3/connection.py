@@ -120,8 +120,8 @@ class HTTPConnection(_HTTPConnection):
     #: Whether this connection verifies the host's certificate.
     is_verified: bool = False
 
-    #: Whether this proxy connection (if used) verifies the proxy host's
-    #: certificate. If no HTTPS proxy is being used will be ``None``.
+    #: Whether this proxy connection verified the proxy host's certificate.
+    # If no proxy is currently connected to the value will be ``None``.
     proxy_is_verified: Optional[bool] = None
 
     blocksize: int
@@ -233,6 +233,10 @@ class HTTPConnection(_HTTPConnection):
         headers: Optional[Mapping[str, str]] = None,
         scheme: str = "http",
     ) -> None:
+        if scheme not in ("http", "https"):
+            raise ValueError(
+                f"Invalid proxy scheme for tunneling: {scheme!r}, must be either 'http' or 'https'"
+            )
         super().set_tunnel(host, port=port, headers=headers)
         self._tunnel_scheme = scheme
 
@@ -268,9 +272,16 @@ class HTTPConnection(_HTTPConnection):
         try:
             super().close()
         finally:
+            # Reset all stateful properties so connection
+            # can be re-used without leaking prior configs.
             self.sock = None
-            self._response_options = None
+            self.is_verified = False
+            self.proxy_is_verified = None
             self._has_connected_to_proxy = False
+            self._response_options = None
+            self._tunnel_host = None
+            self._tunnel_port = None
+            self._tunnel_scheme = None
 
     def putrequest(
         self,

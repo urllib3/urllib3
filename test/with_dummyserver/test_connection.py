@@ -78,3 +78,66 @@ def test_double_getresponse(pool: HTTPConnectionPool) -> None:
     # Calling getrepsonse() twice should cause an error
     with pytest.raises(ResponseNotReady):
         conn.getresponse()
+
+
+def test_connection_state_properties(pool: HTTPConnectionPool) -> None:
+    conn = pool._get_conn()
+
+    assert conn.is_closed is True
+    assert conn.is_connected is False
+    assert conn.has_connected_to_proxy is False
+    assert conn.is_verified is False
+    assert conn.proxy_is_verified is None
+
+    conn.connect()
+
+    assert conn.is_closed is False
+    assert conn.is_connected is True
+    assert conn.has_connected_to_proxy is False
+    assert conn.is_verified is False
+    assert conn.proxy_is_verified is None
+
+    conn.request("GET", "/")
+    resp = conn.getresponse()
+    assert resp.status == 200
+
+    conn.close()
+
+    assert conn.is_closed is True
+    assert conn.is_connected is False
+    assert conn.has_connected_to_proxy is False
+    assert conn.is_verified is False
+    assert conn.proxy_is_verified is None
+
+
+def test_set_tunnel_is_reset(pool: HTTPConnectionPool) -> None:
+    conn = pool._get_conn()
+
+    assert conn.is_closed is True
+    assert conn.is_connected is False
+    assert conn.has_connected_to_proxy is False
+    assert conn.is_verified is False
+    assert conn.proxy_is_verified is None
+
+    conn.set_tunnel(host="host", port=8080, scheme="http")
+
+    assert conn._tunnel_host == "host"  # type: ignore[attr-defined]
+    assert conn._tunnel_port == 8080  # type: ignore[attr-defined]
+    assert conn._tunnel_scheme == "http"  # type: ignore[attr-defined]
+
+    conn.close()
+
+    assert conn._tunnel_host is None  # type: ignore[attr-defined]
+    assert conn._tunnel_port is None  # type: ignore[attr-defined]
+    assert conn._tunnel_scheme is None  # type: ignore[attr-defined]
+
+
+def test_invalid_tunnel_scheme(pool: HTTPConnectionPool) -> None:
+    conn = pool._get_conn()
+
+    with pytest.raises(ValueError) as e:
+        conn.set_tunnel(host="host", port=8080, scheme="socks")
+    assert (
+        str(e.value)
+        == "Invalid proxy scheme for tunneling: 'socks', must be either 'http' or 'https'"
+    )
