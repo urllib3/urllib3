@@ -6,40 +6,120 @@
 **first origin being connected to** to reach the target origin. This either means
 the target origin itself or the proxy origin if one is desired.
 
-If the connection is an `HTTPSConnection`, then `HTTPSConnection.set_cert()` should
-be called once with information about how to verify certificates. (What is stopping us
-from putting this information in `HTTPSConnection.__init__()`?)
+```python
+import urllib3.connection
+
+# Initialize the HTTPSConnection ('https://...')
+conn = urllib3.connection.HTTPSConnection(
+    host="example.com",
+    # Here you can configure other options like
+    # 'ssl_minimum_version', 'ca_certs', etc.
+)
+
+# Set the connect timeout either in the
+# constructor above or via the property.
+conn.timeout = 3.0  # (connect timeout)
+```
 
 If using CONNECT tunneling with the proxy, call `HTTPConnection.set_tunnel()`
-with the tunneled host, port, and headers. This will mark the `HTTPConnection`
-as not-reusable.
+with the tunneled host, port, and headers. This should be called before calling
+`HTTPConnection.connect()` or sending a request.
 
-Set the connection's `timeout` property to the "connect timeout" value.
+```python
+conn = urllib3.connection.HTTPConnection(
+    # Remember that the *first* origin we want to connect to should
+    # be configured as 'host' and 'port', *not* the target origin.
+    host="myproxy.net",
+    port=8080,
+    proxy="http://myproxy.net:8080"
+)
+
+conn.set_tunnel("example.com", scheme="http", headers={"Proxy-Header": "value"})
+```
 
 Connect to the first origin by calling the `HTTPConnection.connect()` method.
 If an error occurs here you can check whether the error occurred during the
-connection to the proxy if `HTTPConnection._connecting_to_proxy` is true.
+connection to the proxy if `HTTPConnection.has_connected_to_proxy` is true.
 If the value is false then the error didn't occur while connecting to a proxy.
 
-(Should we be setting `timeout` to some write timeout at this point? `None`?)
+```python
+# Explicitly connect to the origin. This isn't
+# required as sending the first request will
+# automatically connect if not done explicitly.
+conn.connect()
+```
 
-After connecting to the origin, the connection can be checked to see if `is_verified` is set to true. If not the pool emits a warning.
-The warning only matters for when verification is disabled, because otherwise an error is raised on unverified TLS handshake.
+After connecting to the origin, the connection can be checked to see if `is_verified` is set to true. If not the `HTTPConnectionPool` would emits a warning. The warning only matters for when verification is disabled, because otherwise an error is raised on unverified TLS handshake.
 
-Then the HTTP request can be sent with `HTTPConnection.request()`. If a `BrokenPipeError` (should we include `SSLEOFError`?)
-is raised while sending the request body it can be swallowed as a response
-can still be received from the origin even when the request isn't completely
-sent.
+```python
+if not conn.is_verified:
+    # There isn't a verified TLS connection to target origin.
+if not conn.is_proxy_verified:
+    # There isn't a verified TLS connection to proxy origin.
+```
 
-Set the connections `timeout` property is set to the `read_timeout`. (Currently this appears calculated via some algorithm?)
+If the read timeout is different from the connect timeout then the
+`HTTPConnection.timeout` property can be changed at this point.
 
-Then response headers (and other info) are read from the connection via `HTTPConnection.getresponse()` and returned as a `urllib3.HTTPResponse`. The `HTTPResponse` instance carries a reference to the `HTTPConnection` instance. (Within `HTTPConnectionPool` the `HTTPResponse._connection` is set to `response_conn`, is that needed or can `HTTPConnection.getresponse()` handle this?)
+```python
+conn.timeout = 5.0  # (read timeout)
+```
 
-If pooling is in use set `_connection` and `_pool` on the `HTTPResponse` instance. If retries are in use set `retries` on the `HTTPResponse` instance.
+Then the HTTP request can be sent with `HTTPConnection.request()`. If a `BrokenPipeError` (should we include `SSLEOFError`?) is raised while sending the request body it can be swallowed as a response can still be received from the origin even when the request isn't completely sent.
 
-If any error is received from connecting to the origin, sending the request, or receiving the response, the pool will call `HTTPConnection.close()` and discard the connection.
+```python
+try:
+    conn.request("GET", "/")
+except BrokenPipeError:
+    # We can still try to get a response!
+
+resp = conn.getresponse()
+```
+
+Then response headers (and other info) are read from the connection via `HTTPConnection.getresponse()` and returned as a `urllib3.HTTPResponse`. The `HTTPResponse` instance carries a reference to the `HTTPConnection` instance so the connection can be closed if the connection gets into an undefined protocol state.
+
+```python
+assert resp.connection is conn
+```
+
+If pooling is in use the `HTTPConnectionPool` will set `_pool` on the `HTTPResponse` instance. This will return the connection to the pool once the response is exhausted. If retries are in use set `retries` on the `HTTPResponse` instance.
+
+```python
+# Set by the HTTPConnectionPool before returning to the caller.
+resp = conn.getresponse()
+resp._pool = pool
+
+# This will call resp._pool._put_conn(resp.connection)
+# Connection can get auto-released by exhausting.
+resp.release_conn()
+```
+
+If any error is received from connecting to the origin, sending the request, or receiving the response, the caller will call `HTTPConnection.close()` and discard the connection. Connections can be re-used after being closed, a new TCP connection to proxies and origins will be established.
+
+If instead of a tunneling proxy we were using a forwarding proxy then we configure the `HTTPConnection` similarly, except instead of `set_tunnel()` we send absolute URLs to `HTTPConnection.request()`:
+
+```python
+import urllib3.connection
+
+# Initialize the HTTPConnection.
+conn = urllib3.connection.HTTPConnection(
+    host="myproxy.net",
+    port=8080,
+    proxy="http://myproxy.net:8080"
+)
+
+# You can request HTTP or HTTPS resources over the proxy
+# using the absolute URL.
+conn.request("GET", "http://example.com")
+resp = conn.getresponse()
+
+conn.request("GET", "https://example.com")
+resp = conn.getresponse()
+```
 
 ### HTTP/HTTPS/proxies
+
+This is how `HTTPConnection` instances will be configured and used when a `PoolManager` or `ProxyManager` receives a given config:
 
 - No proxy, HTTP origin -> `HTTPConnection`
 - No proxy, HTTPS origin -> `HTTPSConnection`
@@ -47,37 +127,4 @@ If any error is received from connecting to the origin, sending the request, or 
 - HTTP proxy, HTTPS origin -> `HTTPSConnection` in tunnel mode
 - HTTPS proxy, HTTP origin -> `HTTPSConnection` in forwarding mode
 - HTTPS proxy, HTTPS origin -> `HTTPSConnection` in tunnel mode
-- HTTPS proxy, HTTPS origin, `use_forwarding_for_https=True` -> `HTTPSConnection` in forwarding mode
-
-### Downsides
-
-- Lots of internal property usage by connection pools/response.
-  - Checking whether a connection is established
-  - Accessing `.sock` property
-- Proxies seem super clunky to setup even though we're giving all the information to the connection pool/connection?
-- Timeouts are getting set throughout an HTTPConnection's lifecycle by the connection pool.
-- The `auto_open` state property seems super suspicious to me, maybe had a different use when our code was originally written? Needs more investigation.
-
-## How could things be better?
-
-### Overall
-
-It's confusing that there is a split between HTTP and HTTPS because we need to do a little dance to figure out which kind we want based on what kind of proxy is in use. Only difference between the two is properties and whether `ssl.wrap_socket` happens on `connect()`. Should connections support both HTTP and HTTPS?
-
-### Lifecycle
-
-Create an HTTPConnection or HTTPSConnection. All configuration options are given via the constructor.
-Through this constructor the proxy is configured properly.
-
-If tunneling is being used, call `HTTPConnection.set_tunnel()` with the tunnel target host, port, scheme, and headers.
-
-(Add a property `is_connected` so the pool can check if this connection is new, closed but usable, or connected?
-We have something similar in `is_connection_dropped(conn)`?)
-
-Call `HTTPConnection.connect()`, this will establish a connection to the target origin and set `HTTPSConnection.is_verified` and `.proxy_is_verified` if using HTTPS for either of those hops.
-
-Call `HTTPConnection.request()`
-
-Call `HTTPConnection.getresponse()`, only set `_pool` and `retries`. `_connection` should get set automatically?
-
-Once the connection is done being used, call `HTTPConnection.close()`.
+- HTTPS proxy, HTTPS origin, `ProxyConfig.use_forwarding_for_https=True` -> `HTTPSConnection` in forwarding mode

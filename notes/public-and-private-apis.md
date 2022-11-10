@@ -26,5 +26,3 @@ Only public way to configure proxies is through `ProxyManager`?
 - `urllib3.connection.HTTPConnection`
 - `urllib3.connection.HTTPSConnection`
 - `urllib3.util.*` (submodules)
-
-Remove `ConnectionCls` and `ResponseCls` on `HTTPConnectionPool`, we are in control of those classes.
