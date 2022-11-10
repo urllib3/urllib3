@@ -179,7 +179,6 @@ class TestClientCerts(SocketDummyServerTestCase):
             server_side=True,
         )
 
-    @pytest.mark.filterwarnings("default")
     def test_client_certs_two_files(self) -> None:
         """
         Having a client cert in a separate file to its associated key works
@@ -224,7 +223,6 @@ class TestClientCerts(SocketDummyServerTestCase):
 
             assert len(client_certs) == 1
 
-    @pytest.mark.filterwarnings("default")
     def test_client_certs_one_file(self) -> None:
         """
         Having a client cert and its associated private key in just one file
@@ -1267,7 +1265,6 @@ class TestSSL(SocketDummyServerTestCase):
             finally:
                 timed_out.set()
 
-    @pytest.mark.skip
     def test_ssl_failed_fingerprint_verification(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
             for i in range(2):
@@ -1365,7 +1362,6 @@ class TestSSL(SocketDummyServerTestCase):
             response = pool.urlopen("GET", "/", retries=1)
             assert response.data == b"Success"
 
-    @pytest.mark.skip
     def test_ssl_load_default_certs_when_empty(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -1405,7 +1401,6 @@ class TestSSL(SocketDummyServerTestCase):
                     pool.request("GET", "/", timeout=SHORT_TIMEOUT)
                 context.load_default_certs.assert_called_with()
 
-    @pytest.mark.skip
     def test_ssl_dont_load_default_certs_when_given(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
