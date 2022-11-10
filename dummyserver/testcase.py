@@ -171,7 +171,7 @@ class HTTPDummyServerTestCase:
             async def run_app() -> None:
                 app = web.Application([(r".*", TestingApp)])
                 cls.server, cls.port = run_tornado_app(
-                    app, io_loop, cls.certs, cls.scheme, cls.host
+                    app, cls.certs, cls.scheme, cls.host
                 )
 
             asyncio.run_coroutine_threadsafe(run_app(), io_loop.asyncio_loop).result()  # type: ignore[attr-defined]
@@ -239,17 +239,17 @@ class HTTPDummyProxyTestCase:
             async def run_app() -> None:
                 app = web.Application([(r".*", TestingApp)])
                 cls.http_server, cls.http_port = run_tornado_app(
-                    app, io_loop, None, "http", cls.http_host
+                    app, None, "http", cls.http_host
                 )
 
                 app = web.Application([(r".*", TestingApp)])
                 cls.https_server, cls.https_port = run_tornado_app(
-                    app, io_loop, cls.https_certs, "https", cls.http_host
+                    app, cls.https_certs, "https", cls.http_host
                 )
 
                 app = web.Application([(r".*", ProxyHandler)])
                 cls.proxy_server, cls.proxy_port = run_tornado_app(
-                    app, io_loop, None, "http", cls.proxy_host
+                    app, None, "http", cls.proxy_host
                 )
 
                 upstream_ca_certs = cls.https_certs.get("ca_certs")
@@ -257,7 +257,7 @@ class HTTPDummyProxyTestCase:
                     [(r".*", ProxyHandler)], upstream_ca_certs=upstream_ca_certs
                 )
                 cls.https_proxy_server, cls.https_proxy_port = run_tornado_app(
-                    app, io_loop, cls.https_certs, "https", cls.proxy_host
+                    app, cls.https_certs, "https", cls.proxy_host
                 )
 
             asyncio.run_coroutine_threadsafe(run_app(), io_loop.asyncio_loop).result()  # type: ignore[attr-defined]

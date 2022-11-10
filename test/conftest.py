@@ -55,7 +55,7 @@ def run_server_in_thread(
 
         async def run_app() -> int:
             app = web.Application([(r".*", TestingApp)])
-            server, port = run_tornado_app(app, io_loop, server_certs, scheme, host)
+            server, port = run_tornado_app(app, server_certs, scheme, host)
             return port
 
         port = asyncio.run_coroutine_threadsafe(
@@ -83,14 +83,12 @@ def run_server_and_proxy_in_thread(
 
         async def run_app() -> Tuple[ServerConfig, ServerConfig]:
             app = web.Application([(r".*", TestingApp)])
-            server_app, port = run_tornado_app(
-                app, io_loop, server_certs, "https", "localhost"
-            )
+            server_app, port = run_tornado_app(app, server_certs, "https", "localhost")
             server_config = ServerConfig("https", "localhost", port, ca_cert_path)
 
             proxy = web.Application([(r".*", ProxyHandler)])
             proxy_app, proxy_port = run_tornado_app(
-                proxy, io_loop, proxy_certs, proxy_scheme, proxy_host
+                proxy, proxy_certs, proxy_scheme, proxy_host
             )
             proxy_config = ServerConfig(
                 proxy_scheme, proxy_host, proxy_port, ca_cert_path

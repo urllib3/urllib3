@@ -183,20 +183,18 @@ def ssl_options_to_context(  # type: ignore[no-untyped-def]
     return ctx
 
 
-def run_tornado_app(  # type: ignore[no-untyped-def]
+def run_tornado_app(
     app: tornado.web.Application,
-    io_loop: tornado.ioloop.IOLoop,
-    certs,
+    certs: dict[str, Any] | None,
     scheme: str,
     host: str,
 ) -> tuple[tornado.httpserver.HTTPServer, int]:
-    assert io_loop == tornado.ioloop.IOLoop.current()
-
     # We can't use fromtimestamp(0) because of CPython issue 29097, so we'll
     # just construct the datetime object directly.
     app.last_req = datetime(1970, 1, 1)  # type: ignore[attr-defined]
 
     if scheme == "https":
+        assert certs is not None
         ssl_opts = ssl_options_to_context(**certs)
         http_server = tornado.httpserver.HTTPServer(app, ssl_options=ssl_opts)
     else:
@@ -285,9 +283,8 @@ def main() -> int:
     host = "127.0.0.1"
 
     async def amain() -> int:
-        io_loop = tornado.ioloop.IOLoop.current()
         app = tornado.web.Application([(r".*", TestingApp)])
-        server, port = run_tornado_app(app, io_loop, None, "http", host)
+        server, port = run_tornado_app(app, None, "http", host)
 
         print(f"Listening on http://{host}:{port}")
         await asyncio.Event().wait()
