@@ -825,9 +825,7 @@ class HTTPResponse(BaseHTTPResponse):
         self._init_decoder()
 
         if amt is None:
-            decoded_data = self._decode(data, decode_content, flush_decoder=True)
-            self._decoded_bytes.extend(decoded_data)
-            data = self._popall_decoded_bytes()
+            data = self._decode(data, decode_content, flush_decoder=True)
 
             if cache_content:
                 self._body = data
