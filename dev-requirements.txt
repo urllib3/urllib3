@@ -1,5 +1,5 @@
 coverage==6.4
-tornado==6.1
+tornado==6.2
 PySocks==1.7.1
 pytest==7.0.0
 pytest-timeout==2.1.0
