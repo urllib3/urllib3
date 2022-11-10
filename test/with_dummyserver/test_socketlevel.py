@@ -1378,7 +1378,7 @@ class TestSSL(SocketDummyServerTestCase):
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 )
-            except ssl.SSLError:
+            except (ssl.SSLError, OSError):
                 return
 
             buf = b""
@@ -1420,7 +1420,7 @@ class TestSSL(SocketDummyServerTestCase):
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 )
-            except ssl.SSLError:
+            except (ssl.SSLError, OSError):
                 return
 
             buf = b""
