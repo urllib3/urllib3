@@ -38,7 +38,7 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         os:
-          - macos-latest
+          - macos-11
           - windows-latest
           - ubuntu-20.04  # OpenSSL 1.1.1
           - ubuntu-22.04  # OpenSSL 3.0
@@ -83,7 +83,7 @@ jobs:
             os: ubuntu-22.04
 
     runs-on: ${{ matrix.os }}
-    name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
+    name: ${{ fromJson('{"macos-11":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
     timeout-minutes: 20
     steps:

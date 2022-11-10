@@ -116,7 +116,12 @@ def downstream_requests(session: nox.Session) -> None:
     session.cd(tmp_dir)
     git_clone(session, "https://github.com/psf/requests")
     session.chdir("requests")
-    session.run("git", "apply", f"{root}/ci/requests.patch", external=True)
+    session.run(
+        "git", "apply", f"{root}/ci/0003-requests-removed-warnings.patch", external=True
+    )
+    session.run(
+        "git", "apply", f"{root}/ci/0004-requests-chunked-requests.patch", external=True
+    )
     session.run("git", "rev-parse", "HEAD", external=True)
     session.install(".[socks]", silent=False)
     session.install("-r", "requirements-dev.txt", silent=False)

@@ -4,6 +4,11 @@
 Dummy server used for unit testing.
 """
 
+from __future__ import annotations
+
+import asyncio
+import concurrent.futures
+import contextlib
 import logging
 import os
 import socket
@@ -11,8 +16,9 @@ import ssl
 import sys
 import threading
 import warnings
+from collections.abc import Coroutine, Generator
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 import tornado.httpserver
 import tornado.ioloop
@@ -25,10 +31,15 @@ from cryptography.hazmat.primitives import serialization
 from urllib3.exceptions import HTTPWarning
 from urllib3.util import ALPN_PROTOCOLS, resolve_cert_reqs, resolve_ssl_version
 
+if TYPE_CHECKING:
+    from typing_extensions import ParamSpec
+
+    P = ParamSpec("P")
+
 log = logging.getLogger(__name__)
 
 CERTS_PATH = os.path.join(os.path.dirname(__file__), "certs")
-DEFAULT_CERTS: Dict[str, Any] = {
+DEFAULT_CERTS: dict[str, Any] = {
     "certfile": os.path.join(CERTS_PATH, "server.crt"),
     "keyfile": os.path.join(CERTS_PATH, "server.key"),
     "cert_reqs": ssl.CERT_OPTIONAL,
@@ -110,7 +121,7 @@ class SocketServerThread(threading.Thread):
         self,
         socket_handler: Callable[[socket.socket], None],
         host: str = "localhost",
-        ready_event: Optional[threading.Event] = None,
+        ready_event: threading.Event | None = None,
     ) -> None:
         super().__init__()
         self.daemon = True
@@ -148,7 +159,7 @@ def ssl_options_to_context(  # type: ignore[no-untyped-def]
     certfile=None,
     server_side=None,
     cert_reqs=None,
-    ssl_version: Optional[Union[str, int]] = None,
+    ssl_version: str | int | None = None,
     ca_certs=None,
     do_handshake_on_connect=None,
     suppress_ragged_eofs=None,
@@ -176,20 +187,18 @@ def ssl_options_to_context(  # type: ignore[no-untyped-def]
     return ctx
 
 
-def run_tornado_app(  # type: ignore[no-untyped-def]
+def run_tornado_app(
     app: tornado.web.Application,
-    io_loop: tornado.ioloop.IOLoop,
-    certs,
+    certs: dict[str, Any] | None,
     scheme: str,
     host: str,
-) -> Tuple[tornado.httpserver.HTTPServer, int]:
-    assert io_loop == tornado.ioloop.IOLoop.current()
-
+) -> tuple[tornado.httpserver.HTTPServer, int]:
     # We can't use fromtimestamp(0) because of CPython issue 29097, so we'll
     # just construct the datetime object directly.
     app.last_req = datetime(1970, 1, 1)  # type: ignore[attr-defined]
 
     if scheme == "https":
+        assert certs is not None
         ssl_opts = ssl_options_to_context(**certs)
         http_server = tornado.httpserver.HTTPServer(app, ssl_options=ssl_opts)
     else:
@@ -201,29 +210,9 @@ def run_tornado_app(  # type: ignore[no-untyped-def]
     return http_server, port
 
 
-def run_loop_in_thread(io_loop: tornado.ioloop.IOLoop) -> threading.Thread:
-    t = threading.Thread(target=io_loop.start)
-    t.start()
-    return t
-
-
-def get_unreachable_address() -> Tuple[str, int]:
+def get_unreachable_address() -> tuple[str, int]:
     # reserved as per rfc2606
     return ("something.invalid", 54321)
-
-
-if __name__ == "__main__":
-    # For debugging dummyserver itself - python -m dummyserver.server
-    from .handlers import TestingApp
-
-    host = "127.0.0.1"
-
-    io_loop = tornado.ioloop.IOLoop.current()
-    app = tornado.web.Application([(r".*", TestingApp)])
-    server, port = run_tornado_app(app, io_loop, None, "http", host)
-    server_thread = run_loop_in_thread(io_loop)
-
-    print(f"Listening on http://{host}:{port}")
 
 
 def encrypt_key_pem(private_key_pem: trustme.Blob, password: bytes) -> trustme.Blob:
@@ -236,3 +225,77 @@ def encrypt_key_pem(private_key_pem: trustme.Blob, password: bytes) -> trustme.B
         serialization.BestAvailableEncryption(password),
     )
     return trustme.Blob(encrypted_key)
+
+
+R = TypeVar("R")
+
+
+def _run_and_close_tornado(
+    async_fn: Callable[P, Coroutine[Any, Any, R]], *args: P.args, **kwargs: P.kwargs
+) -> R:
+    tornado_loop = None
+
+    async def inner_fn() -> R:
+        nonlocal tornado_loop
+        tornado_loop = tornado.ioloop.IOLoop.current()
+        return await async_fn(*args, **kwargs)
+
+    try:
+        return asyncio.run(inner_fn())
+    finally:
+        tornado_loop.close(all_fds=True)  # type: ignore[union-attr]
+
+
+@contextlib.contextmanager
+def run_loop_in_thread() -> Generator[tornado.ioloop.IOLoop, None, None]:
+    loop_started: concurrent.futures.Future[
+        tuple[tornado.ioloop.IOLoop, asyncio.Event]
+    ] = concurrent.futures.Future()
+    with concurrent.futures.ThreadPoolExecutor(
+        1, thread_name_prefix="test IOLoop"
+    ) as tpe:
+
+        async def run() -> None:
+            io_loop = tornado.ioloop.IOLoop.current()
+            stop_event = asyncio.Event()
+            loop_started.set_result((io_loop, stop_event))
+            await stop_event.wait()
+
+        # run asyncio.run in a thread and collect exceptions from *either*
+        # the loop failing to start, or failing to close
+        ran = tpe.submit(_run_and_close_tornado, run)  # type: ignore[arg-type]
+        for f in concurrent.futures.as_completed((loop_started, ran)):  # type: ignore[misc]
+            if f is loop_started:
+                io_loop, stop_event = loop_started.result()
+                try:
+                    yield io_loop
+                finally:
+                    io_loop.add_callback(stop_event.set)
+
+            elif f is ran:
+                # if this is the first iteration the loop failed to start
+                # if it's the second iteration the loop has finished or
+                # the loop failed to close and we need to raise the exception
+                ran.result()
+                return
+
+
+def main() -> int:
+    # For debugging dummyserver itself - python -m dummyserver.server
+    from .handlers import TestingApp
+
+    host = "127.0.0.1"
+
+    async def amain() -> int:
+        app = tornado.web.Application([(r".*", TestingApp)])
+        server, port = run_tornado_app(app, None, "http", host)
+
+        print(f"Listening on http://{host}:{port}")
+        await asyncio.Event().wait()
+        return 0
+
+    return asyncio.run(amain())
+
+
+if __name__ == "__main__":
+    sys.exit(main())

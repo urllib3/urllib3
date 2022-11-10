@@ -1,14 +1,13 @@
+import asyncio
 import contextlib
-import platform
 import socket
 import ssl
-import sys
 from pathlib import Path
 from typing import AbstractSet, Any, Dict, Generator, NamedTuple, Optional, Tuple
 
 import pytest
 import trustme
-from tornado import ioloop, web
+from tornado import web
 
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
@@ -17,15 +16,6 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from urllib3.util import ssl_
 
 from .tz_stub import stub_timezone_ctx
-
-
-# The Python 3.8+ default loop on Windows breaks Tornado
-@pytest.fixture(scope="session", autouse=True)
-def configure_windows_event_loop() -> None:
-    if sys.version_info >= (3, 8) and platform.system() == "Windows":
-        import asyncio
-
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # type: ignore[attr-defined]
 
 
 class ServerConfig(NamedTuple):
@@ -61,16 +51,17 @@ def run_server_in_thread(
     ca.cert_pem.write_to_path(ca_cert_path)
     server_certs = _write_cert_to_dir(server_cert, tmpdir)
 
-    io_loop = ioloop.IOLoop.current()
-    app = web.Application([(r".*", TestingApp)])
-    server, port = run_tornado_app(app, io_loop, server_certs, scheme, host)
-    server_thread = run_loop_in_thread(io_loop)
+    with run_loop_in_thread() as io_loop:
 
-    yield ServerConfig("https", host, port, ca_cert_path)
+        async def run_app() -> int:
+            app = web.Application([(r".*", TestingApp)])
+            server, port = run_tornado_app(app, server_certs, scheme, host)
+            return port
 
-    io_loop.add_callback(server.stop)
-    io_loop.add_callback(io_loop.stop)
-    server_thread.join()
+        port = asyncio.run_coroutine_threadsafe(
+            run_app(), io_loop.asyncio_loop  # type: ignore[attr-defined]
+        ).result()
+        yield ServerConfig("https", host, port, ca_cert_path)
 
 
 @contextlib.contextmanager
@@ -88,26 +79,26 @@ def run_server_and_proxy_in_thread(
     server_certs = _write_cert_to_dir(server_cert, tmpdir)
     proxy_certs = _write_cert_to_dir(proxy_cert, tmpdir, "proxy")
 
-    io_loop = ioloop.IOLoop.current()
-    app = web.Application([(r".*", TestingApp)])
-    server_app, port = run_tornado_app(app, io_loop, server_certs, "https", "localhost")
-    server_config = ServerConfig("https", "localhost", port, ca_cert_path)
+    with run_loop_in_thread() as io_loop:
 
-    proxy = web.Application([(r".*", ProxyHandler)])
-    proxy_app, proxy_port = run_tornado_app(
-        proxy, io_loop, proxy_certs, proxy_scheme, proxy_host
-    )
-    proxy_config = ServerConfig(proxy_scheme, proxy_host, proxy_port, ca_cert_path)
+        async def run_app() -> Tuple[ServerConfig, ServerConfig]:
+            app = web.Application([(r".*", TestingApp)])
+            server_app, port = run_tornado_app(app, server_certs, "https", "localhost")
+            server_config = ServerConfig("https", "localhost", port, ca_cert_path)
 
-    loop_thread = run_loop_in_thread(io_loop)
+            proxy = web.Application([(r".*", ProxyHandler)])
+            proxy_app, proxy_port = run_tornado_app(
+                proxy, proxy_certs, proxy_scheme, proxy_host
+            )
+            proxy_config = ServerConfig(
+                proxy_scheme, proxy_host, proxy_port, ca_cert_path
+            )
+            return proxy_config, server_config
 
-    yield (proxy_config, server_config)
-
-    io_loop.add_callback(server_app.stop)
-    io_loop.add_callback(proxy_app.stop)
-    io_loop.add_callback(io_loop.stop)
-
-    loop_thread.join()
+        proxy_config, server_config = asyncio.run_coroutine_threadsafe(
+            run_app(), io_loop.asyncio_loop  # type: ignore[attr-defined]
+        ).result()
+        yield (proxy_config, server_config)
 
 
 @pytest.fixture(params=["localhost", "127.0.0.1", "::1"])

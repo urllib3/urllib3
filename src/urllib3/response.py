@@ -256,7 +256,7 @@ class BaseHTTPResponse(io.IOBase):
         self.version = version
         self.reason = reason
         self.decode_content = decode_content
-        self.request_url: Optional[str]
+        self._request_url: Optional[str] = request_url
         self.retries = retries
 
         self.chunked = False
@@ -301,13 +301,24 @@ class BaseHTTPResponse(io.IOBase):
     def url(self) -> Optional[str]:
         raise NotImplementedError()
 
-    @property
-    def closed(self) -> bool:
+    @url.setter
+    def url(self, url: Optional[str]) -> None:
         raise NotImplementedError()
 
     @property
     def connection(self) -> Optional[HTTPConnection]:
         raise NotImplementedError()
+
+    @property
+    def retries(self) -> Optional[Retry]:
+        return self._retries
+
+    @retries.setter
+    def retries(self, retries: Optional[Retry]) -> None:
+        # Override the request_url if retries has a redirect location.
+        if retries is not None and retries.history:
+            self.url = retries.history[-1].redirect_location
+        self._retries = retries
 
     def stream(
         self, amt: Optional[int] = 2**16, decode_content: Optional[bool] = None
@@ -391,9 +402,6 @@ class BaseHTTPResponse(io.IOBase):
         return b""
 
     # Compatibility methods for `io` module
-    def readable(self) -> bool:
-        return True
-
     def readinto(self, b: bytearray) -> int:
         temp = self.read(len(b))
         if len(temp) == 0:
@@ -487,10 +495,6 @@ class HTTPResponse(BaseHTTPResponse):
         self._original_response = original_response
         self._fp_bytes_read = 0
         self.msg = msg
-        if self.retries is not None and self.retries.history:
-            self._request_url = self.retries.history[-1].redirect_location
-        else:
-            self._request_url = request_url
 
         if body and isinstance(body, (str, bytes)):
             self._body = body
@@ -820,34 +824,10 @@ class HTTPResponse(BaseHTTPResponse):
                 if data:
                     yield data
 
-    @classmethod
-    def from_httplib(
-        ResponseCls: Type["HTTPResponse"], r: _HttplibHTTPResponse, **response_kw: Any
-    ) -> "HTTPResponse":
-        """
-        Given an :class:`http.client.HTTPResponse` instance ``r``, return a
-        corresponding :class:`urllib3.response.HTTPResponse` object.
-
-        Remaining parameters are passed to the HTTPResponse constructor, along
-        with ``original_response=r``.
-        """
-        headers = r.msg
-
-        if not isinstance(headers, HTTPHeaderDict):
-            headers = HTTPHeaderDict(headers.items())  # type: ignore[assignment]
-
-        resp = ResponseCls(
-            body=r,
-            headers=headers,  # type: ignore[arg-type]
-            status=r.status,
-            version=r.version,
-            reason=r.reason,
-            original_response=r,
-            **response_kw,
-        )
-        return resp
-
     # Overrides from io.IOBase
+    def readable(self) -> bool:
+        return True
+
     def close(self) -> None:
         if not self.closed and self._fp:
             self._fp.close()
