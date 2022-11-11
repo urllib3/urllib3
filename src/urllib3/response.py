@@ -772,11 +772,6 @@ class HTTPResponse(BaseHTTPResponse):
         del self._decoded_bytes[:n]
         return decoded_data
 
-    def _popall_decoded_bytes(self) -> bytes:
-        decoded_data = bytes(self._decoded_bytes)
-        del self._decoded_bytes[:]
-        return decoded_data
-
     def read(
         self,
         amt: Optional[int] = None,
