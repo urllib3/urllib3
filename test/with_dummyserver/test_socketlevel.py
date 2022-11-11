@@ -1501,7 +1501,6 @@ class TestSSL(SocketDummyServerTestCase):
     @pytest.mark.parametrize(
         "preload_content,read_amt", [(True, None), (False, None), (False, 2**31)]
     )
-    @pytest.mark.limit_memory("4.1 GB")
     def test_requesting_large_resources_via_ssl(
         self, preload_content: bool, read_amt: Optional[int]
     ) -> None:

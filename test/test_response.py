@@ -729,6 +729,24 @@ class TestResponse:
         with pytest.raises(StopIteration):
             next(stream)
 
+    @pytest.mark.parametrize(
+        "preload_content, amt",
+        [(True, None), (False, None), (False, 10 * 2**20)],
+    )
+    @pytest.mark.limit_memory("25 MB")
+    def test_buffer_memory_usage_one_chunk(
+        self, preload_content: bool, amt: int
+    ) -> None:
+        content_length = 10 * 2**20  # 10 MiB
+        fp = BytesIO(zlib.compress(bytes(content_length)))
+        resp = HTTPResponse(
+            fp,
+            preload_content=preload_content,
+            headers={"content-encoding": "deflate"},
+        )
+        data = resp.data if preload_content else resp.read(amt)
+        assert len(data) == content_length
+
     def test_length_no_header(self) -> None:
         fp = BytesIO(b"12345")
         resp = HTTPResponse(fp, preload_content=False)
