@@ -1,1 +1,0 @@
-Added ``urllib3.response.BaseHTTPResponse`` class. All future response classes will be subclasses of ``BaseHTTPResponse``.

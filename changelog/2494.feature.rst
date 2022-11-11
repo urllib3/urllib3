@@ -1,5 +1,0 @@
-Replaced ``Retry.BACK0FF_MAX`` with ``Retry.DEFAULT_BACKOFF_MAX``.
-
-Added a configurable ``backoff_max`` parameter to the ``Retry`` class.
-If a custom ``backoff_max`` is provided to the ``Retry`` class, it
-will replace the ``Retry.DEFAULT_BACKOFF_MAX``.

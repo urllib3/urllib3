@@ -1,2 +1,0 @@
-Fixed thread-safety issue where accessing a `PoolManager` with many distinct origins
-would cause connection pools to be closed while requests are in progress.

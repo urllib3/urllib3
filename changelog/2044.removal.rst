@@ -1,1 +1,0 @@
-Removed ``urllib3.contrib.appengine.AppEngineManager`` and support for Google App Engine Standard Environment.

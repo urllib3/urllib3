@@ -1,9 +1,0 @@
-Changed ``multipart/form-data`` header parameter formatting matches the WHATWG
-HTML Standard as of 2021-06-10. Control characters in filenames are no
-longer percent encoded.
-
-``format_header_param_html5`` and ``format_header_param`` are
-deprecated names for ``format_multipart_header_param``.
-
-The ``RequestField`` ``header_formatter`` parameter is deprecated in
-favor of overriding the ``_render_part`` method.

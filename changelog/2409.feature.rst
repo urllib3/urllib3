@@ -1,1 +1,0 @@
-Added ``proxy_assert_hostname`` and ``proxy_assert_fingerprint`` kwargs to ``ProxyManager``.

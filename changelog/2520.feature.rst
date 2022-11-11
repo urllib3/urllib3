@@ -1,3 +1,0 @@
-Added the ``authority`` property to the Url class as per RFC 3986 3.2.
-This property should be used in place of ``netloc`` for users who
-want to include the userinfo (auth) component of the URI.

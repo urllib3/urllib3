@@ -1,1 +1,0 @@
-``urllib3.contrib.pyopenssl`` module no longer supports using SSLv3.0 even when support is available from the compiled OpenSSL library.

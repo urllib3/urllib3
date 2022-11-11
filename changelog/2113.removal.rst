@@ -1,5 +1,0 @@
-Removed fallback on certificate ``commonName`` in ``match_hostname()`` function.
-
-This behavior was deprecated in May 2000 in RFC 2818. Instead only ``subjectAltName``
-is used to verify the hostname by default. To enable verifying the hostname against
-``commonName`` use ``SSLContext.hostname_checks_common_name = True``.
