@@ -2,6 +2,7 @@ import contextlib
 import http.client as httplib
 import socket
 import ssl
+import sys
 import zlib
 from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
@@ -24,12 +25,63 @@ from urllib3.exceptions import (
 )
 from urllib3.response import (  # type: ignore[attr-defined]
     BaseHTTPResponse,
+    BytesQueueBuffer,
     HTTPResponse,
     brotli,
     zstd,
 )
 from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
+
+
+class TestBytesQueueBuffer:
+    def test_single_chunk(self):
+        buffer = BytesQueueBuffer()
+        assert len(buffer) == 0
+        with pytest.raises(ValueError, match="buffer is empty"):
+            assert buffer.get(10)
+
+        buffer.put(b"foo")
+        with pytest.raises(ValueError, match="n should be > 0"):
+            buffer.get(-1)
+
+        assert buffer.get(1) == b"f"
+        assert buffer.get(2) == b"oo"
+        with pytest.raises(ValueError, match="buffer is empty"):
+            assert buffer.get(10)
+
+    def test_read_too_much(self):
+        buffer = BytesQueueBuffer()
+        buffer.put(b"foo")
+        assert buffer.get(100) == b"foo"
+
+    def test_multiple_chunks(self):
+        buffer = BytesQueueBuffer()
+        buffer.put(b"foo")
+        buffer.put(b"bar")
+        buffer.put(b"baz")
+        assert len(buffer) == 9
+
+        assert buffer.get(1) == b"f"
+        assert len(buffer) == 8
+        assert buffer.get(4) == b"ooba"
+        assert len(buffer) == 4
+        assert buffer.get(4) == b"rbaz"
+        assert len(buffer) == 0
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 8), reason="pytest-memray requires Python 3.8+"
+    )
+    @pytest.mark.limit_memory("12.5 MB")  # assert that we're not doubling memory usage
+    def test_memory_usage(self):
+        # Allocate 10 1MiB chunks
+        buffer = BytesQueueBuffer()
+        for i in range(10):
+            # This allocates 2MiB, putting the max at around 12MiB. Not sure why.
+            buffer.put(bytes(2**20))
+
+        assert len(buffer.get(10 * 2**20)) == 10 * 2**20
+
 
 # A known random (i.e, not-too-compressible) payload generated with:
 #    "".join(random.choice(string.printable) for i in range(512))

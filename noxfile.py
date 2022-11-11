@@ -42,6 +42,8 @@ def tests_impl(
         "--parallel-mode",
         "-m",
         "pytest",
+        "--memray",
+        "--hide-memray-summary",
         "-r",
         "a",
         f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
