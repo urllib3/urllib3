@@ -367,10 +367,13 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
 
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
-            with cls.server_context.wrap_socket(sock, server_side=True) as ssock:
-                request = consume_socket(ssock)
-                validate_request(request)
-                ssock.send(sample_response())
+            try:
+                with cls.server_context.wrap_socket(sock, server_side=True) as ssock:
+                    request = consume_socket(ssock)
+                    validate_request(request)
+                    ssock.send(sample_response())
+            except (ssl.SSLEOFError, ssl.SSLZeroReturnError):
+                return
             sock.close()
 
         cls._start_server(socket_handler)
