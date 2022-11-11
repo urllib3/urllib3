@@ -71,8 +71,18 @@ class TestLegacyResponse:
 class TestResponse:
     def test_cache_content(self) -> None:
         r = HTTPResponse(b"foo")
+        assert r._body == b"foo"
         assert r.data == b"foo"
         assert r._body == b"foo"
+
+    def test_cache_content_preload_false(self) -> None:
+        fp = BytesIO(b"foo")
+        r = HTTPResponse(fp, preload_content=False)
+
+        assert not r._body
+        assert r.data == b"foo"
+        assert r._body == b"foo"
+        assert r.data == b"foo"
 
     def test_default(self) -> None:
         r = HTTPResponse()
