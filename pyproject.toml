@@ -94,7 +94,6 @@ filterwarnings = [
     '''default:No IPv6 support. skipping:urllib3.exceptions.HTTPWarning''',
     '''default:ssl\.TLSVersion\.TLSv1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLS is deprecated:DeprecationWarning''',
-    '''default:ssl\.SSLContext\(\) without protocol argument is deprecated.:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1 is deprecated:DeprecationWarning''',
     '''default:ssl\.TLSVersion\.TLSv1_1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',

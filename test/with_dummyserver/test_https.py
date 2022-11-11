@@ -977,7 +977,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         # either the `ssl.TLSVersion.MAXIMUM_SUPPORTED` magic constant
         # or one of the exact versions if a system defines it.
         # https://github.com/urllib3/urllib3/issues/2477#issuecomment-1151452150
-        assert ctx.maximum_version == ssl.SSLContext().maximum_version
+        assert (
+            ctx.maximum_version
+            == ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT).maximum_version
+        )
 
     def test_ssl_context_ssl_version_uses_ssl_min_max_versions(self) -> None:
         ctx = urllib3.util.ssl_.create_urllib3_context(ssl_version=self.ssl_version())
