@@ -375,7 +375,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                     request = consume_socket(ssock)
                     validate_request(request)
                     ssock.send(sample_response())
-            except (ssl.SSLEOFError, ssl.SSLZeroReturnError):
+            except (ssl.SSLEOFError, ssl.SSLZeroReturnError, OSError):
                 return
             sock.close()
 
