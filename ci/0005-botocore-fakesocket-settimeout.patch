@@ -1,0 +1,14 @@
+diff --git a/tests/unit/test_awsrequest.py b/tests/unit/test_awsrequest.py
+index 22bd9a7..c9d4060 100644
+--- a/tests/unit/test_awsrequest.py
++++ b/tests/unit/test_awsrequest.py
+@@ -58,6 +59,9 @@ class FakeSocket:
+     def close(self):
+         pass
+ 
++    def settimeout(self, value):
++        pass
++
+ 
+ class BytesIOWithLen(six.BytesIO):
+     def __len__(self):

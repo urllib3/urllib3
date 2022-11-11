@@ -25,5 +25,5 @@ exclude_lines =
     .*:.* # Python \d.*
     .* # Abstract
     .* # Defensive:
-    if TYPE_CHECKING:
+    if (?:typing.)?TYPE_CHECKING:
     ^\s*?\.\.\.\s*$

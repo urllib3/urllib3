@@ -10,7 +10,9 @@ if TYPE_CHECKING:
 
 
 class _TYPE_DEFAULT(Enum):
-    token = 0
+    # This value should never be passed to socket.settimeout() so for safety we use a -1.
+    # socket.settimout() raises a ValueError for negative values.
+    token = -1
 
 
 _DEFAULT_TIMEOUT: "Final[_TYPE_DEFAULT]" = _TYPE_DEFAULT.token
