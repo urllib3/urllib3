@@ -60,6 +60,7 @@ jobs:
       base64-subjects: "${{ needs.build.outputs.hashes }}"
       attestation-name: "urllib3.intoto.jsonl"
       upload-assets: true
+      compile-generator: true # Workaround for https://github.com/slsa-framework/slsa-github-generator/issues/1163
 
   publish:
     name: "Publish"
