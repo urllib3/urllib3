@@ -734,29 +734,27 @@ class HTTPResponse(BaseHTTPResponse):
 
         with self._error_catcher():
             data = self._fp_read(amt) if not fp_closed else b""
-            if amt is not None:
+            if amt is not None and amt != 0 and not data:
+                # Platform-specific: Buggy versions of Python.
+                # Close the connection when no data is returned
+                #
+                # This is redundant to what httplib/http.client _should_
+                # already do.  However, versions of python released before
+                # December 15, 2012 (http://bugs.python.org/issue16298) do
+                # not properly close the connection in all cases. There is
+                # no harm in redundantly calling close.
+                self._fp.close()
                 if (
-                    amt != 0 and not data
-                ):  # Platform-specific: Buggy versions of Python.
-                    # Close the connection when no data is returned
-                    #
-                    # This is redundant to what httplib/http.client _should_
-                    # already do.  However, versions of python released before
-                    # December 15, 2012 (http://bugs.python.org/issue16298) do
-                    # not properly close the connection in all cases. There is
-                    # no harm in redundantly calling close.
-                    self._fp.close()
-                    if (
-                        self.enforce_content_length
-                        and self.length_remaining is not None
-                        and self.length_remaining != 0
-                    ):
-                        # This is an edge case that httplib failed to cover due
-                        # to concerns of backward compatibility. We're
-                        # addressing it here to make sure IncompleteRead is
-                        # raised during streaming, so all calls with incorrect
-                        # Content-Length are caught.
-                        raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
+                    self.enforce_content_length
+                    and self.length_remaining is not None
+                    and self.length_remaining != 0
+                ):
+                    # This is an edge case that httplib failed to cover due
+                    # to concerns of backward compatibility. We're
+                    # addressing it here to make sure IncompleteRead is
+                    # raised during streaming, so all calls with incorrect
+                    # Content-Length are caught.
+                    raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
 
         if data:
             self._fp_bytes_read += len(data)
