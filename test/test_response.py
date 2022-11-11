@@ -35,7 +35,7 @@ from urllib3.util.retry import RequestHistory, Retry
 
 
 class TestBytesQueueBuffer:
-    def test_single_chunk(self):
+    def test_single_chunk(self) -> None:
         buffer = BytesQueueBuffer()
         assert len(buffer) == 0
         with pytest.raises(ValueError, match="buffer is empty"):
@@ -50,12 +50,12 @@ class TestBytesQueueBuffer:
         with pytest.raises(ValueError, match="buffer is empty"):
             assert buffer.get(10)
 
-    def test_read_too_much(self):
+    def test_read_too_much(self) -> None:
         buffer = BytesQueueBuffer()
         buffer.put(b"foo")
         assert buffer.get(100) == b"foo"
 
-    def test_multiple_chunks(self):
+    def test_multiple_chunks(self) -> None:
         buffer = BytesQueueBuffer()
         buffer.put(b"foo")
         buffer.put(b"bar")
@@ -73,7 +73,7 @@ class TestBytesQueueBuffer:
         sys.version_info < (3, 8), reason="pytest-memray requires Python 3.8+"
     )
     @pytest.mark.limit_memory("12.5 MB")  # assert that we're not doubling memory usage
-    def test_memory_usage(self):
+    def test_memory_usage(self) -> None:
         # Allocate 10 1MiB chunks
         buffer = BytesQueueBuffer()
         for i in range(10):

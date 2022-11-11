@@ -12,6 +12,7 @@ from socket import timeout as SocketTimeout
 from typing import (
     TYPE_CHECKING,
     Any,
+    Deque,
     Generator,
     Iterator,
     List,
@@ -241,18 +242,18 @@ class BytesQueueBuffer:
     the data inside get().
     """
 
-    def __init__(self):
-        self.buffer = collections.deque()
-        self._size = 0
+    def __init__(self) -> None:
+        self.buffer: Deque[bytes] = collections.deque()
+        self._size: int = 0
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._size
 
-    def put(self, data: bytes):
+    def put(self, data: bytes) -> None:
         self.buffer.append(data)
         self._size += len(data)
 
-    def get(self, n: int):
+    def get(self, n: int) -> bytes:
         if not self.buffer:
             raise ValueError("buffer is empty")
         elif n < 0:
