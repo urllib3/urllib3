@@ -569,6 +569,9 @@ class HTTPResponse(BaseHTTPResponse):
         # Determine length of response
         self.length_remaining = self._init_length(request_method)
 
+        # Used to return the correct amount of bytes for partial read()s
+        self._decoded_buffer = BytesQueueBuffer()
+
         # If requested, preload the body.
         if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
@@ -852,6 +855,9 @@ class HTTPResponse(BaseHTTPResponse):
         if amt is not None:
             cache_content = False
 
+            if len(self._decoded_buffer) >= amt:
+                return self._decoded_buffer.get(amt)
+
         data = self._raw_read(amt)
 
         flush_decoder = False
@@ -860,10 +866,25 @@ class HTTPResponse(BaseHTTPResponse):
         elif amt != 0 and not data:
             flush_decoder = True
 
-        if data:
+        if not data and len(self._decoded_buffer) == 0:
+            return data
+
+        if amt is None:
             data = self._decode(data, decode_content, flush_decoder)
             if cache_content:
                 self._body = data
+        else:
+            decoded_data = self._decode(data, decode_content, flush_decoder)
+            self._decoded_buffer.put(decoded_data)
+
+            while len(self._decoded_buffer) < amt and data:
+                # TODO make sure to initially read enough data to get past the headers
+                # For example, the GZ file header takes 10 bytes, we don't want to read
+                # it one byte at a time
+                data = self._raw_read(amt)
+                decoded_data = self._decode(data, decode_content, flush_decoder)
+                self._decoded_buffer.put(decoded_data)
+            data = self._decoded_buffer.get(amt)
 
         return data
 

@@ -1501,6 +1501,7 @@ class TestSSL(SocketDummyServerTestCase):
     @pytest.mark.parametrize(
         "preload_content,read_amt", [(True, None), (False, None), (False, 2**31)]
     )
+    @pytest.mark.limit_memory("4.1 GB")
     def test_requesting_large_resources_via_ssl(
         self, preload_content: bool, read_amt: Optional[int]
     ) -> None:
@@ -1920,15 +1921,8 @@ class TestBadContentLength(SocketDummyServerTestCase):
                 "GET", url="/", preload_content=False, enforce_content_length=True
             )
             data = get_response.stream(100)
-            # Read "good" data before we try to read again.
-            # This won't trigger till generator is exhausted.
-            next(data)
-            try:
+            with pytest.raises(ProtocolError, match="12 bytes read, 10 more expected"):
                 next(data)
-                assert False
-            except ProtocolError as e:
-                assert "12 bytes read, 10 more expected" in str(e)
-
             done_event.set()
 
     def test_enforce_content_length_no_body(self) -> None:
