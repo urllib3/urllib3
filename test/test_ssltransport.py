@@ -121,7 +121,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
                     request = consume_socket(ssock)
                     validate_request(request)
                     ssock.send(sample_response())
-            except ConnectionAbortedError:
+            except (ConnectionAbortedError, ConnectionResetError):
                 return
 
         chosen_handler = handler if handler else socket_handler
