@@ -556,7 +556,7 @@ class TestResponse:
         with pytest.raises(ValueError, match="I/O operation on closed file.?"):
             next(reader)
 
-    def test_different_decode_content(self):
+    def test_different_decode_content(self) -> None:
         resp = HTTPResponse(b"foo")
         resp.read(1, decode_content=True)
         with pytest.raises(
