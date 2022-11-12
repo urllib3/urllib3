@@ -37,9 +37,6 @@ def tests_impl(
         memray_supported = False  # pytest-memray requires CPython 3.8+
     elif sys.platform == "win32":
         memray_supported = False
-    # https://github.com/bloomberg/memray/issues/249
-    elif "GITHUB_ACTIONS" in os.environ:
-        memray_supported = False
 
     # Inspired from https://hynek.me/articles/ditch-codecov-python/
     # We use parallel mode and then combine in a later CI step
