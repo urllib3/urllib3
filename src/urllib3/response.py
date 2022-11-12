@@ -264,16 +264,17 @@ class BytesQueueBuffer:
         while fetched < n:
             remaining = n - fetched
             chunk = self.buffer.popleft()
-            if remaining < len(chunk):
+            chunk_length = len(chunk)
+            if remaining < chunk_length:
                 left_chunk, right_chunk = chunk[:remaining], chunk[remaining:]
                 ret.write(left_chunk)
                 self.buffer.appendleft(right_chunk)
-                self._size -= len(left_chunk)
+                self._size -= remaining
                 break
             else:
                 ret.write(chunk)
-                self._size -= len(chunk)
-            fetched += len(chunk)
+                self._size -= chunk_length
+            fetched += chunk_length
 
             if not self.buffer:
                 break
