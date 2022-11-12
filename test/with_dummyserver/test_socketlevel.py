@@ -1277,7 +1277,7 @@ class TestSSL(SocketDummyServerTestCase):
                         certfile=DEFAULT_CERTS["certfile"],
                         ca_certs=DEFAULT_CA,
                     )
-                except ssl.SSLError:
+                except (ssl.SSLError, ConnectionResetError):
                     if i == 1:
                         raise
                     return
@@ -1486,6 +1486,8 @@ class TestSSL(SocketDummyServerTestCase):
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 )
+            except ConnectionResetError:
+                return
             except ssl.SSLError as e:
                 assert "alert unknown ca" in str(e)
                 if is_closed_socket(sock):
