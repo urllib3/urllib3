@@ -38,7 +38,7 @@ class TestBytesQueueBuffer:
     def test_single_chunk(self) -> None:
         buffer = BytesQueueBuffer()
         assert len(buffer) == 0
-        with pytest.raises(ValueError, match="buffer is empty"):
+        with pytest.raises(RuntimeError, match="buffer is empty"):
             assert buffer.get(10)
 
         buffer.put(b"foo")
@@ -47,7 +47,7 @@ class TestBytesQueueBuffer:
 
         assert buffer.get(1) == b"f"
         assert buffer.get(2) == b"oo"
-        with pytest.raises(ValueError, match="buffer is empty"):
+        with pytest.raises(RuntimeError, match="buffer is empty"):
             assert buffer.get(10)
 
     def test_read_too_much(self) -> None:
