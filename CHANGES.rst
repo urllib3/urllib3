@@ -1,75 +1,12 @@
 2.0.0a1 (2022-11-15)
 ====================
 
-Complex
--------
-
-- Added ``ssl_minimum_version`` and ``ssl_maximum_version`` options which set
-  ``SSLContext.minimum_version`` and ``SSLContext.maximum_version``.
-
-  Changed ``ssl_version`` to instead set the corresponding ``SSLContext.minimum_version``
-  and ``SSLContext.maximum_version`` values.  Regardless of ``ssl_version`` passed
-  ``SSLContext`` objects are now constructed using ``ssl.PROTOCOL_TLS_CLIENT``.
-
-  Deprecated ``ssl_version`` option in favor of ``ssl_minimum_version``. ``ssl_version``
-  will be removed in a future 2.x release of urllib3. (`#2110 <https://github.com/urllib3/urllib3/issues/2110>`__)
-
-- Changed ``Retry.BACK0FF_MAX`` with ``Retry.DEFAULT_BACKOFF_MAX``.
-
-  Added a configurable ``backoff_max`` parameter to the ``Retry`` class.
-  If a custom ``backoff_max`` is provided to the ``Retry`` class, it
-  will replace the ``Retry.DEFAULT_BACKOFF_MAX``. (`#2494 <https://github.com/urllib3/urllib3/issues/2494>`__)
-
-- All changes below are to distance the ``urllib3.connection.HTTPConnection`` API from the standard library ``http.client.HTTPConnection`` API enough to allow future HTTP implementations.
-
-  Added the ``scheme`` parameter to ``HTTPConnection.set_tunnel`` to configure the scheme of the origin being tunnelled to.
-
-  Added the ``is_closed``, ``is_connected`` and ``has_connected_to_proxy`` properties to ``HTTPConnection``.
-
-  Changed all parameters in the ``HTTPConnection`` and ``HTTPSConnection`` constructors to be keyword-only except ``host`` and ``port``.
-
-  Changed ``urllib3.util.is_connection_dropped()`` to use ``HTTPConnection.is_connected``.
-
-  Changed ``HTTPConnection.getresponse()`` to set the socket timeout from ``HTTPConnection.timeout`` value before reading
-  data from the socket. This previously was done manually by the ``HTTPConnectionPool`` calling ``HTTPConnection.sock.settimeout(...)``.
-
-  Changed the ``_proxy_host`` property to ``_tunnel_host`` in ``HTTPConnectionPool`` to more closely match how the property is used (value in ``HTTPConnection.set_tunnel()``).
-
-  Removed the ``_prepare_conn`` method from ``HTTPConnectionPool``. Previously this was only used to call ``HTTPSConnection.set_cert()`` by ``HTTPSConnectionPool``.
-
-  Removed ``tls_in_tls_required`` property from ``HTTPSConnection``. This is now calculated from the ``scheme`` parameter in ``HTTPConnection.set_tunnel()``.
-
-  Deprecated ``HTTPSConnection.set_cert()`` method. Instead pass parameters to the ``HTTPSConnection`` constructor.
-
-  Deprecated ``HTTPConnection.request_chunked()`` method. Instead pass ``chunked=True`` to ``HTTPConnection.request()``. (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__)
-
-- Removed support for OpenSSL versions earlier than 1.1.1 or that don't have SNI support.
-  When an incompatible OpenSSL version is detected an ``ImportError`` is raised.
-
-  Removed support for Python with an ``ssl`` module compiled with LibreSSL, CiscoSSL,
-  wolfSSL, and all other OpenSSL alternatives. Python is moving to require OpenSSL with PEP 644.
-
-  Changed ``urllib3.util.create_urllib3_context`` to not override the system cipher suites with
-  a default value. The new default will be cipher suites configured by the operating system.
-
-  Removed ``DEFAULT_CIPHERS``, ``HAS_SNI``, ``USE_DEFAULT_SSLCONTEXT_CIPHERS``, from the private module ``urllib3.util.ssl_``.
-
-  Removed ``urllib3.exceptions.SNIMissingWarning``. (`#2168 <https://github.com/urllib3/urllib3/issues/2168>`__)
-
-- Changed ``multipart/form-data`` header parameter formatting matches the WHATWG
-  HTML Standard as of 2021-06-10. Control characters in filenames are no
-  longer percent encoded.
-
-  ``format_header_param_html5`` and ``format_header_param`` are
-  deprecated names for ``format_multipart_header_param``.
-
-  The ``RequestField`` ``header_formatter`` parameter is deprecated in
-  favor of overriding the ``_render_part`` method. (`#2257 <https://github.com/urllib3/urllib3/issues/2257>`__)
-
 Added
 -----
 
 - Added type hints to the ``urllib3`` module. (`#1897 <https://github.com/urllib3/urllib3/issues/1897>`__)
+- Added ``ssl_minimum_version`` and ``ssl_maximum_version`` options which set
+  ``SSLContext.minimum_version`` and ``SSLContext.maximum_version``. (`#2110 <https://github.com/urllib3/urllib3/issues/2110>`__)
 - Added support for Zstandard (RFC 8878) when ``zstandard`` 1.18.0 or later is installed.
   Added the ``zstd`` extra which installs the ``zstandard`` package. (`#1992 <https://github.com/urllib3/urllib3/issues/1992>`__)
 - Added ``urllib3.response.BaseHTTPResponse`` class. All future response classes will be subclasses of ``BaseHTTPResponse``. (`#2083 <https://github.com/urllib3/urllib3/issues/2083>`__)
@@ -85,7 +22,12 @@ Added
   value into a comma-separated list (``X-My-Header: foo, bar``). (`#2242 <https://github.com/urllib3/urllib3/issues/2242>`__)
 - Added ``NameResolutionError`` exception when a DNS error occurs. (`#2305 <https://github.com/urllib3/urllib3/issues/2305>`__)
 - Added ``proxy_assert_hostname`` and ``proxy_assert_fingerprint`` kwargs to ``ProxyManager``. (`#2409 <https://github.com/urllib3/urllib3/issues/2409>`__)
+- Added a configurable ``backoff_max`` parameter to the ``Retry`` class.
+  If a custom ``backoff_max`` is provided to the ``Retry`` class, it
+  will replace the ``Retry.DEFAULT_BACKOFF_MAX``. (`#2494 <https://github.com/urllib3/urllib3/issues/2494>`__)
 - Added the ``authority`` property to the Url class as per RFC 3986 3.2. This property should be used in place of ``netloc`` for users who want to include the userinfo (auth) component of the URI. (`#2520 <https://github.com/urllib3/urllib3/issues/2520>`__)
+- Added the ``scheme`` parameter to ``HTTPConnection.set_tunnel`` to configure the scheme of the origin being tunnelled to. (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__)
+- Added the ``is_closed``, ``is_connected`` and ``has_connected_to_proxy`` properties to ``HTTPConnection``. (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__)
 
 Removed
 -------
@@ -95,6 +37,11 @@ Removed
   This behavior was deprecated in May 2000 in RFC 2818. Instead only ``subjectAltName``
   is used to verify the hostname by default. To enable verifying the hostname against
   ``commonName`` use ``SSLContext.hostname_checks_common_name = True``. (`#2113 <https://github.com/urllib3/urllib3/issues/2113>`__)
+- Removed support for Python with an ``ssl`` module compiled with LibreSSL, CiscoSSL,
+  wolfSSL, and all other OpenSSL alternatives. Python is moving to require OpenSSL with PEP 644. (`#2168 <https://github.com/urllib3/urllib3/issues/2168>`__)
+- Removed support for OpenSSL versions earlier than 1.1.1 or that don't have SNI support.
+  When an incompatible OpenSSL version is detected an ``ImportError`` is raised. (`#2168 <https://github.com/urllib3/urllib3/issues/2168>`__)
+- Removed the list of default ciphers for OpenSSL 1.1.1+ and SecureTransport as their own defaults are already secure. (`#2082 <https://github.com/urllib3/urllib3/issues/2082>`__)
 - Removed ``urllib3.contrib.appengine.AppEngineManager`` and support for Google App Engine Standard Environment. (`#2044 <https://github.com/urllib3/urllib3/issues/2044>`__)
 - Removed deprecated ``Retry`` options ``method_whitelist``, ``DEFAULT_REDIRECT_HEADERS_BLACKLIST``. (`#2086 <https://github.com/urllib3/urllib3/issues/2086>`__)
 - Removed ``urllib3.HTTPResponse.from_httplib``. (`#2648 <https://github.com/urllib3/urllib3/issues/2648>`__)
@@ -104,16 +51,21 @@ Removed
   function instead of the ``urllib3.request`` module. (`#2269 <https://github.com/urllib3/urllib3/issues/2269>`__)
 - Removed support for SSLv3.0 from the ``urllib3.contrib.pyopenssl`` even when support is available from the compiled OpenSSL library. (`#2233 <https://github.com/urllib3/urllib3/issues/2233>`__)
 - Removed the deprecated ``urllib3.contrib.ntlmpool`` module. (`#2339 <https://github.com/urllib3/urllib3/issues/2339>`__)
-- Removed the list of default ciphers for OpenSSL 1.1.1+ and SecureTransport as their own defaults are already secure. (`#2082 <https://github.com/urllib3/urllib3/issues/2082>`__)
+- Removed ``DEFAULT_CIPHERS``, ``HAS_SNI``, ``USE_DEFAULT_SSLCONTEXT_CIPHERS``, from the private module ``urllib3.util.ssl_``. (`#2168 <https://github.com/urllib3/urllib3/issues/2168>`__)
+- Removed ``urllib3.exceptions.SNIMissingWarning``. (`#2168 <https://github.com/urllib3/urllib3/issues/2168>`__)
+- Removed the ``_prepare_conn`` method from ``HTTPConnectionPool``. Previously this was only used to call ``HTTPSConnection.set_cert()`` by ``HTTPSConnectionPool``. (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__)
+- Removed ``tls_in_tls_required`` property from ``HTTPSConnection``. This is now determined from the ``scheme`` parameter in ``HTTPConnection.set_tunnel()``. (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__)
 
 Changed
 -------
 
-- Changed ``urllib3[brotli]`` extra to install Google's Brotli C bindings on CPython.
-  The Brotli CFFI bindings are still used on non-CPython implementations like PyPy.
-  This change was made to increase performance for CPython as CFFI is typically
-  is less performant than C extensions. (`#2099 <https://github.com/urllib3/urllib3/issues/2099>`__)
+- Changed ``ssl_version`` to instead set the corresponding ``SSLContext.minimum_version``
+  and ``SSLContext.maximum_version`` values.  Regardless of ``ssl_version`` passed
+  ``SSLContext`` objects are now constructed using ``ssl.PROTOCOL_TLS_CLIENT``. (`#2110 <https://github.com/urllib3/urllib3/issues/2110>`__)
 - Changed default ``SSLContext.minimum_version`` to be ``TLSVersion.TLSv1_2`` in line with Python 3.10. (`#2373 <https://github.com/urllib3/urllib3/issues/2373>`__)
+- Changed ``urllib3.util.create_urllib3_context`` to not override the system cipher suites with
+  a default value. The new default will be cipher suites configured by the operating system. (`#2168 <https://github.com/urllib3/urllib3/issues/2168>`__)
+- Changed ``multipart/form-data`` header parameter formatting matches the WHATWG HTML Standard as of 2021-06-10. Control characters in filenames are no longer percent encoded. (`#2257 <https://github.com/urllib3/urllib3/issues/2257>`__)
 - Changed ``urllib3.HTTPConnection.getresponse`` to return an instance of ``urllib3.HTTPResponse`` instead of ``http.client.HTTPResponse``. (`#2648 <https://github.com/urllib3/urllib3/issues/2648>`__)
 - Changed return type of ``HTTPResponse.getheaders()`` method to return a list of key-value tuples to match CPython. (`#1543 <https://github.com/urllib3/urllib3/issues/1543>`__)
 - Changed the error raised when connecting via HTTPS when the ``ssl`` module isn't available from ``SSLError`` to ``ImportError``. (`#2589 <https://github.com/urllib3/urllib3/issues/2589>`__)
@@ -122,14 +74,25 @@ Changed
 - Changed internal implementation of ``HTTPHeaderDict`` to use ``dict`` instead of ``collections.OrderedDict`` for better performance. (`#2080 <https://github.com/urllib3/urllib3/issues/2080>`__)
 - Changed the ``urllib3.contrib.pyopenssl`` module to wrap ``OpenSSL.SSL.Error`` with ``ssl.SSLError`` in ``PyOpenSSLContext.load_cert_chain``. (`#2628 <https://github.com/urllib3/urllib3/issues/2628>`__)
 - Changed usage of the deprecated ``socket.error`` to ``OSError``. (`#2120 <https://github.com/urllib3/urllib3/issues/2120>`__)
+- Changed all parameters in the ``HTTPConnection`` and ``HTTPSConnection`` constructors to be keyword-only except ``host`` and ``port``. (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__)
+- Changed ``urllib3.util.is_connection_dropped()`` to use ``HTTPConnection.is_connected``. (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__)
+- Changed ``HTTPConnection.getresponse()`` to set the socket timeout from ``HTTPConnection.timeout`` value before reading
+  data from the socket. This previously was done manually by the ``HTTPConnectionPool`` calling ``HTTPConnection.sock.settimeout(...)``. (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__)
+- Changed the ``_proxy_host`` property to ``_tunnel_host`` in ``HTTPConnectionPool`` to more closely match how the property is used (value in ``HTTPConnection.set_tunnel()``). (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__)
+- Changed name of ``Retry.BACK0FF_MAX`` to be ``Retry.DEFAULT_BACKOFF_MAX``.
 
 Deprecated
 ----------
 
-- Deprecated ``urllib3.contrib.pyopenssl`` module which will be removed in future urllib3 v2.x release. (`#2691 <https://github.com/urllib3/urllib3/issues/2691>`__)
-- Deprecated ``urllib3.contrib.securetransport`` module which will be removed in future urllib3 v2.x release. (`#2692 <https://github.com/urllib3/urllib3/issues/2692>`__)
-- Deprecated the ``strict`` parameter as it's not longer needed in Python 3.x. (`#2267 <https://github.com/urllib3/urllib3/issues/2267>`__)
-- Deprecated the ``NewConnectionError.pool`` attribute which will be removed in a future urllib3 v2.x release. (`#2271 <https://github.com/urllib3/urllib3/issues/2271>`__)
+- Deprecated ``urllib3.contrib.pyopenssl`` module which will be removed in urllib3 v2.1.0. (`#2691 <https://github.com/urllib3/urllib3/issues/2691>`__)
+- Deprecated ``urllib3.contrib.securetransport`` module which will be removed in urllib3 v2.1.0. (`#2692 <https://github.com/urllib3/urllib3/issues/2692>`__)
+- Deprecated ``ssl_version`` option in favor of ``ssl_minimum_version``. ``ssl_version`` will be removed in urllib3 v2.1.0. (`#2110 <https://github.com/urllib3/urllib3/issues/2110>`__)
+- Deprecated the ``strict`` parameter as it's not longer needed in Python 3.x. It will be removed in urllib3 v2.1.0 (`#2267 <https://github.com/urllib3/urllib3/issues/2267>`__)
+- Deprecated the ``NewConnectionError.pool`` attribute which will be removed in urllib3 v2.1.0. (`#2271 <https://github.com/urllib3/urllib3/issues/2271>`__)
+- Deprecated ``format_header_param_html5`` and ``format_header_param`` in favor of ``format_multipart_header_param``. (`#2257 <https://github.com/urllib3/urllib3/issues/2257>`__)
+- Deprecated ``RequestField.header_formatter`` parameter which will be removed in urllib3 v2.1.0. (`#2257 <https://github.com/urllib3/urllib3/issues/2257>`__)
+- Deprecated ``HTTPSConnection.set_cert()`` method. Instead pass parameters to the ``HTTPSConnection`` constructor. (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__)
+- Deprecated ``HTTPConnection.request_chunked()`` method which will be removed in urllib3 v2.1.0. Instead pass ``chunked=True`` to ``HTTPConnection.request()``. (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__)
 
 Fixed
 -----
@@ -139,7 +102,6 @@ Fixed
 - Fixed the default value of ``HTTPSConnection.socket_options`` to match ``HTTPConnection``. (`#2213 <https://github.com/urllib3/urllib3/issues/2213>`__)
 - Fixed a bug where ``headers`` would be modified by the ``remove_headers_on_redirect`` feature. (`#2272 <https://github.com/urllib3/urllib3/issues/2272>`__)
 - Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()``. (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__)
-- Fixed reading 2 or more GiB of data at a time using ``urllib3.response.HTTPResponse.read``. (`#2513 <https://github.com/urllib3/urllib3/issues/2513>`__)
 
 1.26.12 (2022-08-22)
 ====================
