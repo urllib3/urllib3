@@ -573,6 +573,8 @@ class HTTPResponse(BaseHTTPResponse):
 
         # Used to return the correct amount of bytes for partial read()s
         self._decoded_buffer = BytesQueueBuffer()
+        # Track if decode_content=True was used already
+        self._has_decoded_content = False
 
         # If requested, preload the body.
         if preload_content and not self._body:
@@ -853,6 +855,14 @@ class HTTPResponse(BaseHTTPResponse):
         self._init_decoder()
         if decode_content is None:
             decode_content = self.decode_content
+
+        if decode_content:
+            self._has_decoded_content = True
+        if self._has_decoded_content and not decode_content:
+            raise RuntimeError(
+                "Calling read(decode_content=False) is not supported after "
+                "read(decode_content=True) was called."
+            )
 
         if amt is not None:
             cache_content = False
