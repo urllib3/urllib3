@@ -52,7 +52,13 @@ _UNRESERVED_PAT = (
 _IPV6_PAT = "(?:" + "|".join([x % _subs for x in _variations]) + ")"
 _ZONE_ID_PAT = "(?:%25|%)(?:[" + _UNRESERVED_PAT + "]|%[a-fA-F0-9]{2})+"
 _IPV6_ADDRZ_PAT = r"\[" + _IPV6_PAT + r"(?:" + _ZONE_ID_PAT + r")?\]"
-_REG_NAME_PAT = r"(?:[^\[\]%:/?#]|%[a-fA-F0-9]{2})*"
+_PCT_ENCODED_PAT = r"%[a-fA-F0-9]{2}"
+_SUB_DELIMS_PAT = r"[!\$&'\(\)\*\+,;=]"
+_REG_NAME_PAT = r"(?:%s|%s|%s)*" % (
+    _UNRESERVED_PAT,
+    _PCT_ENCODED_PAT,
+    _SUB_DELIMS_PAT,
+)
 _TARGET_RE = re.compile(r"^(/[^?#]*)(?:\?([^#]*))?(?:#.*)?$")
 
 _IPV4_RE = re.compile("^" + _IPV4_PAT + "$")
