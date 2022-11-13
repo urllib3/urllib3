@@ -876,7 +876,10 @@ class HTTPResponse(BaseHTTPResponse):
             if cache_content:
                 self._body = data
         else:
-            # TODO if there was no compression involved, we should not use the buffer
+            # do not waste memory on buffer when not decoding
+            if not decode_content:
+                return data
+
             decoded_data = self._decode(data, decode_content, flush_decoder)
             self._decoded_buffer.put(decoded_data)
 

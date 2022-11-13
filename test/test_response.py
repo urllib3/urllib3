@@ -734,7 +734,7 @@ class TestResponse:
         [(True, None), (False, None), (False, 10 * 2**20)],
     )
     @pytest.mark.limit_memory("25 MB")
-    def test_buffer_memory_usage_one_chunk(
+    def test_buffer_memory_usage_decode_one_chunk(
         self, preload_content: bool, amt: int
     ) -> None:
         content_length = 10 * 2**20  # 10 MiB
@@ -744,6 +744,20 @@ class TestResponse:
             preload_content=preload_content,
             headers={"content-encoding": "deflate"},
         )
+        data = resp.data if preload_content else resp.read(amt)
+        assert len(data) == content_length
+
+    @pytest.mark.parametrize(
+        "preload_content, amt",
+        [(True, None), (False, None), (False, 10 * 2**20)],
+    )
+    @pytest.mark.limit_memory("10.5 MB")
+    def test_buffer_memory_usage_no_decoding(
+        self, preload_content: bool, amt: int
+    ) -> None:
+        content_length = 10 * 2**20  # 10 MiB
+        fp = BytesIO(bytes(content_length))
+        resp = HTTPResponse(fp, preload_content=preload_content, decode_content=False)
         data = resp.data if preload_content else resp.read(amt)
         assert len(data) == content_length
 
