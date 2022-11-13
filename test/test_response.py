@@ -556,18 +556,6 @@ class TestResponse:
         with pytest.raises(ValueError, match="I/O operation on closed file.?"):
             next(reader)
 
-    def test_different_decode_content(self) -> None:
-        resp = HTTPResponse(b"foo")
-        resp.read(1, decode_content=True)
-        with pytest.raises(
-            RuntimeError,
-            match=(
-                r"Calling read\(decode_content=False\) is not supported after "
-                r"read\(decode_content=True\) was called"
-            ),
-        ):
-            resp.read(1, decode_content=False)
-
     def test_streaming(self) -> None:
         fp = BytesIO(b"foo")
         resp = HTTPResponse(fp, preload_content=False)
