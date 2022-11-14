@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 import collections
 import io
 import json as _json
@@ -13,7 +12,6 @@ from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
-
 
 try:
     try:
@@ -235,7 +233,7 @@ class BytesQueueBuffer:
     """
 
     def __init__(self) -> None:
-        self.buffer: Deque[bytes] = collections.deque()
+        self.buffer: typing.Deque[bytes] = collections.deque()
         self._size: int = 0
 
     def __len__(self) -> int:
@@ -791,7 +789,7 @@ class HTTPResponse(BaseHTTPResponse):
 
     def _raw_read(
         self,
-        amt: Optional[int] = None,
+        amt: typing.Optional[int] = None,
     ) -> bytes:
         """
         Reads `amt` of bytes from the socket.
