@@ -125,7 +125,7 @@ def match_hostname(
         # Not an IP address (common case)
         host_ip = None
     dnsnames = []
-    san: tuple[tuple[str, str], ...] = cert.get("subjectAltName", ())
+    san: typing.Tuple[typing.Tuple[str, str], ...] = cert.get("subjectAltName", ())
     key: str
     value: str
     for key, value in san:

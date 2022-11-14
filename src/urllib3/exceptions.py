@@ -28,7 +28,7 @@ class HTTPWarning(Warning):
     pass
 
 
-_TYPE_REDUCE_RESULT = tuple[typing.Callable[..., object], tuple[object, ...]]
+_TYPE_REDUCE_RESULT = typing.Tuple[typing.Callable[..., object], typing.Tuple[object, ...]]
 
 
 class PoolError(HTTPError):

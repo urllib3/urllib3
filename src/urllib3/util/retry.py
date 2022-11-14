@@ -204,7 +204,7 @@ class Retry:
         backoff_max: float = DEFAULT_BACKOFF_MAX,
         raise_on_redirect: bool = True,
         raise_on_status: bool = True,
-        history: typing.Optional[tuple[RequestHistory, ...]] = None,
+        history: typing.Optional[typing.Tuple[RequestHistory, ...]] = None,
         respect_retry_after_header: bool = True,
         remove_headers_on_redirect: typing.Collection[
             str

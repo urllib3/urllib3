@@ -189,7 +189,7 @@ class SSLTransport:
     def version(self) -> typing.Optional[str]:
         return self.sslobj.version()
 
-    def cipher(self) -> typing.Optional[tuple[str, str, int]]:
+    def cipher(self) -> typing.Optional[typing.Tuple[str, str, int]]:
         return self.sslobj.cipher()
 
     def selected_alpn_protocol(self) -> typing.Optional[str]:
@@ -198,7 +198,7 @@ class SSLTransport:
     def selected_npn_protocol(self) -> typing.Optional[str]:
         return self.sslobj.selected_npn_protocol()
 
-    def shared_ciphers(self) -> typing.Optional[list[tuple[str, str, int]]]:
+    def shared_ciphers(self) -> typing.Optional[list[typing.Tuple[str, str, int]]]:
         return self.sslobj.shared_ciphers()
 
     def compression(self) -> typing.Optional[str]:

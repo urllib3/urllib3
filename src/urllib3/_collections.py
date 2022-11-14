@@ -32,7 +32,7 @@ _DT = typing.TypeVar("_DT")
 ValidHTTPHeaderSource = typing.Union[
     "HTTPHeaderDict",
     typing.Mapping[str, str],
-    typing.Iterable[tuple[str, str]],
+    typing.Iterable[typing.Tuple[str, str]],
     "HasGettableStringKeys",
 ]
 
@@ -54,7 +54,7 @@ def ensure_can_construct_http_header_dict(
         # Similarly to Mapping, full runtime checking of the contents of an Iterable is
         # expensive, so for the purposes of typechecking, we assume that any Iterable
         # is the right shape.
-        return typing.cast(typing.Iterable[tuple[str, str]], potential)
+        return typing.cast(typing.Iterable[typing.Tuple[str, str]], potential)
     elif hasattr(potential, "keys") and hasattr(potential, "__getitem__"):
         return typing.cast("HasGettableStringKeys", potential)
     else:
@@ -152,7 +152,7 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
             return set(self._container.keys())
 
 
-class HTTPHeaderDictItemView(set[tuple[str, str]]):
+class HTTPHeaderDictItemView(set[typing.Tuple[str, str]]):
     """
     HTTPHeaderDict is unusual for a Mapping[str, str] in that it has two modes of
     address.
@@ -189,7 +189,7 @@ class HTTPHeaderDictItemView(set[tuple[str, str]]):
     def __len__(self) -> int:
         return len(list(self._headers.iteritems()))
 
-    def __iter__(self) -> typing.Iterator[tuple[str, str]]:
+    def __iter__(self) -> typing.Iterator[typing.Tuple[str, str]]:
         return self._headers.iteritems()
 
     def __contains__(self, item: object) -> bool:
@@ -349,7 +349,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             for key, val in other.items():
                 self.add(key, val)
         elif isinstance(other, typing.Iterable):
-            other = typing.cast(typing.Iterable[tuple[str, str]], other)
+            other = typing.cast(typing.Iterable[typing.Tuple[str, str]], other)
             for key, value in other:
                 self.add(key, value)
         elif hasattr(other, "keys") and hasattr(other, "__getitem__"):
@@ -411,14 +411,14 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         clone._copy_from(self)
         return clone
 
-    def iteritems(self) -> typing.Iterator[tuple[str, str]]:
+    def iteritems(self) -> typing.Iterator[typing.Tuple[str, str]]:
         """Iterate over all header lines, including duplicate ones."""
         for key in self:
             vals = self._container[key.lower()]
             for val in vals[1:]:
                 yield vals[0], val
 
-    def itermerged(self) -> typing.Iterator[tuple[str, str]]:
+    def itermerged(self) -> typing.Iterator[typing.Tuple[str, str]]:
         """Iterate over all headers, merging duplicate ones together."""
         for key in self:
             val = self._container[key.lower()]

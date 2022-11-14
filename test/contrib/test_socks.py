@@ -109,12 +109,12 @@ def _set_up_fake_getaddrinfo(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_getaddrinfo(
         addr: str, port: int, family: int, socket_type: int
     ) -> list[
-        tuple[
+        typing.Tuple[
             socket.AddressFamily,
             socket.SocketKind,
             int,
             str,
-            typing.Union[tuple[str, int], tuple[str, int, int, int]],
+            typing.Union[typing.Tuple[str, int], typing.Tuple[str, int, int, int]],
         ]
     ]:
         gai_list = real_getaddrinfo(addr, port, family, socket_type)
@@ -129,7 +129,7 @@ def handle_socks5_negotiation(
     negotiate: bool,
     username: typing.Optional[bytes] = None,
     password: typing.Optional[bytes] = None,
-) -> typing.Generator[tuple[typing.Union[bytes, str], int], bool, None]:
+) -> typing.Generator[typing.Tuple[typing.Union[bytes, str], int], bool, None]:
     """
     Handle the SOCKS5 handshake.
 
@@ -193,7 +193,7 @@ def handle_socks5_negotiation(
 
 def handle_socks4_negotiation(
     sock: socket.socket, username: typing.Optional[bytes] = None
-) -> typing.Generator[tuple[typing.Union[bytes, str], int], bool, None]:
+) -> typing.Generator[typing.Tuple[typing.Union[bytes, str], int], bool, None]:
     """
     Handle the SOCKS4 handshake.
 

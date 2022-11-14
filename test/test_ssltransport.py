@@ -21,7 +21,7 @@ if typing.TYPE_CHECKING:
 PER_TEST_TIMEOUT = 60
 
 
-def server_client_ssl_contexts() -> tuple[ssl.SSLContext, ssl.SSLContext]:
+def server_client_ssl_contexts() -> typing.Tuple[ssl.SSLContext, ssl.SSLContext]:
     if hasattr(ssl, "PROTOCOL_TLS_SERVER"):
         server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     server_context.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])

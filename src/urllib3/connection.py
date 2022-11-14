@@ -118,7 +118,7 @@ class HTTPConnection(_HTTPConnection):
     proxy_is_verified: typing.Optional[bool] = None
 
     blocksize: int
-    source_address: typing.Optional[tuple[str, int]]
+    source_address: typing.Optional[typing.Tuple[str, int]]
     socket_options: typing.Optional[connection._TYPE_SOCKET_OPTIONS]
 
     _has_connected_to_proxy: bool
@@ -133,7 +133,7 @@ class HTTPConnection(_HTTPConnection):
         port: typing.Optional[int] = None,
         *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-        source_address: typing.Optional[tuple[str, int]] = None,
+        source_address: typing.Optional[typing.Tuple[str, int]] = None,
         blocksize: int = 8192,
         socket_options: typing.Optional[
             connection._TYPE_SOCKET_OPTIONS
@@ -501,7 +501,7 @@ class HTTPSConnection(HTTPConnection):
         port: typing.Optional[int] = None,
         *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-        source_address: typing.Optional[tuple[str, int]] = None,
+        source_address: typing.Optional[typing.Tuple[str, int]] = None,
         blocksize: int = 8192,
         socket_options: typing.Optional[
             connection._TYPE_SOCKET_OPTIONS

@@ -11,7 +11,7 @@ from .fields import _TYPE_FIELD_VALUE_TUPLE, RequestField
 writer = codecs.lookup("utf-8")[3]
 
 _TYPE_FIELDS_SEQUENCE = typing.Sequence[
-    typing.Union[tuple[str, _TYPE_FIELD_VALUE_TUPLE], RequestField]
+    typing.Union[typing.Tuple[str, _TYPE_FIELD_VALUE_TUPLE], RequestField]
 ]
 _TYPE_FIELDS = typing.Union[
     _TYPE_FIELDS_SEQUENCE,
@@ -34,7 +34,7 @@ def iter_field_objects(fields: _TYPE_FIELDS) -> typing.Iterable[RequestField]:
     :class:`~urllib3.fields.RequestField`.
 
     """
-    iterable: typing.Iterable[typing.Union[RequestField, tuple[str, _TYPE_FIELD_VALUE_TUPLE]]]
+    iterable: typing.Iterable[typing.Union[RequestField, typing.Tuple[str, _TYPE_FIELD_VALUE_TUPLE]]]
 
     if isinstance(fields, typing.Mapping):
         iterable = fields.items()
@@ -50,7 +50,7 @@ def iter_field_objects(fields: _TYPE_FIELDS) -> typing.Iterable[RequestField]:
 
 def encode_multipart_formdata(
     fields: _TYPE_FIELDS, boundary: typing.Optional[str] = None
-) -> tuple[bytes, str]:
+) -> typing.Tuple[bytes, str]:
     """
     Encode a dictionary of ``fields`` using the multipart/form-data MIME format.
 

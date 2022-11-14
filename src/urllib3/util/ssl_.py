@@ -19,7 +19,7 @@ IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
 ALPN_PROTOCOLS = ["http/1.1"]
 
-_TYPE_VERSION_INFO = tuple[int, int, int, str, int]
+_TYPE_VERSION_INFO = typing.Tuple[int, int, int, str, int]
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
@@ -78,8 +78,8 @@ if typing.TYPE_CHECKING:
     from .ssltransport import SSLTransport as SSLTransportType
 
     class _TYPE_PEER_CERT_RET_DICT(TypedDict, total=False):
-        subjectAltName: tuple[tuple[str, str], ...]
-        subject: tuple[tuple[tuple[str, str], ...], ...]
+        subjectAltName: typing.Tuple[typing.Tuple[str, str], ...]
+        subject: typing.Tuple[typing.Tuple[typing.Tuple[str, str], ...], ...]
         serialNumber: str
 
 

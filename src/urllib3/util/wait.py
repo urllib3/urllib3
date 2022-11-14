@@ -72,7 +72,7 @@ def poll_wait_for_socket(
     poll_obj.register(sock, mask)
 
     # For some reason, poll() takes timeout in milliseconds
-    def do_poll(t: typing.Optional[float]) -> list[tuple[int, int]]:
+    def do_poll(t: typing.Optional[float]) -> list[typing.Tuple[int, int]]:
         if t is not None:
             t *= 1000
         return poll_obj.poll(t)

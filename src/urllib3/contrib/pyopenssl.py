@@ -234,7 +234,7 @@ def _dnsname_to_stdlib(name: str) -> typing.Optional[str]:
     return encoded_name.decode("utf-8")
 
 
-def get_subj_alt_name(peer_cert: "X509") -> list[tuple[str, str]]:
+def get_subj_alt_name(peer_cert: "X509") -> list[typing.Tuple[str, str]]:
     """
     Given an PyOpenSSL certificate, provides all the subject alternative names.
     """

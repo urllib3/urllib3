@@ -222,7 +222,7 @@ class BaseHTTPResponse(io.IOBase):
         CONTENT_DECODERS += ["zstd"]
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
-    DECODER_ERROR_CLASSES: tuple[typing.Type[Exception], ...] = (IOError, zlib.error)
+    DECODER_ERROR_CLASSES: typing.Tuple[typing.Type[Exception], ...] = (IOError, zlib.error)
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
 
@@ -403,7 +403,7 @@ class BaseHTTPResponse(io.IOBase):
             return len(temp)
 
     # Compatibility methods for http.client.HTTPResponse
-    def getheaders(self) -> list[tuple[str, str]]:
+    def getheaders(self) -> list[typing.Tuple[str, str]]:
         return list(self.headers.items())
 
     def getheader(self, name: str, default: typing.Optional[str] = None) -> typing.Optional[str]:

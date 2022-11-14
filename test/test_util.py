@@ -144,7 +144,7 @@ class TestUtil:
 
     @pytest.mark.parametrize(["url", "scheme_host_port"], url_host_map)
     def test_scheme_host_port(
-        self, url: str, scheme_host_port: tuple[str, str, typing.Optional[int]]
+        self, url: str, scheme_host_port: typing.Tuple[str, str, typing.Optional[int]]
     ) -> None:
         parsed_url = parse_url(url)
         scheme, host, port = scheme_host_port
@@ -369,7 +369,7 @@ class TestUtil:
         returned_url = parse_url(url)
         assert returned_url.request_uri == expected_request_uri
 
-    url_authority_map: list[tuple[str, typing.Optional[str]]] = [
+    url_authority_map: list[typing.Tuple[str, typing.Optional[str]]] = [
         ("http://user:pass@google.com/mail", "user:pass@google.com"),
         ("http://user:pass@google.com:80/mail", "user:pass@google.com:80"),
         ("http://user@google.com:80/mail", "user@google.com:80"),
@@ -1029,7 +1029,7 @@ class TestUtilSSL:
 
     def _wrap_socket_and_mock_warn(
         self, sock: socket.socket, server_hostname: typing.Optional[str]
-    ) -> tuple[Mock, MagicMock]:
+    ) -> typing.Tuple[Mock, MagicMock]:
         mock_context = Mock()
         with patch("warnings.warn") as warn:
             ssl_wrap_socket(

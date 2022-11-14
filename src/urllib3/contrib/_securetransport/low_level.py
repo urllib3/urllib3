@@ -48,7 +48,7 @@ def _cf_data_from_bytes(bytestring: bytes) -> CFData:
     )
 
 
-def _cf_dictionary_from_tuples(tuples: list[tuple[typing.Any, typing.Any]]) -> CFDictionary:
+def _cf_dictionary_from_tuples(tuples: list[typing.Tuple[typing.Any, typing.Any]]) -> CFDictionary:
     """
     Given a list of Python tuples, create an associated CFDictionary.
     """
@@ -225,7 +225,7 @@ def _is_identity(item: CFTypeRef) -> bool:
     return CoreFoundation.CFGetTypeID(item) == expected  # type: ignore[no-any-return]
 
 
-def _temporary_keychain() -> tuple[SecKeychainRef, str]:
+def _temporary_keychain() -> typing.Tuple[SecKeychainRef, str]:
     """
     This function creates a temporary Mac keychain that we can use to work with
     credentials. This keychain uses a one-time password and a temporary file to
@@ -262,7 +262,7 @@ def _temporary_keychain() -> tuple[SecKeychainRef, str]:
 
 def _load_items_from_file(
     keychain: SecKeychainRef, path: str
-) -> tuple[list[CFTypeRef], list[CFTypeRef]]:
+) -> typing.Tuple[list[CFTypeRef], list[CFTypeRef]]:
     """
     Given a single file, loads all the trust objects from it into arrays and
     the keychain.

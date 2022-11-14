@@ -305,7 +305,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             ((socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),),
         ],
     )
-    def test_socket_options(self, socket_options: tuple[int, int, int]) -> None:
+    def test_socket_options(self, socket_options: typing.Tuple[int, int, int]) -> None:
         """Test that connections accept socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries to
         # connect to the host provided so we need a dummyserver to be running.
@@ -727,7 +727,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         "invalid_source_address, is_ipv6", INVALID_SOURCE_ADDRESSES
     )
     def test_source_address_error(
-        self, invalid_source_address: tuple[str, int], is_ipv6: bool
+        self, invalid_source_address: typing.Tuple[str, int], is_ipv6: bool
     ) -> None:
         with HTTPConnectionPool(
             self.host, self.port, source_address=invalid_source_address, retries=False

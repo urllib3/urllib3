@@ -6,7 +6,7 @@ import typing
 
 _TYPE_FIELD_VALUE = typing.Union[str, bytes]
 _TYPE_FIELD_VALUE_TUPLE = typing.Union[
-    _TYPE_FIELD_VALUE, tuple[str, _TYPE_FIELD_VALUE], tuple[str, _TYPE_FIELD_VALUE, str]
+    _TYPE_FIELD_VALUE, typing.Tuple[str, _TYPE_FIELD_VALUE], typing.Tuple[str, _TYPE_FIELD_VALUE, str]
 ]
 
 
@@ -226,10 +226,10 @@ class RequestField:
         if isinstance(value, tuple):
             if len(value) == 3:
                 filename, data, content_type = typing.cast(
-                    tuple[str, _TYPE_FIELD_VALUE, str], value
+                    typing.Tuple[str, _TYPE_FIELD_VALUE, str], value
                 )
             else:
-                filename, data = typing.cast(tuple[str, _TYPE_FIELD_VALUE], value)
+                filename, data = typing.cast(typing.Tuple[str, _TYPE_FIELD_VALUE], value)
                 content_type = guess_content_type(filename)
         else:
             filename = None
@@ -263,7 +263,7 @@ class RequestField:
         self,
         header_parts: typing.Union[
             dict[str, typing.Optional[_TYPE_FIELD_VALUE]],
-            typing.Sequence[tuple[str, typing.Optional[_TYPE_FIELD_VALUE]]],
+            typing.Sequence[typing.Tuple[str, typing.Optional[_TYPE_FIELD_VALUE]]],
         ],
     ) -> str:
         """
@@ -276,7 +276,7 @@ class RequestField:
             A sequence of (k, v) tuples or a :class:`dict` of (k, v) to format
             as `k1="v1"; k2="v2"; ...`.
         """
-        iterable: typing.Iterable[tuple[str, typing.Optional[_TYPE_FIELD_VALUE]]]
+        iterable: typing.Iterable[typing.Tuple[str, typing.Optional[_TYPE_FIELD_VALUE]]]
 
         parts = []
         if isinstance(header_parts, dict):

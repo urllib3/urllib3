@@ -6,7 +6,7 @@ import typing
 from ..exceptions import LocationParseError
 from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 
-_TYPE_SOCKET_OPTIONS = typing.Sequence[tuple[int, int, typing.Union[int, bytes]]]
+_TYPE_SOCKET_OPTIONS = typing.Sequence[typing.Tuple[int, int, typing.Union[int, bytes]]]
 
 if typing.TYPE_CHECKING:
     from .._base_connection import BaseHTTPConnection
@@ -25,9 +25,9 @@ def is_connection_dropped(conn: "BaseHTTPConnection") -> bool:  # Platform-speci
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
 def create_connection(
-    address: tuple[str, int],
+    address: typing.Tuple[str, int],
     timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-    source_address: typing.Optional[tuple[str, int]] = None,
+    source_address: typing.Optional[typing.Tuple[str, int]] = None,
     socket_options: typing.Optional[_TYPE_SOCKET_OPTIONS] = None,
 ) -> socket.socket:
     """Connect to *address* and return the socket object.
