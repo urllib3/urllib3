@@ -1,3 +1,4 @@
+import collections
 import io
 import json as _json
 import logging
@@ -11,6 +12,7 @@ from socket import timeout as SocketTimeout
 from typing import (
     TYPE_CHECKING,
     Any,
+    Deque,
     Generator,
     Iterator,
     List,
@@ -221,6 +223,63 @@ def _get_decoder(mode: str) -> ContentDecoder:
         return ZstdDecoder()
 
     return DeflateDecoder()
+
+
+class BytesQueueBuffer:
+    """Memory-efficient bytes buffer
+
+    To return decoded data in read() and still follow the BufferedIOBase API, we need a
+    buffer to always return the correct amount of bytes.
+
+    This buffer should be filled using calls to put()
+
+    Our maximum memory usage is determined by the sum of the size of:
+
+     * self.buffer, which contains the full data
+     * the largest chunk that we will copy in get()
+
+    The worst case scenario is a single chunk, in which case we'll make a full copy of
+    the data inside get().
+    """
+
+    def __init__(self) -> None:
+        self.buffer: Deque[bytes] = collections.deque()
+        self._size: int = 0
+
+    def __len__(self) -> int:
+        return self._size
+
+    def put(self, data: bytes) -> None:
+        self.buffer.append(data)
+        self._size += len(data)
+
+    def get(self, n: int) -> bytes:
+        if not self.buffer:
+            raise RuntimeError("buffer is empty")
+        elif n < 0:
+            raise ValueError("n should be > 0")
+
+        fetched = 0
+        ret = io.BytesIO()
+        while fetched < n:
+            remaining = n - fetched
+            chunk = self.buffer.popleft()
+            chunk_length = len(chunk)
+            if remaining < chunk_length:
+                left_chunk, right_chunk = chunk[:remaining], chunk[remaining:]
+                ret.write(left_chunk)
+                self.buffer.appendleft(right_chunk)
+                self._size -= remaining
+                break
+            else:
+                ret.write(chunk)
+                self._size -= chunk_length
+            fetched += chunk_length
+
+            if not self.buffer:
+                break
+
+        return ret.getvalue()
 
 
 class BaseHTTPResponse(io.IOBase):
@@ -512,6 +571,9 @@ class HTTPResponse(BaseHTTPResponse):
         # Determine length of response
         self.length_remaining = self._init_length(request_method)
 
+        # Used to return the correct amount of bytes for partial read()s
+        self._decoded_buffer = BytesQueueBuffer()
+
         # If requested, preload the body.
         if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
@@ -720,6 +782,48 @@ class HTTPResponse(BaseHTTPResponse):
             # StringIO doesn't like amt=None
             return self._fp.read(amt) if amt is not None else self._fp.read()
 
+    def _raw_read(
+        self,
+        amt: Optional[int] = None,
+    ) -> bytes:
+        """
+        Reads `amt` of bytes from the socket.
+        """
+        if self._fp is None:
+            return None  # type: ignore[return-value]
+
+        fp_closed = getattr(self._fp, "closed", False)
+
+        with self._error_catcher():
+            data = self._fp_read(amt) if not fp_closed else b""
+            if amt is not None and amt != 0 and not data:
+                # Platform-specific: Buggy versions of Python.
+                # Close the connection when no data is returned
+                #
+                # This is redundant to what httplib/http.client _should_
+                # already do.  However, versions of python released before
+                # December 15, 2012 (http://bugs.python.org/issue16298) do
+                # not properly close the connection in all cases. There is
+                # no harm in redundantly calling close.
+                self._fp.close()
+                if (
+                    self.enforce_content_length
+                    and self.length_remaining is not None
+                    and self.length_remaining != 0
+                ):
+                    # This is an edge case that httplib failed to cover due
+                    # to concerns of backward compatibility. We're
+                    # addressing it here to make sure IncompleteRead is
+                    # raised during streaming, so all calls with incorrect
+                    # Content-Length are caught.
+                    raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
+
+        if data:
+            self._fp_bytes_read += len(data)
+            if self.length_remaining is not None:
+                self.length_remaining -= len(data)
+        return data
+
     def read(
         self,
         amt: Optional[int] = None,
@@ -750,51 +854,43 @@ class HTTPResponse(BaseHTTPResponse):
         if decode_content is None:
             decode_content = self.decode_content
 
-        if self._fp is None:
-            return None  # type: ignore[return-value]
+        if amt is not None:
+            cache_content = False
+
+            if len(self._decoded_buffer) >= amt:
+                return self._decoded_buffer.get(amt)
+
+        data = self._raw_read(amt)
 
         flush_decoder = False
-        fp_closed = getattr(self._fp, "closed", False)
+        if amt is None:
+            flush_decoder = True
+        elif amt != 0 and not data:
+            flush_decoder = True
 
-        with self._error_catcher():
-            data = self._fp_read(amt) if not fp_closed else b""
-            if amt is None:
-                flush_decoder = True
-            else:
-                cache_content = False
-                if (
-                    amt != 0 and not data
-                ):  # Platform-specific: Buggy versions of Python.
-                    # Close the connection when no data is returned
-                    #
-                    # This is redundant to what httplib/http.client _should_
-                    # already do.  However, versions of python released before
-                    # December 15, 2012 (http://bugs.python.org/issue16298) do
-                    # not properly close the connection in all cases. There is
-                    # no harm in redundantly calling close.
-                    self._fp.close()
-                    flush_decoder = True
-                    if (
-                        self.enforce_content_length
-                        and self.length_remaining is not None
-                        and self.length_remaining != 0
-                    ):
-                        # This is an edge case that httplib failed to cover due
-                        # to concerns of backward compatibility. We're
-                        # addressing it here to make sure IncompleteRead is
-                        # raised during streaming, so all calls with incorrect
-                        # Content-Length are caught.
-                        raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
+        if not data and len(self._decoded_buffer) == 0:
+            return data
 
-        if data:
-            self._fp_bytes_read += len(data)
-            if self.length_remaining is not None:
-                self.length_remaining -= len(data)
-
+        if amt is None:
             data = self._decode(data, decode_content, flush_decoder)
-
             if cache_content:
                 self._body = data
+        else:
+            # do not waste memory on buffer when not decoding
+            if not decode_content:
+                return data
+
+            decoded_data = self._decode(data, decode_content, flush_decoder)
+            self._decoded_buffer.put(decoded_data)
+
+            while len(self._decoded_buffer) < amt and data:
+                # TODO make sure to initially read enough data to get past the headers
+                # For example, the GZ file header takes 10 bytes, we don't want to read
+                # it one byte at a time
+                data = self._raw_read(amt)
+                decoded_data = self._decode(data, decode_content, flush_decoder)
+                self._decoded_buffer.put(decoded_data)
+            data = self._decoded_buffer.get(amt)
 
         return data
 
