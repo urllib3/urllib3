@@ -1,25 +1,17 @@
+from __future__ import annotations
+
 import email.utils
 import mimetypes
-from typing import (
-    Callable,
-    Dict,
-    Iterable,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-    cast,
-)
+import typing
 
-_TYPE_FIELD_VALUE = Union[str, bytes]
-_TYPE_FIELD_VALUE_TUPLE = Union[
-    _TYPE_FIELD_VALUE, Tuple[str, _TYPE_FIELD_VALUE], Tuple[str, _TYPE_FIELD_VALUE, str]
+_TYPE_FIELD_VALUE = typing.Union[str, bytes]
+_TYPE_FIELD_VALUE_TUPLE = typing.Union[
+    _TYPE_FIELD_VALUE, tuple[str, _TYPE_FIELD_VALUE], tuple[str, _TYPE_FIELD_VALUE, str]
 ]
 
 
 def guess_content_type(
-    filename: Optional[str], default: str = "application/octet-stream"
+    filename: typing.Optional[str], default: str = "application/octet-stream"
 ) -> str:
     """
     Guess the "Content-Type" of a file.
@@ -179,14 +171,14 @@ class RequestField:
         self,
         name: str,
         data: _TYPE_FIELD_VALUE,
-        filename: Optional[str] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        header_formatter: Optional[Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
+        filename: typing.Optional[str] = None,
+        headers: typing.Optional[typing.Mapping[str, str]] = None,
+        header_formatter: typing.Optional[typing.Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
     ):
         self._name = name
         self._filename = filename
         self.data = data
-        self.headers: Dict[str, Optional[str]] = {}
+        self.headers: dict[str, typing.Optional[str]] = {}
         if headers:
             self.headers = dict(headers)
 
@@ -209,7 +201,7 @@ class RequestField:
         cls,
         fieldname: str,
         value: _TYPE_FIELD_VALUE_TUPLE,
-        header_formatter: Optional[Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
+        header_formatter: typing.Optional[typing.Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
     ) -> "RequestField":
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
@@ -227,17 +219,17 @@ class RequestField:
 
         Field names and filenames must be unicode.
         """
-        filename: Optional[str]
-        content_type: Optional[str]
+        filename: typing.Optional[str]
+        content_type: typing.Optional[str]
         data: _TYPE_FIELD_VALUE
 
         if isinstance(value, tuple):
             if len(value) == 3:
-                filename, data, content_type = cast(
-                    Tuple[str, _TYPE_FIELD_VALUE, str], value
+                filename, data, content_type = typing.cast(
+                    tuple[str, _TYPE_FIELD_VALUE, str], value
                 )
             else:
-                filename, data = cast(Tuple[str, _TYPE_FIELD_VALUE], value)
+                filename, data = typing.cast(tuple[str, _TYPE_FIELD_VALUE], value)
                 content_type = guess_content_type(filename)
         else:
             filename = None
@@ -269,9 +261,9 @@ class RequestField:
 
     def _render_parts(
         self,
-        header_parts: Union[
-            Dict[str, Optional[_TYPE_FIELD_VALUE]],
-            Sequence[Tuple[str, Optional[_TYPE_FIELD_VALUE]]],
+        header_parts: typing.Union[
+            dict[str, typing.Optional[_TYPE_FIELD_VALUE]],
+            typing.Sequence[tuple[str, typing.Optional[_TYPE_FIELD_VALUE]]],
         ],
     ) -> str:
         """
@@ -284,7 +276,7 @@ class RequestField:
             A sequence of (k, v) tuples or a :class:`dict` of (k, v) to format
             as `k1="v1"; k2="v2"; ...`.
         """
-        iterable: Iterable[Tuple[str, Optional[_TYPE_FIELD_VALUE]]]
+        iterable: typing.Iterable[tuple[str, typing.Optional[_TYPE_FIELD_VALUE]]]
 
         parts = []
         if isinstance(header_parts, dict):
@@ -319,9 +311,9 @@ class RequestField:
 
     def make_multipart(
         self,
-        content_disposition: Optional[str] = None,
-        content_type: Optional[str] = None,
-        content_location: Optional[str] = None,
+        content_disposition: typing.Optional[str] = None,
+        content_type: typing.Optional[str] = None,
+        content_location: typing.Optional[str] = None,
     ) -> None:
         """
         Makes this request field into a multipart request field.

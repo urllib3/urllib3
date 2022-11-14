@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import logging
 import os
@@ -8,18 +10,9 @@ from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
-from typing import (
-    TYPE_CHECKING,
-    ClassVar,
-    Mapping,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Union,
-    cast,
-)
+import typing
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from typing_extensions import Literal
 
     from .response import HTTPResponse
@@ -109,11 +102,11 @@ class HTTPConnection(_HTTPConnection):
       Or you may want to disable the defaults by passing an empty list (e.g., ``[]``).
     """
 
-    default_port: ClassVar[int] = port_by_scheme["http"]  # type: ignore[misc]
+    default_port: typing.ClassVar[int] = port_by_scheme["http"]  # type: ignore[misc]
 
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options: ClassVar[connection._TYPE_SOCKET_OPTIONS] = [
+    default_socket_options: typing.ClassVar[connection._TYPE_SOCKET_OPTIONS] = [
         (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     ]
 
@@ -122,31 +115,31 @@ class HTTPConnection(_HTTPConnection):
 
     #: Whether this proxy connection verified the proxy host's certificate.
     # If no proxy is currently connected to the value will be ``None``.
-    proxy_is_verified: Optional[bool] = None
+    proxy_is_verified: typing.Optional[bool] = None
 
     blocksize: int
-    source_address: Optional[Tuple[str, int]]
-    socket_options: Optional[connection._TYPE_SOCKET_OPTIONS]
+    source_address: typing.Optional[tuple[str, int]]
+    socket_options: typing.Optional[connection._TYPE_SOCKET_OPTIONS]
 
     _has_connected_to_proxy: bool
-    _response_options: Optional[_ResponseOptions]
-    _tunnel_host: Optional[str]
-    _tunnel_port: Optional[int]
-    _tunnel_scheme: Optional[str]
+    _response_options: typing.Optional[_ResponseOptions]
+    _tunnel_host: typing.Optional[str]
+    _tunnel_port: typing.Optional[int]
+    _tunnel_scheme: typing.Optional[str]
 
     def __init__(
         self,
         host: str,
-        port: Optional[int] = None,
+        port: typing.Optional[int] = None,
         *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-        source_address: Optional[Tuple[str, int]] = None,
+        source_address: typing.Optional[tuple[str, int]] = None,
         blocksize: int = 8192,
-        socket_options: Optional[
+        socket_options: typing.Optional[
             connection._TYPE_SOCKET_OPTIONS
         ] = default_socket_options,
-        proxy: Optional[Url] = None,
-        proxy_config: Optional[ProxyConfig] = None,
+        proxy: typing.Optional[Url] = None,
+        proxy_config: typing.Optional[ProxyConfig] = None,
     ) -> None:
         super().__init__(
             host=host,
@@ -161,9 +154,9 @@ class HTTPConnection(_HTTPConnection):
 
         self._has_connected_to_proxy = False
         self._response_options = None
-        self._tunnel_host: Optional[str] = None
-        self._tunnel_port: Optional[int] = None
-        self._tunnel_scheme: Optional[str] = None
+        self._tunnel_host: typing.Optional[str] = None
+        self._tunnel_port: typing.Optional[int] = None
+        self._tunnel_scheme: typing.Optional[str] = None
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
@@ -229,8 +222,8 @@ class HTTPConnection(_HTTPConnection):
     def set_tunnel(
         self,
         host: str,
-        port: Optional[int] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        port: typing.Optional[int] = None,
+        headers: typing.Optional[typing.Mapping[str, str]] = None,
         scheme: str = "http",
     ) -> None:
         if scheme not in ("http", "https"):
@@ -321,8 +314,8 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        body: typing.Optional[_TYPE_BODY] = None,
+        headers: typing.Optional[typing.Mapping[str, str]] = None,
         *,
         chunked: bool = False,
         preload_content: bool = True,
@@ -414,8 +407,8 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        body: typing.Optional[_TYPE_BODY] = None,
+        headers: typing.Optional[typing.Mapping[str, str]] = None,
     ) -> None:
         """
         Alternative to the common request method, which sends the
@@ -493,42 +486,42 @@ class HTTPSConnection(HTTPConnection):
 
     default_port = port_by_scheme["https"]  # type: ignore[misc]
 
-    cert_reqs: Optional[Union[int, str]] = None
-    ca_certs: Optional[str] = None
-    ca_cert_dir: Optional[str] = None
-    ca_cert_data: Union[None, str, bytes] = None
-    ssl_version: Optional[Union[int, str]] = None
-    ssl_minimum_version: Optional[int] = None
-    ssl_maximum_version: Optional[int] = None
-    assert_fingerprint: Optional[str] = None
+    cert_reqs: typing.Optional[typing.Union[int, str]] = None
+    ca_certs: typing.Optional[str] = None
+    ca_cert_dir: typing.Optional[str] = None
+    ca_cert_data: typing.Union[None, str, bytes] = None
+    ssl_version: typing.Optional[typing.Union[int, str]] = None
+    ssl_minimum_version: typing.Optional[int] = None
+    ssl_maximum_version: typing.Optional[int] = None
+    assert_fingerprint: typing.Optional[str] = None
 
     def __init__(
         self,
         host: str,
-        port: Optional[int] = None,
+        port: typing.Optional[int] = None,
         *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-        source_address: Optional[Tuple[str, int]] = None,
+        source_address: typing.Optional[tuple[str, int]] = None,
         blocksize: int = 8192,
-        socket_options: Optional[
+        socket_options: typing.Optional[
             connection._TYPE_SOCKET_OPTIONS
         ] = HTTPConnection.default_socket_options,
-        proxy: Optional[Url] = None,
-        proxy_config: Optional[ProxyConfig] = None,
-        cert_reqs: Optional[Union[int, str]] = None,
-        assert_hostname: Union[None, str, "Literal[False]"] = None,
-        assert_fingerprint: Optional[str] = None,
-        server_hostname: Optional[str] = None,
-        ssl_context: Optional["ssl.SSLContext"] = None,
-        ca_certs: Optional[str] = None,
-        ca_cert_dir: Optional[str] = None,
-        ca_cert_data: Union[None, str, bytes] = None,
-        ssl_minimum_version: Optional[int] = None,
-        ssl_maximum_version: Optional[int] = None,
-        ssl_version: Optional[Union[int, str]] = None,  # Deprecated
-        cert_file: Optional[str] = None,
-        key_file: Optional[str] = None,
-        key_password: Optional[str] = None,
+        proxy: typing.Optional[Url] = None,
+        proxy_config: typing.Optional[ProxyConfig] = None,
+        cert_reqs: typing.Optional[typing.Union[int, str]] = None,
+        assert_hostname: typing.Union[None, str, "Literal[False]"] = None,
+        assert_fingerprint: typing.Optional[str] = None,
+        server_hostname: typing.Optional[str] = None,
+        ssl_context: typing.Optional["ssl.SSLContext"] = None,
+        ca_certs: typing.Optional[str] = None,
+        ca_cert_dir: typing.Optional[str] = None,
+        ca_cert_data: typing.Union[None, str, bytes] = None,
+        ssl_minimum_version: typing.Optional[int] = None,
+        ssl_maximum_version: typing.Optional[int] = None,
+        ssl_version: typing.Optional[typing.Union[int, str]] = None,  # Deprecated
+        cert_file: typing.Optional[str] = None,
+        key_file: typing.Optional[str] = None,
+        key_password: typing.Optional[str] = None,
     ) -> None:
 
         super().__init__(
@@ -566,15 +559,15 @@ class HTTPSConnection(HTTPConnection):
 
     def set_cert(
         self,
-        key_file: Optional[str] = None,
-        cert_file: Optional[str] = None,
-        cert_reqs: Optional[Union[int, str]] = None,
-        key_password: Optional[str] = None,
-        ca_certs: Optional[str] = None,
-        assert_hostname: Union[None, str, "Literal[False]"] = None,
-        assert_fingerprint: Optional[str] = None,
-        ca_cert_dir: Optional[str] = None,
-        ca_cert_data: Union[None, str, bytes] = None,
+        key_file: typing.Optional[str] = None,
+        cert_file: typing.Optional[str] = None,
+        cert_reqs: typing.Optional[typing.Union[int, str]] = None,
+        key_password: typing.Optional[str] = None,
+        ca_certs: typing.Optional[str] = None,
+        assert_hostname: typing.Union[None, str, "Literal[False]"] = None,
+        assert_fingerprint: typing.Optional[str] = None,
+        ca_cert_dir: typing.Optional[str] = None,
+        ca_cert_data: typing.Union[None, str, bytes] = None,
     ) -> None:
         """
         This method should only be called once, before the connection is used.
@@ -606,7 +599,7 @@ class HTTPSConnection(HTTPConnection):
         self.ca_cert_data = ca_cert_data
 
     def connect(self) -> None:
-        sock: Union[socket.socket, "ssl.SSLSocket"]
+        sock: typing.Union[socket.socket, "ssl.SSLSocket"]
         self.sock = sock = self._new_conn()
         server_hostname: str = self.host
         tls_in_tls = False
@@ -669,7 +662,7 @@ class HTTPSConnection(HTTPConnection):
         Establish a TLS connection to the proxy using the provided SSL context.
         """
         # `_connect_tls_proxy` is called when self._tunnel_host is truthy.
-        proxy_config = cast(ProxyConfig, self.proxy_config)
+        proxy_config = typing.cast(ProxyConfig, self.proxy_config)
         ssl_context = proxy_config.ssl_context
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
@@ -694,33 +687,33 @@ class HTTPSConnection(HTTPConnection):
         return sock_and_verified.socket  # type: ignore[return-value]
 
 
-class _WrappedAndVerifiedSocket(NamedTuple):
+class _WrappedAndVerifiedSocket(typing.NamedTuple):
     """
     Wrapped socket and whether the connection is
     verified after the TLS handshake
     """
 
-    socket: Union["ssl.SSLSocket", "SSLTransport"]
+    socket: typing.Union["ssl.SSLSocket", "SSLTransport"]
     is_verified: bool
 
 
 def _ssl_wrap_socket_and_match_hostname(
     sock: socket.socket,
     *,
-    cert_reqs: Union[None, str, int],
-    ssl_version: Union[None, str, int],
-    ssl_minimum_version: Optional[int],
-    ssl_maximum_version: Optional[int],
-    cert_file: Optional[str],
-    key_file: Optional[str],
-    key_password: Optional[str],
-    ca_certs: Optional[str],
-    ca_cert_dir: Optional[str],
-    ca_cert_data: Union[None, str, bytes],
-    assert_hostname: Union[None, str, "Literal[False]"],
-    assert_fingerprint: Optional[str],
-    server_hostname: Optional[str],
-    ssl_context: Optional["ssl.SSLContext"],
+    cert_reqs: typing.Union[None, str, int],
+    ssl_version: typing.Union[None, str, int],
+    ssl_minimum_version: typing.Optional[int],
+    ssl_maximum_version: typing.Optional[int],
+    cert_file: typing.Optional[str],
+    key_file: typing.Optional[str],
+    key_password: typing.Optional[str],
+    ca_certs: typing.Optional[str],
+    ca_cert_dir: typing.Optional[str],
+    ca_cert_data: typing.Union[None, str, bytes],
+    assert_hostname: typing.Union[None, str, "Literal[False]"],
+    assert_fingerprint: typing.Optional[str],
+    server_hostname: typing.Optional[str],
+    ssl_context: typing.Optional["ssl.SSLContext"],
     tls_in_tls: bool = False,
 ) -> _WrappedAndVerifiedSocket:
     """Logic for constructing an SSLContext from all TLS parameters, passing
@@ -823,7 +816,7 @@ def _ssl_wrap_socket_and_match_hostname(
 
 
 def _match_hostname(
-    cert: Optional["_TYPE_PEER_CERT_RET_DICT"],
+    cert: typing.Optional["_TYPE_PEER_CERT_RET_DICT"],
     asserted_hostname: str,
     hostname_checks_common_name: bool = False,
 ) -> None:
@@ -848,7 +841,7 @@ def _match_hostname(
         raise
 
 
-def _wrap_proxy_error(err: Exception, proxy_scheme: Optional[str]) -> ProxyError:
+def _wrap_proxy_error(err: Exception, proxy_scheme: typing.Optional[str]) -> ProxyError:
     # Look for the phrase 'wrong version number', if found
     # then we should warn the user that we're very sure that
     # this proxy is HTTP-only and they have a configuration issue.
@@ -890,7 +883,7 @@ VerifiedHTTPSConnection = HTTPSConnection
 
 
 def _url_from_connection(
-    conn: Union[HTTPConnection, HTTPSConnection], path: Optional[str] = None
+    conn: typing.Union[HTTPConnection, HTTPSConnection], path: typing.Optional[str] = None
 ) -> str:
     """Returns the URL from a given connection. This is mainly used for testing and logging."""
 

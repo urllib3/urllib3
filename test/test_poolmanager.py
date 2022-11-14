@@ -1,7 +1,7 @@
 import gc
 import socket
 from test import resolvesLocalhostFQDN
-from typing import Optional
+import typing
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
@@ -77,7 +77,7 @@ class TestPoolManager:
         assert len(p.pools) == 0
 
     @pytest.mark.parametrize("url", ["http://@", None])
-    def test_nohost(self, url: Optional[str]) -> None:
+    def test_nohost(self, url: typing.Optional[str]) -> None:
         p = PoolManager(5)
         with pytest.raises(LocationValueError):
             p.connection_from_url(url=url)  # type: ignore[arg-type]

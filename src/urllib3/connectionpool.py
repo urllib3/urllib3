@@ -6,7 +6,7 @@ import warnings
 import weakref
 from socket import timeout as SocketTimeout
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, overload
+import typing
 
 from ._base_connection import _TYPE_BODY
 from ._request_methods import RequestMethods
@@ -48,7 +48,7 @@ from .util.url import _normalize_host as normalize_host
 from .util.url import parse_url
 from .util.util import to_str
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     import ssl
 
     from typing_extensions import Literal
@@ -57,9 +57,9 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_TYPE_TIMEOUT = Union[Timeout, float, _TYPE_DEFAULT]
+_TYPE_TIMEOUT = typing.Union[Timeout, float, _TYPE_DEFAULT]
 
-_SelfT = TypeVar("_SelfT")
+_SelfT = typing.TypeVar("_SelfT")
 
 
 # Pool objects
@@ -74,10 +74,10 @@ class ConnectionPool:
        target URIs.
     """
 
-    scheme: Optional[str] = None
+    scheme: typing.Optional[str] = None
     QueueCls = queue.LifoQueue
 
-    def __init__(self, host: str, port: Optional[int] = None) -> None:
+    def __init__(self, host: str, port: typing.Optional[int] = None) -> None:
         if not host:
             raise LocationValueError("No host specified.")
 
@@ -98,9 +98,9 @@ class ConnectionPool:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: typing.Optional[Type[BaseException]],
+        exc_val: typing.Optional[BaseException],
+        exc_tb: typing.Optional[TracebackType],
     ) -> "Literal[False]":
         self.close()
         # Return False to re-raise any potential exceptions
@@ -170,23 +170,23 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
 
     scheme = "http"
-    ConnectionCls: Union[
-        Type["BaseHTTPConnection"], Type["BaseHTTPSConnection"]
+    ConnectionCls: typing.Union[
+        typing.Type["BaseHTTPConnection"], typing.Type["BaseHTTPSConnection"]
     ] = HTTPConnection
 
     def __init__(
         self,
         host: str,
-        port: Optional[int] = None,
-        timeout: Optional[_TYPE_TIMEOUT] = _DEFAULT_TIMEOUT,
+        port: typing.Optional[int] = None,
+        timeout: typing.Optional[_TYPE_TIMEOUT] = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: Optional[Mapping[str, str]] = None,
-        retries: Optional[Union[Retry, bool, int]] = None,
-        _proxy: Optional[Url] = None,
-        _proxy_headers: Optional[Mapping[str, str]] = None,
-        _proxy_config: Optional[ProxyConfig] = None,
-        **conn_kw: Any,
+        headers: typing.Optional[typing.Mapping[str, str]] = None,
+        retries: typing.Optional[typing.Union[Retry, bool, int]] = None,
+        _proxy: typing.Optional[Url] = None,
+        _proxy_headers: typing.Optional[typing.Mapping[str, str]] = None,
+        _proxy_config: typing.Optional[ProxyConfig] = None,
+        **conn_kw: typing.Any,
     ):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
@@ -200,7 +200,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.timeout = timeout
         self.retries = retries
 
-        self.pool: Optional[queue.LifoQueue[Any]] = self.QueueCls(maxsize)
+        self.pool: typing.Optional[queue.LifoQueue[typing.Any]] = self.QueueCls(maxsize)
         self.block = block
 
         self.proxy = _proxy
@@ -255,7 +255,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         )
         return conn
 
-    def _get_conn(self, timeout: Optional[float] = None) -> "BaseHTTPConnection":
+    def _get_conn(self, timeout: typing.Optional[float] = None) -> "BaseHTTPConnection":
         """
         Get a connection. Will return a pooled connection if one is available.
 
@@ -293,7 +293,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         return conn or self._new_conn()
 
-    def _put_conn(self, conn: Optional["BaseHTTPConnection"]) -> None:
+    def _put_conn(self, conn: typing.Optional["BaseHTTPConnection"]) -> None:
         """
         Put a connection back into the pool.
 
@@ -361,9 +361,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def _raise_timeout(
         self,
-        err: Union[BaseSSLError, OSError, SocketTimeout],
+        err: typing.Union[BaseSSLError, OSError, SocketTimeout],
         url: str,
-        timeout_value: Optional[_TYPE_TIMEOUT],
+        timeout_value: typing.Optional[_TYPE_TIMEOUT],
     ) -> None:
         """Is the error actually a timeout? Will raise a ReadTimeout or pass"""
 
@@ -383,12 +383,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn: "BaseHTTPConnection",
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        retries: Optional[Retry] = None,
+        body: typing.Optional[_TYPE_BODY] = None,
+        headers: typing.Optional[typing.Mapping[str, str]] = None,
+        retries: typing.Optional[Retry] = None,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
-        response_conn: Optional["BaseHTTPConnection"] = None,
+        response_conn: typing.Optional["BaseHTTPConnection"] = None,
         preload_content: bool = True,
         decode_content: bool = True,
         enforce_content_length: bool = True,
@@ -597,19 +597,19 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        retries: Optional[Union[Retry, bool, int]] = None,
+        body: typing.Optional[_TYPE_BODY] = None,
+        headers: typing.Optional[typing.Mapping[str, str]] = None,
+        retries: typing.Optional[typing.Union[Retry, bool, int]] = None,
         redirect: bool = True,
         assert_same_host: bool = True,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-        pool_timeout: Optional[int] = None,
-        release_conn: Optional[bool] = None,
+        pool_timeout: typing.Optional[int] = None,
+        release_conn: typing.Optional[bool] = None,
         chunked: bool = False,
-        body_pos: Optional[_TYPE_BODY_POSITION] = None,
+        body_pos: typing.Optional[_TYPE_BODY_POSITION] = None,
         preload_content: bool = True,
         decode_content: bool = True,
-        **response_kw: Any,
+        **response_kw: typing.Any,
     ) -> BaseHTTPResponse:
         """
         Get a connection from the pool and perform an HTTP request. This is the
@@ -975,31 +975,31 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     """
 
     scheme = "https"
-    ConnectionCls: Type["BaseHTTPSConnection"] = HTTPSConnection
+    ConnectionCls: typing.Type["BaseHTTPSConnection"] = HTTPSConnection
 
     def __init__(
         self,
         host: str,
-        port: Optional[int] = None,
-        timeout: Optional[_TYPE_TIMEOUT] = _DEFAULT_TIMEOUT,
+        port: typing.Optional[int] = None,
+        timeout: typing.Optional[_TYPE_TIMEOUT] = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: Optional[Mapping[str, str]] = None,
-        retries: Optional[Union[Retry, bool, int]] = None,
-        _proxy: Optional[Url] = None,
-        _proxy_headers: Optional[Mapping[str, str]] = None,
-        key_file: Optional[str] = None,
-        cert_file: Optional[str] = None,
-        cert_reqs: Optional[Union[int, str]] = None,
-        key_password: Optional[str] = None,
-        ca_certs: Optional[str] = None,
-        ssl_version: Optional[Union[int, str]] = None,
-        ssl_minimum_version: Optional["ssl.TLSVersion"] = None,
-        ssl_maximum_version: Optional["ssl.TLSVersion"] = None,
-        assert_hostname: Optional[Union[str, "Literal[False]"]] = None,
-        assert_fingerprint: Optional[str] = None,
-        ca_cert_dir: Optional[str] = None,
-        **conn_kw: Any,
+        headers: typing.Optional[typing.Mapping[str, str]] = None,
+        retries: typing.Optional[typing.Union[Retry, bool, int]] = None,
+        _proxy: typing.Optional[Url] = None,
+        _proxy_headers: typing.Optional[typing.Mapping[str, str]] = None,
+        key_file: typing.Optional[str] = None,
+        cert_file: typing.Optional[str] = None,
+        cert_reqs: typing.Optional[typing.Union[int, str]] = None,
+        key_password: typing.Optional[str] = None,
+        ca_certs: typing.Optional[str] = None,
+        ssl_version: typing.Optional[typing.Union[int, str]] = None,
+        ssl_minimum_version: typing.Optional["ssl.TLSVersion"] = None,
+        ssl_maximum_version: typing.Optional["ssl.TLSVersion"] = None,
+        assert_hostname: typing.Optional[typing.Union[str, "Literal[False]"]] = None,
+        assert_fingerprint: typing.Optional[str] = None,
+        ca_cert_dir: typing.Optional[str] = None,
+        **conn_kw: typing.Any,
     ) -> None:
 
         super().__init__(
@@ -1105,7 +1105,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             )
 
 
-def connection_from_url(url: str, **kw: Any) -> HTTPConnectionPool:
+def connection_from_url(url: str, **kw: typing.Any) -> HTTPConnectionPool:
     """
     Given a url, return an :class:`.ConnectionPool` instance of its host.
 
@@ -1134,17 +1134,17 @@ def connection_from_url(url: str, **kw: Any) -> HTTPConnectionPool:
         return HTTPConnectionPool(host, port=port, **kw)  # type: ignore[arg-type]
 
 
-@overload
-def _normalize_host(host: None, scheme: Optional[str]) -> None:
+@typing.overload
+def _normalize_host(host: None, scheme: typing.Optional[str]) -> None:
     ...
 
 
-@overload
-def _normalize_host(host: str, scheme: Optional[str]) -> str:
+@typing.overload
+def _normalize_host(host: str, scheme: typing.Optional[str]) -> str:
     ...
 
 
-def _normalize_host(host: Optional[str], scheme: Optional[str]) -> Optional[str]:
+def _normalize_host(host: typing.Optional[str], scheme: typing.Optional[str]) -> typing.Optional[str]:
     """
     Normalize hosts for comparisons and use with sockets.
     """
@@ -1163,13 +1163,13 @@ def _normalize_host(host: Optional[str], scheme: Optional[str]) -> Optional[str]
 
 
 def _url_from_pool(
-    pool: Union[HTTPConnectionPool, HTTPSConnectionPool], path: Optional[str] = None
+    pool: typing.Union[HTTPConnectionPool, HTTPSConnectionPool], path: typing.Optional[str] = None
 ) -> str:
     """Returns the URL from a given connection pool. This is mainly used for testing and logging."""
     return Url(scheme=pool.scheme, host=pool.host, port=pool.port, path=path).url
 
 
-def _close_pool_connections(pool: "queue.LifoQueue[Any]") -> None:
+def _close_pool_connections(pool: "queue.LifoQueue[typing.Any]") -> None:
     """Drains a queue of connections and closes each one."""
     try:
         while True:

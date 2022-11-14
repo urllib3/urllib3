@@ -3,13 +3,15 @@
 # Note: This file is under the PSF license as the code comes from the python
 # stdlib.   http://docs.python.org/3/license.html
 # It is modified to remove commonName support.
+from __future__ import annotations
 
 import ipaddress
 import re
 from ipaddress import IPv4Address, IPv6Address
-from typing import TYPE_CHECKING, Any, Match, Optional, Tuple, Union
+import typing
 
-if TYPE_CHECKING:
+
+if typing.TYPE_CHECKING:
     from .ssl_ import _TYPE_PEER_CERT_RET_DICT
 
 __version__ = "3.5.0.1"
@@ -20,8 +22,8 @@ class CertificateError(ValueError):
 
 
 def _dnsname_match(
-    dn: Any, hostname: str, max_wildcards: int = 1
-) -> Union[Optional[Match[str]], bool]:
+    dn: typing.Any, hostname: str, max_wildcards: int = 1
+) -> typing.Union[typing.Optional[typing.Match[str]], bool]:
     """Matching according to RFC 6125, section 6.4.3
 
     http://tools.ietf.org/html/rfc6125#section-6.4.3
@@ -75,7 +77,7 @@ def _dnsname_match(
     return pat.match(hostname)
 
 
-def _ipaddress_match(ipname: str, host_ip: Union[IPv4Address, IPv6Address]) -> bool:
+def _ipaddress_match(ipname: str, host_ip: typing.Union[IPv4Address, IPv6Address]) -> bool:
     """Exact matching of IP addresses.
 
     RFC 9110 section 4.3.5: "A reference identity of IP-ID contains the decoded
@@ -91,7 +93,7 @@ def _ipaddress_match(ipname: str, host_ip: Union[IPv4Address, IPv6Address]) -> b
 
 
 def match_hostname(
-    cert: Optional["_TYPE_PEER_CERT_RET_DICT"],
+    cert: typing.Optional["_TYPE_PEER_CERT_RET_DICT"],
     hostname: str,
     hostname_checks_common_name: bool = False,
 ) -> None:
@@ -123,7 +125,7 @@ def match_hostname(
         # Not an IP address (common case)
         host_ip = None
     dnsnames = []
-    san: Tuple[Tuple[str, str], ...] = cert.get("subjectAltName", ())
+    san: tuple[tuple[str, str], ...] = cert.get("subjectAltName", ())
     key: str
     value: str
     for key, value in san:

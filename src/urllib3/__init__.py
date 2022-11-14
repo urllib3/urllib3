@@ -6,7 +6,7 @@ Python HTTP library with thread-safe connection pooling, file post support, user
 import logging
 import warnings
 from logging import NullHandler
-from typing import Any, Mapping, Optional, TextIO, Type, Union
+import typing
 
 from . import exceptions
 from ._base_connection import _TYPE_BODY
@@ -82,7 +82,7 @@ __all__ = (
 logging.getLogger(__name__).addHandler(NullHandler())
 
 
-def add_stderr_logger(level: int = logging.DEBUG) -> "logging.StreamHandler[TextIO]":
+def add_stderr_logger(level: int = logging.DEBUG) -> "logging.StreamHandler[typing.TextIO]":
     """
     Helper for quickly adding a StreamHandler to the logger. Useful for
     debugging.
@@ -113,7 +113,7 @@ warnings.simplefilter("always", exceptions.SecurityWarning, append=True)
 warnings.simplefilter("default", exceptions.InsecurePlatformWarning, append=True)
 
 
-def disable_warnings(category: Type[Warning] = exceptions.HTTPWarning) -> None:
+def disable_warnings(category: typing.Type[Warning] = exceptions.HTTPWarning) -> None:
     """
     Helper for quickly disabling all urllib3 warnings.
     """
@@ -127,15 +127,15 @@ def request(
     method: str,
     url: str,
     *,
-    body: Optional[_TYPE_BODY] = None,
-    fields: Optional[_TYPE_FIELDS] = None,
-    headers: Optional[Mapping[str, str]] = None,
-    preload_content: Optional[bool] = True,
-    decode_content: Optional[bool] = True,
-    redirect: Optional[bool] = True,
-    retries: Optional[Union[Retry, bool, int]] = None,
-    timeout: Optional[Union[Timeout, float, int]] = 3,
-    json: Optional[Any] = None,
+    body: typing.Optional[_TYPE_BODY] = None,
+    fields: typing.Optional[_TYPE_FIELDS] = None,
+    headers: typing.Optional[typing.Mapping[str, str]] = None,
+    preload_content: typing.Optional[bool] = True,
+    decode_content: typing.Optional[bool] = True,
+    redirect: typing.Optional[bool] = True,
+    retries: typing.Optional[typing.Union[Retry, bool, int]] = None,
+    timeout: typing.Optional[typing.Union[Timeout, float, int]] = 3,
+    json: typing.Optional[typing.Any] = None,
 ) -> BaseHTTPResponse:
     """
     A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.

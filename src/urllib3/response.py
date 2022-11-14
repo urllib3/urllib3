@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 import json as _json
 import logging
@@ -8,18 +10,7 @@ from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Generator,
-    Iterator,
-    List,
-    Mapping,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+import typing
 
 try:
     try:
@@ -64,7 +55,7 @@ from .exceptions import (
 from .util.response import is_fp_closed, is_response_to_head
 from .util.retry import Retry
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from typing_extensions import Literal
 
     from .connectionpool import HTTPConnectionPool
@@ -231,7 +222,7 @@ class BaseHTTPResponse(io.IOBase):
         CONTENT_DECODERS += ["zstd"]
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
-    DECODER_ERROR_CLASSES: Tuple[Type[Exception], ...] = (IOError, zlib.error)
+    DECODER_ERROR_CLASSES: tuple[typing.Type[Exception], ...] = (IOError, zlib.error)
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
 
@@ -241,13 +232,13 @@ class BaseHTTPResponse(io.IOBase):
     def __init__(
         self,
         *,
-        headers: Optional[Union[Mapping[str, str], Mapping[bytes, bytes]]] = None,
+        headers: typing.Optional[typing.Union[typing.Mapping[str, str], typing.Mapping[bytes, bytes]]] = None,
         status: int,
         version: int,
-        reason: Optional[str],
+        reason: typing.Optional[str],
         decode_content: bool,
-        request_url: Optional[str],
-        retries: Optional[Retry] = None,
+        request_url: typing.Optional[str],
+        retries: typing.Optional[Retry] = None,
     ) -> None:
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
@@ -257,7 +248,7 @@ class BaseHTTPResponse(io.IOBase):
         self.version = version
         self.reason = reason
         self.decode_content = decode_content
-        self._request_url: Optional[str] = request_url
+        self._request_url: typing.Optional[str] = request_url
         self.retries = retries
 
         self.chunked = False
@@ -267,9 +258,9 @@ class BaseHTTPResponse(io.IOBase):
         if "chunked" in encodings:
             self.chunked = True
 
-        self._decoder: Optional[ContentDecoder] = None
+        self._decoder: typing.Optional[ContentDecoder] = None
 
-    def get_redirect_location(self) -> Union[Optional[str], "Literal[False]"]:
+    def get_redirect_location(self) -> typing.Union[typing.Optional[str], "Literal[False]"]:
         """
         Should we redirect and where to?
 
@@ -285,7 +276,7 @@ class BaseHTTPResponse(io.IOBase):
     def data(self) -> bytes:
         raise NotImplementedError()
 
-    def json(self) -> Any:
+    def json(self) -> typing.Any:
         """
         Parses the body of the HTTP response as JSON.
 
@@ -299,46 +290,46 @@ class BaseHTTPResponse(io.IOBase):
         return _json.loads(data)
 
     @property
-    def url(self) -> Optional[str]:
+    def url(self) -> typing.Optional[str]:
         raise NotImplementedError()
 
     @url.setter
-    def url(self, url: Optional[str]) -> None:
+    def url(self, url: typing.Optional[str]) -> None:
         raise NotImplementedError()
 
     @property
-    def connection(self) -> Optional[HTTPConnection]:
+    def connection(self) -> typing.Optional[HTTPConnection]:
         raise NotImplementedError()
 
     @property
-    def retries(self) -> Optional[Retry]:
+    def retries(self) -> typing.Optional[Retry]:
         return self._retries
 
     @retries.setter
-    def retries(self, retries: Optional[Retry]) -> None:
+    def retries(self, retries: typing.Optional[Retry]) -> None:
         # Override the request_url if retries has a redirect location.
         if retries is not None and retries.history:
             self.url = retries.history[-1].redirect_location
         self._retries = retries
 
     def stream(
-        self, amt: Optional[int] = 2**16, decode_content: Optional[bool] = None
-    ) -> Iterator[bytes]:
+        self, amt: typing.Optional[int] = 2**16, decode_content: typing.Optional[bool] = None
+    ) -> typing.Iterator[bytes]:
         raise NotImplementedError()
 
     def read(
         self,
-        amt: Optional[int] = None,
-        decode_content: Optional[bool] = None,
+        amt: typing.Optional[int] = None,
+        decode_content: typing.Optional[bool] = None,
         cache_content: bool = False,
     ) -> bytes:
         raise NotImplementedError()
 
     def read_chunked(
         self,
-        amt: Optional[int] = None,
-        decode_content: Optional[bool] = None,
-    ) -> Iterator[bytes]:
+        amt: typing.Optional[int] = None,
+        decode_content: typing.Optional[bool] = None,
+    ) -> typing.Iterator[bytes]:
         raise NotImplementedError()
 
     def release_conn(self) -> None:
@@ -370,7 +361,7 @@ class BaseHTTPResponse(io.IOBase):
                     self._decoder = _get_decoder(content_encoding)
 
     def _decode(
-        self, data: bytes, decode_content: Optional[bool], flush_decoder: bool
+        self, data: bytes, decode_content: typing.Optional[bool], flush_decoder: bool
     ) -> bytes:
         """
         Decode the data passed in and potentially flush the decoder.
@@ -412,17 +403,17 @@ class BaseHTTPResponse(io.IOBase):
             return len(temp)
 
     # Compatibility methods for http.client.HTTPResponse
-    def getheaders(self) -> List[Tuple[str, str]]:
+    def getheaders(self) -> list[tuple[str, str]]:
         return list(self.headers.items())
 
-    def getheader(self, name: str, default: Optional[str] = None) -> Optional[str]:
+    def getheader(self, name: str, default: typing.Optional[str] = None) -> typing.Optional[str]:
         return self.headers.get(name, default)
 
     # Compatibility method for http.cookiejar
     def info(self) -> HTTPHeaderDict:
         return self.headers
 
-    def geturl(self) -> Optional[str]:
+    def geturl(self) -> typing.Optional[str]:
         return self.url
 
 
@@ -462,20 +453,20 @@ class HTTPResponse(BaseHTTPResponse):
     def __init__(
         self,
         body: _TYPE_BODY = "",
-        headers: Optional[Union[Mapping[str, str], Mapping[bytes, bytes]]] = None,
+        headers: typing.Optional[typing.Union[typing.Mapping[str, str], typing.Mapping[bytes, bytes]]] = None,
         status: int = 0,
         version: int = 0,
-        reason: Optional[str] = None,
+        reason: typing.Optional[str] = None,
         preload_content: bool = True,
         decode_content: bool = True,
-        original_response: Optional[_HttplibHTTPResponse] = None,
-        pool: Optional["HTTPConnectionPool"] = None,
-        connection: Optional[HTTPConnection] = None,
-        msg: Optional[_HttplibHTTPMessage] = None,
-        retries: Optional[Retry] = None,
+        original_response: typing.Optional[_HttplibHTTPResponse] = None,
+        pool: typing.Optional["HTTPConnectionPool"] = None,
+        connection: typing.Optional[HTTPConnection] = None,
+        msg: typing.Optional[_HttplibHTTPMessage] = None,
+        retries: typing.Optional[Retry] = None,
         enforce_content_length: bool = True,
-        request_method: Optional[str] = None,
-        request_url: Optional[str] = None,
+        request_method: typing.Optional[str] = None,
+        request_url: typing.Optional[str] = None,
         auto_close: bool = True,
     ) -> None:
         super().__init__(
@@ -492,7 +483,7 @@ class HTTPResponse(BaseHTTPResponse):
         self.auto_close = auto_close
 
         self._body = None
-        self._fp: Optional[_HttplibHTTPResponse] = None
+        self._fp: typing.Optional[_HttplibHTTPResponse] = None
         self._original_response = original_response
         self._fp_bytes_read = 0
         self.msg = msg
@@ -507,7 +498,7 @@ class HTTPResponse(BaseHTTPResponse):
             self._fp = body  # type: ignore[assignment]
 
         # Are we using the chunked-style of transfer encoding?
-        self.chunk_left: Optional[int] = None
+        self.chunk_left: typing.Optional[int] = None
 
         # Determine length of response
         self.length_remaining = self._init_length(request_method)
@@ -546,7 +537,7 @@ class HTTPResponse(BaseHTTPResponse):
         return None  # type: ignore[return-value]
 
     @property
-    def connection(self) -> Optional[HTTPConnection]:
+    def connection(self) -> typing.Optional[HTTPConnection]:
         return self._connection
 
     def isclosed(self) -> bool:
@@ -560,12 +551,12 @@ class HTTPResponse(BaseHTTPResponse):
         """
         return self._fp_bytes_read
 
-    def _init_length(self, request_method: Optional[str]) -> Optional[int]:
+    def _init_length(self, request_method: typing.Optional[str]) -> typing.Optional[int]:
         """
         Set initial length value for Response content if available.
         """
-        length: Optional[int]
-        content_length: Optional[str] = self.headers.get("content-length")
+        length: typing.Optional[int]
+        content_length: typing.Optional[str] = self.headers.get("content-length")
 
         if content_length is not None:
             if self.chunked:
@@ -617,7 +608,7 @@ class HTTPResponse(BaseHTTPResponse):
         return length
 
     @contextmanager
-    def _error_catcher(self) -> Generator[None, None, None]:
+    def _error_catcher(self) -> typing.Generator[None, None, None]:
         """
         Catch low-level python exceptions, instead re-raising urllib3
         variants, so that low-level exceptions are not leaked in the
@@ -672,7 +663,7 @@ class HTTPResponse(BaseHTTPResponse):
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
 
-    def _fp_read(self, amt: Optional[int] = None) -> bytes:
+    def _fp_read(self, amt: typing.Optional[int] = None) -> bytes:
         """
         Read a response with the thought that reading the number of bytes
         larger than can fit in a 32-bit int at a time via SSL in some
@@ -722,8 +713,8 @@ class HTTPResponse(BaseHTTPResponse):
 
     def read(
         self,
-        amt: Optional[int] = None,
-        decode_content: Optional[bool] = None,
+        amt: typing.Optional[int] = None,
+        decode_content: typing.Optional[bool] = None,
         cache_content: bool = False,
     ) -> bytes:
         """
@@ -799,8 +790,8 @@ class HTTPResponse(BaseHTTPResponse):
         return data
 
     def stream(
-        self, amt: Optional[int] = 2**16, decode_content: Optional[bool] = None
-    ) -> Generator[bytes, None, None]:
+        self, amt: typing.Optional[int] = 2**16, decode_content: typing.Optional[bool] = None
+    ) -> typing.Generator[bytes, None, None]:
         """
         A generator wrapper for the read() method. A call will block until
         ``amt`` bytes have been read from the connection or until the
@@ -894,7 +885,7 @@ class HTTPResponse(BaseHTTPResponse):
             self.close()
             raise InvalidChunkLength(self, line) from None
 
-    def _handle_chunk(self, amt: Optional[int]) -> bytes:
+    def _handle_chunk(self, amt: typing.Optional[int]) -> bytes:
         returned_chunk = None
         if amt is None:
             chunk = self._fp._safe_read(self.chunk_left)  # type: ignore[union-attr]
@@ -917,8 +908,8 @@ class HTTPResponse(BaseHTTPResponse):
         return returned_chunk  # type: ignore[no-any-return]
 
     def read_chunked(
-        self, amt: Optional[int] = None, decode_content: Optional[bool] = None
-    ) -> Generator[bytes, None, None]:
+        self, amt: typing.Optional[int] = None, decode_content: typing.Optional[bool] = None
+    ) -> typing.Generator[bytes, None, None]:
         """
         Similar to :meth:`HTTPResponse.read`, but with an additional
         parameter: ``decode_content``.
@@ -989,7 +980,7 @@ class HTTPResponse(BaseHTTPResponse):
                 self._original_response.close()
 
     @property
-    def url(self) -> Optional[str]:
+    def url(self) -> typing.Optional[str]:
         """
         Returns the URL that was the source of this response.
         If the request that generated this response redirected, this method
@@ -1001,8 +992,8 @@ class HTTPResponse(BaseHTTPResponse):
     def url(self, url: str) -> None:
         self._request_url = url
 
-    def __iter__(self) -> Iterator[bytes]:
-        buffer: List[bytes] = []
+    def __iter__(self) -> typing.Iterator[bytes]:
+        buffer: list[bytes] = []
         for chunk in self.stream(decode_content=True):
             if b"\n" in chunk:
                 chunks = chunk.split(b"\n")

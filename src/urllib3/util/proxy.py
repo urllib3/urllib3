@@ -1,15 +1,15 @@
-from typing import TYPE_CHECKING, Optional
+import typing
 
 from .url import Url
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from ..connection import ProxyConfig
 
 
 def connection_requires_http_tunnel(
-    proxy_url: Optional[Url] = None,
-    proxy_config: "Optional[ProxyConfig]" = None,
-    destination_scheme: Optional[str] = None,
+    proxy_url: typing.Optional[Url] = None,
+    proxy_config: "typing.Optional[ProxyConfig]" = None,
+    destination_scheme: typing.Optional[str] = None,
 ) -> bool:
     """
     Returns True if the connection requires an HTTP CONNECT through the proxy.

@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import socket
 import warnings
 from email.errors import MessageDefect
 from http.client import IncompleteRead as httplib_IncompleteRead
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
+import typing
 
-if TYPE_CHECKING:
+
+if typing.TYPE_CHECKING:
     from .connection import HTTPConnection
     from .connectionpool import ConnectionPool
     from .response import HTTPResponse
@@ -25,7 +28,7 @@ class HTTPWarning(Warning):
     pass
 
 
-_TYPE_REDUCE_RESULT = Tuple[Callable[..., object], Tuple[object, ...]]
+_TYPE_REDUCE_RESULT = tuple[typing.Callable[..., object], tuple[object, ...]]
 
 
 class PoolError(HTTPError):
@@ -100,7 +103,7 @@ class MaxRetryError(RequestError):
     """
 
     def __init__(
-        self, pool: "ConnectionPool", url: str, reason: Optional[Exception] = None
+        self, pool: "ConnectionPool", url: str, reason: typing.Optional[Exception] = None
     ) -> None:
         self.reason = reason
 
@@ -113,7 +116,7 @@ class HostChangedError(RequestError):
     """Raised when an existing pool gets a request for a foreign host."""
 
     def __init__(
-        self, pool: "ConnectionPool", url: str, retries: Union["Retry", int] = 3
+        self, pool: "ConnectionPool", url: str, retries: typing.Union["Retry", int] = 3
     ) -> None:
         message = f"Tried to open a foreign host with url: {url}"
         super().__init__(pool, url, message)
@@ -300,7 +303,7 @@ class InvalidChunkLength(HTTPError, httplib_IncompleteRead):
 
     def __init__(self, response: "HTTPResponse", length: bytes) -> None:
         self.partial: int = response.tell()  # type: ignore[assignment]
-        self.expected: Optional[int] = response.length_remaining
+        self.expected: typing.Optional[int] = response.length_remaining
         self.response = response
         self.length = length
 
@@ -322,7 +325,7 @@ class ProxySchemeUnknown(AssertionError, URLSchemeUnknown):
 
     # TODO(t-8ch): Stop inheriting from AssertionError in v2.0.
 
-    def __init__(self, scheme: Optional[str]) -> None:
+    def __init__(self, scheme: typing.Optional[str]) -> None:
         # 'localhost' is here because our URL parser parses
         # localhost:8080 -> scheme=localhost, remove if we fix this.
         if scheme == "localhost":
@@ -344,7 +347,7 @@ class HeaderParsingError(HTTPError):
     """Raised by assert_header_parsing, but we convert it to a log.warning statement."""
 
     def __init__(
-        self, defects: List[MessageDefect], unparsed_data: Optional[Union[bytes, str]]
+        self, defects: list[MessageDefect], unparsed_data: typing.Optional[typing.Union[bytes, str]]
     ) -> None:
         message = f"{defects or 'Unknown'}, unparsed data: {unparsed_data!r}"
         super().__init__(message)

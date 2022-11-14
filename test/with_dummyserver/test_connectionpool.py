@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 import logging
 import socket
@@ -6,7 +8,7 @@ import time
 import warnings
 from test import LONG_TIMEOUT, SHORT_TIMEOUT
 from threading import Event
-from typing import Dict, List, NoReturn, Optional, Tuple, Type, Union
+import typing
 from unittest import mock
 from urllib.parse import urlencode
 
@@ -232,7 +234,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_upload(self) -> None:
         data = "I'm in ur multipart form-data, hazing a cheezburgr"
-        fields: Dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
+        fields: dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
             "upload_param": "filefield",
             "upload_filename": "lolcat.txt",
             "filefield": ("lolcat.txt", data),
@@ -271,7 +273,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         data = "\xe2\x99\xa5".encode()
         size = len(data)
 
-        fields: Dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
+        fields: dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
             "upload_param": fieldname,
             "upload_filename": filename,
             fieldname: (filename, data),
@@ -303,7 +305,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             ((socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),),
         ],
     )
-    def test_socket_options(self, socket_options: Tuple[int, int, int]) -> None:
+    def test_socket_options(self, socket_options: tuple[int, int, int]) -> None:
         """Test that connections accept socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries to
         # connect to the host provided so we need a dummyserver to be running.
@@ -324,7 +326,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @pytest.mark.parametrize("socket_options", [None, []])
     def test_disable_default_socket_options(
-        self, socket_options: Optional[List[int]]
+        self, socket_options: typing.Optional[list[int]]
     ) -> None:
         """Test that passing None or empty list disables all socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries
@@ -725,7 +727,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         "invalid_source_address, is_ipv6", INVALID_SOURCE_ADDRESSES
     )
     def test_source_address_error(
-        self, invalid_source_address: Tuple[str, int], is_ipv6: bool
+        self, invalid_source_address: tuple[str, int], is_ipv6: bool
     ) -> None:
         with HTTPConnectionPool(
             self.host, self.port, source_address=invalid_source_address, retries=False
@@ -867,7 +869,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     )
     @pytest.mark.parametrize("chunked", [True, False])
     def test_user_agent_header_not_sent_twice(
-        self, headers: Optional[Dict[str, str]], chunked: bool
+        self, headers: typing.Optional[dict[str, str]], chunked: bool
     ) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/headers", headers=headers, chunked=chunked)
@@ -923,9 +925,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     @pytest.mark.parametrize("chunked", [True, False])
     def test_skip_header(
         self,
-        accept_encoding: Optional[str],
-        host: Optional[str],
-        user_agent: Optional[str],
+        accept_encoding: typing.Optional[str],
+        host: typing.Optional[str],
+        user_agent: typing.Optional[str],
         chunked: bool,
     ) -> None:
         headers = {}
@@ -978,7 +980,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self,
         chunked: bool,
         pool_request: bool,
-        header_type: Type[Union[Dict[str, str], HTTPHeaderDict]],
+        header_type: typing.Type[typing.Union[dict[str, str], HTTPHeaderDict]],
     ) -> None:
         # Test that the .request*() methods of ConnectionPool and HTTPConnection
         # don't modify the given 'headers' structure, instead they should
@@ -1350,7 +1352,7 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
         """Abort request if failed to get a position from tell()"""
 
         class BadTellObject(io.BytesIO):
-            def tell(self) -> NoReturn:
+            def tell(self) -> typing.NoReturn:
                 raise OSError
 
         body = BadTellObject(b"the data")

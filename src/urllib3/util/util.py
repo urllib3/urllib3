@@ -1,9 +1,9 @@
 from types import TracebackType
-from typing import NoReturn, Optional, Type, Union
+import typing
 
 
 def to_bytes(
-    x: Union[str, bytes], encoding: Optional[str] = None, errors: Optional[str] = None
+    x: typing.Union[str, bytes], encoding: typing.Optional[str] = None, errors: typing.Optional[str] = None
 ) -> bytes:
     if isinstance(x, bytes):
         return x
@@ -15,7 +15,7 @@ def to_bytes(
 
 
 def to_str(
-    x: Union[str, bytes], encoding: Optional[str] = None, errors: Optional[str] = None
+    x: typing.Union[str, bytes], encoding: typing.Optional[str] = None, errors: typing.Optional[str] = None
 ) -> str:
     if isinstance(x, str):
         return x
@@ -27,10 +27,10 @@ def to_str(
 
 
 def reraise(
-    tp: Optional[Type[BaseException]],
+    tp: typing.Optional[typing.Type[BaseException]],
     value: BaseException,
-    tb: Optional[TracebackType] = None,
-) -> NoReturn:
+    tb: typing.Optional[TracebackType] = None,
+) -> typing.NoReturn:
     try:
         if value.__traceback__ is not tb:
             raise value.with_traceback(tb)
