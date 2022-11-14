@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import sys
 
 import nox
 
@@ -31,6 +32,12 @@ def tests_impl(
     # Print OpenSSL information.
     session.run("python", "-m", "OpenSSL.debug")
 
+    memray_supported = True
+    if sys.implementation.name != "cpython" or sys.version_info < (3, 8):
+        memray_supported = False  # pytest-memray requires CPython 3.8+
+    elif sys.platform == "win32":
+        memray_supported = False
+
     # Inspired from https://hynek.me/articles/ditch-codecov-python/
     # We use parallel mode and then combine in a later CI step
     session.run(
@@ -42,6 +49,7 @@ def tests_impl(
         "--parallel-mode",
         "-m",
         "pytest",
+        *("--memray", "--hide-memray-summary") if memray_supported else (),
         "-r",
         "a",
         f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
