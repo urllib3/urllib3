@@ -71,6 +71,8 @@ except ImportError:
     ssl = None  # type: ignore[assignment]
 
 try:
+    import typing.TypedDict
+
     class _TYPE_SOCKS_OPTIONS(typing.TypedDict):
         socks_version: int
         proxy_host: typing.Optional[str]
