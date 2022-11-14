@@ -21,7 +21,7 @@ _TYPE_FIELD_VALUE_TUPLE = Union[
 
 
 def guess_content_type(
-    filename: Optional[str], default: str = "application/octet-stream"
+    filename: str | None, default: str = "application/octet-stream"
 ) -> str:
     """
     Guess the "Content-Type" of a file.
@@ -181,14 +181,14 @@ class RequestField:
         self,
         name: str,
         data: _TYPE_FIELD_VALUE,
-        filename: Optional[str] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        header_formatter: Optional[Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
+        filename: str | None = None,
+        headers: Mapping[str, str] | None = None,
+        header_formatter: Callable[[str, _TYPE_FIELD_VALUE], str] | None = None,
     ):
         self._name = name
         self._filename = filename
         self.data = data
-        self.headers: Dict[str, Optional[str]] = {}
+        self.headers: dict[str, str | None] = {}
         if headers:
             self.headers = dict(headers)
 
@@ -211,8 +211,8 @@ class RequestField:
         cls,
         fieldname: str,
         value: _TYPE_FIELD_VALUE_TUPLE,
-        header_formatter: Optional[Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
-    ) -> "RequestField":
+        header_formatter: Callable[[str, _TYPE_FIELD_VALUE], str] | None = None,
+    ) -> RequestField:
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
 
@@ -229,8 +229,8 @@ class RequestField:
 
         Field names and filenames must be unicode.
         """
-        filename: Optional[str]
-        content_type: Optional[str]
+        filename: str | None
+        content_type: str | None
         data: _TYPE_FIELD_VALUE
 
         if isinstance(value, tuple):
@@ -271,10 +271,10 @@ class RequestField:
 
     def _render_parts(
         self,
-        header_parts: Union[
-            Dict[str, Optional[_TYPE_FIELD_VALUE]],
-            Sequence[Tuple[str, Optional[_TYPE_FIELD_VALUE]]],
-        ],
+        header_parts: (
+            dict[str, _TYPE_FIELD_VALUE | None]
+            | Sequence[tuple[str, _TYPE_FIELD_VALUE | None]]
+        ),
     ) -> str:
         """
         Helper function to format and quote a single header.
@@ -286,7 +286,7 @@ class RequestField:
             A sequence of (k, v) tuples or a :class:`dict` of (k, v) to format
             as `k1="v1"; k2="v2"; ...`.
         """
-        iterable: Iterable[Tuple[str, Optional[_TYPE_FIELD_VALUE]]]
+        iterable: Iterable[tuple[str, _TYPE_FIELD_VALUE | None]]
 
         parts = []
         if isinstance(header_parts, dict):
@@ -321,9 +321,9 @@ class RequestField:
 
     def make_multipart(
         self,
-        content_disposition: Optional[str] = None,
-        content_type: Optional[str] = None,
-        content_location: Optional[str] = None,
+        content_disposition: str | None = None,
+        content_type: str | None = None,
+        content_location: str | None = None,
     ) -> None:
         """
         Makes this request field into a multipart request field.

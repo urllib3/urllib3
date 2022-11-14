@@ -100,7 +100,7 @@ def _can_resolve(host: str) -> bool:
         return False
 
 
-def has_alpn(ctx_cls: Optional[Type["ssl.SSLContext"]] = None) -> bool:
+def has_alpn(ctx_cls: type[ssl.SSLContext] | None = None) -> bool:
     """Detect if ALPN support is enabled."""
     ctx_cls = ctx_cls or util.SSLContext
     ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)  # type: ignore[misc]
@@ -119,7 +119,7 @@ def has_alpn(ctx_cls: Optional[Type["ssl.SSLContext"]] = None) -> bool:
 RESOLVES_LOCALHOST_FQDN = _can_resolve("localhost.")
 
 
-def clear_warnings(cls: Type[Warning] = HTTPWarning) -> None:
+def clear_warnings(cls: type[Warning] = HTTPWarning) -> None:
     new_filters = []
     for f in warnings.filters:
         if issubclass(f[2], cls):
@@ -260,7 +260,7 @@ def withPyOpenSSL(test: Callable[..., _RT]) -> Callable[..., _RT]:
 class _ListHandler(logging.Handler):
     def __init__(self) -> None:
         super().__init__()
-        self.records: List[logging.LogRecord] = []
+        self.records: list[logging.LogRecord] = []
 
     def emit(self, record: logging.LogRecord) -> None:
         self.records.append(record)
@@ -273,7 +273,7 @@ class LogRecorder:
         self._handler = _ListHandler()
 
     @property
-    def records(self) -> List[logging.LogRecord]:
+    def records(self) -> list[logging.LogRecord]:
         return self._handler.records
 
     def install(self) -> None:
@@ -282,16 +282,16 @@ class LogRecorder:
     def uninstall(self) -> None:
         self._target.removeHandler(self._handler)
 
-    def __enter__(self) -> List[logging.LogRecord]:
+    def __enter__(self) -> list[logging.LogRecord]:
         self.install()
         return self.records
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> "Literal[False]":
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> Literal[False]:
         self.uninstall()
         return False
 
@@ -313,8 +313,8 @@ class ImportBlocker(MetaPathFinder):
         self.namestoblock = namestoblock
 
     def find_module(
-        self, fullname: str, path: Optional[Sequence[Union[bytes, str]]] = None
-    ) -> Optional[Loader]:
+        self, fullname: str, path: Sequence[bytes | str] | None = None
+    ) -> Loader | None:
         if fullname in self.namestoblock:
             return ImportBlockerLoader()
         return None
@@ -329,11 +329,11 @@ class ModuleStash(MetaPathFinder):
     """
 
     def __init__(
-        self, namespace: str, modules: Dict[str, ModuleType] = sys.modules
+        self, namespace: str, modules: dict[str, ModuleType] = sys.modules
     ) -> None:
         self.namespace = namespace
         self.modules = modules
-        self._data: Dict[str, ModuleType] = {}
+        self._data: dict[str, ModuleType] = {}
 
     def stash(self) -> None:
         if self.namespace in self.modules:

@@ -79,7 +79,7 @@ class TestPoolManager:
         assert len(p.pools) == 0
 
     @pytest.mark.parametrize("url", ["http://@", None])
-    def test_nohost(self, url: Optional[str]) -> None:
+    def test_nohost(self, url: str | None) -> None:
         p = PoolManager(5)
         with pytest.raises(LocationValueError):
             p.connection_from_url(url=url)  # type: ignore[arg-type]

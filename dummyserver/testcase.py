@@ -24,7 +24,7 @@ from urllib3.util.ssltransport import SSLTransport
 
 
 def consume_socket(
-    sock: Union[SSLTransport, socket.socket], chunks: int = 65536
+    sock: SSLTransport | socket.socket, chunks: int = 65536
 ) -> bytearray:
     consumed = bytearray()
     while True:
@@ -58,7 +58,7 @@ class SocketDummyServerTestCase:
     server_context: ClassVar[ssl.SSLContext]
     client_context: ClassVar[ssl.SSLContext]
 
-    proxy_server: ClassVar["SocketDummyServerTestCase"]
+    proxy_server: ClassVar[SocketDummyServerTestCase]
 
     @classmethod
     def _start_server(cls, socket_handler: Callable[[socket.socket], None]) -> None:
@@ -74,7 +74,7 @@ class SocketDummyServerTestCase:
 
     @classmethod
     def start_response_handler(
-        cls, response: bytes, num: int = 1, block_send: Optional[threading.Event] = None
+        cls, response: bytes, num: int = 1, block_send: threading.Event | None = None
     ) -> threading.Event:
         ready_event = threading.Event()
 
@@ -95,7 +95,7 @@ class SocketDummyServerTestCase:
 
     @classmethod
     def start_basic_handler(
-        cls, num: int = 1, block_send: Optional[threading.Event] = None
+        cls, num: int = 1, block_send: threading.Event | None = None
     ) -> threading.Event:
         return cls.start_response_handler(
             b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n",
@@ -112,7 +112,7 @@ class SocketDummyServerTestCase:
         self,
         received_headers: Iterable[bytes],
         header_name: str,
-        expected_value: Optional[str] = None,
+        expected_value: str | None = None,
     ) -> None:
         header_name_bytes = header_name.encode("ascii")
         if expected_value is None:
@@ -212,7 +212,7 @@ class HTTPDummyProxyTestCase:
 
     https_host: ClassVar[str] = "localhost"
     https_host_alt: ClassVar[str] = "127.0.0.1"
-    https_certs: ClassVar[Dict[str, Any]] = DEFAULT_CERTS
+    https_certs: ClassVar[dict[str, Any]] = DEFAULT_CERTS
     https_server: ClassVar[httpserver.HTTPServer]
     https_port: ClassVar[int]
     https_url: ClassVar[str]

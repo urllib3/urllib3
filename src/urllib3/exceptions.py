@@ -29,7 +29,7 @@ _TYPE_REDUCE_RESULT = Tuple[Callable[..., object], Tuple[object, ...]]
 class PoolError(HTTPError):
     """Base exception for errors caused within a pool."""
 
-    def __init__(self, pool: "ConnectionPool", message: str) -> None:
+    def __init__(self, pool: ConnectionPool, message: str) -> None:
         self.pool = pool
         super().__init__(f"{pool}: {message}")
 
@@ -41,7 +41,7 @@ class PoolError(HTTPError):
 class RequestError(PoolError):
     """Base exception for PoolErrors that have associated URLs."""
 
-    def __init__(self, pool: "ConnectionPool", url: str, message: str) -> None:
+    def __init__(self, pool: ConnectionPool, url: str, message: str) -> None:
         self.url = url
         super().__init__(pool, message)
 
@@ -92,7 +92,7 @@ class MaxRetryError(RequestError):
     """
 
     def __init__(
-        self, pool: "ConnectionPool", url: str, reason: Optional[Exception] = None
+        self, pool: ConnectionPool, url: str, reason: Exception | None = None
     ) -> None:
         self.reason = reason
 
@@ -105,7 +105,7 @@ class HostChangedError(RequestError):
     """Raised when an existing pool gets a request for a foreign host."""
 
     def __init__(
-        self, pool: "ConnectionPool", url: str, retries: Union["Retry", int] = 3
+        self, pool: ConnectionPool, url: str, retries: Retry | int = 3
     ) -> None:
         message = f"Tried to open a foreign host with url: {url}"
         super().__init__(pool, url, message)
@@ -137,12 +137,12 @@ class ConnectTimeoutError(TimeoutError):
 class NewConnectionError(ConnectTimeoutError, HTTPError):
     """Raised when we fail to establish a new connection. Usually ECONNREFUSED."""
 
-    def __init__(self, conn: "HTTPConnection", message: str) -> None:
+    def __init__(self, conn: HTTPConnection, message: str) -> None:
         self.conn = conn
         super().__init__(f"{conn}: {message}")
 
     @property
-    def pool(self) -> "HTTPConnection":
+    def pool(self) -> HTTPConnection:
         warnings.warn(
             "The 'pool' property is deprecated and will be removed "
             "in a later urllib3 v2.x release. use 'conn' instead.",
@@ -156,7 +156,7 @@ class NewConnectionError(ConnectTimeoutError, HTTPError):
 class NameResolutionError(NewConnectionError):
     """Raised when host name resolution fails."""
 
-    def __init__(self, host: str, conn: "HTTPConnection", reason: socket.gaierror):
+    def __init__(self, host: str, conn: HTTPConnection, reason: socket.gaierror):
         message = f"Failed to resolve '{host}' ({reason})"
         super().__init__(conn, message)
 
@@ -260,9 +260,9 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
 class InvalidChunkLength(HTTPError, httplib_IncompleteRead):
     """Invalid chunk length in a chunked response."""
 
-    def __init__(self, response: "HTTPResponse", length: bytes) -> None:
+    def __init__(self, response: HTTPResponse, length: bytes) -> None:
         self.partial: int = response.tell()  # type: ignore[assignment]
-        self.expected: Optional[int] = response.length_remaining
+        self.expected: int | None = response.length_remaining
         self.response = response
         self.length = length
 
@@ -282,7 +282,7 @@ class ProxySchemeUnknown(AssertionError, URLSchemeUnknown):
 
     # TODO(t-8ch): Stop inheriting from AssertionError in v2.0.
 
-    def __init__(self, scheme: Optional[str]) -> None:
+    def __init__(self, scheme: str | None) -> None:
         # 'localhost' is here because our URL parser parses
         # localhost:8080 -> scheme=localhost, remove if we fix this.
         if scheme == "localhost":
@@ -302,7 +302,7 @@ class HeaderParsingError(HTTPError):
     """Raised by assert_header_parsing, but we convert it to a log.warning statement."""
 
     def __init__(
-        self, defects: List[MessageDefect], unparsed_data: Optional[Union[bytes, str]]
+        self, defects: list[MessageDefect], unparsed_data: bytes | str | None
     ) -> None:
         message = f"{defects or 'Unknown'}, unparsed data: {unparsed_data!r}"
         super().__init__(message)

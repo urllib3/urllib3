@@ -35,7 +35,7 @@ def select_wait_for_socket(
     sock: socket.socket,
     read: bool = False,
     write: bool = False,
-    timeout: Optional[float] = None,
+    timeout: float | None = None,
 ) -> bool:
     if not read and not write:
         raise RuntimeError("must specify at least one of read=True, write=True")
@@ -59,7 +59,7 @@ def poll_wait_for_socket(
     sock: socket.socket,
     read: bool = False,
     write: bool = False,
-    timeout: Optional[float] = None,
+    timeout: float | None = None,
 ) -> bool:
     if not read and not write:
         raise RuntimeError("must specify at least one of read=True, write=True")
@@ -72,7 +72,7 @@ def poll_wait_for_socket(
     poll_obj.register(sock, mask)
 
     # For some reason, poll() takes timeout in milliseconds
-    def do_poll(t: Optional[float]) -> List[Tuple[int, int]]:
+    def do_poll(t: float | None) -> list[tuple[int, int]]:
         if t is not None:
             t *= 1000
         return poll_obj.poll(t)
@@ -97,7 +97,7 @@ def wait_for_socket(
     sock: socket.socket,
     read: bool = False,
     write: bool = False,
-    timeout: Optional[float] = None,
+    timeout: float | None = None,
 ) -> bool:
     # We delay choosing which implementation to use until the first time we're
     # called. We could do it at import time, but then we might make the wrong
@@ -111,14 +111,14 @@ def wait_for_socket(
     return wait_for_socket(sock, read, write, timeout)
 
 
-def wait_for_read(sock: socket.socket, timeout: Optional[float] = None) -> bool:
+def wait_for_read(sock: socket.socket, timeout: float | None = None) -> bool:
     """Waits for reading to be available on a given socket.
     Returns True if the socket is readable, or False if the timeout expired.
     """
     return wait_for_socket(sock, read=True, timeout=timeout)
 
 
-def wait_for_write(sock: socket.socket, timeout: Optional[float] = None) -> bool:
+def wait_for_write(sock: socket.socket, timeout: float | None = None) -> bool:
     """Waits for writing to be available on a given socket.
     Returns True if the socket is readable, or False if the timeout expired.
     """

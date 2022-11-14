@@ -30,7 +30,7 @@ def spair() -> Generator[TYPE_SOCKET_PAIR, None, None]:
     b.close()
 
 
-variants: List[TYPE_WAIT_FOR] = [wait_for_socket, select_wait_for_socket]
+variants: list[TYPE_WAIT_FOR] = [wait_for_socket, select_wait_for_socket]
 if _have_working_poll():
     variants.append(poll_wait_for_socket)
 
@@ -108,7 +108,7 @@ def test_eintr(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: Optional[FrameType]) -> Any:
+    def handler(sig: int, frame: FrameType | None) -> Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 
@@ -139,7 +139,7 @@ def test_eintr_zero_timeout(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: Optional[FrameType]) -> Any:
+    def handler(sig: int, frame: FrameType | None) -> Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 
@@ -170,7 +170,7 @@ def test_eintr_infinite_timeout(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> 
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: Optional[FrameType]) -> Any:
+    def handler(sig: int, frame: FrameType | None) -> Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 

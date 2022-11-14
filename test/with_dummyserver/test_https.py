@@ -79,12 +79,12 @@ CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
 
 
 class TestHTTPS(HTTPSDummyServerTestCase):
-    tls_protocol_name: Optional[str] = None
+    tls_protocol_name: str | None = None
 
     def tls_protocol_not_default(self) -> bool:
         return self.tls_protocol_name in {"TLSv1", "TLSv1.1"}
 
-    def tls_version(self) -> "ssl.TLSVersion":
+    def tls_version(self) -> ssl.TLSVersion:
         if self.tls_protocol_name is None:
             return pytest.skip("Skipping base test class")
         try:
@@ -737,7 +737,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def _request_without_resource_warnings(
         self, method: str, url: str
-    ) -> List[warnings.WarningMessage]:
+    ) -> list[warnings.WarningMessage]:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             with HTTPSConnectionPool(
@@ -841,7 +841,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         "ssl_version", [None, ssl.PROTOCOL_TLS, ssl.PROTOCOL_TLS_CLIENT]
     )
     def test_ssl_version_with_protocol_tls_or_client_not_deprecated(
-        self, ssl_version: Optional[int]
+        self, ssl_version: int | None
     ) -> None:
         if self.tls_protocol_name is None:
             pytest.skip("Skipping base test class")
@@ -939,7 +939,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @pytest.mark.parametrize("sslkeylogfile", [None, ""])
     def test_sslkeylogfile_empty(
-        self, monkeypatch: pytest.MonkeyPatch, sslkeylogfile: Optional[str]
+        self, monkeypatch: pytest.MonkeyPatch, sslkeylogfile: str | None
     ) -> None:
         # Assert that an HTTPS connection doesn't error out when given
         # no SSLKEYLOGFILE or an empty value (ie 'SSLKEYLOGFILE=')
@@ -1072,7 +1072,7 @@ class TestHTTPS_Hostname:
         except AttributeError:
             pytest.skip("Couldn't set 'SSLContext.hostname_checks_common_name'")
 
-        err: Optional[MaxRetryError]
+        err: MaxRetryError | None
         try:
             with HTTPSConnectionPool(
                 no_san_server.host,

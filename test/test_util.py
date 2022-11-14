@@ -144,7 +144,7 @@ class TestUtil:
 
     @pytest.mark.parametrize(["url", "scheme_host_port"], url_host_map)
     def test_scheme_host_port(
-        self, url: str, scheme_host_port: Tuple[str, str, Optional[int]]
+        self, url: str, scheme_host_port: tuple[str, str, int | None]
     ) -> None:
         parsed_url = parse_url(url)
         scheme, host, port = scheme_host_port
@@ -369,7 +369,7 @@ class TestUtil:
         returned_url = parse_url(url)
         assert returned_url.request_uri == expected_request_uri
 
-    url_authority_map: List[Tuple[str, Optional[str]]] = [
+    url_authority_map: list[tuple[str, str | None]] = [
         ("http://user:pass@google.com/mail", "user:pass@google.com"),
         ("http://user:pass@google.com:80/mail", "user:pass@google.com:80"),
         ("http://user@google.com:80/mail", "user@google.com:80"),
@@ -407,18 +407,18 @@ class TestUtil:
     ]
 
     @pytest.mark.parametrize("url, expected_authority", combined_netloc_authority_map)
-    def test_authority(self, url: str, expected_authority: Optional[str]) -> None:
+    def test_authority(self, url: str, expected_authority: str | None) -> None:
         assert parse_url(url).authority == expected_authority
 
     @pytest.mark.parametrize("url, expected_authority", url_authority_with_schemes_map)
     def test_authority_matches_urllib_netloc(
-        self, url: str, expected_authority: Optional[str]
+        self, url: str, expected_authority: str | None
     ) -> None:
         """Validate this matches the behavior of urlparse().netloc"""
         assert urlparse(url).netloc == expected_authority
 
     @pytest.mark.parametrize("url, expected_netloc", url_netloc_map)
-    def test_netloc(self, url: str, expected_netloc: Optional[str]) -> None:
+    def test_netloc(self, url: str, expected_netloc: str | None) -> None:
         assert parse_url(url).netloc == expected_netloc
 
     url_vulnerabilities = [
@@ -501,7 +501,7 @@ class TestUtil:
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
     def test_url_vulnerabilities(
-        self, url: str, expected_url: Union["Literal[False]", Url]
+        self, url: str, expected_url: Literal[False] | Url
     ) -> None:
         if expected_url is False:
             with pytest.raises(LocationParseError):
@@ -569,7 +569,7 @@ class TestUtil:
         ],
     )
     def test_make_headers(
-        self, kwargs: Dict[str, Union[bool, str]], expected: Dict[str, str]
+        self, kwargs: dict[str, bool | str], expected: dict[str, str]
     ) -> None:
         assert make_headers(**kwargs) == expected  # type: ignore[arg-type]
 
@@ -651,7 +651,7 @@ class TestUtil:
         ],
     )
     def test_invalid_timeouts(
-        self, kwargs: Dict[str, Union[int, bool]], message: str
+        self, kwargs: dict[str, int | bool], message: str
     ) -> None:
         with pytest.raises(ValueError, match=message):
             Timeout(**kwargs)
@@ -732,7 +732,7 @@ class TestUtil:
     def test_is_fp_closed_object_supports_closed(self) -> None:
         class ClosedFile:
             @property
-            def closed(self) -> "Literal[True]":
+            def closed(self) -> Literal[True]:
                 return True
 
         assert is_fp_closed(ClosedFile())
@@ -748,7 +748,7 @@ class TestUtil:
     def test_is_fp_closed_object_has_fp(self) -> None:
         class FpFile:
             @property
-            def fp(self) -> "Literal[True]":
+            def fp(self) -> Literal[True]:
                 return True
 
         assert not is_fp_closed(FpFile())
@@ -788,7 +788,7 @@ class TestUtil:
 
     @pytest.mark.parametrize("headers", [b"foo", None, object])
     def test_assert_header_parsing_throws_typeerror_with_non_headers(
-        self, headers: Optional[Union[bytes, object]]
+        self, headers: bytes | object | None
     ) -> None:
         with pytest.raises(TypeError):
             assert_header_parsing(headers)  # type: ignore[arg-type]
@@ -921,7 +921,7 @@ class TestUtil:
         ),
     )
     def test_to_str(
-        self, input: Union[bytes, str], params: Dict[str, str], expected: str
+        self, input: bytes | str, params: dict[str, str], expected: str
     ) -> None:
         assert to_str(input, **params) == expected
 
@@ -940,7 +940,7 @@ class TestUtil:
         ),
     )
     def test_to_bytes(
-        self, input: Union[bytes, str], params: Dict[str, str], expected: bytes
+        self, input: bytes | str, params: dict[str, str], expected: bytes
     ) -> None:
         assert to_bytes(input, **params) == expected
 
@@ -963,7 +963,7 @@ class TestUtilSSL:
         ],
     )
     def test_resolve_cert_reqs(
-        self, candidate: Optional[Union[int, str]], requirements: int
+        self, candidate: int | str | None, requirements: int
     ) -> None:
         assert resolve_cert_reqs(candidate) == requirements
 
@@ -976,9 +976,7 @@ class TestUtilSSL:
             (ssl.PROTOCOL_SSLv23, ssl.PROTOCOL_SSLv23),
         ],
     )
-    def test_resolve_ssl_version(
-        self, candidate: Union[int, str], version: int
-    ) -> None:
+    def test_resolve_ssl_version(self, candidate: int | str, version: int) -> None:
         assert resolve_ssl_version(candidate) == version
 
     def test_ssl_wrap_socket_loads_the_cert_chain(self) -> None:
@@ -1028,8 +1026,8 @@ class TestUtilSSL:
         )
 
     def _wrap_socket_and_mock_warn(
-        self, sock: socket.socket, server_hostname: Optional[str]
-    ) -> Tuple[Mock, MagicMock]:
+        self, sock: socket.socket, server_hostname: str | None
+    ) -> tuple[Mock, MagicMock]:
         mock_context = Mock()
         with patch("warnings.warn") as warn:
             ssl_wrap_socket(

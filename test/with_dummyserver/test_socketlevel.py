@@ -302,7 +302,7 @@ class TestClientCerts(SocketDummyServerTestCase):
     def test_client_cert_with_bytes_password(self) -> None:
         self.run_client_cert_with_password_test(b"letmein")
 
-    def run_client_cert_with_password_test(self, password: Union[bytes, str]) -> None:
+    def run_client_cert_with_password_test(self, password: bytes | str) -> None:
         """
         Tests client certificate password functionality
         """
@@ -1504,7 +1504,7 @@ class TestSSL(SocketDummyServerTestCase):
         "preload_content,read_amt", [(True, None), (False, None), (False, 2**31)]
     )
     def test_requesting_large_resources_via_ssl(
-        self, preload_content: bool, read_amt: Optional[int]
+        self, preload_content: bool, read_amt: int | None
     ) -> None:
         """
         Ensure that it is possible to read 2 GiB or more via an SSL
@@ -1584,7 +1584,7 @@ class TestHeaders(SocketDummyServerTestCase):
 
     def start_parsing_handler(self) -> None:
         self.parsed_headers: OrderedDictType[str, str] = OrderedDict()
-        self.received_headers: List[bytes] = []
+        self.received_headers: list[bytes] = []
 
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -1646,7 +1646,7 @@ class TestHeaders(SocketDummyServerTestCase):
             (f"X-Header-{int(i)}", str(i)) for i in reversed(range(K))
         ]
 
-        def filter_non_x_headers(d: OrderedDictType[str, str]) -> List[Tuple[str, str]]:
+        def filter_non_x_headers(d: OrderedDictType[str, str]) -> list[tuple[str, str]]:
             return [(k, v) for (k, v) in d.items() if k.startswith("X-Header-")]
 
         self.start_parsing_handler()
@@ -1712,13 +1712,13 @@ class TestHeaders(SocketDummyServerTestCase):
         ],
     )
     def test_headers_sent_with_add(
-        self, method_type: str, body_type: Optional[str]
+        self, method_type: str, body_type: str | None
     ) -> None:
         """
         Confirm that when adding headers with combine=True that we simply append to the
         most recent value, rather than create a new header line.
         """
-        body: Union[None, bytes, io.BytesIO]
+        body: None | bytes | io.BytesIO
         if body_type is None:
             body = None
         elif body_type == "bytes":
@@ -1774,7 +1774,7 @@ class TestHeaders(SocketDummyServerTestCase):
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
     def _test_broken_header_parsing(
-        self, headers: List[bytes], unparsed_data_check: Optional[str] = None
+        self, headers: list[bytes], unparsed_data_check: str | None = None
     ) -> None:
         self.start_response_handler(
             (
@@ -2068,7 +2068,7 @@ class TestContentFraming(SocketDummyServerTestCase):
     @pytest.mark.parametrize("content_length", [None, 0])
     @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
     def test_content_length_0_by_default(
-        self, method: str, content_length: Optional[int]
+        self, method: str, content_length: int | None
     ) -> None:
         buffer = bytearray()
 

@@ -101,13 +101,13 @@ class Url(
 
     def __new__(  # type: ignore[no-untyped-def]
         cls,
-        scheme: Optional[str] = None,
-        auth: Optional[str] = None,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
-        path: Optional[str] = None,
-        query: Optional[str] = None,
-        fragment: Optional[str] = None,
+        scheme: str | None = None,
+        auth: str | None = None,
+        host: str | None = None,
+        port: int | None = None,
+        path: str | None = None,
+        query: str | None = None,
+        fragment: str | None = None,
     ):
         if path and not path.startswith("/"):
             path = "/" + path
@@ -116,7 +116,7 @@ class Url(
         return super().__new__(cls, scheme, auth, host, port, path, query, fragment)
 
     @property
-    def hostname(self) -> Optional[str]:
+    def hostname(self) -> str | None:
         """For backwards-compatibility with urlparse. We're nice like that."""
         return self.host
 
@@ -131,7 +131,7 @@ class Url(
         return uri
 
     @property
-    def authority(self) -> Optional[str]:
+    def authority(self) -> str | None:
         """
         Authority component as defined in RFC 3986 3.2.
         This includes userinfo (auth), host and port.
@@ -147,7 +147,7 @@ class Url(
             return f"{userinfo}@{netloc}"
 
     @property
-    def netloc(self) -> Optional[str]:
+    def netloc(self) -> str | None:
         """
         Network location including host and port.
 
@@ -227,8 +227,8 @@ def _encode_invalid_chars(
 
 
 def _encode_invalid_chars(
-    component: Optional[str], allowed_chars: Container[str]
-) -> Optional[str]:
+    component: str | None, allowed_chars: Container[str]
+) -> str | None:
     """Percent-encodes a URI component without reapplying
     onto an already percent-encoded component.
     """
@@ -293,16 +293,16 @@ def _remove_path_dot_segments(path: str) -> str:
 
 
 @overload
-def _normalize_host(host: None, scheme: Optional[str]) -> None:
+def _normalize_host(host: None, scheme: str | None) -> None:
     ...
 
 
 @overload
-def _normalize_host(host: str, scheme: Optional[str]) -> str:
+def _normalize_host(host: str, scheme: str | None) -> str:
     ...
 
 
-def _normalize_host(host: Optional[str], scheme: Optional[str]) -> Optional[str]:
+def _normalize_host(host: str | None, scheme: str | None) -> str | None:
     if host:
         if scheme in _NORMALIZABLE_SCHEMES:
             is_ipv6 = _IPV6_ADDRZ_RE.match(host)
@@ -404,15 +404,15 @@ def parse_url(url: str) -> Url:
     if not _SCHEME_RE.search(url):
         url = "//" + url
 
-    scheme: Optional[str]
-    authority: Optional[str]
-    auth: Optional[str]
-    host: Optional[str]
-    port: Optional[str]
-    port_int: Optional[int]
-    path: Optional[str]
-    query: Optional[str]
-    fragment: Optional[str]
+    scheme: str | None
+    authority: str | None
+    auth: str | None
+    host: str | None
+    port: str | None
+    port_int: int | None
+    path: str | None
+    query: str | None
+    fragment: str | None
 
     try:
         scheme, authority, path, query, fragment = _URI_RE.match(url).groups()  # type: ignore[union-attr]

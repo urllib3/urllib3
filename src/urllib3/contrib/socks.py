@@ -76,10 +76,10 @@ try:
 
     class _TYPE_SOCKS_OPTIONS(TypedDict):
         socks_version: int
-        proxy_host: Optional[str]
-        proxy_port: Optional[str]
-        username: Optional[str]
-        password: Optional[str]
+        proxy_host: str | None
+        proxy_port: str | None
+        username: str | None
+        password: str | None
         rdns: bool
 
 except ImportError:  # Python 3.7
@@ -97,11 +97,11 @@ class SOCKSConnection(HTTPConnection):
         self._socks_options = _socks_options
         super().__init__(*args, **kwargs)
 
-    def _new_conn(self) -> "socks.socksocket":
+    def _new_conn(self) -> socks.socksocket:
         """
         Establish a new connection via the SOCKS proxy.
         """
-        extra_kw: Dict[str, Any] = {}
+        extra_kw: dict[str, Any] = {}
         if self.source_address:
             extra_kw["source_address"] = self.source_address
 
@@ -186,10 +186,10 @@ class SOCKSProxyManager(PoolManager):
     def __init__(
         self,
         proxy_url: str,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
         num_pools: int = 10,
-        headers: Optional[Mapping[str, str]] = None,
+        headers: Mapping[str, str] | None = None,
         **connection_pool_kw: Any,
     ):
         parsed = parse_url(proxy_url)

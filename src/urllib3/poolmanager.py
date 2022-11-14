@@ -76,36 +76,36 @@ class PoolKey(NamedTuple):
 
     key_scheme: str
     key_host: str
-    key_port: Optional[int]
-    key_timeout: Optional[Union[Timeout, float, int]]
-    key_retries: Optional[Union[Retry, int]]
-    key_block: Optional[bool]
-    key_source_address: Optional[Tuple[str, int]]
-    key_key_file: Optional[str]
-    key_key_password: Optional[str]
-    key_cert_file: Optional[str]
-    key_cert_reqs: Optional[str]
-    key_ca_certs: Optional[str]
-    key_ssl_version: Optional[Union[int, str]]
-    key_ssl_minimum_version: Optional["ssl.TLSVersion"]
-    key_ssl_maximum_version: Optional["ssl.TLSVersion"]
-    key_ca_cert_dir: Optional[str]
-    key_ssl_context: Optional["ssl.SSLContext"]
-    key_maxsize: Optional[int]
-    key_headers: Optional[FrozenSet[Tuple[str, str]]]
-    key__proxy: Optional[Url]
-    key__proxy_headers: Optional[FrozenSet[Tuple[str, str]]]
-    key__proxy_config: Optional[ProxyConfig]
-    key_socket_options: Optional[_TYPE_SOCKET_OPTIONS]
-    key__socks_options: Optional[FrozenSet[Tuple[str, str]]]
-    key_assert_hostname: Optional[Union[bool, str]]
-    key_assert_fingerprint: Optional[str]
-    key_server_hostname: Optional[str]
-    key_blocksize: Optional[int]
+    key_port: int | None
+    key_timeout: Timeout | float | int | None
+    key_retries: Retry | int | None
+    key_block: bool | None
+    key_source_address: tuple[str, int] | None
+    key_key_file: str | None
+    key_key_password: str | None
+    key_cert_file: str | None
+    key_cert_reqs: str | None
+    key_ca_certs: str | None
+    key_ssl_version: int | str | None
+    key_ssl_minimum_version: ssl.TLSVersion | None
+    key_ssl_maximum_version: ssl.TLSVersion | None
+    key_ca_cert_dir: str | None
+    key_ssl_context: ssl.SSLContext | None
+    key_maxsize: int | None
+    key_headers: frozenset[tuple[str, str]] | None
+    key__proxy: Url | None
+    key__proxy_headers: frozenset[tuple[str, str]] | None
+    key__proxy_config: ProxyConfig | None
+    key_socket_options: _TYPE_SOCKET_OPTIONS | None
+    key__socks_options: frozenset[tuple[str, str]] | None
+    key_assert_hostname: bool | str | None
+    key_assert_fingerprint: str | None
+    key_server_hostname: str | None
+    key_blocksize: int | None
 
 
 def _default_key_normalizer(
-    key_class: Type[PoolKey], request_context: Dict[str, Any]
+    key_class: type[PoolKey], request_context: dict[str, Any]
 ) -> PoolKey:
     """
     Create a pool key out of a request context dictionary.
@@ -205,13 +205,13 @@ class PoolManager(RequestMethods):
 
     """
 
-    proxy: Optional[Url] = None
-    proxy_config: Optional[ProxyConfig] = None
+    proxy: Url | None = None
+    proxy_config: ProxyConfig | None = None
 
     def __init__(
         self,
         num_pools: int = 10,
-        headers: Optional[Mapping[str, str]] = None,
+        headers: Mapping[str, str] | None = None,
         **connection_pool_kw: Any,
     ) -> None:
         super().__init__(headers)
@@ -230,10 +230,10 @@ class PoolManager(RequestMethods):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> "Literal[False]":
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Literal[False]:
         self.clear()
         # Return False to re-raise any potential exceptions
         return False
@@ -243,7 +243,7 @@ class PoolManager(RequestMethods):
         scheme: str,
         host: str,
         port: int,
-        request_context: Optional[Dict[str, Any]] = None,
+        request_context: dict[str, Any] | None = None,
     ) -> HTTPConnectionPool:
         """
         Create a new :class:`urllib3.connectionpool.ConnectionPool` based on host, port, scheme, and
@@ -254,7 +254,7 @@ class PoolManager(RequestMethods):
         connection pools handed out by :meth:`connection_from_url` and
         companion methods. It is intended to be overridden for customization.
         """
-        pool_cls: Type[HTTPConnectionPool] = self.pool_classes_by_scheme[scheme]
+        pool_cls: type[HTTPConnectionPool] = self.pool_classes_by_scheme[scheme]
         if request_context is None:
             request_context = self.connection_pool_kw.copy()
 
@@ -287,10 +287,10 @@ class PoolManager(RequestMethods):
 
     def connection_from_host(
         self,
-        host: Optional[str],
-        port: Optional[int] = None,
-        scheme: Optional[str] = "http",
-        pool_kwargs: Optional[Dict[str, Any]] = None,
+        host: str | None,
+        port: int | None = None,
+        scheme: str | None = "http",
+        pool_kwargs: dict[str, Any] | None = None,
     ) -> HTTPConnectionPool:
         """
         Get a :class:`urllib3.connectionpool.ConnectionPool` based on the host, port, and scheme.
@@ -315,7 +315,7 @@ class PoolManager(RequestMethods):
         return self.connection_from_context(request_context)
 
     def connection_from_context(
-        self, request_context: Dict[str, Any]
+        self, request_context: dict[str, Any]
     ) -> HTTPConnectionPool:
         """
         Get a :class:`urllib3.connectionpool.ConnectionPool` based on the request context.
@@ -340,7 +340,7 @@ class PoolManager(RequestMethods):
         return self.connection_from_pool_key(pool_key, request_context=request_context)
 
     def connection_from_pool_key(
-        self, pool_key: PoolKey, request_context: Dict[str, Any]
+        self, pool_key: PoolKey, request_context: dict[str, Any]
     ) -> HTTPConnectionPool:
         """
         Get a :class:`urllib3.connectionpool.ConnectionPool` based on the provided pool key.
@@ -366,7 +366,7 @@ class PoolManager(RequestMethods):
         return pool
 
     def connection_from_url(
-        self, url: str, pool_kwargs: Optional[Dict[str, Any]] = None
+        self, url: str, pool_kwargs: dict[str, Any] | None = None
     ) -> HTTPConnectionPool:
         """
         Similar to :func:`urllib3.connectionpool.connection_from_url`.
@@ -383,7 +383,7 @@ class PoolManager(RequestMethods):
             u.host, port=u.port, scheme=u.scheme, pool_kwargs=pool_kwargs
         )
 
-    def _merge_pool_kwargs(self, override: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    def _merge_pool_kwargs(self, override: dict[str, Any] | None) -> dict[str, Any]:
         """
         Merge a dictionary of override values for self.connection_pool_kw.
 
@@ -545,12 +545,12 @@ class ProxyManager(PoolManager):
         self,
         proxy_url: str,
         num_pools: int = 10,
-        headers: Optional[Mapping[str, str]] = None,
-        proxy_headers: Optional[Mapping[str, str]] = None,
-        proxy_ssl_context: Optional["ssl.SSLContext"] = None,
+        headers: Mapping[str, str] | None = None,
+        proxy_headers: Mapping[str, str] | None = None,
+        proxy_ssl_context: ssl.SSLContext | None = None,
         use_forwarding_for_https: bool = False,
-        proxy_assert_hostname: Union[None, str, "Literal[False]"] = None,
-        proxy_assert_fingerprint: Optional[str] = None,
+        proxy_assert_hostname: None | str | Literal[False] = None,
+        proxy_assert_fingerprint: str | None = None,
         **connection_pool_kw: Any,
     ) -> None:
 
@@ -585,10 +585,10 @@ class ProxyManager(PoolManager):
 
     def connection_from_host(
         self,
-        host: Optional[str],
-        port: Optional[int] = None,
-        scheme: Optional[str] = "http",
-        pool_kwargs: Optional[Dict[str, Any]] = None,
+        host: str | None,
+        port: int | None = None,
+        scheme: str | None = "http",
+        pool_kwargs: dict[str, Any] | None = None,
     ) -> HTTPConnectionPool:
         if scheme == "https":
             return super().connection_from_host(
@@ -600,7 +600,7 @@ class ProxyManager(PoolManager):
         )
 
     def _set_proxy_headers(
-        self, url: str, headers: Optional[Mapping[str, str]] = None
+        self, url: str, headers: Mapping[str, str] | None = None
     ) -> Mapping[str, str]:
         """
         Sets headers needed by proxies: specifically, the Accept and Host

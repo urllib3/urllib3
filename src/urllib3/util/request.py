@@ -51,7 +51,7 @@ class _TYPE_FAILEDTELL(Enum):
     token = 0
 
 
-_FAILEDTELL: "Final[_TYPE_FAILEDTELL]" = _TYPE_FAILEDTELL.token
+_FAILEDTELL: Final[_TYPE_FAILEDTELL] = _TYPE_FAILEDTELL.token
 
 _TYPE_BODY_POSITION = Union[int, _TYPE_FAILEDTELL]
 
@@ -64,13 +64,13 @@ _METHODS_NOT_EXPECTING_BODY = {"GET", "HEAD", "DELETE", "TRACE", "OPTIONS", "CON
 
 
 def make_headers(
-    keep_alive: Optional[bool] = None,
-    accept_encoding: Optional[Union[bool, List[str], str]] = None,
-    user_agent: Optional[str] = None,
-    basic_auth: Optional[str] = None,
-    proxy_basic_auth: Optional[str] = None,
-    disable_cache: Optional[bool] = None,
-) -> Dict[str, str]:
+    keep_alive: bool | None = None,
+    accept_encoding: bool | list[str] | str | None = None,
+    user_agent: str | None = None,
+    basic_auth: str | None = None,
+    proxy_basic_auth: str | None = None,
+    disable_cache: bool | None = None,
+) -> dict[str, str]:
     """
     Shortcuts for generating request headers.
 
@@ -110,7 +110,7 @@ def make_headers(
         print(urllib3.util.make_headers(accept_encoding=True))
         # {'accept-encoding': 'gzip,deflate'}
     """
-    headers: Dict[str, str] = {}
+    headers: dict[str, str] = {}
     if accept_encoding:
         if isinstance(accept_encoding, str):
             pass
@@ -143,8 +143,8 @@ def make_headers(
 
 
 def set_file_position(
-    body: Any, pos: Optional[_TYPE_BODY_POSITION]
-) -> Optional[_TYPE_BODY_POSITION]:
+    body: Any, pos: _TYPE_BODY_POSITION | None
+) -> _TYPE_BODY_POSITION | None:
     """
     If a position is provided, move file to that point.
     Otherwise, we'll attempt to record a position for future use.
@@ -193,12 +193,12 @@ def rewind_body(body: IO[AnyStr], body_pos: _TYPE_BODY_POSITION) -> None:
 
 
 class ChunksAndContentLength(NamedTuple):
-    chunks: Optional[Iterable[bytes]]
-    content_length: Optional[int]
+    chunks: Iterable[bytes] | None
+    content_length: int | None
 
 
 def body_to_chunks(
-    body: Optional[Any], method: str, blocksize: int
+    body: Any | None, method: str, blocksize: int
 ) -> ChunksAndContentLength:
     """Takes the HTTP request method, body, and blocksize and
     transforms them into an iterable of chunks to pass to
@@ -209,8 +209,8 @@ def body_to_chunks(
     for framing instead.
     """
 
-    chunks: Optional[Iterable[bytes]]
-    content_length: Optional[int]
+    chunks: Iterable[bytes] | None
+    content_length: int | None
 
     # No body, we need to make a recommendation on 'Content-Length'
     # based on whether that request method is expected to have

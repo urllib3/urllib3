@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from .._base_connection import BaseHTTPConnection
 
 
-def is_connection_dropped(conn: "BaseHTTPConnection") -> bool:  # Platform-specific
+def is_connection_dropped(conn: BaseHTTPConnection) -> bool:  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
     :param conn: :class:`urllib3.connection.HTTPConnection` object.
@@ -25,10 +25,10 @@ def is_connection_dropped(conn: "BaseHTTPConnection") -> bool:  # Platform-speci
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
 def create_connection(
-    address: Tuple[str, int],
+    address: tuple[str, int],
     timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-    source_address: Optional[Tuple[str, int]] = None,
-    socket_options: Optional[_TYPE_SOCKET_OPTIONS] = None,
+    source_address: tuple[str, int] | None = None,
+    socket_options: _TYPE_SOCKET_OPTIONS | None = None,
 ) -> socket.socket:
     """Connect to *address* and return the socket object.
 
@@ -91,7 +91,7 @@ def create_connection(
 
 
 def _set_socket_options(
-    sock: socket.socket, options: Optional[_TYPE_SOCKET_OPTIONS]
+    sock: socket.socket, options: _TYPE_SOCKET_OPTIONS | None
 ) -> None:
     if options is None:
         return

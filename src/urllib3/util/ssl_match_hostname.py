@@ -23,7 +23,7 @@ class CertificateError(ValueError):
 
 def _dnsname_match(
     dn: Any, hostname: str, max_wildcards: int = 1
-) -> Union[Optional[Match[str]], bool]:
+) -> Match[str] | None | bool:
     """Matching according to RFC 6125, section 6.4.3
 
     http://tools.ietf.org/html/rfc6125#section-6.4.3
@@ -77,7 +77,7 @@ def _dnsname_match(
     return pat.match(hostname)
 
 
-def _ipaddress_match(ipname: str, host_ip: Union[IPv4Address, IPv6Address]) -> bool:
+def _ipaddress_match(ipname: str, host_ip: IPv4Address | IPv6Address) -> bool:
     """Exact matching of IP addresses.
 
     RFC 9110 section 4.3.5: "A reference identity of IP-ID contains the decoded
@@ -93,7 +93,7 @@ def _ipaddress_match(ipname: str, host_ip: Union[IPv4Address, IPv6Address]) -> b
 
 
 def match_hostname(
-    cert: Optional["_TYPE_PEER_CERT_RET_DICT"],
+    cert: _TYPE_PEER_CERT_RET_DICT | None,
     hostname: str,
     hostname_checks_common_name: bool = False,
 ) -> None:
@@ -125,7 +125,7 @@ def match_hostname(
         # Not an IP address (common case)
         host_ip = None
     dnsnames = []
-    san: Tuple[Tuple[str, str], ...] = cert.get("subjectAltName", ())
+    san: tuple[tuple[str, str], ...] = cert.get("subjectAltName", ())
     key: str
     value: str
     for key, value in san:

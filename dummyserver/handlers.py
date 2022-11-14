@@ -24,10 +24,10 @@ log = logging.getLogger(__name__)
 class Response:
     def __init__(
         self,
-        body: Union[str, bytes, Sequence[Union[str, bytes]]] = "",
+        body: str | bytes | Sequence[str | bytes] = "",
         status: str = "200 OK",
-        headers: Optional[Sequence[Tuple[str, Union[str, bytes]]]] = None,
-        json: Optional[Any] = None,
+        headers: Sequence[tuple[str, str | bytes]] | None = None,
+        json: Any | None = None,
     ) -> None:
         self.body = body
         self.status = status
@@ -56,10 +56,10 @@ class Response:
                 request_handler.flush()
 
 
-RETRY_TEST_NAMES: Dict[str, int] = collections.defaultdict(int)
+RETRY_TEST_NAMES: dict[str, int] = collections.defaultdict(int)
 
 
-def request_params(request: httputil.HTTPServerRequest) -> Dict[str, bytes]:
+def request_params(request: httputil.HTTPServerRequest) -> dict[str, bytes]:
     params = {}
     for k, v in request.arguments.items():
         params[k] = next(iter(v))

@@ -322,9 +322,9 @@ class TestConnectionPool:
         ) as pool:
 
             def _test(
-                exception: Type[BaseException],
-                expect: Type[BaseException],
-                reason: Optional[Type[BaseException]] = None,
+                exception: type[BaseException],
+                expect: type[BaseException],
+                reason: type[BaseException] | None = None,
             ) -> None:
                 with patch.object(pool, "_make_request", side_effect=exception()):
                     with pytest.raises(expect) as excinfo:
@@ -510,10 +510,10 @@ class TestConnectionPool:
             """
 
             def __init__(
-                self, ex: Type[BaseException], pool: HTTPConnectionPool
+                self, ex: type[BaseException], pool: HTTPConnectionPool
             ) -> None:
                 super().__init__()
-                self._ex: Optional[Type[BaseException]] = ex
+                self._ex: type[BaseException] | None = ex
                 self._pool = pool
 
             def __call__(
@@ -532,7 +532,7 @@ class TestConnectionPool:
                 httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
                 httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()
 
-                response_conn: Optional[HTTPConnection] = kwargs.get("response_conn")
+                response_conn: HTTPConnection | None = kwargs.get("response_conn")
 
                 response = HTTPResponse(
                     body=httplib_response,
@@ -550,7 +550,7 @@ class TestConnectionPool:
                 )
                 return response
 
-        def _test(exception: Type[BaseException]) -> None:
+        def _test(exception: type[BaseException]) -> None:
             with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
                 # Verify that the request succeeds after two attempts, and that the
                 # connection is left on the response object, instead of being

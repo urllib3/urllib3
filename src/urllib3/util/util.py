@@ -5,7 +5,7 @@ from typing import NoReturn, Optional, Type, Union
 
 
 def to_bytes(
-    x: Union[str, bytes], encoding: Optional[str] = None, errors: Optional[str] = None
+    x: str | bytes, encoding: str | None = None, errors: str | None = None
 ) -> bytes:
     if isinstance(x, bytes):
         return x
@@ -17,7 +17,7 @@ def to_bytes(
 
 
 def to_str(
-    x: Union[str, bytes], encoding: Optional[str] = None, errors: Optional[str] = None
+    x: str | bytes, encoding: str | None = None, errors: str | None = None
 ) -> str:
     if isinstance(x, str):
         return x
@@ -29,9 +29,9 @@ def to_str(
 
 
 def reraise(
-    tp: Optional[Type[BaseException]],
+    tp: type[BaseException] | None,
     value: BaseException,
-    tb: Optional[TracebackType] = None,
+    tb: TracebackType | None = None,
 ) -> NoReturn:
     try:
         if value.__traceback__ is not tb:

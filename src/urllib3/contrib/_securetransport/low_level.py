@@ -48,7 +48,7 @@ def _cf_data_from_bytes(bytestring: bytes) -> CFData:
     )
 
 
-def _cf_dictionary_from_tuples(tuples: List[Tuple[Any, Any]]) -> CFDictionary:
+def _cf_dictionary_from_tuples(tuples: list[tuple[Any, Any]]) -> CFDictionary:
     """
     Given a list of Python tuples, create an associated CFDictionary.
     """
@@ -84,7 +84,7 @@ def _cfstr(py_bstr: bytes) -> CFString:
     return cf_str
 
 
-def _create_cfstring_array(lst: List[bytes]) -> CFMutableArray:
+def _create_cfstring_array(lst: list[bytes]) -> CFMutableArray:
     """
     Given a list of Python binary data, create an associated CFMutableArray.
     The array must be CFReleased by the caller.
@@ -115,7 +115,7 @@ def _create_cfstring_array(lst: List[bytes]) -> CFMutableArray:
     return cf_arr
 
 
-def _cf_string_to_unicode(value: CFString) -> Optional[str]:
+def _cf_string_to_unicode(value: CFString) -> str | None:
     """
     Creates a Unicode string from a CFString object. Used entirely for error
     reporting.
@@ -141,7 +141,7 @@ def _cf_string_to_unicode(value: CFString) -> Optional[str]:
 
 
 def _assert_no_error(
-    error: int, exception_class: Optional[Type[BaseException]] = None
+    error: int, exception_class: type[BaseException] | None = None
 ) -> None:
     """
     Checks the return code and throws an exception if there is an error to
@@ -225,7 +225,7 @@ def _is_identity(item: CFTypeRef) -> bool:
     return CoreFoundation.CFGetTypeID(item) == expected  # type: ignore[no-any-return]
 
 
-def _temporary_keychain() -> Tuple[SecKeychainRef, str]:
+def _temporary_keychain() -> tuple[SecKeychainRef, str]:
     """
     This function creates a temporary Mac keychain that we can use to work with
     credentials. This keychain uses a one-time password and a temporary file to
@@ -262,7 +262,7 @@ def _temporary_keychain() -> Tuple[SecKeychainRef, str]:
 
 def _load_items_from_file(
     keychain: SecKeychainRef, path: str
-) -> Tuple[List[CFTypeRef], List[CFTypeRef]]:
+) -> tuple[list[CFTypeRef], list[CFTypeRef]]:
     """
     Given a single file, loads all the trust objects from it into arrays and
     the keychain.
@@ -317,7 +317,7 @@ def _load_items_from_file(
     return (identities, certificates)
 
 
-def _load_client_cert_chain(keychain: SecKeychainRef, *paths: Optional[str]) -> CFArray:
+def _load_client_cert_chain(keychain: SecKeychainRef, *paths: str | None) -> CFArray:
     """
     Load certificates and maybe keys from a number of files. Has the end goal
     of returning a CFArray containing one SecIdentityRef, and then zero or more

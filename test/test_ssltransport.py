@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 PER_TEST_TIMEOUT = 60
 
 
-def server_client_ssl_contexts() -> Tuple[ssl.SSLContext, ssl.SSLContext]:
+def server_client_ssl_contexts() -> tuple[ssl.SSLContext, ssl.SSLContext]:
     if hasattr(ssl, "PROTOCOL_TLS_SERVER"):
         server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     server_context.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])
@@ -34,16 +34,16 @@ def server_client_ssl_contexts() -> Tuple[ssl.SSLContext, ssl.SSLContext]:
 
 
 @overload
-def sample_request(binary: "Literal[True]" = ...) -> bytes:
+def sample_request(binary: Literal[True] = ...) -> bytes:
     ...
 
 
 @overload
-def sample_request(binary: "Literal[False]") -> str:
+def sample_request(binary: Literal[False]) -> str:
     ...
 
 
-def sample_request(binary: bool = True) -> Union[bytes, str]:
+def sample_request(binary: bool = True) -> bytes | str:
     request = (
         b"GET http://www.testing.com/ HTTP/1.1\r\n"
         b"Host: www.testing.com\r\n"
@@ -54,7 +54,7 @@ def sample_request(binary: bool = True) -> Union[bytes, str]:
 
 
 def validate_request(
-    provided_request: bytearray, binary: "Literal[False, True]" = True
+    provided_request: bytearray, binary: Literal[False, True] = True
 ) -> None:
     assert provided_request is not None
     expected_request = sample_request(binary)
@@ -62,27 +62,27 @@ def validate_request(
 
 
 @overload
-def sample_response(binary: "Literal[True]" = ...) -> bytes:
+def sample_response(binary: Literal[True] = ...) -> bytes:
     ...
 
 
 @overload
-def sample_response(binary: "Literal[False]") -> str:
+def sample_response(binary: Literal[False]) -> str:
     ...
 
 
 @overload
-def sample_response(binary: bool = ...) -> Union[bytes, str]:
+def sample_response(binary: bool = ...) -> bytes | str:
     ...
 
 
-def sample_response(binary: bool = True) -> Union[bytes, str]:
+def sample_response(binary: bool = True) -> bytes | str:
     response = b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"
     return response if binary else response.decode("utf-8")
 
 
 def validate_response(
-    provided_response: Union[bytes, bytearray, str], binary: bool = True
+    provided_response: bytes | bytearray | str, binary: bool = True
 ) -> None:
     assert provided_response is not None
     expected_response = sample_response(binary)
@@ -112,7 +112,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         cls.server_context, cls.client_context = server_client_ssl_contexts()
 
     def start_dummy_server(
-        self, handler: Optional[Callable[[socket.socket], None]] = None
+        self, handler: Callable[[socket.socket], None] | None = None
     ) -> None:
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -418,7 +418,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     @pytest.mark.parametrize("buffering", [None, 0])
-    def test_tls_in_tls_makefile_raw_rw_binary(self, buffering: Optional[int]) -> None:
+    def test_tls_in_tls_makefile_raw_rw_binary(self, buffering: int | None) -> None:
         """
         Uses makefile with read, write and binary modes without buffering.
         """

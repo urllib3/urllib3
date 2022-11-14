@@ -56,7 +56,7 @@ class _Sentinel(Enum):
 
 def ensure_can_construct_http_header_dict(
     potential: object,
-) -> Optional[ValidHTTPHeaderSource]:
+) -> ValidHTTPHeaderSource | None:
     if isinstance(potential, HTTPHeaderDict):
         return potential
     elif isinstance(potential, Mapping):
@@ -90,11 +90,11 @@ class RecentlyUsedContainer(Generic[_KT, _VT], MutableMapping[_KT, _VT]):
 
     _container: OrderedDictType[_KT, _VT]
     _maxsize: int
-    dispose_func: Optional[Callable[[_VT], None]]
+    dispose_func: Callable[[_VT], None] | None
     lock: RLock
 
     def __init__(
-        self, maxsize: int = 10, dispose_func: Optional[Callable[[_VT], None]] = None
+        self, maxsize: int = 10, dispose_func: Callable[[_VT], None] | None = None
     ) -> None:
         super().__init__()
         self._maxsize = maxsize
@@ -160,7 +160,7 @@ class RecentlyUsedContainer(Generic[_KT, _VT], MutableMapping[_KT, _VT]):
             for value in values:
                 self.dispose_func(value)
 
-    def keys(self) -> Set[_KT]:  # type: ignore[override]
+    def keys(self) -> set[_KT]:  # type: ignore[override]
         with self.lock:
             return set(self._container.keys())
 
@@ -194,15 +194,15 @@ class HTTPHeaderDictItemView(Set[Tuple[str, str]]):
     keys, ordered by time of first insertion.
     """
 
-    _headers: "HTTPHeaderDict"
+    _headers: HTTPHeaderDict
 
-    def __init__(self, headers: "HTTPHeaderDict") -> None:
+    def __init__(self, headers: HTTPHeaderDict) -> None:
         self._headers = headers
 
     def __len__(self) -> int:
         return len(list(self._headers.iteritems()))
 
-    def __iter__(self) -> Iterator[Tuple[str, str]]:
+    def __iter__(self) -> Iterator[tuple[str, str]]:
         return self._headers.iteritems()
 
     def __contains__(self, item: object) -> bool:
@@ -247,9 +247,9 @@ class HTTPHeaderDict(MutableMapping[str, str]):
     '7'
     """
 
-    _container: MutableMapping[str, List[str]]
+    _container: MutableMapping[str, list[str]]
 
-    def __init__(self, headers: Optional[ValidHTTPHeaderSource] = None, **kwargs: str):
+    def __init__(self, headers: ValidHTTPHeaderSource | None = None, **kwargs: str):
         super().__init__()
         self._container = {}  # 'dict' is insert-ordered in Python 3.7+
         if headers is not None:
@@ -378,16 +378,16 @@ class HTTPHeaderDict(MutableMapping[str, str]):
             self.add(key, value)
 
     @overload
-    def getlist(self, key: str) -> List[str]:
+    def getlist(self, key: str) -> list[str]:
         ...
 
     @overload
-    def getlist(self, key: str, default: _DT) -> Union[List[str], _DT]:
+    def getlist(self, key: str, default: _DT) -> list[str] | _DT:
         ...
 
     def getlist(
-        self, key: str, default: Union[_Sentinel, _DT] = _Sentinel.not_passed
-    ) -> Union[List[str], _DT]:
+        self, key: str, default: _Sentinel | _DT = _Sentinel.not_passed
+    ) -> list[str] | _DT:
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
         try:
@@ -414,24 +414,24 @@ class HTTPHeaderDict(MutableMapping[str, str]):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({dict(self.itermerged())})"
 
-    def _copy_from(self, other: "HTTPHeaderDict") -> None:
+    def _copy_from(self, other: HTTPHeaderDict) -> None:
         for key in other:
             val = other.getlist(key)
             self._container[key.lower()] = [key, *val]
 
-    def copy(self) -> "HTTPHeaderDict":
+    def copy(self) -> HTTPHeaderDict:
         clone = type(self)()
         clone._copy_from(self)
         return clone
 
-    def iteritems(self) -> Iterator[Tuple[str, str]]:
+    def iteritems(self) -> Iterator[tuple[str, str]]:
         """Iterate over all header lines, including duplicate ones."""
         for key in self:
             vals = self._container[key.lower()]
             for val in vals[1:]:
                 yield vals[0], val
 
-    def itermerged(self) -> Iterator[Tuple[str, str]]:
+    def itermerged(self) -> Iterator[tuple[str, str]]:
         """Iterate over all headers, merging duplicate ones together."""
         for key in self:
             val = self._container[key.lower()]

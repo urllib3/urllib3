@@ -47,17 +47,17 @@ class RequestMethods:
 
     _encode_url_methods = {"DELETE", "GET", "HEAD", "OPTIONS"}
 
-    def __init__(self, headers: Optional[Mapping[str, str]] = None) -> None:
+    def __init__(self, headers: Mapping[str, str] | None = None) -> None:
         self.headers = headers or {}
 
     def urlopen(
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        body: _TYPE_BODY | None = None,
+        headers: Mapping[str, str] | None = None,
         encode_multipart: bool = True,
-        multipart_boundary: Optional[str] = None,
+        multipart_boundary: str | None = None,
         **kw: Any,
     ) -> BaseHTTPResponse:  # Abstract
         raise NotImplementedError(
@@ -69,10 +69,10 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        fields: Optional[_TYPE_FIELDS] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        json: Optional[Any] = None,
+        body: _TYPE_BODY | None = None,
+        fields: _TYPE_FIELDS | None = None,
+        headers: Mapping[str, str] | None = None,
+        json: Any | None = None,
         **urlopen_kw: Any,
     ) -> BaseHTTPResponse:
         """
@@ -122,8 +122,8 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        fields: Optional[_TYPE_ENCODE_URL_FIELDS] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        fields: _TYPE_ENCODE_URL_FIELDS | None = None,
+        headers: Mapping[str, str] | None = None,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
@@ -133,7 +133,7 @@ class RequestMethods:
         if headers is None:
             headers = self.headers
 
-        extra_kw: Dict[str, Any] = {"headers": headers}
+        extra_kw: dict[str, Any] = {"headers": headers}
         extra_kw.update(urlopen_kw)
 
         if fields:
@@ -145,10 +145,10 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        fields: Optional[_TYPE_FIELDS] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        fields: _TYPE_FIELDS | None = None,
+        headers: Mapping[str, str] | None = None,
         encode_multipart: bool = True,
-        multipart_boundary: Optional[str] = None,
+        multipart_boundary: str | None = None,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
@@ -189,8 +189,8 @@ class RequestMethods:
         if headers is None:
             headers = self.headers
 
-        extra_kw: Dict[str, Any] = {"headers": HTTPHeaderDict(headers)}
-        body: Union[bytes, str]
+        extra_kw: dict[str, Any] = {"headers": HTTPHeaderDict(headers)}
+        body: bytes | str
 
         if fields:
             if "body" in urlopen_kw:
