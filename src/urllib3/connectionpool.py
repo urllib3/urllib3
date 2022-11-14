@@ -98,7 +98,7 @@ class ConnectionPool:
 
     def __exit__(
         self,
-        exc_type: typing.Optional[Type[BaseException]],
+        exc_type: typing.Optional[typing.Type[BaseException]],
         exc_val: typing.Optional[BaseException],
         exc_tb: typing.Optional[TracebackType],
     ) -> "Literal[False]":
