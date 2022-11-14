@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # This file is protected via CODEOWNERS
 
-from __future__ import annotations
-
 import sys
 
 from setuptools import setup
