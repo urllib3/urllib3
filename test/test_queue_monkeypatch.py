@@ -12,8 +12,6 @@ class BadError(Exception):
     This should not be raised.
     """
 
-    pass
-
 
 class TestMonkeypatchResistance:
     """

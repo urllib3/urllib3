@@ -879,8 +879,6 @@ def _get_default_user_agent() -> str:
 class DummyConnection:
     """Used to detect a failed ConnectionCls import."""
 
-    pass
-
 
 if not ssl:
     HTTPSConnection = DummyConnection  # type: ignore[misc, assignment] # noqa: F811

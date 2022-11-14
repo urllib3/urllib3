@@ -16,13 +16,9 @@ if TYPE_CHECKING:
 class HTTPError(Exception):
     """Base exception used by this module."""
 
-    pass
-
 
 class HTTPWarning(Warning):
     """Base warning used by this module."""
-
-    pass
 
 
 _TYPE_REDUCE_RESULT = Tuple[Callable[..., object], Tuple[object, ...]]
@@ -55,8 +51,6 @@ class RequestError(PoolError):
 class SSLError(HTTPError):
     """Raised when SSL certificate fails in an HTTPS connection."""
 
-    pass
-
 
 class ProxyError(HTTPError):
     """Raised when the connection to a proxy fails."""
@@ -72,13 +66,9 @@ class ProxyError(HTTPError):
 class DecodeError(HTTPError):
     """Raised when automatic decoding based on Content-Type fails."""
 
-    pass
-
 
 class ProtocolError(HTTPError):
     """Raised when something unexpected happens mid-request/response."""
-
-    pass
 
 
 #: Renamed to ProtocolError but aliased for backwards compatibility.
@@ -123,8 +113,6 @@ class HostChangedError(RequestError):
 class TimeoutStateError(HTTPError):
     """Raised when passing an invalid state to a timeout"""
 
-    pass
-
 
 class TimeoutError(HTTPError):
     """Raised when a socket timeout error occurs.
@@ -133,21 +121,15 @@ class TimeoutError(HTTPError):
     <ReadTimeoutError>` and :exc:`ConnectTimeoutErrors <ConnectTimeoutError>`.
     """
 
-    pass
-
 
 class ReadTimeoutError(TimeoutError, RequestError):
     """Raised when a socket timeout occurs while receiving data from a server"""
-
-    pass
 
 
 # This timeout error does not have a URL attached and needs to inherit from the
 # base HTTPError
 class ConnectTimeoutError(TimeoutError):
     """Raised when a socket timeout occurs while connecting to a server"""
-
-    pass
 
 
 class NewConnectionError(ConnectTimeoutError, HTTPError):
@@ -180,25 +162,17 @@ class NameResolutionError(NewConnectionError):
 class EmptyPoolError(PoolError):
     """Raised when a pool runs out of connections and no more are allowed."""
 
-    pass
-
 
 class FullPoolError(PoolError):
     """Raised when we try to add a connection to a full pool in blocking mode."""
-
-    pass
 
 
 class ClosedPoolError(PoolError):
     """Raised when a request enters a pool after the pool has been closed."""
 
-    pass
-
 
 class LocationValueError(ValueError, HTTPError):
     """Raised when there is something wrong with a given URL input."""
-
-    pass
 
 
 class LocationParseError(LocationValueError):
@@ -231,25 +205,17 @@ class ResponseError(HTTPError):
 class SecurityWarning(HTTPWarning):
     """Warned when performing security reducing actions"""
 
-    pass
-
 
 class InsecureRequestWarning(SecurityWarning):
     """Warned when making an unverified HTTPS request."""
-
-    pass
 
 
 class SystemTimeWarning(SecurityWarning):
     """Warned when system time is suspected to be wrong"""
 
-    pass
-
 
 class InsecurePlatformWarning(SecurityWarning):
     """Warned when certain TLS/SSL configuration is not available on a platform."""
-
-    pass
 
 
 class DependencyWarning(HTTPWarning):
@@ -258,13 +224,9 @@ class DependencyWarning(HTTPWarning):
     dependencies.
     """
 
-    pass
-
 
 class ResponseNotChunked(ProtocolError, ValueError):
     """Response needs to be chunked in order to read it as chunks."""
-
-    pass
 
 
 class BodyNotHttplibCompatible(HTTPError):
@@ -272,8 +234,6 @@ class BodyNotHttplibCompatible(HTTPError):
     Body should be :class:`http.client.HTTPResponse` like
     (have an fp attribute which returns raw chunks) for read_chunked().
     """
-
-    pass
 
 
 class IncompleteRead(HTTPError, httplib_IncompleteRead):
@@ -314,8 +274,6 @@ class InvalidChunkLength(HTTPError, httplib_IncompleteRead):
 class InvalidHeader(HTTPError):
     """The header provided was somehow invalid."""
 
-    pass
-
 
 class ProxySchemeUnknown(AssertionError, URLSchemeUnknown):
     """ProxyManager does not support the supplied scheme"""
@@ -337,8 +295,6 @@ class ProxySchemeUnknown(AssertionError, URLSchemeUnknown):
 class ProxySchemeUnsupported(ValueError):
     """Fetching HTTPS resources through HTTPS proxies is unsupported"""
 
-    pass
-
 
 class HeaderParsingError(HTTPError):
     """Raised by assert_header_parsing, but we convert it to a log.warning statement."""
@@ -352,5 +308,3 @@ class HeaderParsingError(HTTPError):
 
 class UnrewindableBodyError(HTTPError):
     """urllib3 encountered an error when trying to rewind a body"""
-
-    pass

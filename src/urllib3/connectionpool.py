@@ -110,7 +110,6 @@ class ConnectionPool:
         """
         Close all pooled connections and disable the pool.
         """
-        pass
 
 
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
@@ -341,7 +340,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Called right before a request is made, after the socket is created.
         """
-        pass
 
     def _prepare_proxy(self, conn: "BaseHTTPConnection") -> None:
         # Nothing to do for HTTP connections.

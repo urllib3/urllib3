@@ -788,7 +788,6 @@ class SecureTransportContext:
         SecureTransport cannot have its hostname checking disabled. For more,
         see the comment on getpeercert() in this file.
         """
-        pass
 
     @property
     def options(self) -> int:
