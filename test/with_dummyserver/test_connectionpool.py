@@ -234,7 +234,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_upload(self) -> None:
         data = "I'm in ur multipart form-data, hazing a cheezburgr"
-        fields: dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
+        fields: typing.Dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
             "upload_param": "filefield",
             "upload_filename": "lolcat.txt",
             "filefield": ("lolcat.txt", data),
@@ -273,7 +273,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         data = "\xe2\x99\xa5".encode()
         size = len(data)
 
-        fields: dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
+        fields: typing.Dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
             "upload_param": fieldname,
             "upload_filename": filename,
             fieldname: (filename, data),
@@ -869,7 +869,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     )
     @pytest.mark.parametrize("chunked", [True, False])
     def test_user_agent_header_not_sent_twice(
-        self, headers: typing.Optional[dict[str, str]], chunked: bool
+        self, headers: typing.Optional[typing.Dict[str, str]], chunked: bool
     ) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/headers", headers=headers, chunked=chunked)
@@ -980,7 +980,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self,
         chunked: bool,
         pool_request: bool,
-        header_type: typing.Type[typing.Union[dict[str, str], HTTPHeaderDict]],
+        header_type: typing.Type[typing.Union[typing.Dict[str, str], HTTPHeaderDict]],
     ) -> None:
         # Test that the .request*() methods of ConnectionPool and HTTPConnection
         # don't modify the given 'headers' structure, instead they should

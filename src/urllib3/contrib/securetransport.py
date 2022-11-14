@@ -160,7 +160,7 @@ if hasattr(ssl, "PROTOCOL_TLSv1_2"):
     )
 
 
-_tls_version_to_st: dict[int, int] = {
+_tls_version_to_st: typing.Dict[int, int] = {
     ssl.TLSVersion.MINIMUM_SUPPORTED: SecurityConst.kTLSProtocol1,
     ssl.TLSVersion.TLSv1: SecurityConst.kTLSProtocol1,
     ssl.TLSVersion.TLSv1_1: SecurityConst.kTLSProtocol11,

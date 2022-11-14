@@ -82,7 +82,7 @@ try:
         rdns: bool
 
 except ImportError:  # Python 3.7
-    _TYPE_SOCKS_OPTIONS = dict[str, typing.Any]  # type: ignore[misc, assignment]
+    _TYPE_SOCKS_OPTIONS = typing.Dict[str, typing.Any]  # type: ignore[misc, assignment]
 
 
 class SOCKSConnection(HTTPConnection):
@@ -100,7 +100,7 @@ class SOCKSConnection(HTTPConnection):
         """
         Establish a new connection via the SOCKS proxy.
         """
-        extra_kw: dict[str, typing.Any] = {}
+        extra_kw: typing.Dict[str, typing.Any] = {}
         if self.source_address:
             extra_kw["source_address"] = self.source_address
 

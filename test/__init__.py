@@ -317,11 +317,11 @@ class ModuleStash(MetaPathFinder):
     """
 
     def __init__(
-        self, namespace: str, modules: dict[str, ModuleType] = sys.modules
+        self, namespace: str, modules: typing.Dict[str, ModuleType] = sys.modules
     ) -> None:
         self.namespace = namespace
         self.modules = modules
-        self._data: dict[str, ModuleType] = {}
+        self._data: typing.Dict[str, ModuleType] = {}
 
     def stash(self) -> None:
         if self.namespace in self.modules:

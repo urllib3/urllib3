@@ -569,7 +569,7 @@ class TestUtil:
         ],
     )
     def test_make_headers(
-        self, kwargs: dict[str, typing.Union[bool, str]], expected: dict[str, str]
+        self, kwargs: typing.Dict[str, typing.Union[bool, str]], expected: typing.Dict[str, str]
     ) -> None:
         assert make_headers(**kwargs) == expected  # type: ignore[arg-type]
 
@@ -651,7 +651,7 @@ class TestUtil:
         ],
     )
     def test_invalid_timeouts(
-        self, kwargs: dict[str, typing.Union[int, bool]], message: str
+        self, kwargs: typing.Dict[str, typing.Union[int, bool]], message: str
     ) -> None:
         with pytest.raises(ValueError, match=message):
             Timeout(**kwargs)
@@ -921,7 +921,7 @@ class TestUtil:
         ),
     )
     def test_to_str(
-        self, input: typing.Union[bytes, str], params: dict[str, str], expected: str
+        self, input: typing.Union[bytes, str], params: typing.Dict[str, str], expected: str
     ) -> None:
         assert to_str(input, **params) == expected
 
@@ -940,7 +940,7 @@ class TestUtil:
         ),
     )
     def test_to_bytes(
-        self, input: typing.Union[bytes, str], params: dict[str, str], expected: bytes
+        self, input: typing.Union[bytes, str], params: typing.Dict[str, str], expected: bytes
     ) -> None:
         assert to_bytes(input, **params) == expected
 

@@ -178,7 +178,7 @@ class RequestField:
         self._name = name
         self._filename = filename
         self.data = data
-        self.headers: dict[str, typing.Optional[str]] = {}
+        self.headers: typing.Dict[str, typing.Optional[str]] = {}
         if headers:
             self.headers = dict(headers)
 
@@ -262,7 +262,7 @@ class RequestField:
     def _render_parts(
         self,
         header_parts: typing.Union[
-            dict[str, typing.Optional[_TYPE_FIELD_VALUE]],
+            typing.Dict[str, typing.Optional[_TYPE_FIELD_VALUE]],
             typing.Sequence[typing.Tuple[str, typing.Optional[_TYPE_FIELD_VALUE]]],
         ],
     ) -> str:

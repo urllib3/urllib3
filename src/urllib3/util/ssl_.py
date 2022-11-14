@@ -84,7 +84,7 @@ if typing.TYPE_CHECKING:
 
 
 # Mapping from 'ssl.PROTOCOL_TLSX' to 'TLSVersion.X'
-_SSL_VERSION_TO_TLS_VERSION: dict[int, int] = {}
+_SSL_VERSION_TO_TLS_VERSION: typing.Dict[int, int] = {}
 
 try:  # Do we have ssl at all?
     import ssl

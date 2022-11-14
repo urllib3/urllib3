@@ -109,7 +109,7 @@ _OP_NO_TLSv1_1: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_1", 0)
 _OP_NO_TLSv1_2: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_2", 0)
 _OP_NO_TLSv1_3: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_3", 0)
 
-_openssl_to_ssl_minimum_version: dict[int, int] = {
+_openssl_to_ssl_minimum_version: typing.Dict[int, int] = {
     ssl.TLSVersion.MINIMUM_SUPPORTED: _OP_NO_SSLv2_OR_SSLv3,
     ssl.TLSVersion.TLSv1: _OP_NO_SSLv2_OR_SSLv3,
     ssl.TLSVersion.TLSv1_1: _OP_NO_SSLv2_OR_SSLv3 | _OP_NO_TLSv1,
@@ -121,7 +121,7 @@ _openssl_to_ssl_minimum_version: dict[int, int] = {
         _OP_NO_SSLv2_OR_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2
     ),
 }
-_openssl_to_ssl_maximum_version: dict[int, int] = {
+_openssl_to_ssl_maximum_version: typing.Dict[int, int] = {
     ssl.TLSVersion.MINIMUM_SUPPORTED: (
         _OP_NO_SSLv2_OR_SSLv3
         | _OP_NO_TLSv1
@@ -397,7 +397,7 @@ class WrappedSocket:
         else:
             self._io_refs -= 1
 
-    def getpeercert(self, binary_form: bool = False) -> typing.Optional[dict[str, list[typing.Any]]]:
+    def getpeercert(self, binary_form: bool = False) -> typing.Optional[typing.Dict[str, list[typing.Any]]]:
         x509 = self.connection.get_peer_certificate()
 
         if not x509:

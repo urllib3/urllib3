@@ -134,7 +134,7 @@ class RequestMethods:
         if headers is None:
             headers = self.headers
 
-        extra_kw: dict[str, typing.Any] = {"headers": headers}
+        extra_kw: typing.Dict[str, typing.Any] = {"headers": headers}
         extra_kw.update(urlopen_kw)
 
         if fields:
@@ -190,7 +190,7 @@ class RequestMethods:
         if headers is None:
             headers = self.headers
 
-        extra_kw: dict[str, typing.Any] = {"headers": HTTPHeaderDict(headers)}
+        extra_kw: typing.Dict[str, typing.Any] = {"headers": HTTPHeaderDict(headers)}
         body: typing.Union[bytes, str]
 
         if fields:

@@ -36,7 +36,7 @@ class ServerConfig(typing.NamedTuple):
 
 def _write_cert_to_dir(
     cert: trustme.LeafCert, tmpdir: Path, file_prefix: str = "server"
-) -> dict[str, str]:
+) -> typing.Dict[str, str]:
     cert_path = str(tmpdir / ("%s.pem" % file_prefix))
     key_path = str(tmpdir / ("%s.key" % file_prefix))
     cert.private_key_pem.write_to_path(key_path)

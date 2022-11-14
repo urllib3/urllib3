@@ -94,7 +94,7 @@ class PoolKey(typing.NamedTuple):
 
 
 def _default_key_normalizer(
-    key_class: typing.Type[PoolKey], request_context: dict[str, typing.Any]
+    key_class: typing.Type[PoolKey], request_context: typing.Dict[str, typing.Any]
 ) -> PoolKey:
     """
     Create a pool key out of a request context dictionary.
@@ -232,7 +232,7 @@ class PoolManager(RequestMethods):
         scheme: str,
         host: str,
         port: int,
-        request_context: typing.Optional[dict[str, typing.Any]] = None,
+        request_context: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> HTTPConnectionPool:
         """
         Create a new :class:`urllib3.connectionpool.ConnectionPool` based on host, port, scheme, and
@@ -279,7 +279,7 @@ class PoolManager(RequestMethods):
         host: typing.Optional[str],
         port: typing.Optional[int] = None,
         scheme: typing.Optional[str] = "http",
-        pool_kwargs: typing.Optional[dict[str, typing.Any]] = None,
+        pool_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> HTTPConnectionPool:
         """
         Get a :class:`urllib3.connectionpool.ConnectionPool` based on the host, port, and scheme.
@@ -304,7 +304,7 @@ class PoolManager(RequestMethods):
         return self.connection_from_context(request_context)
 
     def connection_from_context(
-        self, request_context: dict[str, typing.Any]
+        self, request_context: typing.Dict[str, typing.Any]
     ) -> HTTPConnectionPool:
         """
         Get a :class:`urllib3.connectionpool.ConnectionPool` based on the request context.
@@ -329,7 +329,7 @@ class PoolManager(RequestMethods):
         return self.connection_from_pool_key(pool_key, request_context=request_context)
 
     def connection_from_pool_key(
-        self, pool_key: PoolKey, request_context: dict[str, typing.Any]
+        self, pool_key: PoolKey, request_context: typing.Dict[str, typing.Any]
     ) -> HTTPConnectionPool:
         """
         Get a :class:`urllib3.connectionpool.ConnectionPool` based on the provided pool key.
@@ -355,7 +355,7 @@ class PoolManager(RequestMethods):
         return pool
 
     def connection_from_url(
-        self, url: str, pool_kwargs: typing.Optional[dict[str, typing.Any]] = None
+        self, url: str, pool_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None
     ) -> HTTPConnectionPool:
         """
         Similar to :func:`urllib3.connectionpool.connection_from_url`.
@@ -372,7 +372,7 @@ class PoolManager(RequestMethods):
             u.host, port=u.port, scheme=u.scheme, pool_kwargs=pool_kwargs
         )
 
-    def _merge_pool_kwargs(self, override: typing.Optional[dict[str, typing.Any]]) -> dict[str, typing.Any]:
+    def _merge_pool_kwargs(self, override: typing.Optional[typing.Dict[str, typing.Any]]) -> typing.Dict[str, typing.Any]:
         """
         Merge a dictionary of override values for self.connection_pool_kw.
 
@@ -577,7 +577,7 @@ class ProxyManager(PoolManager):
         host: typing.Optional[str],
         port: typing.Optional[int] = None,
         scheme: typing.Optional[str] = "http",
-        pool_kwargs: typing.Optional[dict[str, typing.Any]] = None,
+        pool_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> HTTPConnectionPool:
         if scheme == "https":
             return super().connection_from_host(

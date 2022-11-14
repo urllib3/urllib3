@@ -158,7 +158,7 @@ class TestSSL:
         ],
     )
     def test_create_urllib3_context_ssl_version_and_ssl_min_max_version_errors(
-        self, kwargs: dict[str, typing.Any]
+        self, kwargs: typing.Dict[str, typing.Any]
     ) -> None:
         with pytest.raises(ValueError) as e:
             ssl_.create_urllib3_context(**kwargs)
@@ -192,7 +192,7 @@ class TestSSL:
         ],
     )
     def test_create_urllib3_context_ssl_version_and_ssl_min_max_version_no_error(
-        self, kwargs: dict[str, typing.Any]
+        self, kwargs: typing.Dict[str, typing.Any]
     ) -> None:
         ssl_.create_urllib3_context(**kwargs)
 

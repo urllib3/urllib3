@@ -59,7 +59,7 @@ def make_headers(
     basic_auth: typing.Optional[str] = None,
     proxy_basic_auth: typing.Optional[str] = None,
     disable_cache: typing.Optional[bool] = None,
-) -> dict[str, str]:
+) -> typing.Dict[str, str]:
     """
     Shortcuts for generating request headers.
 
@@ -99,7 +99,7 @@ def make_headers(
         print(urllib3.util.make_headers(accept_encoding=True))
         # {'accept-encoding': 'gzip,deflate'}
     """
-    headers: dict[str, str] = {}
+    headers: typing.Dict[str, str] = {}
     if accept_encoding:
         if isinstance(accept_encoding, str):
             pass
