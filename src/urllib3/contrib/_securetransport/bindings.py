@@ -32,6 +32,8 @@ license and by oscrypto's:
     DEALINGS IN THE SOFTWARE.
 """
 
+from __future__ import annotations
+
 import platform
 from ctypes import (
     CDLL,

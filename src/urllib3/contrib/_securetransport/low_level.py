@@ -7,6 +7,8 @@ CoreFoundation messing about and memory management. The concerns in this module
 are almost entirely about trying to avoid memory leaks and providing
 appropriate and useful assistance to the higher-level code.
 """
+from __future__ import annotations
+
 import base64
 import ctypes
 import itertools

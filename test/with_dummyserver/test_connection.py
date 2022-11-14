@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from http.client import ResponseNotReady
 from typing import Generator
 

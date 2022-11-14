@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import socket
 import threading
 from socket import getaddrinfo as real_getaddrinfo

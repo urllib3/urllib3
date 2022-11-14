@@ -5,6 +5,8 @@ Test what happens if Python was built without SSL
 * HTTPS requests must fail with an error that points at the ssl module
 """
 
+from __future__ import annotations
+
 import sys
 from test import ImportBlocker, ModuleStash
 

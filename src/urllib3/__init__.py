@@ -2,6 +2,8 @@
 Python HTTP library with thread-safe connection pooling, file post support, user friendly, and more
 """
 
+from __future__ import annotations
+
 # Set default logging handler to avoid "No handler found" warnings.
 import logging
 import warnings

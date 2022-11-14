@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import socket
 import warnings
 from email.errors import MessageDefect

@@ -52,6 +52,8 @@ license and by oscrypto's:
     DEALINGS IN THE SOFTWARE.
 """
 
+from __future__ import annotations
+
 import contextlib
 import ctypes
 import errno

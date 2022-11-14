@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 from base64 import b64encode
 from enum import Enum

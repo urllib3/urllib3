@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from test import DUMMY_POOL
 from typing import Optional
 from unittest import mock

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import select
 import socket
 from functools import partial

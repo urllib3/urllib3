@@ -38,6 +38,8 @@ with the proxy:
 
 """
 
+from __future__ import annotations
+
 try:
     import socks  # type: ignore[import]
 except ImportError:

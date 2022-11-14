@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json as _json
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 from urllib.parse import urlencode

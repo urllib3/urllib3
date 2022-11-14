@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import http.client as httplib
 import ssl
 from http.client import HTTPException

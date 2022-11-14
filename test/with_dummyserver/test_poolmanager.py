@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gzip
 from test import LONG_TIMEOUT
 from unittest import mock

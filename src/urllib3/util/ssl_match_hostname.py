@@ -4,6 +4,8 @@
 # stdlib.   http://docs.python.org/3/license.html
 # It is modified to remove commonName support.
 
+from __future__ import annotations
+
 import ipaddress
 import re
 from ipaddress import IPv4Address, IPv6Address

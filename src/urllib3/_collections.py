@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import OrderedDict
 from enum import Enum, auto
 from threading import RLock

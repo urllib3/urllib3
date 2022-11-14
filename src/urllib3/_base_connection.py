@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 from .util.connection import _TYPE_SOCKET_OPTIONS

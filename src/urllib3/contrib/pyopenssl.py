@@ -38,6 +38,8 @@ like this:
 .. _idna: https://github.com/kjd/idna
 """
 
+from __future__ import annotations
+
 import OpenSSL.SSL  # type: ignore[import]
 from cryptography import x509
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
