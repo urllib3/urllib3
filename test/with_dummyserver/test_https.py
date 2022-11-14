@@ -7,7 +7,6 @@ import shutil
 import ssl
 import sys
 import tempfile
-import typing
 import warnings
 from pathlib import Path
 from test import (
@@ -79,12 +78,12 @@ CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
 
 
 class TestHTTPS(HTTPSDummyServerTestCase):
-    tls_protocol_name: typing.Optional[str] = None
+    tls_protocol_name: str | None = None
 
     def tls_protocol_not_default(self) -> bool:
         return self.tls_protocol_name in {"TLSv1", "TLSv1.1"}
 
-    def tls_version(self) -> "ssl.TLSVersion":
+    def tls_version(self) -> ssl.TLSVersion:
         if self.tls_protocol_name is None:
             return pytest.skip("Skipping base test class")
         try:
@@ -841,7 +840,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         "ssl_version", [None, ssl.PROTOCOL_TLS, ssl.PROTOCOL_TLS_CLIENT]
     )
     def test_ssl_version_with_protocol_tls_or_client_not_deprecated(
-        self, ssl_version: typing.Optional[int]
+        self, ssl_version: int | None
     ) -> None:
         if self.tls_protocol_name is None:
             pytest.skip("Skipping base test class")
@@ -939,7 +938,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @pytest.mark.parametrize("sslkeylogfile", [None, ""])
     def test_sslkeylogfile_empty(
-        self, monkeypatch: pytest.MonkeyPatch, sslkeylogfile: typing.Optional[str]
+        self, monkeypatch: pytest.MonkeyPatch, sslkeylogfile: str | None
     ) -> None:
         # Assert that an HTTPS connection doesn't error out when given
         # no SSLKEYLOGFILE or an empty value (ie 'SSLKEYLOGFILE=')
@@ -1072,7 +1071,7 @@ class TestHTTPS_Hostname:
         except AttributeError:
             pytest.skip("Couldn't set 'SSLContext.hostname_checks_common_name'")
 
-        err: typing.Optional[MaxRetryError]
+        err: MaxRetryError | None
         try:
             with HTTPSConnectionPool(
                 no_san_server.host,

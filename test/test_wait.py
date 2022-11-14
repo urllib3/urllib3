@@ -108,7 +108,7 @@ def test_eintr(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: typing.Optional[FrameType]) -> typing.Any:
+    def handler(sig: int, frame: FrameType | None) -> typing.Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 
@@ -139,7 +139,7 @@ def test_eintr_zero_timeout(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: typing.Optional[FrameType]) -> typing.Any:
+    def handler(sig: int, frame: FrameType | None) -> typing.Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 
@@ -170,7 +170,7 @@ def test_eintr_infinite_timeout(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> 
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: typing.Optional[FrameType]) -> typing.Any:
+    def handler(sig: int, frame: FrameType | None) -> typing.Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 

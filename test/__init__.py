@@ -88,7 +88,7 @@ def _can_resolve(host: str) -> bool:
         return False
 
 
-def has_alpn(ctx_cls: typing.Optional[typing.Type["ssl.SSLContext"]] = None) -> bool:
+def has_alpn(ctx_cls: type[ssl.SSLContext] | None = None) -> bool:
     """Detect if ALPN support is enabled."""
     ctx_cls = ctx_cls or util.SSLContext
     ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)  # type: ignore[misc]
@@ -107,7 +107,7 @@ def has_alpn(ctx_cls: typing.Optional[typing.Type["ssl.SSLContext"]] = None) -> 
 RESOLVES_LOCALHOST_FQDN = _can_resolve("localhost.")
 
 
-def clear_warnings(cls: typing.Type[Warning] = HTTPWarning) -> None:
+def clear_warnings(cls: type[Warning] = HTTPWarning) -> None:
     new_filters = []
     for f in warnings.filters:
         if issubclass(f[2], cls):
@@ -278,10 +278,10 @@ class LogRecorder:
 
     def __exit__(
         self,
-        exc_type: typing.Optional[typing.Type[BaseException]],
-        exc_value: typing.Optional[BaseException],
-        traceback: typing.Optional[TracebackType],
-    ) -> "Literal[False]":
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> Literal[False]:
         self.uninstall()
         return False
 
@@ -305,8 +305,8 @@ class ImportBlocker(MetaPathFinder):
     def find_module(
         self,
         fullname: str,
-        path: typing.Optional[typing.Sequence[typing.Union[bytes, str]]] = None,
-    ) -> typing.Optional[Loader]:
+        path: typing.Sequence[bytes | str] | None = None,
+    ) -> Loader | None:
         if fullname in self.namestoblock:
             return ImportBlockerLoader()
         return None
@@ -321,11 +321,11 @@ class ModuleStash(MetaPathFinder):
     """
 
     def __init__(
-        self, namespace: str, modules: typing.Dict[str, ModuleType] = sys.modules
+        self, namespace: str, modules: dict[str, ModuleType] = sys.modules
     ) -> None:
         self.namespace = namespace
         self.modules = modules
-        self._data: typing.Dict[str, ModuleType] = {}
+        self._data: dict[str, ModuleType] = {}
 
     def stash(self) -> None:
         if self.namespace in self.modules:

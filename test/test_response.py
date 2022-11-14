@@ -835,7 +835,7 @@ class TestResponse:
         # object.
         class MockHTTPRequest:
             def __init__(self) -> None:
-                self.fp: typing.Optional[BytesIO] = None
+                self.fp: BytesIO | None = None
 
             def read(self, amt: int) -> bytes:
                 assert self.fp is not None

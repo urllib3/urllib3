@@ -36,7 +36,7 @@ class ServerConfig(typing.NamedTuple):
 
 def _write_cert_to_dir(
     cert: trustme.LeafCert, tmpdir: Path, file_prefix: str = "server"
-) -> typing.Dict[str, str]:
+) -> dict[str, str]:
     cert_path = str(tmpdir / ("%s.pem" % file_prefix))
     key_path = str(tmpdir / ("%s.key" % file_prefix))
     cert.private_key_pem.write_to_path(key_path)
@@ -74,7 +74,7 @@ def run_server_and_proxy_in_thread(
     ca: trustme.CA,
     proxy_cert: trustme.LeafCert,
     server_cert: trustme.LeafCert,
-) -> typing.Generator[typing.Tuple[ServerConfig, ServerConfig], None, None]:
+) -> typing.Generator[tuple[ServerConfig, ServerConfig], None, None]:
     ca_cert_path = str(tmpdir / "ca.pem")
     ca.cert_pem.write_to_path(ca_cert_path)
 
@@ -83,7 +83,7 @@ def run_server_and_proxy_in_thread(
 
     with run_loop_in_thread() as io_loop:
 
-        async def run_app() -> typing.Tuple[ServerConfig, ServerConfig]:
+        async def run_app() -> tuple[ServerConfig, ServerConfig]:
             app = web.Application([(r".*", TestingApp)])
             server_app, port = run_tornado_app(app, server_certs, "https", "localhost")
             server_config = ServerConfig("https", "localhost", port, ca_cert_path)
@@ -151,7 +151,7 @@ def no_san_server_with_different_commmon_name(
 @pytest.fixture
 def san_proxy_with_server(
     loopback_host: str, tmp_path_factory: pytest.TempPathFactory
-) -> typing.Generator[typing.Tuple[ServerConfig, ServerConfig], None, None]:
+) -> typing.Generator[tuple[ServerConfig, ServerConfig], None, None]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     proxy_cert = ca.issue_cert(loopback_host)
@@ -166,7 +166,7 @@ def san_proxy_with_server(
 @pytest.fixture
 def no_san_proxy_with_server(
     tmp_path_factory: pytest.TempPathFactory,
-) -> typing.Generator[typing.Tuple[ServerConfig, ServerConfig], None, None]:
+) -> typing.Generator[tuple[ServerConfig, ServerConfig], None, None]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # only common name, no subject alternative names
@@ -195,7 +195,7 @@ def no_localhost_san_server(
 @pytest.fixture
 def ipv4_san_proxy_with_server(
     tmp_path_factory: pytest.TempPathFactory,
-) -> typing.Generator[typing.Tuple[ServerConfig, ServerConfig], None, None]:
+) -> typing.Generator[tuple[ServerConfig, ServerConfig], None, None]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Subject Alternative Name
@@ -212,7 +212,7 @@ def ipv4_san_proxy_with_server(
 @pytest.fixture
 def ipv6_san_proxy_with_server(
     tmp_path_factory: pytest.TempPathFactory,
-) -> typing.Generator[typing.Tuple[ServerConfig, ServerConfig], None, None]:
+) -> typing.Generator[tuple[ServerConfig, ServerConfig], None, None]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP addresses in Subject Alternative Name
@@ -281,7 +281,7 @@ def stub_timezone(request: pytest.FixtureRequest) -> typing.Generator[None, None
 
 
 @pytest.fixture(scope="session")
-def supported_tls_versions() -> typing.AbstractSet[typing.Optional[str]]:
+def supported_tls_versions() -> typing.AbstractSet[str | None]:
     # We have to create an actual TLS connection
     # to test if the TLS version is not disabled by
     # OpenSSL config. Ubuntu 20.04 specifically

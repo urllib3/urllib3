@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import socket
-import typing
 
 import pytest
 
@@ -45,7 +44,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             [b"foo", b"bar", b"", b"bazzzzzzzzzzzzzzzzzzzzzz"],
         ],
     )
-    def test_chunks(self, chunks: list[typing.Union[bytes, str]]) -> None:
+    def test_chunks(self, chunks: list[bytes | str]) -> None:
         self.start_chunked_handler()
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             pool.urlopen("GET", "/", body=chunks, headers=dict(DNT="1"), chunked=True)  # type: ignore[arg-type]
@@ -61,7 +60,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
                 assert lines[i * 2] == hex(len(chunk))[2:].encode("utf-8")
                 assert lines[i * 2 + 1] == chunk.encode("utf-8")
 
-    def _test_body(self, data: typing.Optional[typing.Union[bytes, str]]) -> None:
+    def _test_body(self, data: bytes | str | None) -> None:
         self.start_chunked_handler()
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             pool.urlopen("GET", "/", data, chunked=True)

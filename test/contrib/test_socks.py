@@ -75,7 +75,7 @@ def _read_until(sock: socket.socket, char: bytes) -> bytes:
     return b"".join(chunks)
 
 
-def _address_from_socket(sock: socket.socket) -> typing.Union[bytes, str]:
+def _address_from_socket(sock: socket.socket) -> bytes | str:
     """
     Returns the address from the SOCKS socket
     """
@@ -109,12 +109,12 @@ def _set_up_fake_getaddrinfo(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_getaddrinfo(
         addr: str, port: int, family: int, socket_type: int
     ) -> list[
-        typing.Tuple[
+        tuple[
             socket.AddressFamily,
             socket.SocketKind,
             int,
             str,
-            typing.Union[typing.Tuple[str, int], typing.Tuple[str, int, int, int]],
+            tuple[str, int] | tuple[str, int, int, int],
         ]
     ]:
         gai_list = real_getaddrinfo(addr, port, family, socket_type)
@@ -127,9 +127,9 @@ def _set_up_fake_getaddrinfo(monkeypatch: pytest.MonkeyPatch) -> None:
 def handle_socks5_negotiation(
     sock: socket.socket,
     negotiate: bool,
-    username: typing.Optional[bytes] = None,
-    password: typing.Optional[bytes] = None,
-) -> typing.Generator[typing.Tuple[typing.Union[bytes, str], int], bool, None]:
+    username: bytes | None = None,
+    password: bytes | None = None,
+) -> typing.Generator[tuple[bytes | str, int], bool, None]:
     """
     Handle the SOCKS5 handshake.
 
@@ -192,8 +192,8 @@ def handle_socks5_negotiation(
 
 
 def handle_socks4_negotiation(
-    sock: socket.socket, username: typing.Optional[bytes] = None
-) -> typing.Generator[typing.Tuple[typing.Union[bytes, str], int], bool, None]:
+    sock: socket.socket, username: bytes | None = None
+) -> typing.Generator[tuple[bytes | str, int], bool, None]:
     """
     Handle the SOCKS4 handshake.
 
@@ -207,7 +207,7 @@ def handle_socks4_negotiation(
     addr_raw = _read_exactly(sock, 4)
     provided_username = _read_until(sock, b"\x00")[:-1]  # Strip trailing null.
 
-    addr: typing.Union[bytes, str]
+    addr: bytes | str
     if addr_raw == b"\x00\x00\x00\x01":
         # Magic string: means DNS name.
         addr = _read_until(sock, b"\x00")[:-1]  # Strip trailing null.

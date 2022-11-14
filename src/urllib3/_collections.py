@@ -43,7 +43,7 @@ class _Sentinel(Enum):
 
 def ensure_can_construct_http_header_dict(
     potential: object,
-) -> typing.Optional[ValidHTTPHeaderSource]:
+) -> ValidHTTPHeaderSource | None:
     if isinstance(potential, HTTPHeaderDict):
         return potential
     elif isinstance(potential, typing.Mapping):
@@ -77,13 +77,13 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
 
     _container: typing.OrderedDict[_KT, _VT]
     _maxsize: int
-    dispose_func: typing.Optional[typing.Callable[[_VT], None]]
+    dispose_func: typing.Callable[[_VT], None] | None
     lock: RLock
 
     def __init__(
         self,
         maxsize: int = 10,
-        dispose_func: typing.Optional[typing.Callable[[_VT], None]] = None,
+        dispose_func: typing.Callable[[_VT], None] | None = None,
     ) -> None:
         super().__init__()
         self._maxsize = maxsize
@@ -149,7 +149,7 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
             for value in values:
                 self.dispose_func(value)
 
-    def keys(self) -> typing.Set[_KT]:  # type: ignore[override]
+    def keys(self) -> set[_KT]:  # type: ignore[override]
         with self.lock:
             return set(self._container.keys())
 
@@ -183,15 +183,15 @@ class HTTPHeaderDictItemView(typing.Set[typing.Tuple[str, str]]):
     keys, ordered by time of first insertion.
     """
 
-    _headers: "HTTPHeaderDict"
+    _headers: HTTPHeaderDict
 
-    def __init__(self, headers: "HTTPHeaderDict") -> None:
+    def __init__(self, headers: HTTPHeaderDict) -> None:
         self._headers = headers
 
     def __len__(self) -> int:
         return len(list(self._headers.iteritems()))
 
-    def __iter__(self) -> typing.Iterator[typing.Tuple[str, str]]:
+    def __iter__(self) -> typing.Iterator[tuple[str, str]]:
         return self._headers.iteritems()
 
     def __contains__(self, item: object) -> bool:
@@ -238,9 +238,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
 
     _container: typing.MutableMapping[str, list[str]]
 
-    def __init__(
-        self, headers: typing.Optional[ValidHTTPHeaderSource] = None, **kwargs: str
-    ):
+    def __init__(self, headers: ValidHTTPHeaderSource | None = None, **kwargs: str):
         super().__init__()
         self._container = {}  # 'dict' is insert-ordered in Python 3.7+
         if headers is not None:
@@ -373,12 +371,12 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         ...
 
     @typing.overload
-    def getlist(self, key: str, default: _DT) -> typing.Union[list[str], _DT]:
+    def getlist(self, key: str, default: _DT) -> list[str] | _DT:
         ...
 
     def getlist(
-        self, key: str, default: typing.Union[_Sentinel, _DT] = _Sentinel.not_passed
-    ) -> typing.Union[list[str], _DT]:
+        self, key: str, default: _Sentinel | _DT = _Sentinel.not_passed
+    ) -> list[str] | _DT:
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
         try:
@@ -405,24 +403,24 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({dict(self.itermerged())})"
 
-    def _copy_from(self, other: "HTTPHeaderDict") -> None:
+    def _copy_from(self, other: HTTPHeaderDict) -> None:
         for key in other:
             val = other.getlist(key)
             self._container[key.lower()] = [key, *val]
 
-    def copy(self) -> "HTTPHeaderDict":
+    def copy(self) -> HTTPHeaderDict:
         clone = type(self)()
         clone._copy_from(self)
         return clone
 
-    def iteritems(self) -> typing.Iterator[typing.Tuple[str, str]]:
+    def iteritems(self) -> typing.Iterator[tuple[str, str]]:
         """Iterate over all header lines, including duplicate ones."""
         for key in self:
             vals = self._container[key.lower()]
             for val in vals[1:]:
                 yield vals[0], val
 
-    def itermerged(self) -> typing.Iterator[typing.Tuple[str, str]]:
+    def itermerged(self) -> typing.Iterator[tuple[str, str]]:
         """Iterate over all headers, merging duplicate ones together."""
         for key in self:
             val = self._container[key.lower()]

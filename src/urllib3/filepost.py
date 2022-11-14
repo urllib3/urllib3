@@ -34,9 +34,7 @@ def iter_field_objects(fields: _TYPE_FIELDS) -> typing.Iterable[RequestField]:
     :class:`~urllib3.fields.RequestField`.
 
     """
-    iterable: typing.Iterable[
-        typing.Union[RequestField, typing.Tuple[str, _TYPE_FIELD_VALUE_TUPLE]]
-    ]
+    iterable: typing.Iterable[RequestField | tuple[str, _TYPE_FIELD_VALUE_TUPLE]]
 
     if isinstance(fields, typing.Mapping):
         iterable = fields.items()
@@ -51,8 +49,8 @@ def iter_field_objects(fields: _TYPE_FIELDS) -> typing.Iterable[RequestField]:
 
 
 def encode_multipart_formdata(
-    fields: _TYPE_FIELDS, boundary: typing.Optional[str] = None
-) -> typing.Tuple[bytes, str]:
+    fields: _TYPE_FIELDS, boundary: str | None = None
+) -> tuple[bytes, str]:
     """
     Encode a dictionary of ``fields`` using the multipart/form-data MIME format.
 

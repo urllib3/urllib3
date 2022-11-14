@@ -85,7 +85,7 @@ class TestLRUContainer:
         d.pop(1, None)
 
     def test_get(self) -> None:
-        d: Container[int, typing.Union[bool, int]] = Container(5)
+        d: Container[int, bool | int] = Container(5)
 
         for i in range(5):
             d[i] = True
@@ -299,7 +299,7 @@ class TestHTTPHeaderDict:
 
     @pytest.mark.parametrize("args", [(1, 2), (1, 2, 3, 4, 5)])
     def test_extend_with_wrong_number_of_args_is_typeerror(
-        self, d: HTTPHeaderDict, args: typing.Tuple[int, ...]
+        self, d: HTTPHeaderDict, args: tuple[int, ...]
     ) -> None:
         with pytest.raises(
             TypeError, match=r"extend\(\) takes at most 1 positional arguments"
