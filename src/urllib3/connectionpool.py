@@ -8,7 +8,7 @@ import warnings
 import weakref
 from socket import timeout as SocketTimeout
 from types import TracebackType
-from typing import Any, Mapping, TYPE_CHECKING, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, Mapping, TypeVar, Union, overload
 
 from ._base_connection import _TYPE_BODY
 from ._request_methods import RequestMethods

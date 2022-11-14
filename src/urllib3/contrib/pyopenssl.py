@@ -59,7 +59,7 @@ import warnings
 from io import BytesIO
 from socket import socket as socket_cls
 from socket import timeout
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .. import util
 

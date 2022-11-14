@@ -4,13 +4,7 @@ import functools
 import logging
 import warnings
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Mapping,
-    NamedTuple,
-    TypeVar,
-)
+from typing import TYPE_CHECKING, Any, Mapping, NamedTuple, TypeVar
 from urllib.parse import urljoin
 
 from ._collections import RecentlyUsedContainer

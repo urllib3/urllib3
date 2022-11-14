@@ -11,14 +11,7 @@ from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Deque,
-    Generator,
-    Iterator,
-    Mapping,
-)
+from typing import TYPE_CHECKING, Any, Deque, Generator, Iterator, Mapping
 
 try:
     try:

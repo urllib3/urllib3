@@ -3,15 +3,7 @@ from __future__ import annotations
 import io
 from base64 import b64encode
 from enum import Enum
-from typing import (
-    IO,
-    TYPE_CHECKING,
-    Any,
-    AnyStr,
-    Iterable,
-    NamedTuple,
-    Union,
-)
+from typing import IO, TYPE_CHECKING, Any, AnyStr, Iterable, NamedTuple, Union
 
 from ..exceptions import UnrewindableBodyError
 from .util import to_bytes

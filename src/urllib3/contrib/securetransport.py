@@ -66,14 +66,7 @@ import threading
 import warnings
 import weakref
 from socket import socket as socket_cls
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    BinaryIO,
-    Generator,
-    TextIO,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, BinaryIO, Generator, TextIO, cast
 
 from .. import util
 from ._securetransport.bindings import (  # type: ignore[attr-defined]

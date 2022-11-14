@@ -9,14 +9,7 @@ import sys
 import warnings
 from importlib.abc import Loader, MetaPathFinder
 from types import ModuleType, TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Sequence,
-    TypeVar,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Sequence, TypeVar, cast
 
 import pytest
 

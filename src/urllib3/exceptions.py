@@ -4,7 +4,7 @@ import socket
 import warnings
 from email.errors import MessageDefect
 from http.client import IncompleteRead as httplib_IncompleteRead
-from typing import Callable, TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Callable, Tuple
 
 if TYPE_CHECKING:
     from .connection import HTTPConnection

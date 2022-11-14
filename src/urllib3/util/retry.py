@@ -6,13 +6,7 @@ import re
 import time
 from itertools import takewhile
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Collection,
-    NamedTuple,
-)
+from typing import TYPE_CHECKING, Any, ClassVar, Collection, NamedTuple
 
 from ..exceptions import (
     ConnectTimeoutError,

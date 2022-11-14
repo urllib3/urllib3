@@ -10,13 +10,7 @@ from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
-from typing import (
-    TYPE_CHECKING,
-    ClassVar,
-    Mapping,
-    NamedTuple,
-    cast,
-)
+from typing import TYPE_CHECKING, ClassVar, Mapping, NamedTuple, cast
 
 if TYPE_CHECKING:
     from typing_extensions import Literal

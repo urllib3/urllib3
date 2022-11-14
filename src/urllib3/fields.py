@@ -2,15 +2,7 @@ from __future__ import annotations
 
 import email.utils
 import mimetypes
-from typing import (
-    Callable,
-    Iterable,
-    Mapping,
-    Sequence,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import Callable, Iterable, Mapping, Sequence, Tuple, Union, cast
 
 _TYPE_FIELD_VALUE = Union[str, bytes]
 _TYPE_FIELD_VALUE_TUPLE = Union[
