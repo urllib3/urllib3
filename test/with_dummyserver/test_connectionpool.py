@@ -378,6 +378,59 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
             pool.request("GET", "/")
 
+    socket_timeout_reuse_testdata = pytest.mark.parametrize(
+        ["timeout", "expect_settimeout_calls"],
+        [
+            (1, (1, 1)),
+            (None, (None, None)),
+            (Timeout(read=4), (None, 4)),
+            (Timeout(read=4, connect=5), (5, 4)),
+            (Timeout(connect=6), (6, None)),
+        ],
+    )
+
+    @socket_timeout_reuse_testdata
+    def test_socket_timeout_updated_on_reuse_constructor(
+        self, timeout, expect_settimeout_calls
+    ):
+        with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
+            # Make a request to create a new connection.
+            pool.urlopen("GET", "/")
+
+            # Grab the connection and mock the inner socket.
+            assert pool.pool is not None
+            conn = pool.pool.get_nowait()
+            conn_sock = mock.Mock(wraps=conn.sock)
+            conn.sock = conn_sock
+            pool._put_conn(conn)
+
+            # Assert that sock.settimeout() is called with the new connect timeout, then the read timeout.
+            pool.urlopen("GET", "/", timeout=timeout)
+            conn_sock.settimeout.assert_has_calls(
+                [mock.call(x) for x in expect_settimeout_calls]
+            )
+
+    @socket_timeout_reuse_testdata
+    def test_socket_timeout_updated_on_reuse_parameter(
+        self, timeout, expect_settimeout_calls
+    ):
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            # Make a request to create a new connection.
+            pool.urlopen("GET", "/", timeout=LONG_TIMEOUT)
+
+            # Grab the connection and mock the inner socket.
+            assert pool.pool is not None
+            conn = pool.pool.get_nowait()
+            conn_sock = mock.Mock(wraps=conn.sock)
+            conn.sock = conn_sock
+            pool._put_conn(conn)
+
+            # Assert that sock.settimeout() is called with the new connect timeout, then the read timeout.
+            pool.urlopen("GET", "/", timeout=timeout)
+            conn_sock.settimeout.assert_has_calls(
+                [mock.call(x) for x in expect_settimeout_calls]
+            )
+
     def test_tunnel(self):
         # note the actual httplib.py has no tests for this functionality
         timeout = Timeout(total=None)
