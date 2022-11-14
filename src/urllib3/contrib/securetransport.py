@@ -70,12 +70,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     BinaryIO,
-    Dict,
     Generator,
-    List,
-    Optional,
     TextIO,
-    Union,
     cast,
 )
 

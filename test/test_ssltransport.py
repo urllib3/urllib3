@@ -4,7 +4,7 @@ import platform
 import select
 import socket
 import ssl
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union, overload
+from typing import Callable, TYPE_CHECKING, overload
 from unittest import mock
 
 import pytest

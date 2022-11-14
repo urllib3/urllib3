@@ -24,9 +24,8 @@ from test import (
     resolvesLocalhostFQDN,
 )
 from threading import Event
-from typing import Any, Callable, Generator, List, Optional
+from typing import Any, Callable, Generator
 from typing import OrderedDict as OrderedDictType
-from typing import Tuple, Union
 from unittest import mock
 
 import pytest

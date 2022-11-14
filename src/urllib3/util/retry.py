@@ -12,9 +12,6 @@ from typing import (
     ClassVar,
     Collection,
     NamedTuple,
-    Optional,
-    Tuple,
-    Union,
 )
 
 from ..exceptions import (

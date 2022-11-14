@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import socket
-from typing import TYPE_CHECKING, Optional, Sequence, Tuple, Union
+from typing import Sequence, TYPE_CHECKING, Tuple, Union
 
 from ..exceptions import LocationParseError
 from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT

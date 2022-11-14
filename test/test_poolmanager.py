@@ -3,7 +3,6 @@ from __future__ import annotations
 import gc
 import socket
 from test import resolvesLocalhostFQDN
-from typing import Optional
 from unittest import mock
 from unittest.mock import MagicMock, patch
 

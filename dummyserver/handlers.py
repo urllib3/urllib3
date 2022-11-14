@@ -10,7 +10,7 @@ import zlib
 from datetime import datetime, timedelta
 from http.client import responses
 from io import BytesIO
-from typing import Any, Dict, NoReturn, Optional, Sequence, Tuple, Union
+from typing import Any, NoReturn, Sequence
 from urllib.parse import urlsplit
 
 from tornado import httputil

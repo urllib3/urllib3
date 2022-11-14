@@ -5,7 +5,7 @@ import contextlib
 import socket
 import ssl
 import threading
-from typing import Any, Callable, ClassVar, Dict, Generator, Iterable, Optional, Union
+from typing import Any, Callable, ClassVar, Generator, Iterable
 
 import pytest
 from tornado import httpserver, ioloop, web

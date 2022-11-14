@@ -4,7 +4,7 @@ import datetime
 import os
 import time
 from contextlib import contextmanager
-from typing import Generator, Optional
+from typing import Generator
 
 import pytest
 

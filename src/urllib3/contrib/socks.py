@@ -58,7 +58,7 @@ except ImportError:
     raise
 
 from socket import timeout as SocketTimeout
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, Mapping
 
 from ..connection import HTTPConnection, HTTPSConnection
 from ..connectionpool import HTTPConnectionPool, HTTPSConnectionPool

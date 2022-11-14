@@ -8,11 +8,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     AnyStr,
-    Dict,
     Iterable,
-    List,
     NamedTuple,
-    Optional,
     Union,
 )
 

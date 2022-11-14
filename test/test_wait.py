@@ -5,7 +5,7 @@ import threading
 import time
 from socket import socket, socketpair
 from types import FrameType
-from typing import Any, Callable, Generator, List, Optional, Tuple
+from typing import Any, Callable, Generator, Tuple
 
 import pytest
 

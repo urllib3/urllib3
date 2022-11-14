@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import NoReturn, Optional, Type, Union
+from typing import NoReturn
 
 
 def to_bytes(

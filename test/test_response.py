@@ -10,7 +10,7 @@ from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
 from io import BufferedReader, BytesIO, TextIOWrapper
 from test import onlyBrotli, onlyZstd
-from typing import Any, Generator, List, Optional
+from typing import Any, Generator
 from unittest import mock
 
 import pytest

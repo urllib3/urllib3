@@ -9,11 +9,9 @@ from typing import (
     Generic,
     Iterable,
     Iterator,
-    List,
     Mapping,
     MutableMapping,
     NoReturn,
-    Optional,
 )
 from typing import OrderedDict as OrderedDictType
 from typing import Set, Tuple, TypeVar, Union, cast, overload

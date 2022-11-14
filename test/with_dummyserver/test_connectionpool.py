@@ -8,7 +8,7 @@ import time
 import warnings
 from test import LONG_TIMEOUT, SHORT_TIMEOUT
 from threading import Event
-from typing import Dict, List, NoReturn, Optional, Tuple, Type, Union
+from typing import NoReturn
 from unittest import mock
 from urllib.parse import urlencode
 

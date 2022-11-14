@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterator, List, Tuple, Union
+from typing import Iterator
 
 import pytest
 

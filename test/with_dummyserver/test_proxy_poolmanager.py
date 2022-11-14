@@ -11,7 +11,6 @@ import ssl
 import tempfile
 from test import LONG_TIMEOUT, SHORT_TIMEOUT, onlySecureTransport, withPyOpenSSL
 from test.conftest import ServerConfig
-from typing import Tuple
 
 import pytest
 import trustme

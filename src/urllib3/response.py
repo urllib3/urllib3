@@ -17,12 +17,7 @@ from typing import (
     Deque,
     Generator,
     Iterator,
-    List,
     Mapping,
-    Optional,
-    Tuple,
-    Type,
-    Union,
 )
 
 try:

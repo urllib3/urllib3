@@ -9,7 +9,7 @@ from __future__ import annotations
 import ipaddress
 import re
 from ipaddress import IPv4Address, IPv6Address
-from typing import TYPE_CHECKING, Any, Match, Optional, Tuple, Union
+from typing import Any, Match, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .ssl_ import _TYPE_PEER_CERT_RET_DICT

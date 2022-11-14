@@ -4,10 +4,8 @@ import email.utils
 import mimetypes
 from typing import (
     Callable,
-    Dict,
     Iterable,
     Mapping,
-    Optional,
     Sequence,
     Tuple,
     Union,

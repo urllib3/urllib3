@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import warnings
 from logging import NullHandler
-from typing import Any, Mapping, Optional, TextIO, Type, Union
+from typing import Any, Mapping, TextIO
 
 from . import exceptions
 from ._base_connection import _TYPE_BODY

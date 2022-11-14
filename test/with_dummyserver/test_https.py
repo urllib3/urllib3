@@ -19,7 +19,6 @@ from test import (
     resolvesLocalhostFQDN,
 )
 from test.conftest import ServerConfig
-from typing import List, Optional
 from unittest import mock
 
 import pytest

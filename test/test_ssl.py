@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ssl
-from typing import Any, Dict, Optional, Union
+from typing import Any
 from unittest import mock
 
 import pytest

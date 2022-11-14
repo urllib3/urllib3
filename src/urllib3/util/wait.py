@@ -3,7 +3,6 @@ from __future__ import annotations
 import select
 import socket
 from functools import partial
-from typing import List, Optional, Tuple
 
 __all__ = ["wait_for_read", "wait_for_write"]
 

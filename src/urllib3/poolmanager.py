@@ -7,15 +7,9 @@ from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    FrozenSet,
     Mapping,
     NamedTuple,
-    Optional,
-    Tuple,
-    Type,
     TypeVar,
-    Union,
 )
 from urllib.parse import urljoin
 

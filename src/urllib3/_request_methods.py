@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json as _json
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Mapping, Sequence, Tuple, Union
 from urllib.parse import urlencode
 
 from ._base_connection import _TYPE_BODY

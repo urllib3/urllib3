@@ -5,7 +5,7 @@ import contextlib
 import socket
 import ssl
 from pathlib import Path
-from typing import AbstractSet, Any, Dict, Generator, NamedTuple, Optional, Tuple
+from typing import AbstractSet, Any, Generator, NamedTuple
 
 import pytest
 import trustme

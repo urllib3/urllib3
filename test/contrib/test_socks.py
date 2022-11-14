@@ -5,7 +5,7 @@ import threading
 from socket import getaddrinfo as real_getaddrinfo
 from socket import timeout as SocketTimeout
 from test import SHORT_TIMEOUT
-from typing import Generator, List, Optional, Tuple, Union
+from typing import Generator
 from unittest.mock import Mock, patch
 
 import pytest

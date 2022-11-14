@@ -17,7 +17,7 @@ import re
 import ssl
 import struct
 import tempfile
-from typing import Any, List, Optional, Tuple, Type
+from typing import Any
 
 from .bindings import (  # type: ignore[attr-defined]
     CFArray,

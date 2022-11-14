@@ -7,7 +7,7 @@ from queue import Empty
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
-from typing import Any, Optional, Type
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest

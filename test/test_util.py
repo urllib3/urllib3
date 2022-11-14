@@ -8,7 +8,7 @@ import sys
 import warnings
 from itertools import chain
 from test import ImportBlocker, ModuleStash, notBrotli, notZstd, onlyBrotli, onlyZstd
-from typing import TYPE_CHECKING, Dict, List, NoReturn, Optional, Tuple, Union
+from typing import NoReturn, TYPE_CHECKING
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
 from urllib.parse import urlparse
