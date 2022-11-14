@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import typing
 from collections import OrderedDict
 from enum import Enum, auto
 from threading import RLock
-import typing
 
 if typing.TYPE_CHECKING:
 
@@ -81,7 +81,9 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
     lock: RLock
 
     def __init__(
-        self, maxsize: int = 10, dispose_func: typing.Optional[typing.Callable[[_VT], None]] = None
+        self,
+        maxsize: int = 10,
+        dispose_func: typing.Optional[typing.Callable[[_VT], None]] = None,
     ) -> None:
         super().__init__()
         self._maxsize = maxsize
@@ -236,7 +238,9 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
 
     _container: typing.MutableMapping[str, list[str]]
 
-    def __init__(self, headers: typing.Optional[ValidHTTPHeaderSource] = None, **kwargs: str):
+    def __init__(
+        self, headers: typing.Optional[ValidHTTPHeaderSource] = None, **kwargs: str
+    ):
         super().__init__()
         self._container = {}  # 'dict' is insert-ordered in Python 3.7+
         if headers is not None:

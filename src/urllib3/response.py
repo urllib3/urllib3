@@ -5,12 +5,12 @@ import json as _json
 import logging
 import re
 import sys
+import typing
 import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
-import typing
 
 try:
     try:
@@ -222,7 +222,10 @@ class BaseHTTPResponse(io.IOBase):
         CONTENT_DECODERS += ["zstd"]
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
-    DECODER_ERROR_CLASSES: typing.Tuple[typing.Type[Exception], ...] = (IOError, zlib.error)
+    DECODER_ERROR_CLASSES: typing.Tuple[typing.Type[Exception], ...] = (
+        IOError,
+        zlib.error,
+    )
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
 
@@ -232,7 +235,9 @@ class BaseHTTPResponse(io.IOBase):
     def __init__(
         self,
         *,
-        headers: typing.Optional[typing.Union[typing.Mapping[str, str], typing.Mapping[bytes, bytes]]] = None,
+        headers: typing.Optional[
+            typing.Union[typing.Mapping[str, str], typing.Mapping[bytes, bytes]]
+        ] = None,
         status: int,
         version: int,
         reason: typing.Optional[str],
@@ -260,7 +265,9 @@ class BaseHTTPResponse(io.IOBase):
 
         self._decoder: typing.Optional[ContentDecoder] = None
 
-    def get_redirect_location(self) -> typing.Union[typing.Optional[str], "Literal[False]"]:
+    def get_redirect_location(
+        self,
+    ) -> typing.Union[typing.Optional[str], "Literal[False]"]:
         """
         Should we redirect and where to?
 
@@ -313,7 +320,9 @@ class BaseHTTPResponse(io.IOBase):
         self._retries = retries
 
     def stream(
-        self, amt: typing.Optional[int] = 2**16, decode_content: typing.Optional[bool] = None
+        self,
+        amt: typing.Optional[int] = 2**16,
+        decode_content: typing.Optional[bool] = None,
     ) -> typing.Iterator[bytes]:
         raise NotImplementedError()
 
@@ -406,7 +415,9 @@ class BaseHTTPResponse(io.IOBase):
     def getheaders(self) -> list[typing.Tuple[str, str]]:
         return list(self.headers.items())
 
-    def getheader(self, name: str, default: typing.Optional[str] = None) -> typing.Optional[str]:
+    def getheader(
+        self, name: str, default: typing.Optional[str] = None
+    ) -> typing.Optional[str]:
         return self.headers.get(name, default)
 
     # Compatibility method for http.cookiejar
@@ -453,7 +464,9 @@ class HTTPResponse(BaseHTTPResponse):
     def __init__(
         self,
         body: _TYPE_BODY = "",
-        headers: typing.Optional[typing.Union[typing.Mapping[str, str], typing.Mapping[bytes, bytes]]] = None,
+        headers: typing.Optional[
+            typing.Union[typing.Mapping[str, str], typing.Mapping[bytes, bytes]]
+        ] = None,
         status: int = 0,
         version: int = 0,
         reason: typing.Optional[str] = None,
@@ -551,7 +564,9 @@ class HTTPResponse(BaseHTTPResponse):
         """
         return self._fp_bytes_read
 
-    def _init_length(self, request_method: typing.Optional[str]) -> typing.Optional[int]:
+    def _init_length(
+        self, request_method: typing.Optional[str]
+    ) -> typing.Optional[int]:
         """
         Set initial length value for Response content if available.
         """
@@ -790,7 +805,9 @@ class HTTPResponse(BaseHTTPResponse):
         return data
 
     def stream(
-        self, amt: typing.Optional[int] = 2**16, decode_content: typing.Optional[bool] = None
+        self,
+        amt: typing.Optional[int] = 2**16,
+        decode_content: typing.Optional[bool] = None,
     ) -> typing.Generator[bytes, None, None]:
         """
         A generator wrapper for the read() method. A call will block until
@@ -908,7 +925,9 @@ class HTTPResponse(BaseHTTPResponse):
         return returned_chunk  # type: ignore[no-any-return]
 
     def read_chunked(
-        self, amt: typing.Optional[int] = None, decode_content: typing.Optional[bool] = None
+        self,
+        amt: typing.Optional[int] = None,
+        decode_content: typing.Optional[bool] = None,
     ) -> typing.Generator[bytes, None, None]:
         """
         Similar to :meth:`HTTPResponse.read`, but with an additional

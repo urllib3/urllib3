@@ -1,11 +1,11 @@
 import http.client as httplib
 import ssl
+import typing
 from http.client import HTTPException
 from queue import Empty
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
-import typing
 from unittest.mock import Mock, patch
 
 import pytest
@@ -530,7 +530,9 @@ class TestConnectionPool:
                 httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
                 httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()
 
-                response_conn: typing.Optional[HTTPConnection] = kwargs.get("response_conn")
+                response_conn: typing.Optional[HTTPConnection] = kwargs.get(
+                    "response_conn"
+                )
 
                 response = HTTPResponse(
                     body=httplib_response,

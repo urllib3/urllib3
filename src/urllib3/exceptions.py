@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import socket
+import typing
 import warnings
 from email.errors import MessageDefect
 from http.client import IncompleteRead as httplib_IncompleteRead
-import typing
-
 
 if typing.TYPE_CHECKING:
     from .connection import HTTPConnection
@@ -28,7 +27,9 @@ class HTTPWarning(Warning):
     pass
 
 
-_TYPE_REDUCE_RESULT = typing.Tuple[typing.Callable[..., object], typing.Tuple[object, ...]]
+_TYPE_REDUCE_RESULT = typing.Tuple[
+    typing.Callable[..., object], typing.Tuple[object, ...]
+]
 
 
 class PoolError(HTTPError):
@@ -103,7 +104,10 @@ class MaxRetryError(RequestError):
     """
 
     def __init__(
-        self, pool: "ConnectionPool", url: str, reason: typing.Optional[Exception] = None
+        self,
+        pool: "ConnectionPool",
+        url: str,
+        reason: typing.Optional[Exception] = None,
     ) -> None:
         self.reason = reason
 
@@ -347,7 +351,9 @@ class HeaderParsingError(HTTPError):
     """Raised by assert_header_parsing, but we convert it to a log.warning statement."""
 
     def __init__(
-        self, defects: list[MessageDefect], unparsed_data: typing.Optional[typing.Union[bytes, str]]
+        self,
+        defects: list[MessageDefect],
+        unparsed_data: typing.Optional[typing.Union[bytes, str]],
     ) -> None:
         message = f"{defects or 'Unknown'}, unparsed data: {unparsed_data!r}"
         super().__init__(message)

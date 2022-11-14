@@ -7,9 +7,8 @@ from __future__ import annotations
 
 import ipaddress
 import re
-from ipaddress import IPv4Address, IPv6Address
 import typing
-
+from ipaddress import IPv4Address, IPv6Address
 
 if typing.TYPE_CHECKING:
     from .ssl_ import _TYPE_PEER_CERT_RET_DICT
@@ -77,7 +76,9 @@ def _dnsname_match(
     return pat.match(hostname)
 
 
-def _ipaddress_match(ipname: str, host_ip: typing.Union[IPv4Address, IPv6Address]) -> bool:
+def _ipaddress_match(
+    ipname: str, host_ip: typing.Union[IPv4Address, IPv6Address]
+) -> bool:
     """Exact matching of IP addresses.
 
     RFC 9110 section 4.3.5: "A reference identity of IP-ID contains the decoded

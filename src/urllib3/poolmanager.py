@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import functools
 import logging
+import typing
 import warnings
 from types import TracebackType
-import typing
-
 from urllib.parse import urljoin
 
 from ._collections import RecentlyUsedContainer
@@ -355,7 +354,9 @@ class PoolManager(RequestMethods):
         return pool
 
     def connection_from_url(
-        self, url: str, pool_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None
+        self,
+        url: str,
+        pool_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ) -> HTTPConnectionPool:
         """
         Similar to :func:`urllib3.connectionpool.connection_from_url`.
@@ -372,7 +373,9 @@ class PoolManager(RequestMethods):
             u.host, port=u.port, scheme=u.scheme, pool_kwargs=pool_kwargs
         )
 
-    def _merge_pool_kwargs(self, override: typing.Optional[typing.Dict[str, typing.Any]]) -> typing.Dict[str, typing.Any]:
+    def _merge_pool_kwargs(
+        self, override: typing.Optional[typing.Dict[str, typing.Any]]
+    ) -> typing.Dict[str, typing.Any]:
         """
         Merge a dictionary of override values for self.connection_pool_kw.
 

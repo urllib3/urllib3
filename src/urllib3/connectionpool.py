@@ -2,11 +2,11 @@ import errno
 import logging
 import queue
 import sys
+import typing
 import warnings
 import weakref
 from socket import timeout as SocketTimeout
 from types import TracebackType
-import typing
 
 from ._base_connection import _TYPE_BODY
 from ._request_methods import RequestMethods
@@ -1144,7 +1144,9 @@ def _normalize_host(host: str, scheme: typing.Optional[str]) -> str:
     ...
 
 
-def _normalize_host(host: typing.Optional[str], scheme: typing.Optional[str]) -> typing.Optional[str]:
+def _normalize_host(
+    host: typing.Optional[str], scheme: typing.Optional[str]
+) -> typing.Optional[str]:
     """
     Normalize hosts for comparisons and use with sockets.
     """
@@ -1163,7 +1165,8 @@ def _normalize_host(host: typing.Optional[str], scheme: typing.Optional[str]) ->
 
 
 def _url_from_pool(
-    pool: typing.Union[HTTPConnectionPool, HTTPSConnectionPool], path: typing.Optional[str] = None
+    pool: typing.Union[HTTPConnectionPool, HTTPSConnectionPool],
+    path: typing.Optional[str] = None,
 ) -> str:
     """Returns the URL from a given connection pool. This is mainly used for testing and logging."""
     return Url(scheme=pool.scheme, host=pool.host, port=pool.port, path=path).url

@@ -3,8 +3,8 @@ from __future__ import annotations
 import binascii
 import codecs
 import os
-from io import BytesIO
 import typing
+from io import BytesIO
 
 from .fields import _TYPE_FIELD_VALUE_TUPLE, RequestField
 
@@ -34,7 +34,9 @@ def iter_field_objects(fields: _TYPE_FIELDS) -> typing.Iterable[RequestField]:
     :class:`~urllib3.fields.RequestField`.
 
     """
-    iterable: typing.Iterable[typing.Union[RequestField, typing.Tuple[str, _TYPE_FIELD_VALUE_TUPLE]]]
+    iterable: typing.Iterable[
+        typing.Union[RequestField, typing.Tuple[str, _TYPE_FIELD_VALUE_TUPLE]]
+    ]
 
     if isinstance(fields, typing.Mapping):
         iterable = fields.items()

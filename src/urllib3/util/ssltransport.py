@@ -80,7 +80,9 @@ class SSLTransport:
     def fileno(self) -> int:
         return self.socket.fileno()
 
-    def read(self, len: int = 1024, buffer: typing.Optional[typing.Any] = None) -> typing.Union[int, bytes]:
+    def read(
+        self, len: int = 1024, buffer: typing.Optional[typing.Any] = None
+    ) -> typing.Union[int, bytes]:
         return self._wrap_ssl_read(len, buffer)
 
     def recv(self, buflen: int = 1024, flags: int = 0) -> typing.Union[int, bytes]:

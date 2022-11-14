@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json as _json
 import typing
-
 from urllib.parse import urlencode
 
 from ._base_connection import _TYPE_BODY
@@ -13,7 +12,8 @@ from .response import BaseHTTPResponse
 __all__ = ["RequestMethods"]
 
 _TYPE_ENCODE_URL_FIELDS = typing.Union[
-    typing.Sequence[typing.Tuple[str, typing.Union[str, bytes]]], typing.Mapping[str, typing.Union[str, bytes]]
+    typing.Sequence[typing.Tuple[str, typing.Union[str, bytes]]],
+    typing.Mapping[str, typing.Union[str, bytes]],
 ]
 
 
@@ -48,7 +48,9 @@ class RequestMethods:
 
     _encode_url_methods = {"DELETE", "GET", "HEAD", "OPTIONS"}
 
-    def __init__(self, headers: typing.Optional[typing.Mapping[str, str]] = None) -> None:
+    def __init__(
+        self, headers: typing.Optional[typing.Mapping[str, str]] = None
+    ) -> None:
         self.headers = headers or {}
 
     def urlopen(

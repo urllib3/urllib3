@@ -4,9 +4,9 @@ import email
 import logging
 import re
 import time
+import typing
 from itertools import takewhile
 from types import TracebackType
-import typing
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -198,7 +198,9 @@ class Retry:
         redirect: typing.Optional[typing.Union[bool, int]] = None,
         status: typing.Optional[int] = None,
         other: typing.Optional[int] = None,
-        allowed_methods: typing.Optional[typing.Collection[str]] = DEFAULT_ALLOWED_METHODS,
+        allowed_methods: typing.Optional[
+            typing.Collection[str]
+        ] = DEFAULT_ALLOWED_METHODS,
         status_forcelist: typing.Optional[typing.Collection[int]] = None,
         backoff_factor: float = 0,
         backoff_max: float = DEFAULT_BACKOFF_MAX,

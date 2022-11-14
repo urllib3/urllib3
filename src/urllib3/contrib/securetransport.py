@@ -62,10 +62,10 @@ import socket
 import ssl
 import struct
 import threading
+import typing
 import warnings
 import weakref
 from socket import socket as socket_cls
-import typing
 
 from .. import util
 from ._securetransport.bindings import (  # type: ignore[attr-defined]
@@ -363,7 +363,9 @@ class WrappedSocket:
         finally:
             CoreFoundation.CFRelease(protocols_arr)
 
-    def _custom_validate(self, verify: bool, trust_bundle: typing.Optional[bytes]) -> None:
+    def _custom_validate(
+        self, verify: bool, trust_bundle: typing.Optional[bytes]
+    ) -> None:
         """
         Called when we have set custom validation. We do this in two cases:
         first, when cert validation is entirely disabled; and second, when

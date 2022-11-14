@@ -1,9 +1,11 @@
-from types import TracebackType
 import typing
+from types import TracebackType
 
 
 def to_bytes(
-    x: typing.Union[str, bytes], encoding: typing.Optional[str] = None, errors: typing.Optional[str] = None
+    x: typing.Union[str, bytes],
+    encoding: typing.Optional[str] = None,
+    errors: typing.Optional[str] = None,
 ) -> bytes:
     if isinstance(x, bytes):
         return x
@@ -15,7 +17,9 @@ def to_bytes(
 
 
 def to_str(
-    x: typing.Union[str, bytes], encoding: typing.Optional[str] = None, errors: typing.Optional[str] = None
+    x: typing.Union[str, bytes],
+    encoding: typing.Optional[str] = None,
+    errors: typing.Optional[str] = None,
 ) -> str:
     if isinstance(x, str):
         return x

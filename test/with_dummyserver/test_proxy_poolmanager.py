@@ -9,9 +9,9 @@ import shutil
 import socket
 import ssl
 import tempfile
+import typing
 from test import LONG_TIMEOUT, SHORT_TIMEOUT, onlySecureTransport, withPyOpenSSL
 from test.conftest import ServerConfig
-import typing
 
 import pytest
 import trustme

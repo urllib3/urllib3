@@ -5,10 +5,10 @@ import logging
 import socket
 import ssl
 import sys
+import typing
 import warnings
 from itertools import chain
 from test import ImportBlocker, ModuleStash, notBrotli, notZstd, onlyBrotli, onlyZstd
-import typing
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
 from urllib.parse import urlparse
@@ -407,7 +407,9 @@ class TestUtil:
     ]
 
     @pytest.mark.parametrize("url, expected_authority", combined_netloc_authority_map)
-    def test_authority(self, url: str, expected_authority: typing.Optional[str]) -> None:
+    def test_authority(
+        self, url: str, expected_authority: typing.Optional[str]
+    ) -> None:
         assert parse_url(url).authority == expected_authority
 
     @pytest.mark.parametrize("url, expected_authority", url_authority_with_schemes_map)
@@ -569,7 +571,9 @@ class TestUtil:
         ],
     )
     def test_make_headers(
-        self, kwargs: typing.Dict[str, typing.Union[bool, str]], expected: typing.Dict[str, str]
+        self,
+        kwargs: typing.Dict[str, typing.Union[bool, str]],
+        expected: typing.Dict[str, str],
     ) -> None:
         assert make_headers(**kwargs) == expected  # type: ignore[arg-type]
 
@@ -921,7 +925,10 @@ class TestUtil:
         ),
     )
     def test_to_str(
-        self, input: typing.Union[bytes, str], params: typing.Dict[str, str], expected: str
+        self,
+        input: typing.Union[bytes, str],
+        params: typing.Dict[str, str],
+        expected: str,
     ) -> None:
         assert to_str(input, **params) == expected
 
@@ -940,7 +947,10 @@ class TestUtil:
         ),
     )
     def test_to_bytes(
-        self, input: typing.Union[bytes, str], params: typing.Dict[str, str], expected: bytes
+        self,
+        input: typing.Union[bytes, str],
+        params: typing.Dict[str, str],
+        expected: bytes,
     ) -> None:
         assert to_bytes(input, **params) == expected
 

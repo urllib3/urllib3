@@ -5,10 +5,10 @@ import logging
 import socket
 import sys
 import time
+import typing
 import warnings
 from test import LONG_TIMEOUT, SHORT_TIMEOUT
 from threading import Event
-import typing
 from unittest import mock
 from urllib.parse import urlencode
 

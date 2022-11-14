@@ -300,7 +300,9 @@ def _normalize_host(host: str, scheme: typing.Optional[str]) -> str:
     ...
 
 
-def _normalize_host(host: typing.Optional[str], scheme: typing.Optional[str]) -> typing.Optional[str]:
+def _normalize_host(
+    host: typing.Optional[str], scheme: typing.Optional[str]
+) -> typing.Optional[str]:
     if host:
         if scheme in _NORMALIZABLE_SCHEMES:
             is_ipv6 = _IPV6_ADDRZ_RE.match(host)

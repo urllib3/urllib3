@@ -418,7 +418,9 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     @pytest.mark.parametrize("buffering", [None, 0])
-    def test_tls_in_tls_makefile_raw_rw_binary(self, buffering: typing.Optional[int]) -> None:
+    def test_tls_in_tls_makefile_raw_rw_binary(
+        self, buffering: typing.Optional[int]
+    ) -> None:
         """
         Uses makefile with read, write and binary modes without buffering.
         """

@@ -4,8 +4,8 @@ import asyncio
 import contextlib
 import socket
 import ssl
-from pathlib import Path
 import typing
+from pathlib import Path
 
 import pytest
 import trustme

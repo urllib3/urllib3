@@ -33,6 +33,7 @@ license and by oscrypto's:
 """
 
 import platform
+import typing
 from ctypes import (
     CDLL,
     CFUNCTYPE,
@@ -48,7 +49,6 @@ from ctypes import (
     c_void_p,
 )
 from ctypes.util import find_library
-import typing
 
 if platform.system() != "Darwin":
     raise ImportError("Only macOS is supported")

@@ -1,5 +1,5 @@
-from test import DUMMY_POOL
 import typing
+from test import DUMMY_POOL
 from unittest import mock
 
 import pytest

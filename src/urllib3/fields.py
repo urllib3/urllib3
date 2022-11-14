@@ -6,7 +6,9 @@ import typing
 
 _TYPE_FIELD_VALUE = typing.Union[str, bytes]
 _TYPE_FIELD_VALUE_TUPLE = typing.Union[
-    _TYPE_FIELD_VALUE, typing.Tuple[str, _TYPE_FIELD_VALUE], typing.Tuple[str, _TYPE_FIELD_VALUE, str]
+    _TYPE_FIELD_VALUE,
+    typing.Tuple[str, _TYPE_FIELD_VALUE],
+    typing.Tuple[str, _TYPE_FIELD_VALUE, str],
 ]
 
 
@@ -173,7 +175,9 @@ class RequestField:
         data: _TYPE_FIELD_VALUE,
         filename: typing.Optional[str] = None,
         headers: typing.Optional[typing.Mapping[str, str]] = None,
-        header_formatter: typing.Optional[typing.Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
+        header_formatter: typing.Optional[
+            typing.Callable[[str, _TYPE_FIELD_VALUE], str]
+        ] = None,
     ):
         self._name = name
         self._filename = filename
@@ -201,7 +205,9 @@ class RequestField:
         cls,
         fieldname: str,
         value: _TYPE_FIELD_VALUE_TUPLE,
-        header_formatter: typing.Optional[typing.Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
+        header_formatter: typing.Optional[
+            typing.Callable[[str, _TYPE_FIELD_VALUE], str]
+        ] = None,
     ) -> "RequestField":
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
@@ -229,7 +235,9 @@ class RequestField:
                     typing.Tuple[str, _TYPE_FIELD_VALUE, str], value
                 )
             else:
-                filename, data = typing.cast(typing.Tuple[str, _TYPE_FIELD_VALUE], value)
+                filename, data = typing.cast(
+                    typing.Tuple[str, _TYPE_FIELD_VALUE], value
+                )
                 content_type = guess_content_type(filename)
         else:
             filename = None

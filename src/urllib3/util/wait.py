@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import select
 import socket
-from functools import partial
 import typing
+from functools import partial
 
 __all__ = ["wait_for_read", "wait_for_write"]
 

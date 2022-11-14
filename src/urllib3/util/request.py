@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import io
+import typing
 from base64 import b64encode
 from enum import Enum
-import typing
 
 from ..exceptions import UnrewindableBodyError
 from .util import to_bytes

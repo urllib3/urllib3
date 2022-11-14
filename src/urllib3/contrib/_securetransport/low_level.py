@@ -48,7 +48,9 @@ def _cf_data_from_bytes(bytestring: bytes) -> CFData:
     )
 
 
-def _cf_dictionary_from_tuples(tuples: list[typing.Tuple[typing.Any, typing.Any]]) -> CFDictionary:
+def _cf_dictionary_from_tuples(
+    tuples: list[typing.Tuple[typing.Any, typing.Any]]
+) -> CFDictionary:
     """
     Given a list of Python tuples, create an associated CFDictionary.
     """
@@ -317,7 +319,9 @@ def _load_items_from_file(
     return (identities, certificates)
 
 
-def _load_client_cert_chain(keychain: SecKeychainRef, *paths: typing.Optional[str]) -> CFArray:
+def _load_client_cert_chain(
+    keychain: SecKeychainRef, *paths: typing.Optional[str]
+) -> CFArray:
     """
     Load certificates and maybe keys from a number of files. Has the end goal
     of returning a CFArray containing one SecIdentityRef, and then zero or more

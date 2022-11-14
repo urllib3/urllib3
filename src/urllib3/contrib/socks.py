@@ -56,8 +56,8 @@ except ImportError:
     )
     raise
 
-from socket import timeout as SocketTimeout
 import typing
+from socket import timeout as SocketTimeout
 
 from ..connection import HTTPConnection, HTTPSConnection
 from ..connectionpool import HTTPConnectionPool, HTTPSConnectionPool
@@ -91,7 +91,10 @@ class SOCKSConnection(HTTPConnection):
     """
 
     def __init__(
-        self, _socks_options: _TYPE_SOCKS_OPTIONS, *args: typing.Any, **kwargs: typing.Any
+        self,
+        _socks_options: _TYPE_SOCKS_OPTIONS,
+        *args: typing.Any,
+        **kwargs: typing.Any,
     ) -> None:
         self._socks_options = _socks_options
         super().__init__(*args, **kwargs)

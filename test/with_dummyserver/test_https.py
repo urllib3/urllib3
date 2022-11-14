@@ -7,6 +7,7 @@ import shutil
 import ssl
 import sys
 import tempfile
+import typing
 import warnings
 from pathlib import Path
 from test import (
@@ -19,7 +20,6 @@ from test import (
     resolvesLocalhostFQDN,
 )
 from test.conftest import ServerConfig
-import typing
 from unittest import mock
 
 import pytest
