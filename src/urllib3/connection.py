@@ -427,8 +427,8 @@ class HTTPConnection(_HTTPConnection):
         body with chunked encoding and not as one block
         """
         warnings.warn(
-            "HTTPConnection.request_chunked() is deprecated and will be removed in a "
-            "future version. Instead use HTTPConnection.request(..., chunked=True).",
+            "HTTPConnection.request_chunked() is deprecated and will be removed "
+            "in urllib3 v2.1.0. Instead use HTTPConnection.request(..., chunked=True).",
             category=DeprecationWarning,
             stacklevel=2,
         )
@@ -585,9 +585,9 @@ class HTTPSConnection(HTTPConnection):
         This method should only be called once, before the connection is used.
         """
         warnings.warn(
-            "HTTPSConnection.set_cert() is deprecated and will be removed in a "
-            "future version. Instead provide the parameters to the HTTPSConnection "
-            "constructor.",
+            "HTTPSConnection.set_cert() is deprecated and will be removed "
+            "in urllib3 v2.1.0. Instead provide the parameters to the "
+            "HTTPSConnection constructor.",
             category=DeprecationWarning,
             stacklevel=2,
         )
