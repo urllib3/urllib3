@@ -322,6 +322,11 @@ class HTTPConnection(_HTTPConnection):
         enforce_content_length: bool = True,
     ) -> None:
 
+        # Update the inner socket's timeout value to send the request.
+        # This only triggers if the connection is re-used.
+        if self.sock is not None:
+            self.sock.settimeout(self.timeout)
+
         # Store these values to be fed into the HTTPResponse
         # object later. TODO: Remove this in favor of a real
         # HTTP lifecycle mechanism.

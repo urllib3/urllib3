@@ -8,7 +8,7 @@ import time
 import warnings
 from test import LONG_TIMEOUT, SHORT_TIMEOUT
 from threading import Event
-from typing import NoReturn
+from typing import NoReturn, Sequence
 from unittest import mock
 from urllib.parse import urlencode
 
@@ -32,7 +32,7 @@ from urllib3.exceptions import (
 from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
 from urllib3.util import SKIP_HEADER, SKIPPABLE_HEADERS
 from urllib3.util.retry import RequestHistory, Retry
-from urllib3.util.timeout import Timeout
+from urllib3.util.timeout import _TYPE_TIMEOUT, Timeout
 
 from .. import INVALID_SOURCE_ADDRESSES, TARPIT_HOST, VALID_SOURCE_ADDRESSES
 from ..port_helpers import find_unused_port
@@ -387,6 +387,59 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         timeout = Timeout(total=None)
         with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
             pool.request("GET", "/")
+
+    socket_timeout_reuse_testdata = pytest.mark.parametrize(
+        ["timeout", "expect_settimeout_calls"],
+        [
+            (1, (1, 1)),
+            (None, (None, None)),
+            (Timeout(read=4), (None, 4)),
+            (Timeout(read=4, connect=5), (5, 4)),
+            (Timeout(connect=6), (6, None)),
+        ],
+    )
+
+    @socket_timeout_reuse_testdata
+    def test_socket_timeout_updated_on_reuse_constructor(
+        self, timeout: _TYPE_TIMEOUT, expect_settimeout_calls: Sequence[float | None]
+    ) -> None:
+        with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
+            # Make a request to create a new connection.
+            pool.urlopen("GET", "/")
+
+            # Grab the connection and mock the inner socket.
+            assert pool.pool is not None
+            conn = pool.pool.get_nowait()
+            conn_sock = mock.Mock(wraps=conn.sock)
+            conn.sock = conn_sock
+            pool._put_conn(conn)
+
+            # Assert that sock.settimeout() is called with the new connect timeout, then the read timeout.
+            pool.urlopen("GET", "/", timeout=timeout)
+            conn_sock.settimeout.assert_has_calls(
+                [mock.call(x) for x in expect_settimeout_calls]
+            )
+
+    @socket_timeout_reuse_testdata
+    def test_socket_timeout_updated_on_reuse_parameter(
+        self, timeout: _TYPE_TIMEOUT, expect_settimeout_calls: Sequence[float | None]
+    ) -> None:
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            # Make a request to create a new connection.
+            pool.urlopen("GET", "/", timeout=LONG_TIMEOUT)
+
+            # Grab the connection and mock the inner socket.
+            assert pool.pool is not None
+            conn = pool.pool.get_nowait()
+            conn_sock = mock.Mock(wraps=conn.sock)
+            conn.sock = conn_sock
+            pool._put_conn(conn)
+
+            # Assert that sock.settimeout() is called with the new connect timeout, then the read timeout.
+            pool.urlopen("GET", "/", timeout=timeout)
+            conn_sock.settimeout.assert_has_calls(
+                [mock.call(x) for x in expect_settimeout_calls]
+            )
 
     def test_tunnel(self) -> None:
         # note the actual httplib.py has no tests for this functionality
