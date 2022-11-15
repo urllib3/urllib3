@@ -1,7 +1,0 @@
-Standardized :meth:`~urllib3.response.HTTPResponse.read` to respect the semantics of BufferedIOBase regardless of compression. Specifically, this method:
-
-* only returns an empty bytes object to indicate EOF (that is, the response has been fully consumed),
-* never returns more bytes than requested,
-* can issue any number of system calls: zero, one or multiple.
-
-If you want each :meth:`~urllib3.response.HTTPResponse.read` call to issue a single system call, you need to disable decompression by setting ``decode_content=False``.

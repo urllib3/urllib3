@@ -1,1 +1,0 @@
-Fixed ``socket.error.errno`` when raised from pyOpenSSL's ``OpenSSL.SSL.SysCallError``.
