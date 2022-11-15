@@ -1498,12 +1498,7 @@ class TestSSL(SocketDummyServerTestCase):
         os.environ.get("CI") == "true" and sys.implementation.name == "pypy",
         reason="too slow to run in CI",
     )
-    @pytest.mark.parametrize(
-        "preload_content,read_amt", [(True, None), (False, None), (False, 2**31)]
-    )
-    def test_requesting_large_resources_via_ssl(
-        self, preload_content: bool, read_amt: Optional[int]
-    ) -> None:
+    def test_requesting_large_resources_via_ssl(self) -> None:
         """
         Ensure that it is possible to read 2 GiB or more via an SSL
         socket.
@@ -1544,8 +1539,8 @@ class TestSSL(SocketDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA, retries=False
         ) as pool:
-            response = pool.request("GET", "/", preload_content=preload_content)
-            data = response.data if preload_content else response.read(read_amt)
+            response = pool.request("GET", "/", preload_content=False)
+            data = response.read(2**31)
             assert len(data) == content_length
 
 
