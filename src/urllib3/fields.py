@@ -51,14 +51,14 @@ def format_header_param_rfc2231(name: str, value: _TYPE_FIELD_VALUE) -> str:
         An RFC-2231-formatted unicode string.
 
     .. deprecated:: 2.0.0
-        Will be removed in urllib3 v3.0.0. This is not valid for
+        Will be removed in urllib3 v2.1.0. This is not valid for
         ``multipart/form-data`` header parameters.
     """
     import warnings
 
     warnings.warn(
         "'format_header_param_rfc2231' is deprecated and will be "
-        "removed in urllib3 v3.0.0. This is not valid for "
+        "removed in urllib3 v2.1.0. This is not valid for "
         "multipart/form-data header parameters.",
         DeprecationWarning,
         stacklevel=2,
@@ -110,7 +110,7 @@ def format_multipart_header_param(name: str, value: _TYPE_FIELD_VALUE) -> str:
     .. versionchanged:: 2.0.0
         Renamed from ``format_header_param_html5`` and
         ``format_header_param``. The old names will be removed in
-        urllib3 v3.0.0.
+        urllib3 v2.1.0.
     """
     if isinstance(value, bytes):
         value = value.decode("utf-8")
@@ -124,14 +124,14 @@ def format_header_param_html5(name: str, value: _TYPE_FIELD_VALUE) -> str:
     """
     .. deprecated:: 2.0.0
         Renamed to :func:`format_multipart_header_param`. Will be
-        removed in urllib3 v3.0.0.
+        removed in urllib3 v2.1.0.
     """
     import warnings
 
     warnings.warn(
         "'format_header_param_html5' has been renamed to "
         "'format_multipart_header_param'. The old name will be "
-        "removed in urllib3 v3.0.0.",
+        "removed in urllib3 v2.1.0.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -142,14 +142,14 @@ def format_header_param(name: str, value: _TYPE_FIELD_VALUE) -> str:
     """
     .. deprecated:: 2.0.0
         Renamed to :func:`format_multipart_header_param`. Will be
-        removed in urllib3 v3.0.0.
+        removed in urllib3 v2.1.0.
     """
     import warnings
 
     warnings.warn(
         "'format_header_param' has been renamed to "
         "'format_multipart_header_param'. The old name will be "
-        "removed in urllib3 v3.0.0.",
+        "removed in urllib3 v2.1.0.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -171,8 +171,7 @@ class RequestField:
 
     .. versionchanged:: 2.0.0
         The ``header_formatter`` parameter is deprecated and will
-        be removed in urllib3 v3.0.0. Override :meth:`_render_part`
-        instead.
+        be removed in urllib3 v2.1.0.
     """
 
     def __init__(
@@ -195,8 +194,7 @@ class RequestField:
 
             warnings.warn(
                 "The 'header_formatter' parameter is deprecated and "
-                "will be removed in urllib3 v3.0.0. Override the "
-                "'_render_part' method instead.",
+                "will be removed in urllib3 v2.1.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )

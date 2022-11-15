@@ -51,7 +51,7 @@ except ModuleNotFoundError:
 else:
     warnings.warn(
         "'urllib3[secure]' extra is deprecated and will be removed "
-        "in a future release of urllib3 2.x. Read more in this issue: "
+        "in urllib3 v2.1.0. Read more in this issue: "
         "https://github.com/urllib3/urllib3/issues/2680",
         category=DeprecationWarning,
         stacklevel=2,

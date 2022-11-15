@@ -60,7 +60,7 @@ class TestNewConnectionError:
         assert err.pool is err.conn
         msg = (
             "The 'pool' property is deprecated and will be removed "
-            "in a later urllib3 v2.x release. use 'conn' instead."
+            "in urllib3 v2.1.0. Use 'conn' instead."
         )
         record = records[0]
         assert isinstance(record.message, Warning)
