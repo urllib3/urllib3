@@ -1,4 +1,0 @@
-Removed the ``urllib3.request`` module. ``urllib3.request.RequestMethods`` has been made a private API.
-
-This change was made to ensure that ``from urllib3 import request`` imported the top-level ``request()``
-function instead of the ``urllib3.request`` module.

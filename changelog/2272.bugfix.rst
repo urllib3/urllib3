@@ -1,1 +1,0 @@
-Fixed a bug where ``headers`` would be modified by the ``remove_headers_on_redirect`` feature.

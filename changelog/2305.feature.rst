@@ -1,1 +1,0 @@
-Added ``NameResolutionError`` exception when a DNS error occurs.
