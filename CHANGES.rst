@@ -1,7 +1,7 @@
 2.0.0a1 (2022-11-15)
 ====================
 
-Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`_ for help upgrading to the latest version of urllib3.
+Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`__ for help upgrading to the latest version of urllib3.
 
 Added
 -----
@@ -61,6 +61,13 @@ Removed
 Changed
 -------
 
+- Changed :meth:`~urllib3.response.HTTPResponse.read` to respect the semantics of :class:`io.BufferedIOBase` regardless of compression. Specifically, this method:
+
+  * Only returns an empty bytes object to indicate EOF (that is, the response has been fully consumed).
+  * Never returns more bytes than requested.
+  * Can issue any number of system calls: zero, one or multiple.
+
+  If you want each :meth:`~urllib3.response.HTTPResponse.read` call to issue a single system call, you need to disable decompression by setting ``decode_content=False``. (`#2128 <https://github.com/urllib3/urllib3/issues/2128>`__)
 - Changed ``ssl_version`` to instead set the corresponding ``SSLContext.minimum_version``
   and ``SSLContext.maximum_version`` values.  Regardless of ``ssl_version`` passed
   ``SSLContext`` objects are now constructed using ``ssl.PROTOCOL_TLS_CLIENT``. (`#2110 <https://github.com/urllib3/urllib3/issues/2110>`__)
@@ -100,6 +107,8 @@ Fixed
 -----
 
 - Fixed thread-safety issue where accessing a `PoolManager` with many distinct origins would cause connection pools to be closed while requests are in progress. (`#1252 <https://github.com/urllib3/urllib3/issues/1252>`__)
+- Fixed an issue where an ``HTTPConnection`` instance would erroneously reuse the socket read timeout value from reading the previous response instead of a newly configured connect timeout.
+  Instead now if ``HTTPConnection.timeout`` is updated before sending the next request the new timeout value will be used. (`#2645 <https://github.com/urllib3/urllib3/issues/2645>`__)
 - Fixed ``socket.error.errno`` when raised from pyOpenSSL's ``OpenSSL.SSL.SysCallError``. (`#2118 <https://github.com/urllib3/urllib3/issues/2118>`__)
 - Fixed the default value of ``HTTPSConnection.socket_options`` to match ``HTTPConnection``. (`#2213 <https://github.com/urllib3/urllib3/issues/2213>`__)
 - Fixed a bug where ``headers`` would be modified by the ``remove_headers_on_redirect`` feature. (`#2272 <https://github.com/urllib3/urllib3/issues/2272>`__)
