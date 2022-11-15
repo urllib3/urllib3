@@ -46,8 +46,9 @@ Here's a short summary of which changes in urllib3 v2.0 are most important:
 - Removed support for non-OpenSSL TLS libraries (like LibreSSL and wolfSSL).
 - Removed support for OpenSSL versions older than 1.1.1.
 - Removed support for Python implementations that aren't CPython or PyPy3 (previously supported Google App Engine, Jython).
-- Removed ``urllib3.contrib.pyopenssl``, ``urllib3.contrib.securetransport``, and ``urllib3.contrib.ntlmpool`` modules.
-- Removed the ``urllib3[secure]`` extra.
+- Removed the ``urllib3.contrib.ntlmpool`` module.
+- Deprecated the ``urllib3.contrib.pyopenssl``, ``urllib3.contrib.securetransport`` modules, will be removed in v2.1.0.
+- Deprecated the ``urllib3[secure]`` extra, will be removed in v2.1.0.
 - Changed the default minimum TLS version to TLS 1.2 (previously was TLS 1.0).
 - Removed support for verifying certificate hostnames via ``commonName``, now only ``subjectAltName`` is used.
 - Removed the default set of TLS ciphers, instead now urllib3 uses the list of ciphers configured by the system.
