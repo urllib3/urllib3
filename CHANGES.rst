@@ -61,7 +61,7 @@ Removed
 Changed
 -------
 
-* Changed ``urllib3.response.HTTPResponse.read`` to respect the semantics of :class:`io.BufferedIOBase` regardless of compression. Specifically, this method:
+* Changed ``urllib3.response.HTTPResponse.read`` to respect the semantics of ``io.BufferedIOBase`` regardless of compression. Specifically, this method:
 
   * Only returns an empty bytes object to indicate EOF (that is, the response has been fully consumed).
   * Never returns more bytes than requested.
