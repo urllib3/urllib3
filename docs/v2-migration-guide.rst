@@ -100,7 +100,17 @@ output to the terminal:
   $ export PYTHONWARNINGS="default"
 
   # Run your test suite and look for failures.
+  # Pytest automatically prints all warnings.
   $ pytest tests/
+
+or you can opt-in within your Python code:
+
+.. code-block:: python
+
+  # You can change warning filters according to the filter rules:
+  # https://docs.python.org/3/library/warnings.html#warning-filter
+  import warnings
+  warnings.filterwarnings("default", category=DeprecationWarning)
 
 Any failures or deprecation warnings you receive should be fixed as urllib3 v2.1.0 will remove all
 deprecated features. Many deprecation warnings will make suggestions about what to do to avoid the deprecated feature.

@@ -1,6 +1,8 @@
 2.0.0a1 (2022-11-15)
 ====================
 
+Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`_ for help upgrading to the latest version of urllib3.
+
 Added
 -----
 
