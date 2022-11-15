@@ -61,13 +61,13 @@ Removed
 Changed
 -------
 
-* Changed :meth:`~urllib3.response.HTTPResponse.read` to respect the semantics of :class:`io.BufferedIOBase` regardless of compression. Specifically, this method:
+* Changed ``urllib3.response.HTTPResponse.read`` to respect the semantics of :class:`io.BufferedIOBase` regardless of compression. Specifically, this method:
 
   * Only returns an empty bytes object to indicate EOF (that is, the response has been fully consumed).
   * Never returns more bytes than requested.
   * Can issue any number of system calls: zero, one or multiple.
 
-  If you want each :meth:`~urllib3.response.HTTPResponse.read` call to issue a single system call, you need to disable decompression by setting ``decode_content=False`` (`#2128 <https://github.com/urllib3/urllib3/issues/2128>`__).
+  If you want each ``urllib3.response.HTTPResponse.read`` call to issue a single system call, you need to disable decompression by setting ``decode_content=False`` (`#2128 <https://github.com/urllib3/urllib3/issues/2128>`__).
 * Changed ``ssl_version`` to instead set the corresponding ``SSLContext.minimum_version``
   and ``SSLContext.maximum_version`` values.  Regardless of ``ssl_version`` passed
   ``SSLContext`` objects are now constructed using ``ssl.PROTOCOL_TLS_CLIENT`` (`#2110 <https://github.com/urllib3/urllib3/issues/2110>`__).
