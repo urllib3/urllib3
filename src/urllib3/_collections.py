@@ -154,7 +154,7 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
             return set(self._container.keys())
 
 
-class HTTPHeaderDictItemView(set[tuple[str, str]]):
+class HTTPHeaderDictItemView(typing.Set[typing.Tuple[str, str]]):
     """
     HTTPHeaderDict is unusual for a Mapping[str, str] in that it has two modes of
     address.
