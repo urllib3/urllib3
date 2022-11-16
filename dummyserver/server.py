@@ -15,10 +15,10 @@ import socket
 import ssl
 import sys
 import threading
+import typing
 import warnings
 from collections.abc import Coroutine, Generator
 from datetime import datetime
-import typing
 
 import tornado.httpserver
 import tornado.ioloop
@@ -226,7 +226,9 @@ R = typing.TypeVar("R")
 
 
 def _run_and_close_tornado(
-    async_fn: typing.Callable[P, Coroutine[typing.Any, typing.Any, R]], *args: P.args, **kwargs: P.kwargs
+    async_fn: typing.Callable[P, Coroutine[typing.Any, typing.Any, R]],
+    *args: P.args,
+    **kwargs: P.kwargs,
 ) -> R:
     tornado_loop = None
 

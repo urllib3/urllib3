@@ -61,7 +61,9 @@ class SocketDummyServerTestCase:
     proxy_server: typing.ClassVar[SocketDummyServerTestCase]
 
     @classmethod
-    def _start_server(cls, socket_handler: typing.Callable[[socket.socket], None]) -> None:
+    def _start_server(
+        cls, socket_handler: typing.Callable[[socket.socket], None]
+    ) -> None:
         ready_event = threading.Event()
         cls.server_thread = SocketServerThread(
             socket_handler=socket_handler, ready_event=ready_event, host=cls.host
@@ -130,7 +132,9 @@ class SocketDummyServerTestCase:
 
 class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
     @classmethod
-    def _start_server(cls, socket_handler: typing.Callable[[socket.socket], None]) -> None:
+    def _start_server(
+        cls, socket_handler: typing.Callable[[socket.socket], None]
+    ) -> None:
         ready_event = threading.Event()
         cls.server_thread = SocketServerThread(
             socket_handler=socket_handler, ready_event=ready_event, host=cls.host
@@ -301,15 +305,21 @@ class ConnectionMarker:
 
     @classmethod
     @contextlib.contextmanager
-    def mark(cls, monkeypatch: pytest.MonkeyPatch) -> typing.Generator[None, None, None]:
+    def mark(
+        cls, monkeypatch: pytest.MonkeyPatch
+    ) -> typing.Generator[None, None, None]:
         """
         Mark connections under in that context.
         """
 
         orig_request = HTTPConnection.request
 
-        def call_and_mark(target: typing.Callable[..., None]) -> typing.Callable[..., None]:
-            def part(self: HTTPConnection, *args: typing.Any, **kwargs: typing.Any) -> None:
+        def call_and_mark(
+            target: typing.Callable[..., None]
+        ) -> typing.Callable[..., None]:
+            def part(
+                self: HTTPConnection, *args: typing.Any, **kwargs: typing.Any
+            ) -> None:
                 target(self, *args, **kwargs)
                 self.sock.sendall(cls._get_socket_mark(self.sock, False))
 

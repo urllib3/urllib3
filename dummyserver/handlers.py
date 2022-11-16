@@ -6,11 +6,11 @@ import gzip
 import json
 import logging
 import sys
+import typing
 import zlib
 from datetime import datetime, timedelta
 from http.client import responses
 from io import BytesIO
-import typing
 from urllib.parse import urlsplit
 
 from tornado import httputil
