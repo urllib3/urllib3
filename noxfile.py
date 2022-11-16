@@ -89,7 +89,19 @@ def test_brotlipy(session: nox.Session) -> None:
 
 
 def git_clone(session: nox.Session, git_url: str) -> None:
-    session.run("git", "clone", "--depth", "1", git_url, external=True)
+    """We either clone the target repository or if already exist
+    simply reset the state and pull.
+    """
+    expected_directory = git_url.split('/')[-1]
+
+    if expected_directory.endswith('.git'):
+        expected_directory = expected_directory[:-4]
+
+    if not os.path.isdir(expected_directory):
+        session.run("git", "clone", "--depth", "1", git_url, external=True)
+    else:
+        session.run("git", "-C", expected_directory, "reset", external=True)
+        session.run("git", "-C", expected_directory, "pull", external=True)
 
 
 @nox.session()
