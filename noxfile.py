@@ -100,7 +100,7 @@ def git_clone(session: nox.Session, git_url: str) -> None:
     if not os.path.isdir(expected_directory):
         session.run("git", "clone", "--depth", "1", git_url, external=True)
     else:
-        session.run("git", "-C", expected_directory, "reset", external=True)
+        session.run("git", "-C", expected_directory, "reset", "--hard", "HEAD", external=True)
         session.run("git", "-C", expected_directory, "pull", external=True)
 
 
