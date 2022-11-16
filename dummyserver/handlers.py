@@ -10,7 +10,7 @@ import zlib
 from datetime import datetime, timedelta
 from http.client import responses
 from io import BytesIO
-from typing import Any, NoReturn, Sequence
+import typing
 from urllib.parse import urlsplit
 
 from tornado import httputil
@@ -24,10 +24,10 @@ log = logging.getLogger(__name__)
 class Response:
     def __init__(
         self,
-        body: str | bytes | Sequence[str | bytes] = "",
+        body: str | bytes | typing.Sequence[str | bytes] = "",
         status: str = "200 OK",
-        headers: Sequence[tuple[str, str | bytes]] | None = None,
-        json: Any | None = None,
+        headers: typing.Sequence[tuple[str, str | bytes]] | None = None,
+        json: typing.Any | None = None,
     ) -> None:
         self.body = body
         self.status = status
@@ -352,5 +352,5 @@ class TestingApp(RequestHandler):
         headers = [("Location", target), ("Retry-After", retry_after)]
         return Response(status="303 See Other", headers=headers)
 
-    def shutdown(self, request: httputil.HTTPServerRequest) -> NoReturn:
+    def shutdown(self, request: httputil.HTTPServerRequest) -> typing.NoReturn:
         sys.exit()

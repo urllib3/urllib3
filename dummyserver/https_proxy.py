@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any
+import typing
 
 import tornado.httpserver
 import tornado.ioloop
@@ -13,7 +13,7 @@ from dummyserver.proxy import ProxyHandler
 from dummyserver.server import DEFAULT_CERTS, ssl_options_to_context
 
 
-def run_proxy(port: int, certs: dict[str, Any] = DEFAULT_CERTS) -> None:
+def run_proxy(port: int, certs: dict[str, typing.Any] = DEFAULT_CERTS) -> None:
     """
     Run proxy on the specified port using the provided certs.
 
