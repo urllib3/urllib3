@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import http.client as httplib
 import ssl
+import typing
 from http.client import HTTPException
 from queue import Empty
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
-import typing
 from unittest.mock import Mock, patch
 
 import pytest

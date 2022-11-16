@@ -4,9 +4,9 @@ import email
 import logging
 import re
 import time
+import typing
 from itertools import takewhile
 from types import TracebackType
-import typing
 
 from ..exceptions import (
     ConnectTimeoutError,

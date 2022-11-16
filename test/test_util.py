@@ -5,10 +5,10 @@ import logging
 import socket
 import ssl
 import sys
+import typing
 import warnings
 from itertools import chain
 from test import ImportBlocker, ModuleStash, notBrotli, notZstd, onlyBrotli, onlyZstd
-import typing
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
 from urllib.parse import urlparse

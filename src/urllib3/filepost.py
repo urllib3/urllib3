@@ -3,8 +3,8 @@ from __future__ import annotations
 import binascii
 import codecs
 import os
-from io import BytesIO
 import typing
+from io import BytesIO
 
 from .fields import _TYPE_FIELD_VALUE_TUPLE, RequestField
 

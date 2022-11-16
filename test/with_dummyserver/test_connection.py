@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from http.client import ResponseNotReady
 import typing
+from http.client import ResponseNotReady
 
 import pytest
 

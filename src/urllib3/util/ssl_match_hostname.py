@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import ipaddress
 import re
-from ipaddress import IPv4Address, IPv6Address
 import typing
+from ipaddress import IPv4Address, IPv6Address
 
 if typing.TYPE_CHECKING:
     from .ssl_ import _TYPE_PEER_CERT_RET_DICT

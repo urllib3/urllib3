@@ -48,7 +48,9 @@ def _cf_data_from_bytes(bytestring: bytes) -> CFData:
     )
 
 
-def _cf_dictionary_from_tuples(tuples: list[tuple[typing.Any, typing.Any]]) -> CFDictionary:
+def _cf_dictionary_from_tuples(
+    tuples: list[tuple[typing.Any, typing.Any]]
+) -> CFDictionary:
     """
     Given a list of Python tuples, create an associated CFDictionary.
     """

@@ -63,10 +63,10 @@ import socket
 import ssl
 import struct
 import threading
+import typing
 import warnings
 import weakref
 from socket import socket as socket_cls
-import typing
 
 from .. import util
 from ._securetransport.bindings import (  # type: ignore[attr-defined]

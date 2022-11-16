@@ -6,12 +6,12 @@ import json as _json
 import logging
 import re
 import sys
+import typing
 import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
-import typing
 
 try:
     try:

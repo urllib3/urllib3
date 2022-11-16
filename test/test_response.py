@@ -5,12 +5,12 @@ import http.client as httplib
 import socket
 import ssl
 import sys
+import typing
 import zlib
 from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
 from io import BufferedReader, BytesIO, TextIOWrapper
 from test import onlyBrotli, onlyZstd
-import typing
 from unittest import mock
 
 import pytest

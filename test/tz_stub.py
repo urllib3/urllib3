@@ -3,8 +3,8 @@ from __future__ import annotations
 import datetime
 import os
 import time
-from contextlib import contextmanager
 import typing
+from contextlib import contextmanager
 
 import pytest
 

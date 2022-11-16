@@ -5,10 +5,10 @@ import logging
 import socket
 import sys
 import time
+import typing
 import warnings
 from test import LONG_TIMEOUT, SHORT_TIMEOUT
 from threading import Event
-import typing
 from unittest import mock
 from urllib.parse import urlencode
 
@@ -401,7 +401,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @socket_timeout_reuse_testdata
     def test_socket_timeout_updated_on_reuse_constructor(
-        self, timeout: _TYPE_TIMEOUT, expect_settimeout_calls: typing.Sequence[float | None]
+        self,
+        timeout: _TYPE_TIMEOUT,
+        expect_settimeout_calls: typing.Sequence[float | None],
     ) -> None:
         with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
             # Make a request to create a new connection.
@@ -422,7 +424,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @socket_timeout_reuse_testdata
     def test_socket_timeout_updated_on_reuse_parameter(
-        self, timeout: _TYPE_TIMEOUT, expect_settimeout_calls: typing.Sequence[float | None]
+        self,
+        timeout: _TYPE_TIMEOUT,
+        expect_settimeout_calls: typing.Sequence[float | None],
     ) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             # Make a request to create a new connection.

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import time
+import typing
 from enum import Enum
 from socket import getdefaulttimeout
-import typing
 
 from ..exceptions import TimeoutStateError
 

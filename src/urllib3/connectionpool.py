@@ -4,11 +4,11 @@ import errno
 import logging
 import queue
 import sys
+import typing
 import warnings
 import weakref
 from socket import timeout as SocketTimeout
 from types import TracebackType
-import typing
 
 from ._base_connection import _TYPE_BODY
 from ._request_methods import RequestMethods

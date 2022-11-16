@@ -5,12 +5,12 @@ import logging
 import os
 import re
 import socket
+import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
-import typing
 
 if typing.TYPE_CHECKING:
     from typing_extensions import Literal

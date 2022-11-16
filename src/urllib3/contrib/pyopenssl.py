@@ -55,11 +55,11 @@ except ImportError:
 
 import logging
 import ssl
+import typing
 import warnings
 from io import BytesIO
 from socket import socket as socket_cls
 from socket import timeout
-import typing
 
 from .. import util
 
@@ -397,7 +397,9 @@ class WrappedSocket:
         else:
             self._io_refs -= 1
 
-    def getpeercert(self, binary_form: bool = False) -> dict[str, list[typing.Any]] | None:
+    def getpeercert(
+        self, binary_form: bool = False
+    ) -> dict[str, list[typing.Any]] | None:
         x509 = self.connection.get_peer_certificate()
 
         if not x509:

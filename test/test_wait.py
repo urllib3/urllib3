@@ -3,9 +3,9 @@ from __future__ import annotations
 import signal
 import threading
 import time
+import typing
 from socket import socket, socketpair
 from types import FrameType
-import typing
 
 import pytest
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import typing
 from collections import OrderedDict
 from enum import Enum, auto
 from threading import RLock
-import typing
 
 if typing.TYPE_CHECKING:
 
@@ -81,7 +81,9 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
     lock: RLock
 
     def __init__(
-        self, maxsize: int = 10, dispose_func: typing.Callable[[_VT], None] | None = None
+        self,
+        maxsize: int = 10,
+        dispose_func: typing.Callable[[_VT], None] | None = None,
     ) -> None:
         super().__init__()
         self._maxsize = maxsize

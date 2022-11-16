@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from types import TracebackType
 import typing
+from types import TracebackType
 
 
 def to_bytes(

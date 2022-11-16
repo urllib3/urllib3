@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import socket
+import typing
 import warnings
 from email.errors import MessageDefect
 from http.client import IncompleteRead as httplib_IncompleteRead
-import typing
 
 if typing.TYPE_CHECKING:
     from .connection import HTTPConnection
@@ -23,7 +23,9 @@ class HTTPWarning(Warning):
     """Base warning used by this module."""
 
 
-_TYPE_REDUCE_RESULT = typing.Tuple[typing.Callable[..., object], typing.Tuple[object, ...]]
+_TYPE_REDUCE_RESULT = typing.Tuple[
+    typing.Callable[..., object], typing.Tuple[object, ...]
+]
 
 
 class PoolError(HTTPError):

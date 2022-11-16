@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import socket
 import threading
+import typing
 from socket import getaddrinfo as real_getaddrinfo
 from socket import timeout as SocketTimeout
 from test import SHORT_TIMEOUT
-import typing
 from unittest.mock import Mock, patch
 
 import pytest

@@ -6,9 +6,9 @@ from __future__ import annotations
 
 # Set default logging handler to avoid "No handler found" warnings.
 import logging
+import typing
 import warnings
 from logging import NullHandler
-import typing
 
 from . import exceptions
 from ._base_connection import _TYPE_BODY
@@ -84,7 +84,9 @@ __all__ = (
 logging.getLogger(__name__).addHandler(NullHandler())
 
 
-def add_stderr_logger(level: int = logging.DEBUG) -> logging.StreamHandler[typing.TextIO]:
+def add_stderr_logger(
+    level: int = logging.DEBUG,
+) -> logging.StreamHandler[typing.TextIO]:
     """
     Helper for quickly adding a StreamHandler to the logger. Useful for
     debugging.
