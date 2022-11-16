@@ -66,7 +66,7 @@ import threading
 import warnings
 import weakref
 from socket import socket as socket_cls
-from typing import TYPE_CHECKING, Any, BinaryIO, Generator, TextIO, cast
+import typing
 
 from .. import util
 from ._securetransport.bindings import (  # type: ignore[attr-defined]
@@ -91,7 +91,7 @@ warnings.warn(
     stacklevel=2,
 )
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from typing_extensions import Literal
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
@@ -331,7 +331,7 @@ class WrappedSocket:
         self.socket.settimeout(0)
 
     @contextlib.contextmanager
-    def _raise_on_error(self) -> Generator[None, None, None]:
+    def _raise_on_error(self) -> typing.Generator[None, None, None]:
         """
         A context manager that can be used to wrap calls that do I/O from
         SecureTransport. If any of the I/O callbacks hit an exception, this
@@ -450,7 +450,7 @@ class WrappedSocket:
         max_version: int,
         client_cert: str | None,
         client_key: str | None,
-        client_key_passphrase: Any,
+        client_key_passphrase: typing.Any,
         alpn_protocols: list[bytes] | None,
     ) -> None:
         """
@@ -547,7 +547,7 @@ class WrappedSocket:
         buffer = ctypes.create_string_buffer(bufsiz)
         bytes_read = self.recv_into(buffer, bufsiz)
         data = buffer[:bytes_read]
-        return cast(bytes, data)
+        return typing.cast(bytes, data)
 
     def recv_into(
         self, buffer: ctypes.Array[ctypes.c_char], nbytes: int | None = None
@@ -732,9 +732,9 @@ def makefile(
         Literal["r"] | Literal["w"] | Literal["rw"] | Literal["wr"] | Literal[""]
     ) = "r",
     buffering: int | None = None,
-    *args: Any,
-    **kwargs: Any,
-) -> BinaryIO | TextIO:
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> typing.BinaryIO | typing.TextIO:
     # We disable buffering with SecureTransport because it conflicts with
     # the buffering that ST does internally (see issue #1153 for more).
     buffering = 0
@@ -774,7 +774,7 @@ class SecureTransportContext:
         return True
 
     @check_hostname.setter
-    def check_hostname(self, value: Any) -> None:
+    def check_hostname(self, value: typing.Any) -> None:
         """
         SecureTransport cannot have its hostname checking disabled. For more,
         see the comment on getpeercert() in this file.
@@ -818,7 +818,7 @@ class SecureTransportContext:
     def load_default_certs(self) -> None:
         return self.set_default_verify_paths()
 
-    def set_ciphers(self, ciphers: Any) -> None:
+    def set_ciphers(self, ciphers: typing.Any) -> None:
         raise ValueError("SecureTransport doesn't support custom cipher strings")
 
     def load_verify_locations(

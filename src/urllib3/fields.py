@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import email.utils
 import mimetypes
-from typing import Callable, Iterable, Mapping, Sequence, Tuple, Union, cast
+import typing
 
-_TYPE_FIELD_VALUE = Union[str, bytes]
-_TYPE_FIELD_VALUE_TUPLE = Union[
-    _TYPE_FIELD_VALUE, Tuple[str, _TYPE_FIELD_VALUE], Tuple[str, _TYPE_FIELD_VALUE, str]
+_TYPE_FIELD_VALUE = typing.Union[str, bytes]
+_TYPE_FIELD_VALUE_TUPLE = typing.Union[
+    _TYPE_FIELD_VALUE, typing.Tuple[str, _TYPE_FIELD_VALUE], typing.Tuple[str, _TYPE_FIELD_VALUE, str]
 ]
 
 
@@ -171,8 +171,8 @@ class RequestField:
         name: str,
         data: _TYPE_FIELD_VALUE,
         filename: str | None = None,
-        headers: Mapping[str, str] | None = None,
-        header_formatter: Callable[[str, _TYPE_FIELD_VALUE], str] | None = None,
+        headers: typing.Mapping[str, str] | None = None,
+        header_formatter: typing.Callable[[str, _TYPE_FIELD_VALUE], str] | None = None,
     ):
         self._name = name
         self._filename = filename
@@ -199,7 +199,7 @@ class RequestField:
         cls,
         fieldname: str,
         value: _TYPE_FIELD_VALUE_TUPLE,
-        header_formatter: Callable[[str, _TYPE_FIELD_VALUE], str] | None = None,
+        header_formatter: typing.Callable[[str, _TYPE_FIELD_VALUE], str] | None = None,
     ) -> RequestField:
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
@@ -223,11 +223,11 @@ class RequestField:
 
         if isinstance(value, tuple):
             if len(value) == 3:
-                filename, data, content_type = cast(
-                    Tuple[str, _TYPE_FIELD_VALUE, str], value
+                filename, data, content_type = typing.cast(
+                    tuple[str, _TYPE_FIELD_VALUE, str], value
                 )
             else:
-                filename, data = cast(Tuple[str, _TYPE_FIELD_VALUE], value)
+                filename, data = typing.cast(tuple[str, _TYPE_FIELD_VALUE], value)
                 content_type = guess_content_type(filename)
         else:
             filename = None
@@ -261,7 +261,7 @@ class RequestField:
         self,
         header_parts: (
             dict[str, _TYPE_FIELD_VALUE | None]
-            | Sequence[tuple[str, _TYPE_FIELD_VALUE | None]]
+            | typing.Sequence[tuple[str, _TYPE_FIELD_VALUE | None]]
         ),
     ) -> str:
         """
@@ -274,7 +274,7 @@ class RequestField:
             A sequence of (k, v) tuples or a :class:`dict` of (k, v) to format
             as `k1="v1"; k2="v2"; ...`.
         """
-        iterable: Iterable[tuple[str, _TYPE_FIELD_VALUE | None]]
+        iterable: typing.Iterable[tuple[str, _TYPE_FIELD_VALUE | None]]
 
         parts = []
         if isinstance(header_parts, dict):

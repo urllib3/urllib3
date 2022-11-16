@@ -4,18 +4,18 @@ import binascii
 import codecs
 import os
 from io import BytesIO
-from typing import Iterable, Mapping, Sequence, Tuple, Union
+import typing
 
 from .fields import _TYPE_FIELD_VALUE_TUPLE, RequestField
 
 writer = codecs.lookup("utf-8")[3]
 
-_TYPE_FIELDS_SEQUENCE = Sequence[
-    Union[Tuple[str, _TYPE_FIELD_VALUE_TUPLE], RequestField]
+_TYPE_FIELDS_SEQUENCE = typing.Sequence[
+    typing.Union[typing.Tuple[str, _TYPE_FIELD_VALUE_TUPLE], RequestField]
 ]
-_TYPE_FIELDS = Union[
+_TYPE_FIELDS = typing.Union[
     _TYPE_FIELDS_SEQUENCE,
-    Mapping[str, _TYPE_FIELD_VALUE_TUPLE],
+    typing.Mapping[str, _TYPE_FIELD_VALUE_TUPLE],
 ]
 
 
@@ -26,7 +26,7 @@ def choose_boundary() -> str:
     return binascii.hexlify(os.urandom(16)).decode()
 
 
-def iter_field_objects(fields: _TYPE_FIELDS) -> Iterable[RequestField]:
+def iter_field_objects(fields: _TYPE_FIELDS) -> typing.Iterable[RequestField]:
     """
     Iterate over fields.
 
@@ -34,9 +34,9 @@ def iter_field_objects(fields: _TYPE_FIELDS) -> Iterable[RequestField]:
     :class:`~urllib3.fields.RequestField`.
 
     """
-    iterable: Iterable[RequestField | tuple[str, _TYPE_FIELD_VALUE_TUPLE]]
+    iterable: typing.Iterable[RequestField | tuple[str, _TYPE_FIELD_VALUE_TUPLE]]
 
-    if isinstance(fields, Mapping):
+    if isinstance(fields, typing.Mapping):
         iterable = fields.items()
     else:
         iterable = fields

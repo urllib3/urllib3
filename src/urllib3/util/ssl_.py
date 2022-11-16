@@ -7,7 +7,7 @@ import sys
 import warnings
 from binascii import unhexlify
 from hashlib import md5, sha1, sha256
-from typing import TYPE_CHECKING, Tuple, Union, cast, overload
+import typing
 
 from ..exceptions import ProxySchemeUnsupported, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
@@ -19,7 +19,7 @@ IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
 ALPN_PROTOCOLS = ["http/1.1"]
 
-_TYPE_VERSION_INFO = Tuple[int, int, int, str, int]
+_TYPE_VERSION_INFO = typing.Tuple[int, int, int, str, int]
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
@@ -70,7 +70,7 @@ def _is_has_never_check_common_name_reliable(
     )
 
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from ssl import VerifyMode
 
     from typing_extensions import Literal, TypedDict
@@ -133,7 +133,7 @@ except ImportError:
     PROTOCOL_TLS_CLIENT = 16  # type: ignore[assignment]
 
 
-_TYPE_PEER_CERT_RET = Union["_TYPE_PEER_CERT_RET_DICT", bytes, None]
+_TYPE_PEER_CERT_RET = typing.Union["_TYPE_PEER_CERT_RET_DICT", bytes, None]
 
 
 def assert_fingerprint(cert: bytes | None, fingerprint: str) -> None:
@@ -200,7 +200,7 @@ def resolve_ssl_version(candidate: None | int | str) -> int:
         res = getattr(ssl, candidate, None)
         if res is None:
             res = getattr(ssl, "PROTOCOL_" + candidate)
-        return cast(int, res)
+        return typing.cast(int, res)
 
     return candidate
 
@@ -347,7 +347,7 @@ def create_urllib3_context(
     return context
 
 
-@overload
+@typing.overload
 def ssl_wrap_socket(
     sock: socket.socket,
     keyfile: str | None = ...,
@@ -366,7 +366,7 @@ def ssl_wrap_socket(
     ...
 
 
-@overload
+@typing.overload
 def ssl_wrap_socket(
     sock: socket.socket,
     keyfile: str | None = ...,

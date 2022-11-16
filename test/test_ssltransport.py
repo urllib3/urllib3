@@ -4,7 +4,7 @@ import platform
 import select
 import socket
 import ssl
-from typing import TYPE_CHECKING, Callable, overload
+import typing
 from unittest import mock
 
 import pytest
@@ -14,7 +14,7 @@ from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from urllib3.util import ssl_
 from urllib3.util.ssltransport import SSLTransport
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from typing_extensions import Literal
 
 # consume_socket can iterate forever, we add timeouts to prevent halting.
@@ -33,12 +33,12 @@ def server_client_ssl_contexts() -> tuple[ssl.SSLContext, ssl.SSLContext]:
     return server_context, client_context
 
 
-@overload
+@typing.overload
 def sample_request(binary: Literal[True] = ...) -> bytes:
     ...
 
 
-@overload
+@typing.overload
 def sample_request(binary: Literal[False]) -> str:
     ...
 
@@ -61,17 +61,17 @@ def validate_request(
     assert provided_request == expected_request
 
 
-@overload
+@typing.overload
 def sample_response(binary: Literal[True] = ...) -> bytes:
     ...
 
 
-@overload
+@typing.overload
 def sample_response(binary: Literal[False]) -> str:
     ...
 
 
-@overload
+@typing.overload
 def sample_response(binary: bool = ...) -> bytes | str:
     ...
 
@@ -112,7 +112,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         cls.server_context, cls.client_context = server_client_ssl_contexts()
 
     def start_dummy_server(
-        self, handler: Callable[[socket.socket], None] | None = None
+        self, handler: typing.Callable[[socket.socket], None] | None = None
     ) -> None:
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]

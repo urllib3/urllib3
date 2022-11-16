@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import warnings
 from logging import NullHandler
-from typing import Any, Mapping, TextIO
+import typing
 
 from . import exceptions
 from ._base_connection import _TYPE_BODY
@@ -84,7 +84,7 @@ __all__ = (
 logging.getLogger(__name__).addHandler(NullHandler())
 
 
-def add_stderr_logger(level: int = logging.DEBUG) -> logging.StreamHandler[TextIO]:
+def add_stderr_logger(level: int = logging.DEBUG) -> logging.StreamHandler[typing.TextIO]:
     """
     Helper for quickly adding a StreamHandler to the logger. Useful for
     debugging.
@@ -131,13 +131,13 @@ def request(
     *,
     body: _TYPE_BODY | None = None,
     fields: _TYPE_FIELDS | None = None,
-    headers: Mapping[str, str] | None = None,
+    headers: typing.Mapping[str, str] | None = None,
     preload_content: bool | None = True,
     decode_content: bool | None = True,
     redirect: bool | None = True,
     retries: Retry | bool | int | None = None,
     timeout: Timeout | float | int | None = 3,
-    json: Any | None = None,
+    json: typing.Any | None = None,
 ) -> BaseHTTPResponse:
     """
     A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.

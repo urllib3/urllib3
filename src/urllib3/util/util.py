@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import NoReturn
+import typing
 
 
 def to_bytes(
@@ -32,7 +32,7 @@ def reraise(
     tp: type[BaseException] | None,
     value: BaseException,
     tb: TracebackType | None = None,
-) -> NoReturn:
+) -> typing.NoReturn:
     try:
         if value.__traceback__ is not tb:
             raise value.with_traceback(tb)

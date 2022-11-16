@@ -24,8 +24,7 @@ from test import (
     resolvesLocalhostFQDN,
 )
 from threading import Event
-from typing import Any, Callable, Generator
-from typing import OrderedDict as OrderedDictType
+import typing
 from unittest import mock
 
 import pytest
@@ -1582,7 +1581,7 @@ class TestHeaders(SocketDummyServerTestCase):
             assert HEADERS == dict(r.headers.items())  # to preserve case sensitivity
 
     def start_parsing_handler(self) -> None:
-        self.parsed_headers: OrderedDictType[str, str] = OrderedDict()
+        self.parsed_headers: typing.OrderedDict[str, str] = OrderedDict()
         self.received_headers: list[bytes] = []
 
         def socket_handler(listener: socket.socket) -> None:
@@ -1645,7 +1644,7 @@ class TestHeaders(SocketDummyServerTestCase):
             (f"X-Header-{int(i)}", str(i)) for i in reversed(range(K))
         ]
 
-        def filter_non_x_headers(d: OrderedDictType[str, str]) -> list[tuple[str, str]]:
+        def filter_non_x_headers(d: typing.OrderedDict[str, str]) -> list[tuple[str, str]]:
             return [(k, v) for (k, v) in d.items() if k.startswith("X-Header-")]
 
         self.start_parsing_handler()
@@ -1993,7 +1992,7 @@ class TestBrokenPipe(SocketDummyServerTestCase):
         # a buffer that will cause two sendall calls
         buf = "a" * 1024 * 1024 * 4
 
-        def connect_and_wait(*args: Any, **kw: Any) -> None:
+        def connect_and_wait(*args: typing.Any, **kw: typing.Any) -> None:
             ret = orig_connect(*args, **kw)
             assert sock_shut.wait(5)
             return ret
@@ -2127,10 +2126,10 @@ class TestContentFraming(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-        body: Any
+        body: typing.Any
         if body_type == "generator":
 
-            def body_generator() -> Generator[bytes, None, None]:
+            def body_generator() -> typing.Generator[bytes, None, None]:
                 yield b"x" * 10
 
             body = body_generator()
@@ -2185,10 +2184,10 @@ class TestContentFraming(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-        body: Any
+        body: typing.Any
         if body_type == "generator":
 
-            def body_generator() -> Generator[bytes, None, None]:
+            def body_generator() -> typing.Generator[bytes, None, None]:
                 yield b"x" * 10
 
             body = body_generator()
@@ -2251,7 +2250,7 @@ class TestContentFraming(SocketDummyServerTestCase):
     )
     def test_framing_set_via_headers(
         self,
-        header_transform: Callable[[str], str],
+        header_transform: typing.Callable[[str], str],
         header: str,
         header_value: str,
         expected: bytes,

@@ -7,7 +7,7 @@ from queue import Empty
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
-from typing import Any
+import typing
 from unittest.mock import Mock, patch
 
 import pytest
@@ -41,7 +41,7 @@ from .test_response import MockChunkedEncodingResponse, MockSock
 
 
 class HTTPUnixConnection(HTTPConnection):
-    def __init__(self, host: str, timeout: int = 60, **kwargs: Any) -> None:
+    def __init__(self, host: str, timeout: int = 60, **kwargs: typing.Any) -> None:
         super().__init__("localhost")
         self.unix_socket = host
         self.timeout = timeout
@@ -473,7 +473,7 @@ class TestConnectionPool:
         class RealBad(BaseException):
             pass
 
-        def kaboom(*args: Any, **kwargs: Any) -> None:
+        def kaboom(*args: typing.Any, **kwargs: typing.Any) -> None:
             raise RealBad()
 
         with connection_from_url("http://localhost:80") as c:
@@ -521,9 +521,9 @@ class TestConnectionPool:
                 conn: HTTPConnection,
                 method: str,
                 url: str,
-                *args: Any,
+                *args: typing.Any,
                 retries: Retry,
-                **kwargs: Any,
+                **kwargs: typing.Any,
             ) -> HTTPResponse:
                 if self._ex:
                     ex, self._ex = self._ex, None

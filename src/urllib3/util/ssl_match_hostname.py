@@ -9,9 +9,9 @@ from __future__ import annotations
 import ipaddress
 import re
 from ipaddress import IPv4Address, IPv6Address
-from typing import TYPE_CHECKING, Any, Match
+import typing
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from .ssl_ import _TYPE_PEER_CERT_RET_DICT
 
 __version__ = "3.5.0.1"
@@ -22,8 +22,8 @@ class CertificateError(ValueError):
 
 
 def _dnsname_match(
-    dn: Any, hostname: str, max_wildcards: int = 1
-) -> Match[str] | None | bool:
+    dn: typing.Any, hostname: str, max_wildcards: int = 1
+) -> typing.Match[str] | None | bool:
     """Matching according to RFC 6125, section 6.4.3
 
     http://tools.ietf.org/html/rfc6125#section-6.4.3

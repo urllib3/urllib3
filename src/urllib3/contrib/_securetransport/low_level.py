@@ -17,7 +17,7 @@ import re
 import ssl
 import struct
 import tempfile
-from typing import Any
+import typing
 
 from .bindings import (  # type: ignore[attr-defined]
     CFArray,
@@ -48,7 +48,7 @@ def _cf_data_from_bytes(bytestring: bytes) -> CFData:
     )
 
 
-def _cf_dictionary_from_tuples(tuples: list[tuple[Any, Any]]) -> CFDictionary:
+def _cf_dictionary_from_tuples(tuples: list[tuple[typing.Any, typing.Any]]) -> CFDictionary:
     """
     Given a list of Python tuples, create an associated CFDictionary.
     """

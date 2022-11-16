@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import socket
-from typing import TYPE_CHECKING, Sequence, Tuple, Union
+import typing
 
 from ..exceptions import LocationParseError
 from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 
-_TYPE_SOCKET_OPTIONS = Sequence[Tuple[int, int, Union[int, bytes]]]
+_TYPE_SOCKET_OPTIONS = typing.Sequence[typing.Tuple[int, int, typing.Union[int, bytes]]]
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from .._base_connection import BaseHTTPConnection
 
 

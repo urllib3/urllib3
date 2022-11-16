@@ -5,7 +5,7 @@ import threading
 import time
 from socket import socket, socketpair
 from types import FrameType
-from typing import Any, Callable, Generator, Tuple
+import typing
 
 import pytest
 
@@ -18,12 +18,12 @@ from urllib3.util.wait import (
     wait_for_write,
 )
 
-TYPE_SOCKET_PAIR = Tuple[socket, socket]
-TYPE_WAIT_FOR = Callable[..., bool]
+TYPE_SOCKET_PAIR = typing.Tuple[socket, socket]
+TYPE_WAIT_FOR = typing.Callable[..., bool]
 
 
 @pytest.fixture
-def spair() -> Generator[TYPE_SOCKET_PAIR, None, None]:
+def spair() -> typing.Generator[TYPE_SOCKET_PAIR, None, None]:
     a, b = socketpair()
     yield a, b
     a.close()
@@ -108,7 +108,7 @@ def test_eintr(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: FrameType | None) -> Any:
+    def handler(sig: int, frame: FrameType | None) -> typing.Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 
@@ -139,7 +139,7 @@ def test_eintr_zero_timeout(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: FrameType | None) -> Any:
+    def handler(sig: int, frame: FrameType | None) -> typing.Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 
@@ -170,7 +170,7 @@ def test_eintr_infinite_timeout(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> 
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig: int, frame: FrameType | None) -> Any:
+    def handler(sig: int, frame: FrameType | None) -> typing.Any:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 

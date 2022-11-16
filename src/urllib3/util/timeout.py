@@ -3,11 +3,11 @@ from __future__ import annotations
 import time
 from enum import Enum
 from socket import getdefaulttimeout
-from typing import TYPE_CHECKING, Optional, Union
+import typing
 
 from ..exceptions import TimeoutStateError
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from typing_extensions import Final
 
 
@@ -19,7 +19,7 @@ class _TYPE_DEFAULT(Enum):
 
 _DEFAULT_TIMEOUT: Final[_TYPE_DEFAULT] = _TYPE_DEFAULT.token
 
-_TYPE_TIMEOUT = Optional[Union[float, _TYPE_DEFAULT]]
+_TYPE_TIMEOUT = typing.Optional[typing.Union[float, _TYPE_DEFAULT]]
 
 
 class Timeout:

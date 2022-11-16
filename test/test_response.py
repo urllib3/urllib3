@@ -10,7 +10,7 @@ from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
 from io import BufferedReader, BytesIO, TextIOWrapper
 from test import onlyBrotli, onlyZstd
-from typing import Any, Generator
+import typing
 from unittest import mock
 
 import pytest
@@ -104,7 +104,7 @@ nP4HF2uWHA=="""
 
 
 @pytest.fixture
-def sock() -> Generator[socket.socket, None, None]:
+def sock() -> typing.Generator[socket.socket, None, None]:
     s = socket.socket()
     yield s
     s.close()
@@ -874,7 +874,7 @@ class TestResponse:
     def test_mock_gzipped_transfer_encoding_chunked_decoded(self) -> None:
         """Show that we can decode the gzipped and chunked body."""
 
-        def stream() -> Generator[bytes, None, None]:
+        def stream() -> typing.Generator[bytes, None, None]:
             # Set up a generator to chunk the gzipped body
             compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
             data = compress.compress(b"foobar")
@@ -1104,7 +1104,7 @@ class TestResponse:
         assert actual_stream == expected_stream
 
     def test__iter__decode_content(self) -> None:
-        def stream() -> Generator[bytes, None, None]:
+        def stream() -> typing.Generator[bytes, None, None]:
             # Set up a generator to chunk the gzipped body
             compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
             data = compress.compress(b"foo\nbar")
@@ -1130,7 +1130,7 @@ class TestResponse:
         )
 
         @contextlib.contextmanager
-        def make_bad_mac_fp() -> Generator[BytesIO, None, None]:
+        def make_bad_mac_fp() -> typing.Generator[BytesIO, None, None]:
             fp = BytesIO(b"")
             with mock.patch.object(fp, "read") as fp_read:
                 # mac/decryption error
@@ -1253,5 +1253,5 @@ class MockChunkedEncodingWithExtensions(MockChunkedEncodingResponse):
 
 class MockSock:
     @classmethod
-    def makefile(cls, *args: Any, **kwargs: Any) -> None:
+    def makefile(cls, *args: typing.Any, **kwargs: typing.Any) -> None:
         return

@@ -9,7 +9,7 @@ import sys
 import warnings
 from importlib.abc import Loader, MetaPathFinder
 from types import ModuleType, TracebackType
-from typing import TYPE_CHECKING, Any, Callable, Sequence, TypeVar, cast
+import typing
 
 import pytest
 
@@ -38,14 +38,14 @@ try:
 except ImportError:
     pyopenssl = None  # type: ignore[assignment]
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     import ssl
 
     from typing_extensions import Literal
 
 
-_RT = TypeVar("_RT")  # return type
-_TestFuncT = TypeVar("_TestFuncT", bound=Callable[..., Any])
+_RT = typing.TypeVar("_RT")  # return type
+_TestFuncT = typing.TypeVar("_TestFuncT", bound=typing.Callable[..., typing.Any])
 
 
 # We need a host that will not immediately close the connection with a TCP
@@ -121,7 +121,7 @@ def setUp() -> None:
     warnings.simplefilter("ignore", HTTPWarning)
 
 
-def notWindows() -> Callable[[_TestFuncT], _TestFuncT]:
+def notWindows() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     """Skips this test on Windows"""
     return pytest.mark.skipif(
         platform.system() == "Windows",
@@ -129,25 +129,25 @@ def notWindows() -> Callable[[_TestFuncT], _TestFuncT]:
     )
 
 
-def onlyBrotli() -> Callable[[_TestFuncT], _TestFuncT]:
+def onlyBrotli() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         brotli is None, reason="only run if brotli library is present"
     )
 
 
-def notBrotli() -> Callable[[_TestFuncT], _TestFuncT]:
+def notBrotli() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         brotli is not None, reason="only run if a brotli library is absent"
     )
 
 
-def onlyZstd() -> Callable[[_TestFuncT], _TestFuncT]:
+def onlyZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         zstd is None, reason="only run if a python-zstandard library is installed"
     )
 
 
-def notZstd() -> Callable[[_TestFuncT], _TestFuncT]:
+def notZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         zstd is not None,
         reason="only run if a python-zstandard library is not installed",
@@ -155,15 +155,15 @@ def notZstd() -> Callable[[_TestFuncT], _TestFuncT]:
 
 
 # Hack to make pytest evaluate a condition at test runtime instead of collection time.
-def lazy_condition(condition: Callable[[], bool]) -> bool:
+def lazy_condition(condition: typing.Callable[[], bool]) -> bool:
     class LazyCondition:
         def __bool__(self) -> bool:
             return condition()
 
-    return cast(bool, LazyCondition())
+    return typing.cast(bool, LazyCondition())
 
 
-def onlySecureTransport() -> Callable[[_TestFuncT], _TestFuncT]:
+def onlySecureTransport() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     """Runs this test when SecureTransport is in use."""
     return pytest.mark.skipif(
         lazy_condition(lambda: not ssl_.IS_SECURETRANSPORT),
@@ -171,7 +171,7 @@ def onlySecureTransport() -> Callable[[_TestFuncT], _TestFuncT]:
     )
 
 
-def notSecureTransport() -> Callable[[_TestFuncT], _TestFuncT]:
+def notSecureTransport() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     """Skips this test when SecureTransport is in use."""
     return pytest.mark.skipif(
         lazy_condition(lambda: ssl_.IS_SECURETRANSPORT),
@@ -182,7 +182,7 @@ def notSecureTransport() -> Callable[[_TestFuncT], _TestFuncT]:
 _requires_network_has_route = None
 
 
-def requires_network() -> Callable[[_TestFuncT], _TestFuncT]:
+def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     """Helps you skip tests that require the network"""
 
     def _is_unreachable_err(err: Exception) -> bool:
@@ -215,14 +215,14 @@ def requires_network() -> Callable[[_TestFuncT], _TestFuncT]:
     )
 
 
-def requires_ssl_context_keyfile_password() -> Callable[[_TestFuncT], _TestFuncT]:
+def requires_ssl_context_keyfile_password() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         lazy_condition(lambda: ssl_.IS_SECURETRANSPORT),
         reason="Test requires password parameter for SSLContext.load_cert_chain()",
     )
 
 
-def resolvesLocalhostFQDN() -> Callable[[_TestFuncT], _TestFuncT]:
+def resolvesLocalhostFQDN() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     """Test requires successful resolving of 'localhost.'"""
     return pytest.mark.skipif(
         not RESOLVES_LOCALHOST_FQDN,
@@ -230,9 +230,9 @@ def resolvesLocalhostFQDN() -> Callable[[_TestFuncT], _TestFuncT]:
     )
 
 
-def withPyOpenSSL(test: Callable[..., _RT]) -> Callable[..., _RT]:
+def withPyOpenSSL(test: typing.Callable[..., _RT]) -> typing.Callable[..., _RT]:
     @functools.wraps(test)
-    def wrapper(*args: Any, **kwargs: Any) -> _RT:
+    def wrapper(*args: typing.Any, **kwargs: typing.Any) -> _RT:
         if not pyopenssl:
             pytest.skip("pyopenssl not available, skipping test.")
             return test(*args, **kwargs)
@@ -301,7 +301,7 @@ class ImportBlocker(MetaPathFinder):
         self.namestoblock = namestoblock
 
     def find_module(
-        self, fullname: str, path: Sequence[bytes | str] | None = None
+        self, fullname: str, path: typing.Sequence[bytes | str] | None = None
     ) -> Loader | None:
         if fullname in self.namestoblock:
             return ImportBlockerLoader()

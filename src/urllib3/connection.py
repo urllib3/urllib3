@@ -10,9 +10,9 @@ from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
-from typing import TYPE_CHECKING, ClassVar, Mapping, NamedTuple, cast
+import typing
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from typing_extensions import Literal
 
     from .response import HTTPResponse
@@ -102,11 +102,11 @@ class HTTPConnection(_HTTPConnection):
       Or you may want to disable the defaults by passing an empty list (e.g., ``[]``).
     """
 
-    default_port: ClassVar[int] = port_by_scheme["http"]  # type: ignore[misc]
+    default_port: typing.ClassVar[int] = port_by_scheme["http"]  # type: ignore[misc]
 
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options: ClassVar[connection._TYPE_SOCKET_OPTIONS] = [
+    default_socket_options: typing.ClassVar[connection._TYPE_SOCKET_OPTIONS] = [
         (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     ]
 
@@ -222,7 +222,7 @@ class HTTPConnection(_HTTPConnection):
         self,
         host: str,
         port: int | None = None,
-        headers: Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         scheme: str = "http",
     ) -> None:
         if scheme not in ("http", "https"):
@@ -314,7 +314,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         *,
         chunked: bool = False,
         preload_content: bool = True,
@@ -412,7 +412,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str] | None = None,
     ) -> None:
         """
         Alternative to the common request method, which sends the
@@ -665,7 +665,7 @@ class HTTPSConnection(HTTPConnection):
         Establish a TLS connection to the proxy using the provided SSL context.
         """
         # `_connect_tls_proxy` is called when self._tunnel_host is truthy.
-        proxy_config = cast(ProxyConfig, self.proxy_config)
+        proxy_config = typing.cast(ProxyConfig, self.proxy_config)
         ssl_context = proxy_config.ssl_context
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
@@ -690,7 +690,7 @@ class HTTPSConnection(HTTPConnection):
         return sock_and_verified.socket  # type: ignore[return-value]
 
 
-class _WrappedAndVerifiedSocket(NamedTuple):
+class _WrappedAndVerifiedSocket(typing.NamedTuple):
     """
     Wrapped socket and whether the connection is
     verified after the TLS handshake

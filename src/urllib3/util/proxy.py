@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import typing
 
 from .url import Url
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from ..connection import ProxyConfig
 
 

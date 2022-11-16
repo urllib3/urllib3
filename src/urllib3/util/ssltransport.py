@@ -3,30 +3,20 @@ from __future__ import annotations
 import io
 import socket
 import ssl
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    BinaryIO,
-    Callable,
-    TextIO,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+import typing
 
 from ..exceptions import ProxySchemeUnsupported
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
 
     from typing_extensions import Literal
 
     from .ssl_ import _TYPE_PEER_CERT_RET, _TYPE_PEER_CERT_RET_DICT
 
 
-_SelfT = TypeVar("_SelfT", bound="SSLTransport")
-_WriteBuffer = Union[bytearray, memoryview]
-_ReturnValue = TypeVar("_ReturnValue")
+_SelfT = typing.TypeVar("_SelfT", bound="SSLTransport")
+_WriteBuffer = typing.Union[bytearray, memoryview]
+_ReturnValue = typing.TypeVar("_ReturnValue")
 
 SSL_BLOCKSIZE = 16384
 
@@ -84,13 +74,13 @@ class SSLTransport:
     def __enter__(self: _SelfT) -> _SelfT:
         return self
 
-    def __exit__(self, *_: Any) -> None:
+    def __exit__(self, *_: typing.Any) -> None:
         self.close()
 
     def fileno(self) -> int:
         return self.socket.fileno()
 
-    def read(self, len: int = 1024, buffer: Any | None = None) -> int | bytes:
+    def read(self, len: int = 1024, buffer: typing.Any | None = None) -> int | bytes:
         return self._wrap_ssl_read(len, buffer)
 
     def recv(self, buflen: int = 1024, flags: int = 0) -> int | bytes:
@@ -133,7 +123,7 @@ class SSLTransport:
         encoding: str | None = None,
         errors: str | None = None,
         newline: str | None = None,
-    ) -> BinaryIO | TextIO | socket.SocketIO:
+    ) -> typing.BinaryIO | typing.TextIO | socket.SocketIO:
         """
         Python's httpclient uses makefile and buffered io when reading HTTP
         messages and we need to support it.
@@ -163,7 +153,7 @@ class SSLTransport:
             if not binary:
                 raise ValueError("unbuffered streams must be binary")
             return raw
-        buffer: BinaryIO
+        buffer: typing.BinaryIO
         if reading and writing:
             buffer = io.BufferedRWPair(raw, raw, buffering)  # type: ignore[assignment]
         elif reading:
@@ -183,13 +173,13 @@ class SSLTransport:
     def close(self) -> None:
         self.socket.close()
 
-    @overload
+    @typing.overload
     def getpeercert(
         self, binary_form: Literal[False] = ...
     ) -> _TYPE_PEER_CERT_RET_DICT | None:
         ...
 
-    @overload
+    @typing.overload
     def getpeercert(self, binary_form: Literal[True]) -> bytes | None:
         ...
 
@@ -233,20 +223,20 @@ class SSLTransport:
                 raise
 
     # func is sslobj.do_handshake or sslobj.unwrap
-    @overload
-    def _ssl_io_loop(self, func: Callable[[], None]) -> None:
+    @typing.overload
+    def _ssl_io_loop(self, func: typing.Callable[[], None]) -> None:
         ...
 
     # func is sslobj.write, arg1 is data
-    @overload
-    def _ssl_io_loop(self, func: Callable[[bytes], int], arg1: bytes) -> int:
+    @typing.overload
+    def _ssl_io_loop(self, func: typing.Callable[[bytes], int], arg1: bytes) -> int:
         ...
 
     # func is sslobj.read, arg1 is len, arg2 is buffer
-    @overload
+    @typing.overload
     def _ssl_io_loop(
         self,
-        func: Callable[[int, bytearray | None], bytes],
+        func: typing.Callable[[int, bytearray | None], bytes],
         arg1: int,
         arg2: bytearray | None,
     ) -> bytes:
@@ -254,7 +244,7 @@ class SSLTransport:
 
     def _ssl_io_loop(
         self,
-        func: Callable[..., _ReturnValue],
+        func: typing.Callable[..., _ReturnValue],
         arg1: None | bytes | int = None,
         arg2: bytearray | None = None,
     ) -> _ReturnValue:
@@ -288,4 +278,4 @@ class SSLTransport:
                     self.incoming.write(buf)
                 else:
                     self.incoming.write_eof()
-        return cast(_ReturnValue, ret)
+        return typing.cast(_ReturnValue, ret)

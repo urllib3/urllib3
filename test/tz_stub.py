@@ -4,7 +4,7 @@ import datetime
 import os
 import time
 from contextlib import contextmanager
-from typing import Generator
+import typing
 
 import pytest
 
@@ -16,7 +16,7 @@ except ImportError:
 
 
 @contextmanager
-def stub_timezone_ctx(tzname: str | None) -> Generator[None, None, None]:
+def stub_timezone_ctx(tzname: str | None) -> typing.Generator[None, None, None]:
     """
     Switch to a locally-known timezone specified by `tzname`.
     On exit, restore the previous timezone.

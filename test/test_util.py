@@ -8,7 +8,7 @@ import sys
 import warnings
 from itertools import chain
 from test import ImportBlocker, ModuleStash, notBrotli, notZstd, onlyBrotli, onlyZstd
-from typing import TYPE_CHECKING, NoReturn
+import typing
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
 from urllib.parse import urlparse
@@ -41,7 +41,7 @@ from urllib3.util.util import to_bytes, to_str
 
 from . import clear_warnings
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from typing_extensions import Literal
 
 # This number represents a time in seconds, it doesn't mean anything in
@@ -605,7 +605,7 @@ class TestUtil:
 
     def test_rewind_body_failed_seek(self) -> None:
         class BadSeek(io.StringIO):
-            def seek(self, offset: int, whence: int = 0) -> NoReturn:
+            def seek(self, offset: int, whence: int = 0) -> typing.NoReturn:
                 raise OSError
 
         with pytest.raises(UnrewindableBodyError):

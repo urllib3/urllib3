@@ -3,12 +3,12 @@ from __future__ import annotations
 import io
 from base64 import b64encode
 from enum import Enum
-from typing import IO, TYPE_CHECKING, Any, AnyStr, Iterable, NamedTuple, Union
+import typing
 
 from ..exceptions import UnrewindableBodyError
 from .util import to_bytes
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from typing_extensions import Final
 
 # Pass as a value within ``headers`` to skip
@@ -42,7 +42,7 @@ class _TYPE_FAILEDTELL(Enum):
 
 _FAILEDTELL: Final[_TYPE_FAILEDTELL] = _TYPE_FAILEDTELL.token
 
-_TYPE_BODY_POSITION = Union[int, _TYPE_FAILEDTELL]
+_TYPE_BODY_POSITION = typing.Union[int, _TYPE_FAILEDTELL]
 
 # When sending a request with these methods we aren't expecting
 # a body so don't need to set an explicit 'Content-Length: 0'
@@ -132,7 +132,7 @@ def make_headers(
 
 
 def set_file_position(
-    body: Any, pos: _TYPE_BODY_POSITION | None
+    body: typing.Any, pos: _TYPE_BODY_POSITION | None
 ) -> _TYPE_BODY_POSITION | None:
     """
     If a position is provided, move file to that point.
@@ -151,7 +151,7 @@ def set_file_position(
     return pos
 
 
-def rewind_body(body: IO[AnyStr], body_pos: _TYPE_BODY_POSITION) -> None:
+def rewind_body(body: typing.IO[typing.AnyStr], body_pos: _TYPE_BODY_POSITION) -> None:
     """
     Attempt to rewind body to a certain position.
     Primarily used for request redirects and retries.
@@ -181,13 +181,13 @@ def rewind_body(body: IO[AnyStr], body_pos: _TYPE_BODY_POSITION) -> None:
         )
 
 
-class ChunksAndContentLength(NamedTuple):
-    chunks: Iterable[bytes] | None
+class ChunksAndContentLength(typing.NamedTuple):
+    chunks: typing.Iterable[bytes] | None
     content_length: int | None
 
 
 def body_to_chunks(
-    body: Any | None, method: str, blocksize: int
+    body: typing.Any | None, method: str, blocksize: int
 ) -> ChunksAndContentLength:
     """Takes the HTTP request method, body, and blocksize and
     transforms them into an iterable of chunks to pass to
@@ -198,7 +198,7 @@ def body_to_chunks(
     for framing instead.
     """
 
-    chunks: Iterable[bytes] | None
+    chunks: typing.Iterable[bytes] | None
     content_length: int | None
 
     # No body, we need to make a recommendation on 'Content-Length'
@@ -219,7 +219,7 @@ def body_to_chunks(
     # File-like object, TODO: use seek() and tell() for length?
     elif hasattr(body, "read"):
 
-        def chunk_readable() -> Iterable[bytes]:
+        def chunk_readable() -> typing.Iterable[bytes]:
             nonlocal body, blocksize
             encode = isinstance(body, io.TextIOBase)
             while True:

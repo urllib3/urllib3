@@ -58,7 +58,7 @@ except ImportError:
     raise
 
 from socket import timeout as SocketTimeout
-from typing import Any, Dict, Mapping
+import typing
 
 from ..connection import HTTPConnection, HTTPSConnection
 from ..connectionpool import HTTPConnectionPool, HTTPSConnectionPool
@@ -83,7 +83,7 @@ try:
         rdns: bool
 
 except ImportError:  # Python 3.7
-    _TYPE_SOCKS_OPTIONS = Dict[str, Any]  # type: ignore[misc, assignment]
+    _TYPE_SOCKS_OPTIONS = typing.Dict[str, typing.Any]  # type: ignore[misc, assignment]
 
 
 class SOCKSConnection(HTTPConnection):
@@ -92,7 +92,7 @@ class SOCKSConnection(HTTPConnection):
     """
 
     def __init__(
-        self, _socks_options: _TYPE_SOCKS_OPTIONS, *args: Any, **kwargs: Any
+        self, _socks_options: _TYPE_SOCKS_OPTIONS, *args: typing.Any, **kwargs: typing.Any
     ) -> None:
         self._socks_options = _socks_options
         super().__init__(*args, **kwargs)
@@ -101,7 +101,7 @@ class SOCKSConnection(HTTPConnection):
         """
         Establish a new connection via the SOCKS proxy.
         """
-        extra_kw: dict[str, Any] = {}
+        extra_kw: dict[str, typing.Any] = {}
         if self.source_address:
             extra_kw["source_address"] = self.source_address
 
@@ -189,8 +189,8 @@ class SOCKSProxyManager(PoolManager):
         username: str | None = None,
         password: str | None = None,
         num_pools: int = 10,
-        headers: Mapping[str, str] | None = None,
-        **connection_pool_kw: Any,
+        headers: typing.Mapping[str, str] | None = None,
+        **connection_pool_kw: typing.Any,
     ):
         parsed = parse_url(proxy_url)
 

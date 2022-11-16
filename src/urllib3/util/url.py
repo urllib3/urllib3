@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Container, NamedTuple, Optional, overload
+import typing
 
 from ..exceptions import LocationParseError
 from .util import to_str
@@ -80,16 +80,16 @@ _QUERY_CHARS = _FRAGMENT_CHARS = _PATH_CHARS | {"?"}
 
 
 class Url(
-    NamedTuple(
+    typing.NamedTuple(
         "Url",
         [
-            ("scheme", Optional[str]),
-            ("auth", Optional[str]),
-            ("host", Optional[str]),
-            ("port", Optional[int]),
-            ("path", Optional[str]),
-            ("query", Optional[str]),
-            ("fragment", Optional[str]),
+            ("scheme", str | None),
+            ("auth", str | None),
+            ("host", str | None),
+            ("port", int | None),
+            ("path", str | None),
+            ("query", str | None),
+            ("fragment", str | None),
         ],
     )
 ):
@@ -212,22 +212,22 @@ class Url(
         return self.url
 
 
-@overload
+@typing.overload
 def _encode_invalid_chars(
-    component: str, allowed_chars: Container[str]
+    component: str, allowed_chars: typing.Container[str]
 ) -> str:  # Abstract
     ...
 
 
-@overload
+@typing.overload
 def _encode_invalid_chars(
-    component: None, allowed_chars: Container[str]
+    component: None, allowed_chars: typing.Container[str]
 ) -> None:  # Abstract
     ...
 
 
 def _encode_invalid_chars(
-    component: str | None, allowed_chars: Container[str]
+    component: str | None, allowed_chars: typing.Container[str]
 ) -> str | None:
     """Percent-encodes a URI component without reapplying
     onto an already percent-encoded component.
@@ -292,12 +292,12 @@ def _remove_path_dot_segments(path: str) -> str:
     return "/".join(output)
 
 
-@overload
+@typing.overload
 def _normalize_host(host: None, scheme: str | None) -> None:
     ...
 
 
-@overload
+@typing.overload
 def _normalize_host(host: str, scheme: str | None) -> str:
     ...
 

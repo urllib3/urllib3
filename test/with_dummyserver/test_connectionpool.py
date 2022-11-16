@@ -8,7 +8,7 @@ import time
 import warnings
 from test import LONG_TIMEOUT, SHORT_TIMEOUT
 from threading import Event
-from typing import NoReturn, Sequence
+import typing
 from unittest import mock
 from urllib.parse import urlencode
 
@@ -401,7 +401,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @socket_timeout_reuse_testdata
     def test_socket_timeout_updated_on_reuse_constructor(
-        self, timeout: _TYPE_TIMEOUT, expect_settimeout_calls: Sequence[float | None]
+        self, timeout: _TYPE_TIMEOUT, expect_settimeout_calls: typing.Sequence[float | None]
     ) -> None:
         with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
             # Make a request to create a new connection.
@@ -422,7 +422,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @socket_timeout_reuse_testdata
     def test_socket_timeout_updated_on_reuse_parameter(
-        self, timeout: _TYPE_TIMEOUT, expect_settimeout_calls: Sequence[float | None]
+        self, timeout: _TYPE_TIMEOUT, expect_settimeout_calls: typing.Sequence[float | None]
     ) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             # Make a request to create a new connection.
@@ -1405,7 +1405,7 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
         """Abort request if failed to get a position from tell()"""
 
         class BadTellObject(io.BytesIO):
-            def tell(self) -> NoReturn:
+            def tell(self) -> typing.NoReturn:
                 raise OSError
 
         body = BadTellObject(b"the data")

@@ -5,7 +5,7 @@ import threading
 from socket import getaddrinfo as real_getaddrinfo
 from socket import timeout as SocketTimeout
 from test import SHORT_TIMEOUT
-from typing import Generator
+import typing
 from unittest.mock import Mock, patch
 
 import pytest
@@ -129,7 +129,7 @@ def handle_socks5_negotiation(
     negotiate: bool,
     username: bytes | None = None,
     password: bytes | None = None,
-) -> Generator[tuple[bytes | str, int], bool, None]:
+) -> typing.Generator[tuple[bytes | str, int], bool, None]:
     """
     Handle the SOCKS5 handshake.
 
@@ -193,7 +193,7 @@ def handle_socks5_negotiation(
 
 def handle_socks4_negotiation(
     sock: socket.socket, username: bytes | None = None
-) -> Generator[tuple[bytes | str, int], bool, None]:
+) -> typing.Generator[tuple[bytes | str, int], bool, None]:
     """
     Handle the SOCKS4 handshake.
 

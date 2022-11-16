@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterator
+import typing
 
 import pytest
 
@@ -137,7 +137,7 @@ class NonMappingHeaderContainer:
         self._data = {}
         self._data.update(kwargs)
 
-    def keys(self) -> Iterator[str]:
+    def keys(self) -> typing.Iterator[str]:
         return iter(self._data)
 
     def __getitem__(self, key: str) -> str:

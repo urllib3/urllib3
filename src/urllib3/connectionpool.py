@@ -8,7 +8,7 @@ import warnings
 import weakref
 from socket import timeout as SocketTimeout
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Mapping, TypeVar, Union, overload
+import typing
 
 from ._base_connection import _TYPE_BODY
 from ._request_methods import RequestMethods
@@ -50,7 +50,7 @@ from .util.url import _normalize_host as normalize_host
 from .util.url import parse_url
 from .util.util import to_str
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     import ssl
 
     from typing_extensions import Literal
@@ -59,9 +59,9 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_TYPE_TIMEOUT = Union[Timeout, float, _TYPE_DEFAULT, None]
+_TYPE_TIMEOUT = typing.Union[Timeout, float, _TYPE_DEFAULT, None]
 
-_SelfT = TypeVar("_SelfT")
+_SelfT = typing.TypeVar("_SelfT")
 
 
 # Pool objects
@@ -182,12 +182,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         timeout: _TYPE_TIMEOUT | None = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         retries: Retry | bool | int | None = None,
         _proxy: Url | None = None,
-        _proxy_headers: Mapping[str, str] | None = None,
+        _proxy_headers: typing.Mapping[str, str] | None = None,
         _proxy_config: ProxyConfig | None = None,
-        **conn_kw: Any,
+        **conn_kw: typing.Any,
     ):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
@@ -201,7 +201,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.timeout = timeout
         self.retries = retries
 
-        self.pool: queue.LifoQueue[Any] | None = self.QueueCls(maxsize)
+        self.pool: queue.LifoQueue[typing.Any] | None = self.QueueCls(maxsize)
         self.block = block
 
         self.proxy = _proxy
@@ -384,7 +384,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         retries: Retry | None = None,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
@@ -598,7 +598,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         retries: Retry | bool | int | None = None,
         redirect: bool = True,
         assert_same_host: bool = True,
@@ -609,7 +609,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         body_pos: _TYPE_BODY_POSITION | None = None,
         preload_content: bool = True,
         decode_content: bool = True,
-        **response_kw: Any,
+        **response_kw: typing.Any,
     ) -> BaseHTTPResponse:
         """
         Get a connection from the pool and perform an HTTP request. This is the
@@ -984,10 +984,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         timeout: _TYPE_TIMEOUT | None = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         retries: Retry | bool | int | None = None,
         _proxy: Url | None = None,
-        _proxy_headers: Mapping[str, str] | None = None,
+        _proxy_headers: typing.Mapping[str, str] | None = None,
         key_file: str | None = None,
         cert_file: str | None = None,
         cert_reqs: int | str | None = None,
@@ -999,7 +999,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         assert_hostname: str | Literal[False] | None = None,
         assert_fingerprint: str | None = None,
         ca_cert_dir: str | None = None,
-        **conn_kw: Any,
+        **conn_kw: typing.Any,
     ) -> None:
 
         super().__init__(
@@ -1105,7 +1105,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             )
 
 
-def connection_from_url(url: str, **kw: Any) -> HTTPConnectionPool:
+def connection_from_url(url: str, **kw: typing.Any) -> HTTPConnectionPool:
     """
     Given a url, return an :class:`.ConnectionPool` instance of its host.
 
@@ -1134,12 +1134,12 @@ def connection_from_url(url: str, **kw: Any) -> HTTPConnectionPool:
         return HTTPConnectionPool(host, port=port, **kw)  # type: ignore[arg-type]
 
 
-@overload
+@typing.overload
 def _normalize_host(host: None, scheme: str | None) -> None:
     ...
 
 
-@overload
+@typing.overload
 def _normalize_host(host: str, scheme: str | None) -> str:
     ...
 
@@ -1169,7 +1169,7 @@ def _url_from_pool(
     return Url(scheme=pool.scheme, host=pool.host, port=pool.port, path=path).url
 
 
-def _close_pool_connections(pool: queue.LifoQueue[Any]) -> None:
+def _close_pool_connections(pool: queue.LifoQueue[typing.Any]) -> None:
     """Drains a queue of connections and closes each one."""
     try:
         while True:

@@ -59,7 +59,7 @@ import warnings
 from io import BytesIO
 from socket import socket as socket_cls
 from socket import timeout
-from typing import TYPE_CHECKING, Any
+import typing
 
 from .. import util
 
@@ -71,7 +71,7 @@ warnings.warn(
     stacklevel=2,
 )
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from OpenSSL.crypto import X509  # type: ignore[import]
 
 
@@ -313,7 +313,7 @@ class WrappedSocket:
         if self._closed:
             self.close()
 
-    def recv(self, *args: Any, **kwargs: Any) -> bytes:
+    def recv(self, *args: typing.Any, **kwargs: typing.Any) -> bytes:
         try:
             data = self.connection.recv(*args, **kwargs)
         except OpenSSL.SSL.SysCallError as e:
@@ -338,7 +338,7 @@ class WrappedSocket:
         else:
             return data  # type: ignore[no-any-return]
 
-    def recv_into(self, *args: Any, **kwargs: Any) -> int:
+    def recv_into(self, *args: typing.Any, **kwargs: typing.Any) -> int:
         try:
             return self.connection.recv_into(*args, **kwargs)  # type: ignore[no-any-return]
         except OpenSSL.SSL.SysCallError as e:
@@ -397,7 +397,7 @@ class WrappedSocket:
         else:
             self._io_refs -= 1
 
-    def getpeercert(self, binary_form: bool = False) -> dict[str, list[Any]] | None:
+    def getpeercert(self, binary_form: bool = False) -> dict[str, list[typing.Any]] | None:
         x509 = self.connection.get_peer_certificate()
 
         if not x509:

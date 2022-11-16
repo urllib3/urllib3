@@ -6,7 +6,7 @@ import re
 import time
 from itertools import takewhile
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, ClassVar, Collection, NamedTuple
+import typing
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -19,7 +19,7 @@ from ..exceptions import (
 )
 from .util import reraise
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from ..connectionpool import ConnectionPool
     from ..response import BaseHTTPResponse
 
@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 
 
 # Data structure for representing the metadata of requests that result in a retry.
-class RequestHistory(NamedTuple):
+class RequestHistory(typing.NamedTuple):
     method: str | None
     url: str | None
     error: Exception | None
@@ -188,7 +188,7 @@ class Retry:
     DEFAULT_BACKOFF_MAX = 120
 
     # Backward compatibility; assigned outside of the class.
-    DEFAULT: ClassVar[Retry]
+    DEFAULT: typing.ClassVar[Retry]
 
     def __init__(
         self,
@@ -198,15 +198,15 @@ class Retry:
         redirect: bool | int | None = None,
         status: int | None = None,
         other: int | None = None,
-        allowed_methods: Collection[str] | None = DEFAULT_ALLOWED_METHODS,
-        status_forcelist: Collection[int] | None = None,
+        allowed_methods: typing.Collection[str] | None = DEFAULT_ALLOWED_METHODS,
+        status_forcelist: typing.Collection[int] | None = None,
         backoff_factor: float = 0,
         backoff_max: float = DEFAULT_BACKOFF_MAX,
         raise_on_redirect: bool = True,
         raise_on_status: bool = True,
         history: tuple[RequestHistory, ...] | None = None,
         respect_retry_after_header: bool = True,
-        remove_headers_on_redirect: Collection[
+        remove_headers_on_redirect: typing.Collection[
             str
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
     ) -> None:
@@ -233,7 +233,7 @@ class Retry:
             h.lower() for h in remove_headers_on_redirect
         )
 
-    def new(self, **kw: Any) -> Retry:
+    def new(self, **kw: typing.Any) -> Retry:
         params = dict(
             total=self.total,
             connect=self.connect,
