@@ -229,7 +229,9 @@ class RequestField:
                     typing.Tuple[str, _TYPE_FIELD_VALUE, str], value
                 )
             else:
-                filename, data = typing.cast(typing.Tuple[str, _TYPE_FIELD_VALUE], value)
+                filename, data = typing.cast(
+                    typing.Tuple[str, _TYPE_FIELD_VALUE], value
+                )
                 content_type = guess_content_type(filename)
         else:
             filename = None
