@@ -54,7 +54,7 @@ def ensure_can_construct_http_header_dict(
         # Similarly to Mapping, full runtime checking of the contents of an Iterable is
         # expensive, so for the purposes of typechecking, we assume that any Iterable
         # is the right shape.
-        return typing.cast(typing.Iterable[tuple[str, str]], potential)
+        return typing.cast(typing.Iterable[typing.Tuple[str, str]], potential)
     elif hasattr(potential, "keys") and hasattr(potential, "__getitem__"):
         return typing.cast("HasGettableStringKeys", potential)
     else:
@@ -351,7 +351,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             for key, val in other.items():
                 self.add(key, val)
         elif isinstance(other, typing.Iterable):
-            other = typing.cast(typing.Iterable[tuple[str, str]], other)
+            other = typing.cast(typing.Iterable[typing.Tuple[str, str]], other)
             for key, value in other:
                 self.add(key, value)
         elif hasattr(other, "keys") and hasattr(other, "__getitem__"):
