@@ -92,9 +92,9 @@ def git_clone(session: nox.Session, git_url: str) -> None:
     """We either clone the target repository or if already exist
     simply reset the state and pull.
     """
-    expected_directory = git_url.split('/')[-1]
+    expected_directory = git_url.split("/")[-1]
 
-    if expected_directory.endswith('.git'):
+    if expected_directory.endswith(".git"):
         expected_directory = expected_directory[:-4]
 
     if not os.path.isdir(expected_directory):
