@@ -93,6 +93,7 @@ nitpicky = True
 # Except for these ones, which we expect to point to unknown targets:
 nitpick_ignore = [
     ("py:class", "_TYPE_SOCKS_OPTIONS"),
+    ("py:class", "_TYPE_SOCKET_OPTIONS"),
     ("py:class", "_TYPE_TIMEOUT"),
     ("py:class", "_TYPE_FIELD_VALUE"),
     ("py:class", "_TYPE_BODY"),
