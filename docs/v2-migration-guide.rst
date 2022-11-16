@@ -49,6 +49,8 @@ Here's a short summary of which changes in urllib3 v2.0 are most important:
 - Removed the ``urllib3.contrib.ntlmpool`` module.
 - Deprecated the ``urllib3.contrib.pyopenssl``, ``urllib3.contrib.securetransport`` modules, will be removed in v2.1.0.
 - Deprecated the ``urllib3[secure]`` extra, will be removed in v2.1.0.
+- Deprecated the ``HTTPResponse.getheaders()`` method in favor of ``HTTPResponse.headers``, will be removed in v2.1.0.
+- Deprecated the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``, will be removed in v2.1.0.
 - Changed the default minimum TLS version to TLS 1.2 (previously was TLS 1.0).
 - Removed support for verifying certificate hostnames via ``commonName``, now only ``subjectAltName`` is used.
 - Removed the default set of TLS ciphers, instead now urllib3 uses the list of ciphers configured by the system.
