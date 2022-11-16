@@ -1,3 +1,0 @@
-Added the ``json`` parameter to ``urllib3.request()``, ``PoolManager.request()``, and ``ConnectionPool.request()`` methods to send JSON bodies in requests. Using this parameter will set the header ``Content-Type: application/json`` if ``Content-Type`` isn't already defined.
-
-Added support for parsing JSON response bodies with ``HTTPResponse.json()`` method.

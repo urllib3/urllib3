@@ -768,7 +768,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             conn.set_cert()
         assert conn.cert_reqs == ssl.CERT_REQUIRED
         assert len(w) == 1 and str(w[0].message) == (
-            "HTTPSConnection.set_cert() is deprecated and will be removed in a future version. "
+            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v2.1.0. "
             "Instead provide the parameters to the HTTPSConnection constructor."
         )
 
@@ -788,7 +788,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             conn.ssl_context is not None and conn.ssl_context.verify_mode == verify_mode
         )
         assert len(w) == 1 and str(w[0].message) == (
-            "HTTPSConnection.set_cert() is deprecated and will be removed in a future version. "
+            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v2.1.0. "
             "Instead provide the parameters to the HTTPSConnection constructor."
         )
 
@@ -831,7 +831,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             str(x.message)
             == (
                 "'ssl_version' option is deprecated and will be removed in "
-                "a future release of urllib3 2.x. Instead use 'ssl_minimum_version'"
+                "urllib3 v2.1.0. Instead use 'ssl_minimum_version'"
             )
             for x in w
         )

@@ -275,7 +275,7 @@ class TestPoolManager:
 
         msg = (
             "The 'strict' parameter is no longer needed on Python 3+. "
-            "This will raise an error in urllib3 v3.0.0."
+            "This will raise an error in urllib3 v2.1.0."
         )
         record = records[0]
         assert isinstance(record.message, Warning)

@@ -1,5 +1,0 @@
-Changed ``urllib3[brotli]`` extra to install Google's Brotli C bindings on CPython.
-
-The Brotli CFFI bindings are still used on non-CPython implementations like PyPy.
-This change was made to increase performance for CPython as CFFI is typically
-is less performant than C extensions.

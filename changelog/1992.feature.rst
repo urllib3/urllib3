@@ -1,2 +1,0 @@
-Added support for Zstandard (RFC 8878) when ``zstandard`` 1.18.0 or later is installed.
-Added the ``zstd`` extra which installs the ``zstandard`` package.

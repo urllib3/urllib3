@@ -1071,7 +1071,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             with pytest.warns(DeprecationWarning) as w:
                 conn.request_chunked("GET", "/headers")  # type: ignore[attr-defined]
             assert len(w) == 1 and str(w[0].message) == (
-                "HTTPConnection.request_chunked() is deprecated and will be removed in a future version. "
+                "HTTPConnection.request_chunked() is deprecated and will be removed in urllib3 v2.1.0. "
                 "Instead use HTTPConnection.request(..., chunked=True)."
             )
 
