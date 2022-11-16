@@ -68,16 +68,8 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - if: ${{ !endsWith(matrix.python-version, '-dev') }}
-        name: "Setup Python ${{ matrix.python-version }}"
+      - name: "Setup Python ${{ matrix.python-version }}"
         uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      # Use deadsnakes for development versions
-      - if: endsWith(matrix.python-version, '-dev')
-        name: "Setup Python ${{ matrix.python-version }}"
-        uses: deadsnakes/action@v2.1.1
         with:
           python-version: ${{ matrix.python-version }}
 
