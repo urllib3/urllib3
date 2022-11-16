@@ -83,13 +83,13 @@ class Url(
     typing.NamedTuple(
         "Url",
         [
-            ("scheme", str | None),
-            ("auth", str | None),
-            ("host", str | None),
-            ("port", int | None),
-            ("path", str | None),
-            ("query", str | None),
-            ("fragment", str | None),
+            ("scheme", typing.Optional[str]),
+            ("auth", typing.Optional[str]),
+            ("host", typing.Optional[str]),
+            ("port", typing.Optional[int]),
+            ("path", typing.Optional[str]),
+            ("query", typing.Optional[str]),
+            ("fragment", typing.Optional[str]),
         ],
     )
 ):
