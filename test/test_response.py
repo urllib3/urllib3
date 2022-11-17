@@ -112,12 +112,20 @@ class TestLegacyResponse:
     def test_getheaders(self) -> None:
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.getheaders() == [("host", "example.com")]
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"HTTPResponse.getheaders\(\) is deprecated",
+        ):
+            assert r.getheaders() == [("host", "example.com")]
 
     def test_getheader(self) -> None:
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.getheader("host") == "example.com"
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"HTTPResponse.getheader\(\) is deprecated",
+        ):
+            assert r.getheader("host") == "example.com"
 
 
 class TestResponse:
