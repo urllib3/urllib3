@@ -1,0 +1,1 @@
+Prevented issue in HTTPResponse().read() when decoded_content is True and then False.

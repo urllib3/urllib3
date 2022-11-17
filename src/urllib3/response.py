@@ -317,6 +317,7 @@ class BaseHTTPResponse(io.IOBase):
         self.version = version
         self.reason = reason
         self.decode_content = decode_content
+        self._has_decoded_content = False
         self._request_url: Optional[str] = request_url
         self.retries = retries
 
@@ -436,11 +437,17 @@ class BaseHTTPResponse(io.IOBase):
         Decode the data passed in and potentially flush the decoder.
         """
         if not decode_content:
+            if self._has_decoded_content:
+                raise RuntimeError(
+                    "Calling read(decode_content=False) is not supported after "
+                    "read(decode_content=True) was called."
+                )
             return data
 
         try:
             if self._decoder:
                 data = self._decoder.decompress(data)
+                self._has_decoded_content = True
         except self.DECODER_ERROR_CLASSES as e:
             content_encoding = self.headers.get("content-encoding", "").lower()
             raise DecodeError(
@@ -891,6 +898,11 @@ class HTTPResponse(BaseHTTPResponse):
         else:
             # do not waste memory on buffer when not decoding
             if not decode_content:
+                if self._has_decoded_content:
+                    raise RuntimeError(
+                        "Calling read(decode_content=False) is not supported after "
+                        "read(decode_content=True) was called."
+                    )
                 return data
 
             decoded_data = self._decode(data, decode_content, flush_decoder)
