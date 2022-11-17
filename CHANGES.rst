@@ -77,7 +77,6 @@ Changed
   a default value. The new default will be cipher suites configured by the operating system (`#2168 <https://github.com/urllib3/urllib3/issues/2168>`__).
 * Changed ``multipart/form-data`` header parameter formatting matches the WHATWG HTML Standard as of 2021-06-10. Control characters in filenames are no longer percent encoded (`#2257 <https://github.com/urllib3/urllib3/issues/2257>`__).
 * Changed ``urllib3.HTTPConnection.getresponse`` to return an instance of ``urllib3.HTTPResponse`` instead of ``http.client.HTTPResponse`` (`#2648 <https://github.com/urllib3/urllib3/issues/2648>`__).
-* Changed return type of ``HTTPResponse.getheaders()`` method to return a list of key-value tuples to match CPython (`#1543 <https://github.com/urllib3/urllib3/issues/1543>`__).
 * Changed the error raised when connecting via HTTPS when the ``ssl`` module isn't available from ``SSLError`` to ``ImportError`` (`#2589 <https://github.com/urllib3/urllib3/issues/2589>`__).
 * Changed ``HTTPConnection.request()`` to always use lowercase chunk boundaries when sending requests with ``Transfer-Encoding: chunked`` (`#2515 <https://github.com/urllib3/urllib3/issues/2515>`__).
 * Changed `enforce_content_length` default to True, preventing silent data loss when reading streamed responses (`#2514 <https://github.com/urllib3/urllib3/issues/2514>`__).
@@ -97,6 +96,7 @@ Changed
 Deprecated
 ----------
 
+* Deprecated ``HTTPResponse.getheaders()`` and ``HTTPResponse.getheader()`` which will be removed in urllib3 v2.1.0. Instead use ``HTTPResponse.headers`` and ``HTTPResponse.headers.get(name, default)``. (`#1543 <https://github.com/urllib3/urllib3/issues/1543>`__, `#2814 <https://github.com/urllib3/urllib3/issues/2814>`__).
 * Deprecated ``urllib3.contrib.pyopenssl`` module which will be removed in urllib3 v2.1.0 (`#2691 <https://github.com/urllib3/urllib3/issues/2691>`__).
 * Deprecated ``urllib3.contrib.securetransport`` module which will be removed in urllib3 v2.1.0 (`#2692 <https://github.com/urllib3/urllib3/issues/2692>`__).
 * Deprecated ``ssl_version`` option in favor of ``ssl_minimum_version``. ``ssl_version`` will be removed in urllib3 v2.1.0 (`#2110 <https://github.com/urllib3/urllib3/issues/2110>`__).
