@@ -587,6 +587,15 @@ class TestResponse:
         ):
             resp.read(1, decode_content=False)
 
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r"Calling read\(decode_content=False\) is not supported after "
+                r"read\(decode_content=True\) was called"
+            ),
+        ):
+            resp.read(decode_content=False)
+
     def test_read_with_mix_decode_toggle(self) -> None:
         compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
         data = compress.compress(b"foo")
