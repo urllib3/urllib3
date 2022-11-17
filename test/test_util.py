@@ -350,10 +350,6 @@ class TestUtil:
         url = parse_url("https://example.com:0000000000080")
         assert url.port == 80
 
-        port = (sys.get_int_max_str_digits() + 1) * "0" + "80"
-        url = parse_url(f"https://example.com:{port}")
-        assert url.port == 80
-
     def test_Url_str(self) -> None:
         U = Url("http", host="google.com")
         assert str(U) == U.url
