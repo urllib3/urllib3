@@ -13,6 +13,7 @@ import mock
 import pytest
 import six
 
+from urllib3._collections import HTTPHeaderDict
 from urllib3.exceptions import (
     DecodeError,
     IncompleteRead,
@@ -57,12 +58,20 @@ class TestLegacyResponse(object):
     def test_getheaders(self):
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.getheaders() == headers
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"HTTPResponse.getheaders\(\) is deprecated",
+        ):
+            assert r.getheaders() == HTTPHeaderDict(headers)
 
     def test_getheader(self):
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.getheader("host") == "example.com"
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"HTTPResponse.getheader\(\) is deprecated",
+        ):
+            assert r.getheader("host") == "example.com"
 
 
 class TestResponse(object):
