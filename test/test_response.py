@@ -557,9 +557,7 @@ class TestResponse:
             next(reader)
 
     def test_read_with_illegal_mix_decode_toggle(self) -> None:
-        compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
-        data = compress.compress(b"foo")
-        data += compress.flush()
+        data = zlib.compress(b"foo")
 
         fp = BytesIO(data)
 
@@ -588,17 +586,15 @@ class TestResponse:
             resp.read(decode_content=False)
 
     def test_read_with_mix_decode_toggle(self) -> None:
-        compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
-        data = compress.compress(b"foo")
-        data += compress.flush()
+        data = zlib.compress(b"foo")
 
         fp = BytesIO(data)
 
         resp = HTTPResponse(
             fp, headers={"content-encoding": "deflate"}, preload_content=False
         )
-        resp.read(1, decode_content=False)
-        assert resp.read(1, decode_content=True) == b"o"
+        assert resp.read(2, decode_content=False) is not None
+        assert resp.read(1, decode_content=True) == b"f"
 
     def test_streaming(self) -> None:
         fp = BytesIO(b"foo")
