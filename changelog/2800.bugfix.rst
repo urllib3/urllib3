@@ -1,1 +1,2 @@
-Prevented issue in HTTPResponse().read() when decoded_content is True and then False.
+Fixed a potential data loss scenario when using ``HTTPResponse.read()`` with ``decode_content=True``
+and then subsequently calling the method with ``decode_content=False``.

@@ -4,6 +4,7 @@ import json as _json
 import logging
 import re
 import sys
+import warnings
 import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
@@ -478,10 +479,22 @@ class BaseHTTPResponse(io.IOBase):
             return len(temp)
 
     # Compatibility methods for http.client.HTTPResponse
-    def getheaders(self) -> List[Tuple[str, str]]:
-        return list(self.headers.items())
+    def getheaders(self) -> HTTPHeaderDict:
+        warnings.warn(
+            "HTTPResponse.getheaders() is deprecated and will be removed "
+            "in urllib3 v2.1.0. Instead access HTTResponse.headers directly.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.headers
 
     def getheader(self, name: str, default: Optional[str] = None) -> Optional[str]:
+        warnings.warn(
+            "HTTPResponse.getheader() is deprecated and will be removed "
+            "in urllib3 v2.1.0. Instead use HTTResponse.headers.get(name, default).",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         return self.headers.get(name, default)
 
     # Compatibility method for http.cookiejar
