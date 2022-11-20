@@ -83,6 +83,9 @@ python_classes = ["Test", "*TestCase"]
 filterwarnings = [
     "error:There is no current event loop:DeprecationWarning:tornado.ioloop",
 ]
+addopts = """
+    --durations=10
+"""
 
 [tool.isort]
 profile = "black"
