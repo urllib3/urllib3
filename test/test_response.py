@@ -13,6 +13,7 @@ from unittest import mock
 
 import pytest
 
+from urllib3 import HTTPHeaderDict
 from urllib3.exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
@@ -116,7 +117,7 @@ class TestLegacyResponse:
             DeprecationWarning,
             match=r"HTTPResponse.getheaders\(\) is deprecated",
         ):
-            assert r.getheaders() == [("host", "example.com")]
+            assert r.getheaders() == HTTPHeaderDict(headers)
 
     def test_getheader(self) -> None:
         headers = {"host": "example.com"}
