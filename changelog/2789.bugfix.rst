@@ -1,2 +1,0 @@
-Changed the code so we use the typing namespace consistently throughout the
-project.
