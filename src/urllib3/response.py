@@ -7,6 +7,7 @@ import logging
 import re
 import sys
 import typing
+import warnings
 import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
@@ -306,6 +307,7 @@ class BaseHTTPResponse(io.IOBase):
         self.version = version
         self.reason = reason
         self.decode_content = decode_content
+        self._has_decoded_content = False
         self._request_url: str | None = request_url
         self.retries = retries
 
@@ -425,11 +427,17 @@ class BaseHTTPResponse(io.IOBase):
         Decode the data passed in and potentially flush the decoder.
         """
         if not decode_content:
+            if self._has_decoded_content:
+                raise RuntimeError(
+                    "Calling read(decode_content=False) is not supported after "
+                    "read(decode_content=True) was called."
+                )
             return data
 
         try:
             if self._decoder:
                 data = self._decoder.decompress(data)
+                self._has_decoded_content = True
         except self.DECODER_ERROR_CLASSES as e:
             content_encoding = self.headers.get("content-encoding", "").lower()
             raise DecodeError(
@@ -461,10 +469,22 @@ class BaseHTTPResponse(io.IOBase):
             return len(temp)
 
     # Compatibility methods for http.client.HTTPResponse
-    def getheaders(self) -> list[tuple[str, str]]:
-        return list(self.headers.items())
+    def getheaders(self) -> HTTPHeaderDict:
+        warnings.warn(
+            "HTTPResponse.getheaders() is deprecated and will be removed "
+            "in urllib3 v2.1.0. Instead access HTTResponse.headers directly.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.headers
 
     def getheader(self, name: str, default: str | None = None) -> str | None:
+        warnings.warn(
+            "HTTPResponse.getheader() is deprecated and will be removed "
+            "in urllib3 v2.1.0. Instead use HTTResponse.headers.get(name, default).",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         return self.headers.get(name, default)
 
     # Compatibility method for http.cookiejar
@@ -868,6 +888,11 @@ class HTTPResponse(BaseHTTPResponse):
         else:
             # do not waste memory on buffer when not decoding
             if not decode_content:
+                if self._has_decoded_content:
+                    raise RuntimeError(
+                        "Calling read(decode_content=False) is not supported after "
+                        "read(decode_content=True) was called."
+                    )
                 return data
 
             decoded_data = self._decode(data, decode_content, flush_decoder)

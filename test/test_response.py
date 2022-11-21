@@ -15,6 +15,7 @@ from unittest import mock
 
 import pytest
 
+from urllib3 import HTTPHeaderDict
 from urllib3.exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
@@ -114,12 +115,20 @@ class TestLegacyResponse:
     def test_getheaders(self) -> None:
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.getheaders() == [("host", "example.com")]
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"HTTPResponse.getheaders\(\) is deprecated",
+        ):
+            assert r.getheaders() == HTTPHeaderDict(headers)
 
     def test_getheader(self) -> None:
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.getheader("host") == "example.com"
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"HTTPResponse.getheader\(\) is deprecated",
+        ):
+            assert r.getheader("host") == "example.com"
 
 
 class TestResponse:
@@ -557,6 +566,46 @@ class TestResponse:
         assert resp.closed
         with pytest.raises(ValueError, match="I/O operation on closed file.?"):
             next(reader)
+
+    def test_read_with_illegal_mix_decode_toggle(self) -> None:
+        data = zlib.compress(b"foo")
+
+        fp = BytesIO(data)
+
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+
+        assert resp.read(1) == b"f"
+
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r"Calling read\(decode_content=False\) is not supported after "
+                r"read\(decode_content=True\) was called"
+            ),
+        ):
+            resp.read(1, decode_content=False)
+
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r"Calling read\(decode_content=False\) is not supported after "
+                r"read\(decode_content=True\) was called"
+            ),
+        ):
+            resp.read(decode_content=False)
+
+    def test_read_with_mix_decode_toggle(self) -> None:
+        data = zlib.compress(b"foo")
+
+        fp = BytesIO(data)
+
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+        assert resp.read(2, decode_content=False) is not None
+        assert resp.read(1, decode_content=True) == b"f"
 
     def test_streaming(self) -> None:
         fp = BytesIO(b"foo")

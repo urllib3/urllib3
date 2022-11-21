@@ -488,14 +488,19 @@ class TestUtil:
             ),
         ),
         # Tons of '@' causing backtracking
-        ("https://" + ("@" * 10000) + "[", False),
-        (
+        pytest.param(
+            "https://" + ("@" * 10000) + "[",
+            False,
+            id="Tons of '@' causing backtracking 1",
+        ),
+        pytest.param(
             "https://user:" + ("@" * 10000) + "example.com",
             Url(
                 scheme="https",
                 auth="user:" + ("%40" * 9999),
                 host="example.com",
             ),
+            id="Tons of '@' causing backtracking 2",
         ),
     ]
 
