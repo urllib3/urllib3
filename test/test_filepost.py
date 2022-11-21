@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from urllib3.fields import RequestField

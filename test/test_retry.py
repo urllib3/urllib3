@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from test import DUMMY_POOL
-from typing import Optional
 from unittest import mock
 
 import pytest
@@ -367,7 +368,7 @@ class TestRetry:
         self,
         retry_after_header: str,
         respect_retry_after_header: bool,
-        sleep_duration: Optional[int],
+        sleep_duration: int | None,
     ) -> None:
         retry = Retry(respect_retry_after_header=respect_retry_after_header)
 

@@ -1,4 +1,6 @@
-from typing import Iterator, List, Tuple, Union
+from __future__ import annotations
+
+import typing
 
 import pytest
 
@@ -83,7 +85,7 @@ class TestLRUContainer:
         d.pop(1, None)
 
     def test_get(self) -> None:
-        d: Container[int, Union[bool, int]] = Container(5)
+        d: Container[int, bool | int] = Container(5)
 
         for i in range(5):
             d[i] = True
@@ -101,7 +103,7 @@ class TestLRUContainer:
             d[5]
 
     def test_disposal(self) -> None:
-        evicted_items: List[int] = []
+        evicted_items: list[int] = []
 
         def dispose_func(arg: int) -> None:
             # Save the evicted datum for inspection
@@ -135,7 +137,7 @@ class NonMappingHeaderContainer:
         self._data = {}
         self._data.update(kwargs)
 
-    def keys(self) -> Iterator[str]:
+    def keys(self) -> typing.Iterator[str]:
         return iter(self._data)
 
     def __getitem__(self, key: str) -> str:
@@ -297,7 +299,7 @@ class TestHTTPHeaderDict:
 
     @pytest.mark.parametrize("args", [(1, 2), (1, 2, 3, 4, 5)])
     def test_extend_with_wrong_number_of_args_is_typeerror(
-        self, d: HTTPHeaderDict, args: Tuple[int, ...]
+        self, d: HTTPHeaderDict, args: tuple[int, ...]
     ) -> None:
         with pytest.raises(
             TypeError, match=r"extend\(\) takes at most 1 positional arguments"

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import ssl
-from typing import Any, Dict, Optional, Union
+import typing
 from unittest import mock
 
 import pytest
@@ -27,7 +29,7 @@ class TestSSL:
             b"FE80::8939:7684:D84b:a5A4%19",
         ],
     )
-    def test_is_ipaddress_true(self, addr: Union[bytes, str]) -> None:
+    def test_is_ipaddress_true(self, addr: bytes | str) -> None:
         assert ssl_.is_ipaddress(addr)
 
     @pytest.mark.parametrize(
@@ -39,7 +41,7 @@ class TestSSL:
             b"v2.sg.media-imdb.com",
         ],
     )
-    def test_is_ipaddress_false(self, addr: Union[bytes, str]) -> None:
+    def test_is_ipaddress_false(self, addr: bytes | str) -> None:
         assert not ssl_.is_ipaddress(addr)
 
     def test_create_urllib3_context_set_ciphers(
@@ -112,8 +114,8 @@ class TestSSL:
     def test_create_urllib3_context_pha(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        pha: Optional[bool],
-        expected_pha: Optional[bool],
+        pha: bool | None,
+        expected_pha: bool | None,
     ) -> None:
         context = mock.create_autospec(ssl_.SSLContext)
         context.set_ciphers = mock.Mock()
@@ -156,7 +158,7 @@ class TestSSL:
         ],
     )
     def test_create_urllib3_context_ssl_version_and_ssl_min_max_version_errors(
-        self, kwargs: Dict[str, Any]
+        self, kwargs: dict[str, typing.Any]
     ) -> None:
         with pytest.raises(ValueError) as e:
             ssl_.create_urllib3_context(**kwargs)
@@ -190,7 +192,7 @@ class TestSSL:
         ],
     )
     def test_create_urllib3_context_ssl_version_and_ssl_min_max_version_no_error(
-        self, kwargs: Dict[str, Any]
+        self, kwargs: dict[str, typing.Any]
     ) -> None:
         ssl_.create_urllib3_context(**kwargs)
 

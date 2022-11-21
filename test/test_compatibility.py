@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import http.cookiejar
 import urllib
 

@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import http.client as httplib
 import ssl
+import typing
 from http.client import HTTPException
 from queue import Empty
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
-from typing import Any, Optional, Type
 from unittest.mock import Mock, patch
 
 import pytest
@@ -39,7 +41,7 @@ from .test_response import MockChunkedEncodingResponse, MockSock
 
 
 class HTTPUnixConnection(HTTPConnection):
-    def __init__(self, host: str, timeout: int = 60, **kwargs: Any) -> None:
+    def __init__(self, host: str, timeout: int = 60, **kwargs: typing.Any) -> None:
         super().__init__("localhost")
         self.unix_socket = host
         self.timeout = timeout
@@ -320,9 +322,9 @@ class TestConnectionPool:
         ) as pool:
 
             def _test(
-                exception: Type[BaseException],
-                expect: Type[BaseException],
-                reason: Optional[Type[BaseException]] = None,
+                exception: type[BaseException],
+                expect: type[BaseException],
+                reason: type[BaseException] | None = None,
             ) -> None:
                 with patch.object(pool, "_make_request", side_effect=exception()):
                     with pytest.raises(expect) as excinfo:
@@ -471,7 +473,7 @@ class TestConnectionPool:
         class RealBad(BaseException):
             pass
 
-        def kaboom(*args: Any, **kwargs: Any) -> None:
+        def kaboom(*args: typing.Any, **kwargs: typing.Any) -> None:
             raise RealBad()
 
         with connection_from_url("http://localhost:80") as c:
@@ -508,10 +510,10 @@ class TestConnectionPool:
             """
 
             def __init__(
-                self, ex: Type[BaseException], pool: HTTPConnectionPool
+                self, ex: type[BaseException], pool: HTTPConnectionPool
             ) -> None:
                 super().__init__()
-                self._ex: Optional[Type[BaseException]] = ex
+                self._ex: type[BaseException] | None = ex
                 self._pool = pool
 
             def __call__(
@@ -519,9 +521,9 @@ class TestConnectionPool:
                 conn: HTTPConnection,
                 method: str,
                 url: str,
-                *args: Any,
+                *args: typing.Any,
                 retries: Retry,
-                **kwargs: Any,
+                **kwargs: typing.Any,
             ) -> HTTPResponse:
                 if self._ex:
                     ex, self._ex = self._ex, None
@@ -530,7 +532,7 @@ class TestConnectionPool:
                 httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
                 httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()
 
-                response_conn: Optional[HTTPConnection] = kwargs.get("response_conn")
+                response_conn: HTTPConnection | None = kwargs.get("response_conn")
 
                 response = HTTPResponse(
                     body=httplib_response,
@@ -548,7 +550,7 @@ class TestConnectionPool:
                 )
                 return response
 
-        def _test(exception: Type[BaseException]) -> None:
+        def _test(exception: type[BaseException]) -> None:
             with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
                 # Verify that the request succeeds after two attempts, and that the
                 # connection is left on the response object, instead of being

@@ -1,5 +1,7 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
+from __future__ import annotations
+
 import errno
 import io
 import os
@@ -11,6 +13,7 @@ import ssl
 import sys
 import tempfile
 import time
+import typing
 from collections import OrderedDict
 from pathlib import Path
 from test import (
@@ -22,9 +25,6 @@ from test import (
     resolvesLocalhostFQDN,
 )
 from threading import Event
-from typing import Any, Callable, Generator, List, Optional
-from typing import OrderedDict as OrderedDictType
-from typing import Tuple, Union
 from unittest import mock
 
 import pytest
@@ -300,7 +300,7 @@ class TestClientCerts(SocketDummyServerTestCase):
     def test_client_cert_with_bytes_password(self) -> None:
         self.run_client_cert_with_password_test(b"letmein")
 
-    def run_client_cert_with_password_test(self, password: Union[bytes, str]) -> None:
+    def run_client_cert_with_password_test(self, password: bytes | str) -> None:
         """
         Tests client certificate password functionality
         """
@@ -1502,7 +1502,7 @@ class TestSSL(SocketDummyServerTestCase):
         "preload_content,read_amt", [(True, None), (False, None), (False, 2**31)]
     )
     def test_requesting_large_resources_via_ssl(
-        self, preload_content: bool, read_amt: Optional[int]
+        self, preload_content: bool, read_amt: int | None
     ) -> None:
         """
         Ensure that it is possible to read 2 GiB or more via an SSL
@@ -1581,8 +1581,8 @@ class TestHeaders(SocketDummyServerTestCase):
             assert HEADERS == dict(r.headers.items())  # to preserve case sensitivity
 
     def start_parsing_handler(self) -> None:
-        self.parsed_headers: OrderedDictType[str, str] = OrderedDict()
-        self.received_headers: List[bytes] = []
+        self.parsed_headers: typing.OrderedDict[str, str] = OrderedDict()
+        self.received_headers: list[bytes] = []
 
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -1644,7 +1644,9 @@ class TestHeaders(SocketDummyServerTestCase):
             (f"X-Header-{int(i)}", str(i)) for i in reversed(range(K))
         ]
 
-        def filter_non_x_headers(d: OrderedDictType[str, str]) -> List[Tuple[str, str]]:
+        def filter_non_x_headers(
+            d: typing.OrderedDict[str, str]
+        ) -> list[tuple[str, str]]:
             return [(k, v) for (k, v) in d.items() if k.startswith("X-Header-")]
 
         self.start_parsing_handler()
@@ -1710,13 +1712,13 @@ class TestHeaders(SocketDummyServerTestCase):
         ],
     )
     def test_headers_sent_with_add(
-        self, method_type: str, body_type: Optional[str]
+        self, method_type: str, body_type: str | None
     ) -> None:
         """
         Confirm that when adding headers with combine=True that we simply append to the
         most recent value, rather than create a new header line.
         """
-        body: Union[None, bytes, io.BytesIO]
+        body: None | bytes | io.BytesIO
         if body_type is None:
             body = None
         elif body_type == "bytes":
@@ -1772,7 +1774,7 @@ class TestHeaders(SocketDummyServerTestCase):
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
     def _test_broken_header_parsing(
-        self, headers: List[bytes], unparsed_data_check: Optional[str] = None
+        self, headers: list[bytes], unparsed_data_check: str | None = None
     ) -> None:
         self.start_response_handler(
             (
@@ -1992,7 +1994,7 @@ class TestBrokenPipe(SocketDummyServerTestCase):
         # a buffer that will cause two sendall calls
         buf = "a" * 1024 * 1024 * 4
 
-        def connect_and_wait(*args: Any, **kw: Any) -> None:
+        def connect_and_wait(*args: typing.Any, **kw: typing.Any) -> None:
             ret = orig_connect(*args, **kw)
             assert sock_shut.wait(5)
             return ret
@@ -2066,7 +2068,7 @@ class TestContentFraming(SocketDummyServerTestCase):
     @pytest.mark.parametrize("content_length", [None, 0])
     @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
     def test_content_length_0_by_default(
-        self, method: str, content_length: Optional[int]
+        self, method: str, content_length: int | None
     ) -> None:
         buffer = bytearray()
 
@@ -2126,10 +2128,10 @@ class TestContentFraming(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-        body: Any
+        body: typing.Any
         if body_type == "generator":
 
-            def body_generator() -> Generator[bytes, None, None]:
+            def body_generator() -> typing.Generator[bytes, None, None]:
                 yield b"x" * 10
 
             body = body_generator()
@@ -2184,10 +2186,10 @@ class TestContentFraming(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-        body: Any
+        body: typing.Any
         if body_type == "generator":
 
-            def body_generator() -> Generator[bytes, None, None]:
+            def body_generator() -> typing.Generator[bytes, None, None]:
                 yield b"x" * 10
 
             body = body_generator()
@@ -2250,7 +2252,7 @@ class TestContentFraming(SocketDummyServerTestCase):
     )
     def test_framing_set_via_headers(
         self,
-        header_transform: Callable[[str], str],
+        header_transform: typing.Callable[[str], str],
         header: str,
         header_value: str,
         expected: bytes,

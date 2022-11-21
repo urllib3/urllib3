@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import asyncio
 import contextlib
 import socket
 import ssl
 import threading
-from typing import Any, Callable, ClassVar, Dict, Generator, Iterable, Optional, Union
+import typing
 
 import pytest
 from tornado import httpserver, ioloop, web
@@ -22,7 +24,7 @@ from urllib3.util.ssltransport import SSLTransport
 
 
 def consume_socket(
-    sock: Union[SSLTransport, socket.socket], chunks: int = 65536
+    sock: SSLTransport | socket.socket, chunks: int = 65536
 ) -> bytearray:
     consumed = bytearray()
     while True:
@@ -43,23 +45,25 @@ class SocketDummyServerTestCase:
     scheme = "http"
     host = "localhost"
 
-    server_thread: ClassVar[SocketServerThread]
-    port: ClassVar[int]
+    server_thread: typing.ClassVar[SocketServerThread]
+    port: typing.ClassVar[int]
 
-    tmpdir: ClassVar[str]
-    ca_path: ClassVar[str]
-    cert_combined_path: ClassVar[str]
-    cert_path: ClassVar[str]
-    key_path: ClassVar[str]
-    password_key_path: ClassVar[str]
+    tmpdir: typing.ClassVar[str]
+    ca_path: typing.ClassVar[str]
+    cert_combined_path: typing.ClassVar[str]
+    cert_path: typing.ClassVar[str]
+    key_path: typing.ClassVar[str]
+    password_key_path: typing.ClassVar[str]
 
-    server_context: ClassVar[ssl.SSLContext]
-    client_context: ClassVar[ssl.SSLContext]
+    server_context: typing.ClassVar[ssl.SSLContext]
+    client_context: typing.ClassVar[ssl.SSLContext]
 
-    proxy_server: ClassVar["SocketDummyServerTestCase"]
+    proxy_server: typing.ClassVar[SocketDummyServerTestCase]
 
     @classmethod
-    def _start_server(cls, socket_handler: Callable[[socket.socket], None]) -> None:
+    def _start_server(
+        cls, socket_handler: typing.Callable[[socket.socket], None]
+    ) -> None:
         ready_event = threading.Event()
         cls.server_thread = SocketServerThread(
             socket_handler=socket_handler, ready_event=ready_event, host=cls.host
@@ -72,7 +76,7 @@ class SocketDummyServerTestCase:
 
     @classmethod
     def start_response_handler(
-        cls, response: bytes, num: int = 1, block_send: Optional[threading.Event] = None
+        cls, response: bytes, num: int = 1, block_send: threading.Event | None = None
     ) -> threading.Event:
         ready_event = threading.Event()
 
@@ -93,7 +97,7 @@ class SocketDummyServerTestCase:
 
     @classmethod
     def start_basic_handler(
-        cls, num: int = 1, block_send: Optional[threading.Event] = None
+        cls, num: int = 1, block_send: threading.Event | None = None
     ) -> threading.Event:
         return cls.start_response_handler(
             b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n",
@@ -108,9 +112,9 @@ class SocketDummyServerTestCase:
 
     def assert_header_received(
         self,
-        received_headers: Iterable[bytes],
+        received_headers: typing.Iterable[bytes],
         header_name: str,
-        expected_value: Optional[str] = None,
+        expected_value: str | None = None,
     ) -> None:
         header_name_bytes = header_name.encode("ascii")
         if expected_value is None:
@@ -128,7 +132,9 @@ class SocketDummyServerTestCase:
 
 class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
     @classmethod
-    def _start_server(cls, socket_handler: Callable[[socket.socket], None]) -> None:
+    def _start_server(
+        cls, socket_handler: typing.Callable[[socket.socket], None]
+    ) -> None:
         ready_event = threading.Event()
         cls.server_thread = SocketServerThread(
             socket_handler=socket_handler, ready_event=ready_event, host=cls.host
@@ -154,14 +160,14 @@ class HTTPDummyServerTestCase:
     host = "localhost"
     host_alt = "127.0.0.1"  # Some tests need two hosts
     certs = DEFAULT_CERTS
-    base_url: ClassVar[str]
-    base_url_alt: ClassVar[str]
+    base_url: typing.ClassVar[str]
+    base_url_alt: typing.ClassVar[str]
 
-    io_loop: ClassVar[ioloop.IOLoop]
-    server: ClassVar[httpserver.HTTPServer]
-    port: ClassVar[int]
-    server_thread: ClassVar[threading.Thread]
-    _stack: ClassVar[contextlib.ExitStack]
+    io_loop: typing.ClassVar[ioloop.IOLoop]
+    server: typing.ClassVar[httpserver.HTTPServer]
+    port: typing.ClassVar[int]
+    server_thread: typing.ClassVar[threading.Thread]
+    _stack: typing.ClassVar[contextlib.ExitStack]
 
     @classmethod
     def _start_server(cls) -> None:
@@ -199,37 +205,37 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
 
 
 class HTTPDummyProxyTestCase:
-    io_loop: ClassVar[ioloop.IOLoop]
+    io_loop: typing.ClassVar[ioloop.IOLoop]
 
-    http_host: ClassVar[str] = "localhost"
-    http_host_alt: ClassVar[str] = "127.0.0.1"
-    http_server: ClassVar[httpserver.HTTPServer]
-    http_port: ClassVar[int]
-    http_url: ClassVar[str]
-    http_url_alt: ClassVar[str]
+    http_host: typing.ClassVar[str] = "localhost"
+    http_host_alt: typing.ClassVar[str] = "127.0.0.1"
+    http_server: typing.ClassVar[httpserver.HTTPServer]
+    http_port: typing.ClassVar[int]
+    http_url: typing.ClassVar[str]
+    http_url_alt: typing.ClassVar[str]
 
-    https_host: ClassVar[str] = "localhost"
-    https_host_alt: ClassVar[str] = "127.0.0.1"
-    https_certs: ClassVar[Dict[str, Any]] = DEFAULT_CERTS
-    https_server: ClassVar[httpserver.HTTPServer]
-    https_port: ClassVar[int]
-    https_url: ClassVar[str]
-    https_url_alt: ClassVar[str]
+    https_host: typing.ClassVar[str] = "localhost"
+    https_host_alt: typing.ClassVar[str] = "127.0.0.1"
+    https_certs: typing.ClassVar[dict[str, typing.Any]] = DEFAULT_CERTS
+    https_server: typing.ClassVar[httpserver.HTTPServer]
+    https_port: typing.ClassVar[int]
+    https_url: typing.ClassVar[str]
+    https_url_alt: typing.ClassVar[str]
 
-    proxy_host: ClassVar[str] = "localhost"
-    proxy_host_alt: ClassVar[str] = "127.0.0.1"
-    proxy_server: ClassVar[httpserver.HTTPServer]
-    proxy_port: ClassVar[int]
-    proxy_url: ClassVar[str]
-    https_proxy_server: ClassVar[httpserver.HTTPServer]
-    https_proxy_port: ClassVar[int]
-    https_proxy_url: ClassVar[str]
+    proxy_host: typing.ClassVar[str] = "localhost"
+    proxy_host_alt: typing.ClassVar[str] = "127.0.0.1"
+    proxy_server: typing.ClassVar[httpserver.HTTPServer]
+    proxy_port: typing.ClassVar[int]
+    proxy_url: typing.ClassVar[str]
+    https_proxy_server: typing.ClassVar[httpserver.HTTPServer]
+    https_proxy_port: typing.ClassVar[int]
+    https_proxy_url: typing.ClassVar[str]
 
-    certs_dir: ClassVar[str] = ""
-    bad_ca_path: ClassVar[str] = ""
+    certs_dir: typing.ClassVar[str] = ""
+    bad_ca_path: typing.ClassVar[str] = ""
 
-    server_thread: ClassVar[threading.Thread]
-    _stack: ClassVar[contextlib.ExitStack]
+    server_thread: typing.ClassVar[threading.Thread]
+    _stack: typing.ClassVar[contextlib.ExitStack]
 
     @classmethod
     def setup_class(cls) -> None:
@@ -299,15 +305,21 @@ class ConnectionMarker:
 
     @classmethod
     @contextlib.contextmanager
-    def mark(cls, monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+    def mark(
+        cls, monkeypatch: pytest.MonkeyPatch
+    ) -> typing.Generator[None, None, None]:
         """
         Mark connections under in that context.
         """
 
         orig_request = HTTPConnection.request
 
-        def call_and_mark(target: Callable[..., None]) -> Callable[..., None]:
-            def part(self: HTTPConnection, *args: Any, **kwargs: Any) -> None:
+        def call_and_mark(
+            target: typing.Callable[..., None]
+        ) -> typing.Callable[..., None]:
+            def part(
+                self: HTTPConnection, *args: typing.Any, **kwargs: typing.Any
+            ) -> None:
                 target(self, *args, **kwargs)
                 self.sock.sendall(cls._get_socket_mark(self.sock, False))
 

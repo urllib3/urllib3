@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import json as _json
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
+import typing
 from urllib.parse import urlencode
 
 from ._base_connection import _TYPE_BODY
@@ -9,8 +11,9 @@ from .response import BaseHTTPResponse
 
 __all__ = ["RequestMethods"]
 
-_TYPE_ENCODE_URL_FIELDS = Union[
-    Sequence[Tuple[str, Union[str, bytes]]], Mapping[str, Union[str, bytes]]
+_TYPE_ENCODE_URL_FIELDS = typing.Union[
+    typing.Sequence[typing.Tuple[str, typing.Union[str, bytes]]],
+    typing.Mapping[str, typing.Union[str, bytes]],
 ]
 
 
@@ -45,18 +48,18 @@ class RequestMethods:
 
     _encode_url_methods = {"DELETE", "GET", "HEAD", "OPTIONS"}
 
-    def __init__(self, headers: Optional[Mapping[str, str]] = None) -> None:
+    def __init__(self, headers: typing.Mapping[str, str] | None = None) -> None:
         self.headers = headers or {}
 
     def urlopen(
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        body: _TYPE_BODY | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         encode_multipart: bool = True,
-        multipart_boundary: Optional[str] = None,
-        **kw: Any,
+        multipart_boundary: str | None = None,
+        **kw: typing.Any,
     ) -> BaseHTTPResponse:  # Abstract
         raise NotImplementedError(
             "Classes extending RequestMethods must implement "
@@ -67,11 +70,11 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        fields: Optional[_TYPE_FIELDS] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        json: Optional[Any] = None,
-        **urlopen_kw: Any,
+        body: _TYPE_BODY | None = None,
+        fields: _TYPE_FIELDS | None = None,
+        headers: typing.Mapping[str, str] | None = None,
+        json: typing.Any | None = None,
+        **urlopen_kw: typing.Any,
     ) -> BaseHTTPResponse:
         """
         Make a request using :meth:`urlopen` with the appropriate encoding of
@@ -120,8 +123,8 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        fields: Optional[_TYPE_ENCODE_URL_FIELDS] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        fields: _TYPE_ENCODE_URL_FIELDS | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
@@ -131,7 +134,7 @@ class RequestMethods:
         if headers is None:
             headers = self.headers
 
-        extra_kw: Dict[str, Any] = {"headers": headers}
+        extra_kw: dict[str, typing.Any] = {"headers": headers}
         extra_kw.update(urlopen_kw)
 
         if fields:
@@ -143,10 +146,10 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        fields: Optional[_TYPE_FIELDS] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        fields: _TYPE_FIELDS | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         encode_multipart: bool = True,
-        multipart_boundary: Optional[str] = None,
+        multipart_boundary: str | None = None,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
@@ -187,8 +190,8 @@ class RequestMethods:
         if headers is None:
             headers = self.headers
 
-        extra_kw: Dict[str, Any] = {"headers": HTTPHeaderDict(headers)}
-        body: Union[bytes, str]
+        extra_kw: dict[str, typing.Any] = {"headers": HTTPHeaderDict(headers)}
+        body: bytes | str
 
         if fields:
             if "body" in urlopen_kw:

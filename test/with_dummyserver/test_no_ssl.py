@@ -3,6 +3,8 @@ Test connections without the builtin ssl module
 
 Note: Import urllib3 inside the test functions to get the importblocker to work
 """
+from __future__ import annotations
+
 import pytest
 
 import urllib3
