@@ -1,0 +1,2 @@
+Fixed issue in parse_url that rejected ASCII digits with more than 5 characters
+(i.e. lots of leading zeros but still <= 65535).
