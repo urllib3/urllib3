@@ -347,7 +347,7 @@ class TestUtil(object):
         with pytest.raises(LocationParseError):
             parse_url("https://www.google.com:-80/")
 
-    def test_parse_url_remove_leading_zeros(self) -> None:
+    def test_parse_url_remove_leading_zeros(self):
         url = parse_url("https://example.com:0000000000080")
         assert url.port == 80
 
