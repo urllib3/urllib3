@@ -1,6 +1,16 @@
 Changes
 =======
 
+1.26.13 (2022-11-23)
+--------------------
+
+* Deprecated the ``HTTPResponse.getheaders()`` and ``HTTPResponse.getheader()`` methods.
+* Fixed an issue where parsing a URL with leading zeroes in the port would be rejected
+  even when the port number after removing the zeroes was valid.
+* Fixed a deprecation warning when using cryptography v39.0.0.
+* Removed the ``<4`` in the ``Requires-Python`` packaging metadata field.
+
+
 1.26.12 (2022-08-22)
 --------------------
 
