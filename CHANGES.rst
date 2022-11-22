@@ -1,3 +1,16 @@
+2.0.0a2 (2022-11-23)
+====================
+
+Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`__ for help upgrading to the latest version of urllib3.
+
+Changed
+-------
+
+* Changed ``HTTPResponse.read()`` to raise an error when calling with ``decode_content=False`` after using ``decode_content=True`` to prevent data loss (`#2800 <https://github.com/urllib3/urllib3/issues/2800>`__).
+* Changed ``HTTPResponse.getheaders()`` and ``.getheader()`` to continue returning ``HTTPHeadersDict`` which reverts a previous change in v2.0.
+  Instead we are deprecating these methods in favor of ``HTTPResponse.headers.items()`` and ``HTTPResponse.headers.get()``. Both deprecated
+  methods will be removed in v2.1.0 (`#2814 <https://github.com/urllib3/urllib3/issues/2814>`__)
+
 2.0.0a1 (2022-11-15)
 ====================
 
