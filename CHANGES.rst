@@ -7,6 +7,11 @@ Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migr
 * Changed ``HTTPResponse.getheaders()`` and ``.getheader()`` to continue returning ``HTTPHeadersDict`` which reverts a previous change in v2.0.
   Instead we are deprecating these methods in favor of ``HTTPResponse.headers.items()`` and ``HTTPResponse.headers.get()``. Both deprecated
   methods will be removed in v2.1.0 (`#2814 <https://github.com/urllib3/urllib3/issues/2814>`__)
+* Removed the ``<4`` in the ``Requires-Python`` packaging metadata field.
+* Deprecated the ``HTTPResponse.getheaders()`` and ``HTTPResponse.getheader()`` methods.
+* Fixed an issue where parsing a URL with leading zeroes in the port would be rejected
+  even when the port number after removing the zeroes was valid.
+* Fixed a deprecation warning when using cryptography v39.0.0.
 
 2.0.0a1 (2022-11-15)
 ====================
