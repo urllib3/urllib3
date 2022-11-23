@@ -37,9 +37,6 @@ from urllib3.util.timeout import Timeout
 
 from .. import TARPIT_HOST, requires_network
 
-# Retry failed tests
-pytestmark = pytest.mark.flaky
-
 
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     @classmethod

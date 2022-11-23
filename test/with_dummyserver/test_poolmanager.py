@@ -14,9 +14,6 @@ from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
-# Retry failed tests
-pytestmark = pytest.mark.flaky
-
 
 class TestPoolManager(HTTPDummyServerTestCase):
     @classmethod

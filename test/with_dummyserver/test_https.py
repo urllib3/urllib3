@@ -48,10 +48,6 @@ from urllib3.util.timeout import Timeout
 
 from .. import has_alpn
 
-# Retry failed tests
-pytestmark = pytest.mark.flaky
-
-
 log = logging.getLogger("urllib3.connectionpool")
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))

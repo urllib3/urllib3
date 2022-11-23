@@ -55,9 +55,6 @@ from urllib3.util.timeout import Timeout
 
 from .. import LogRecorder, has_alpn
 
-# Retry failed tests
-pytestmark = pytest.mark.flaky
-
 
 class TestCookies(SocketDummyServerTestCase):
     def test_multi_setcookie(self) -> None:

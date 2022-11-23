@@ -37,8 +37,6 @@ from urllib3.util.timeout import _TYPE_TIMEOUT, Timeout
 from .. import INVALID_SOURCE_ADDRESSES, TARPIT_HOST, VALID_SOURCE_ADDRESSES
 from ..port_helpers import find_unused_port
 
-pytestmark = pytest.mark.flaky
-
 log = logging.getLogger("urllib3.connectionpool")
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
