@@ -4,14 +4,12 @@
 Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`__ for help upgrading to the latest version of urllib3.
 
 * Changed ``HTTPResponse.read()`` to raise an error when calling with ``decode_content=False`` after using ``decode_content=True`` to prevent data loss (`#2800 <https://github.com/urllib3/urllib3/issues/2800>`__).
-* Changed ``HTTPResponse.getheaders()`` and ``.getheader()`` to continue returning ``HTTPHeadersDict`` which reverts a previous change in v2.0.
+* Changed ``HTTPResponse.getheaders()`` and ``.getheader()`` to previous behavior in 1.26.x.
   Instead we are deprecating these methods in favor of ``HTTPResponse.headers.items()`` and ``HTTPResponse.headers.get()``. Both deprecated
   methods will be removed in v2.1.0 (`#2814 <https://github.com/urllib3/urllib3/issues/2814>`__)
-* Removed the ``<4`` in the ``Requires-Python`` packaging metadata field.
-* Deprecated the ``HTTPResponse.getheaders()`` and ``HTTPResponse.getheader()`` methods.
 * Fixed an issue where parsing a URL with leading zeroes in the port would be rejected
-  even when the port number after removing the zeroes was valid.
-* Fixed a deprecation warning when using cryptography v39.0.0.
+  even when the port number after removing the zeroes was valid. (`#2806 <https://github.com/urllib3/urllib3/pull/2806>`__)
+* Fixed deprecation warning when using cryptography v39.0.0. This fix requires using pyOpenSSL>=17.1.0 and cryptography>=1.9. (`#2829 <https://github.com/urllib3/urllib3/pull/2829>`__)
 
 2.0.0a1 (2022-11-15)
 ====================
