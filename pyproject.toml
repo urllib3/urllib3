@@ -46,8 +46,8 @@ zstd = [
   "zstandard>=0.18.0",
 ]
 secure = [
-  "pyOpenSSL>=0.14",
-  "cryptography>=1.3.4",
+  "pyOpenSSL>=17.1.0",
+  "cryptography>=1.9",
   "idna>=2.0.0",
   "certifi",
   "urllib3-secure-extra",
