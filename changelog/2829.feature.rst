@@ -1,0 +1,1 @@
+Support cryptograph>=39 by requiring OpenSSL>=17.1.0.
