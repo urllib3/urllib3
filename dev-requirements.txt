@@ -12,7 +12,7 @@ pytest-freezegun==0.4.2
 flaky==3.7.0
 trustme==0.7.0
 cryptography==3.2.1;python_version<"3.6"
-cryptography==3.4.7;python_version>="3.6"
+cryptography==38.0.3;python_version>="3.6"
 python-dateutil==2.8.1
 
 # https://github.com/GrahamDumpleton/wrapt/issues/189
