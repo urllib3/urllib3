@@ -1,1 +1,1 @@
-Support cryptograph>=39 by requiring OpenSSL>=17.1.0.
+Support cryptography>=39 by requiring OpenSSL>=17.1.0 and cryptography>=1.9.
