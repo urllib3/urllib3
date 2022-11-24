@@ -55,6 +55,11 @@ from urllib3.util.timeout import Timeout
 
 from .. import LogRecorder, has_alpn
 
+if typing.TYPE_CHECKING:
+    from _typeshed import StrOrBytesPath
+else:
+    StrOrBytesPath = object
+
 # Retry failed tests
 pytestmark = pytest.mark.flaky
 
@@ -137,6 +142,38 @@ class TestALPN(SocketDummyServerTestCase):
                 ), "missing ALPN protocol in SSL handshake"
 
 
+def original_ssl_wrap_socket(
+    sock: socket.socket,
+    keyfile: StrOrBytesPath | None = None,
+    certfile: StrOrBytesPath | None = None,
+    server_side: bool = False,
+    cert_reqs: ssl.VerifyMode = ssl.CERT_NONE,
+    ssl_version: int = ssl.PROTOCOL_TLS,
+    ca_certs: str | None = None,
+    do_handshake_on_connect: bool = True,
+    suppress_ragged_eofs: bool = True,
+    ciphers: str | None = None,
+) -> ssl.SSLSocket:
+    if server_side and not certfile:
+        raise ValueError("certfile must be specified for server-side operations")
+    if keyfile and not certfile:
+        raise ValueError("certfile must be specified")
+    context = ssl.SSLContext(ssl_version)
+    context.verify_mode = cert_reqs
+    if ca_certs:
+        context.load_verify_locations(ca_certs)
+    if certfile:
+        context.load_cert_chain(certfile, keyfile)
+    if ciphers:
+        context.set_ciphers(ciphers)
+    return context.wrap_socket(
+        sock=sock,
+        server_side=server_side,
+        do_handshake_on_connect=do_handshake_on_connect,
+        suppress_ragged_eofs=suppress_ragged_eofs,
+    )
+
+
 class TestClientCerts(SocketDummyServerTestCase):
     """
     Tests for client certificate support.
@@ -169,7 +206,7 @@ class TestClientCerts(SocketDummyServerTestCase):
         """
         Given a single socket, wraps it in TLS.
         """
-        return ssl.wrap_socket(
+        return original_ssl_wrap_socket(
             sock,
             ssl_version=ssl.PROTOCOL_SSLv23,
             cert_reqs=ssl.CERT_REQUIRED,
@@ -1075,7 +1112,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                 return
 
             sock.send(b"HTTP/1.1 200 Connection Established\r\n\r\n")
-            ssl_sock = ssl.wrap_socket(
+            ssl_sock = original_ssl_wrap_socket(
                 sock,
                 server_side=True,
                 keyfile=DEFAULT_CERTS["keyfile"],
@@ -1125,7 +1162,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
             if s.startswith(f"CONNECT [{ipv6_addr}]:443"):
                 sock.send(b"HTTP/1.1 200 Connection Established\r\n\r\n")
-                ssl_sock = ssl.wrap_socket(
+                ssl_sock = original_ssl_wrap_socket(
                     sock,
                     server_side=True,
                     keyfile=DEFAULT_CERTS["keyfile"],
@@ -1192,13 +1229,16 @@ class TestSSL(SocketDummyServerTestCase):
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             sock2 = sock.dup()
-            ssl_sock = ssl.wrap_socket(
-                sock,
-                server_side=True,
-                keyfile=DEFAULT_CERTS["keyfile"],
-                certfile=DEFAULT_CERTS["certfile"],
-                ca_certs=DEFAULT_CA,
-            )
+            try:
+                ssl_sock = original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                )
+            except ssl.SSLError:
+                return
 
             buf = b""
             while not buf.endswith(b"\r\n\r\n"):
@@ -1227,7 +1267,7 @@ class TestSSL(SocketDummyServerTestCase):
 
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
-            ssl_sock = ssl.wrap_socket(
+            ssl_sock = original_ssl_wrap_socket(
                 sock,
                 server_side=True,
                 keyfile=DEFAULT_CERTS["keyfile"],
@@ -1266,13 +1306,18 @@ class TestSSL(SocketDummyServerTestCase):
         def socket_handler(listener: socket.socket) -> None:
             for i in range(2):
                 sock = listener.accept()[0]
-                ssl_sock = ssl.wrap_socket(
-                    sock,
-                    server_side=True,
-                    keyfile=DEFAULT_CERTS["keyfile"],
-                    certfile=DEFAULT_CERTS["certfile"],
-                    ca_certs=DEFAULT_CA,
-                )
+                try:
+                    ssl_sock = original_ssl_wrap_socket(
+                        sock,
+                        server_side=True,
+                        keyfile=DEFAULT_CERTS["keyfile"],
+                        certfile=DEFAULT_CERTS["certfile"],
+                        ca_certs=DEFAULT_CA,
+                    )
+                except (ssl.SSLError, ConnectionResetError):
+                    if i == 1:
+                        raise
+                    return
 
                 ssl_sock.send(
                     b"HTTP/1.1 200 OK\r\n"
@@ -1313,7 +1358,7 @@ class TestSSL(SocketDummyServerTestCase):
             # first request, trigger an SSLError
             sock = listener.accept()[0]
             sock2 = sock.dup()
-            ssl_sock = ssl.wrap_socket(
+            ssl_sock = original_ssl_wrap_socket(
                 sock,
                 server_side=True,
                 keyfile=DEFAULT_CERTS["keyfile"],
@@ -1336,7 +1381,7 @@ class TestSSL(SocketDummyServerTestCase):
 
             # retried request
             sock = listener.accept()[0]
-            ssl_sock = ssl.wrap_socket(
+            ssl_sock = original_ssl_wrap_socket(
                 sock,
                 server_side=True,
                 keyfile=DEFAULT_CERTS["keyfile"],
@@ -1362,13 +1407,16 @@ class TestSSL(SocketDummyServerTestCase):
     def test_ssl_load_default_certs_when_empty(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
-            ssl_sock = ssl.wrap_socket(
-                sock,
-                server_side=True,
-                keyfile=DEFAULT_CERTS["keyfile"],
-                certfile=DEFAULT_CERTS["certfile"],
-                ca_certs=DEFAULT_CA,
-            )
+            try:
+                ssl_sock = original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                )
+            except (ssl.SSLError, OSError):
+                return
 
             buf = b""
             while not buf.endswith(b"\r\n\r\n"):
@@ -1401,13 +1449,16 @@ class TestSSL(SocketDummyServerTestCase):
     def test_ssl_dont_load_default_certs_when_given(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
-            ssl_sock = ssl.wrap_socket(
-                sock,
-                server_side=True,
-                keyfile=DEFAULT_CERTS["keyfile"],
-                certfile=DEFAULT_CERTS["certfile"],
-                ca_certs=DEFAULT_CA,
-            )
+            try:
+                ssl_sock = original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                )
+            except (ssl.SSLError, OSError):
+                return
 
             buf = b""
             while not buf.endswith(b"\r\n\r\n"):
@@ -1465,13 +1516,15 @@ class TestSSL(SocketDummyServerTestCase):
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             try:
-                _ = ssl.wrap_socket(
+                _ = original_ssl_wrap_socket(
                     sock,
                     server_side=True,
                     keyfile=DEFAULT_CERTS["keyfile"],
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 )
+            except ConnectionResetError:
+                return
             except ssl.SSLError as e:
                 assert "alert unknown ca" in str(e)
                 if is_closed_socket(sock):
@@ -1514,7 +1567,7 @@ class TestSSL(SocketDummyServerTestCase):
 
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
-            ssl_sock = ssl.wrap_socket(
+            ssl_sock = original_ssl_wrap_socket(
                 sock,
                 server_side=True,
                 keyfile=DEFAULT_CERTS["keyfile"],

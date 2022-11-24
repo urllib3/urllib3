@@ -244,7 +244,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 r = https_pool.request("GET", "/")
                 assert r.status == 200
 
-            assert w == []
+            assert [str(wm) for wm in w] == []
 
     def test_verified_with_context(self) -> None:
         ctx = util.ssl_.create_urllib3_context(
@@ -296,7 +296,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 r = https_pool.request("GET", "/")
                 assert r.status == 200
 
-            assert w == []
+            assert [str(wm) for wm in w] == []
 
     def test_invalid_common_name(self) -> None:
         with HTTPSConnectionPool(
@@ -859,7 +859,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
-        assert w == []
+        assert [str(wm) for wm in w] == []
 
     def test_no_tls_version_deprecation_with_ssl_context(self) -> None:
         if self.tls_protocol_name is None:
@@ -880,7 +880,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
-        assert w == []
+        assert [str(wm) for wm in w] == []
 
     def test_tls_version_maximum_and_minimum(self) -> None:
         if self.tls_protocol_name is None:
@@ -977,7 +977,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         # either the `ssl.TLSVersion.MAXIMUM_SUPPORTED` magic constant
         # or one of the exact versions if a system defines it.
         # https://github.com/urllib3/urllib3/issues/2477#issuecomment-1151452150
-        assert ctx.maximum_version == ssl.SSLContext().maximum_version
+        assert (
+            ctx.maximum_version
+            == ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT).maximum_version
+        )
 
     def test_ssl_context_ssl_version_uses_ssl_min_max_versions(self) -> None:
         ctx = urllib3.util.ssl_.create_urllib3_context(ssl_version=self.ssl_version())

@@ -716,7 +716,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             sock = listener.accept()[0]
 
             handler = handle_socks4_negotiation(sock, username=b"user")
-            next(handler)
+            next(handler, None)
 
         self._start_server(request_handler)
         proxy_url = f"socks4a://{self.host}:{self.port}"
