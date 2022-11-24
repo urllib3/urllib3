@@ -25,7 +25,6 @@ from test import (
     resolvesLocalhostFQDN,
 )
 from threading import Event
-from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
@@ -56,7 +55,7 @@ from urllib3.util.timeout import Timeout
 
 from .. import LogRecorder, has_alpn
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from _typeshed import StrOrBytesPath
 else:
     StrOrBytesPath = object
