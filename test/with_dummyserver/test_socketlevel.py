@@ -156,7 +156,7 @@ def original_ssl_wrap_socket(
     ciphers: str | None = None,
 ) -> ssl.SSLSocket:
     if server_side and not certfile:
-        raise ValueError("certfile must be specified for server-side " "operations")
+        raise ValueError("certfile must be specified for server-side operations")
     if keyfile and not certfile:
         raise ValueError("certfile must be specified")
     context = ssl.SSLContext(ssl_version)
