@@ -80,7 +80,6 @@ include = [
 [tool.pytest.ini_options]
 xfail_strict = true
 python_classes = ["Test", "*TestCase"]
-addopts = ["--strict-markers", "--strict-config"]
 markers = ["limit_memory"]
 filterwarnings = [
     "error",

@@ -58,6 +58,8 @@ def tests_impl(
         "--tb=native",
         "--no-success-flaky-report",
         "--durations=10",
+        "--strict-config",
+        "--strict-markers",
         *(session.posargs or ("test/",)),
         env={"PYTHONWARNINGS": "always::DeprecationWarning"},
     )
