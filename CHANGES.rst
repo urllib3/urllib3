@@ -117,6 +117,15 @@ Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migr
 * Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()`` (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__).
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
 
+1.26.13 (2022-11-23)
+--------------------
+
+* Deprecated the ``HTTPResponse.getheaders()`` and ``HTTPResponse.getheader()`` methods.
+* Fixed an issue where parsing a URL with leading zeroes in the port would be rejected
+  even when the port number after removing the zeroes was valid.
+* Fixed a deprecation warning when using cryptography v39.0.0.
+* Removed the ``<4`` in the ``Requires-Python`` packaging metadata field.
+
 1.26.12 (2022-08-22)
 ====================
 
