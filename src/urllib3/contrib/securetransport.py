@@ -628,23 +628,24 @@ class WrappedSocket:
             Security.SSLClose(self.context)
 
     def close(self) -> None:
+        self._closed = True
         # TODO: should I do clean shutdown here? Do I have to?
-        if self._io_refs < 1:
-            self._closed = True
-            if self.context:
-                CoreFoundation.CFRelease(self.context)
-                self.context = None
-            if self._client_cert_chain:
-                CoreFoundation.CFRelease(self._client_cert_chain)
-                self._client_cert_chain = None
-            if self._keychain:
-                Security.SecKeychainDelete(self._keychain)
-                CoreFoundation.CFRelease(self._keychain)
-                shutil.rmtree(self._keychain_dir)
-                self._keychain = self._keychain_dir = None
-            return self.socket.close()
-        else:
-            self._io_refs -= 1
+        if self._io_refs <= 0:
+            self._real_close()
+
+    def _real_close(self) -> None:
+        if self.context:
+            CoreFoundation.CFRelease(self.context)
+            self.context = None
+        if self._client_cert_chain:
+            CoreFoundation.CFRelease(self._client_cert_chain)
+            self._client_cert_chain = None
+        if self._keychain:
+            Security.SecKeychainDelete(self._keychain)
+            CoreFoundation.CFRelease(self._keychain)
+            shutil.rmtree(self._keychain_dir)
+            self._keychain = self._keychain_dir = None
+        return self.socket.close()
 
     def getpeercert(self, binary_form: bool = False) -> bytes | None:
         # Urgh, annoying.
