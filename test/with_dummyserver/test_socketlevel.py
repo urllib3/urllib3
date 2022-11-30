@@ -1223,33 +1223,31 @@ class TestProxyManager(SocketDummyServerTestCase):
 class TestSSL(SocketDummyServerTestCase):
     def test_ssl_failure_midway_through_conn(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
-            sock = listener.accept()[0]
-            sock2 = sock.dup()
-            try:
-                ssl_sock = original_ssl_wrap_socket(
-                    sock,
-                    server_side=True,
-                    keyfile=DEFAULT_CERTS["keyfile"],
-                    certfile=DEFAULT_CERTS["certfile"],
-                    ca_certs=DEFAULT_CA,
+            with listener.accept()[0] as sock, sock.dup() as sock2:
+                try:
+                    ssl_sock = original_ssl_wrap_socket(
+                        sock,
+                        server_side=True,
+                        keyfile=DEFAULT_CERTS["keyfile"],
+                        certfile=DEFAULT_CERTS["certfile"],
+                        ca_certs=DEFAULT_CA,
+                    )
+                except ssl.SSLError:
+                    return
+
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += ssl_sock.recv(65536)
+
+                # Deliberately send from the non-SSL socket.
+                sock2.send(
+                    b"HTTP/1.1 200 OK\r\n"
+                    b"Content-Type: text/plain\r\n"
+                    b"Content-Length: 2\r\n"
+                    b"\r\n"
+                    b"Hi"
                 )
-            except ssl.SSLError:
-                return
-
-            buf = b""
-            while not buf.endswith(b"\r\n\r\n"):
-                buf += ssl_sock.recv(65536)
-
-            # Deliberately send from the non-SSL socket.
-            sock2.send(
-                b"HTTP/1.1 200 OK\r\n"
-                b"Content-Type: text/plain\r\n"
-                b"Content-Length: 2\r\n"
-                b"\r\n"
-                b"Hi"
-            )
-            sock2.close()
-            ssl_sock.close()
+                ssl_sock.close()
 
         self._start_server(socket_handler)
         with HTTPSConnectionPool(self.host, self.port) as pool:
