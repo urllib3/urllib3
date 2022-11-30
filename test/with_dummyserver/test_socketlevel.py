@@ -1267,6 +1267,8 @@ class TestSSL(SocketDummyServerTestCase):
 
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
+            # disable Nagle's algorithm so there's no delay in sending a partial body
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
             ssl_sock = original_ssl_wrap_socket(
                 sock,
                 server_side=True,
