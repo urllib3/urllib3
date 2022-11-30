@@ -1044,6 +1044,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             else:
                 conn = pool._get_conn()
                 conn.request("GET", "/headers", chunked=chunked)
+                pool._put_conn(conn)
 
             assert pool.headers == {"key": "val"}
             assert isinstance(pool.headers, header_type)
@@ -1054,6 +1055,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             else:
                 conn = pool._get_conn()
                 conn.request("GET", "/headers", headers=headers, chunked=chunked)
+                pool._put_conn(conn)
 
             assert headers == {"key": "val"}
 
@@ -1073,6 +1075,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             resp = conn.getresponse()
             assert resp.status == 200
             assert resp.json()["Transfer-Encoding"] == "chunked"
+            pool._put_conn(conn)
 
     def test_bytes_header(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
