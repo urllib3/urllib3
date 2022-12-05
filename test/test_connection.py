@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import socket
+import sys
 import typing
 from http.client import ResponseNotReady
 from unittest import mock
@@ -235,3 +236,13 @@ class TestConnection:
         # Should error if a request has not been sent
         with pytest.raises(ResponseNotReady):
             conn.getresponse()
+
+    def test_http_client_connect_audit_event(self) -> None:
+
+        def _hook(event: str, args: tuple):
+            if event == "http.client.connect":
+                assert event == "http.client.connect"
+
+        sys.addaudithook(_hook)
+        conn = HTTPConnection("google.com", port=80)
+
