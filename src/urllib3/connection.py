@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import socket
+import sys
 import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
@@ -233,6 +234,7 @@ class HTTPConnection(_HTTPConnection):
         self._tunnel_scheme = scheme
 
     def connect(self) -> None:
+        sys.audit("http.client.connect", self, self.host, self.port)
         self.sock = self._new_conn()
         if self._tunnel_host:
             # If we're tunneling it means we're connected to our proxy.
@@ -600,6 +602,7 @@ class HTTPSConnection(HTTPConnection):
         self.ca_cert_data = ca_cert_data
 
     def connect(self) -> None:
+        sys.audit("http.client.connect", self, self.host, self.port)
         sock: socket.socket | ssl.SSLSocket
         self.sock = sock = self._new_conn()
         server_hostname: str = self.host
