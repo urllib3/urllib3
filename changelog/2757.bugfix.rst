@@ -1,0 +1,2 @@
+The audithooks for ``http.client`` only fire for the ``HTTPConnection`` based on the
+standard library ``http.client`` which in 2.0 and onwards isn't guaranteed to be the default.
