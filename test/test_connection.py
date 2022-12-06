@@ -238,9 +238,10 @@ class TestConnection:
             conn.getresponse()
 
     def test_http_client_connect_audit_event(self) -> None:
-        def _hook(event: str, args: tuple) -> None:  # type: ignore[type-arg]
-            if event == "http.client.connect":
-                assert event == "http.client.connect"
+        if hasattr(sys, "addaudithook"):
+            def _hook(event: str, args: tuple) -> None:  # type: ignore[type-arg]
+                if event == "http.client.connect":
+                    assert event == "http.client.connect"
 
-        sys.addaudithook(_hook)
-        HTTPConnection("google.com", port=80)
+            sys.addaudithook(_hook)
+            HTTPConnection("google.com", port=80)
