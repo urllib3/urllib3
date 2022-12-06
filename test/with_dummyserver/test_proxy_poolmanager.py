@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import binascii
 import hashlib
 import ipaddress
@@ -9,7 +11,6 @@ import ssl
 import tempfile
 from test import LONG_TIMEOUT, SHORT_TIMEOUT, onlySecureTransport, withPyOpenSSL
 from test.conftest import ServerConfig
-from typing import Tuple
 
 import pytest
 import trustme
@@ -677,7 +678,7 @@ class TestHTTPSProxyVerification:
         return addr.exploded.replace("0000", "0").replace("000", "")
 
     def test_https_proxy_assert_fingerprint_md5(
-        self, no_san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
+        self, no_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
         proxy, server = no_san_proxy_with_server
         proxy_url = f"https://{proxy.host}:{proxy.port}"
@@ -692,7 +693,7 @@ class TestHTTPSProxyVerification:
             https.request("GET", destination_url)
 
     def test_https_proxy_assert_fingerprint_md5_non_matching(
-        self, no_san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
+        self, no_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
         proxy, server = no_san_proxy_with_server
         proxy_url = f"https://{proxy.host}:{proxy.port}"
@@ -713,7 +714,7 @@ class TestHTTPSProxyVerification:
             assert "Fingerprints did not match" in str(e)
 
     def test_https_proxy_assert_hostname(
-        self, san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
+        self, san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
         proxy, server = san_proxy_with_server
         destination_url = f"https://{server.host}:{server.port}"
@@ -724,7 +725,7 @@ class TestHTTPSProxyVerification:
             https.request("GET", destination_url)
 
     def test_https_proxy_assert_hostname_non_matching(
-        self, san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
+        self, san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
         proxy, server = san_proxy_with_server
         destination_url = f"https://{server.host}:{server.port}"
@@ -772,7 +773,7 @@ class TestHTTPSProxyVerification:
             ) or "Hostname mismatch" in str(ssl_error)
 
     def test_https_proxy_ipv4_san(
-        self, ipv4_san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
+        self, ipv4_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
         proxy, server = ipv4_san_proxy_with_server
         proxy_url = f"https://{proxy.host}:{proxy.port}"
@@ -782,7 +783,7 @@ class TestHTTPSProxyVerification:
             assert r.status == 200
 
     def test_https_proxy_ipv6_san(
-        self, ipv6_san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
+        self, ipv6_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
         proxy, server = ipv6_san_proxy_with_server
         proxy_url = f"https://[{proxy.host}]:{proxy.port}"
@@ -794,7 +795,7 @@ class TestHTTPSProxyVerification:
     @pytest.mark.parametrize("target_scheme", ["http", "https"])
     def test_https_proxy_no_san(
         self,
-        no_san_proxy_with_server: Tuple[ServerConfig, ServerConfig],
+        no_san_proxy_with_server: tuple[ServerConfig, ServerConfig],
         target_scheme: str,
     ) -> None:
         proxy, server = no_san_proxy_with_server
@@ -815,7 +816,7 @@ class TestHTTPSProxyVerification:
             )
 
     def test_https_proxy_no_san_hostname_checks_common_name(
-        self, no_san_proxy_with_server: Tuple[ServerConfig, ServerConfig]
+        self, no_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
         proxy, server = no_san_proxy_with_server
         proxy_url = f"https://{proxy.host}:{proxy.port}"

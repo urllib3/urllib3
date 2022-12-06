@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import gc
 import socket
 from test import resolvesLocalhostFQDN
-from typing import Optional
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
@@ -77,7 +78,7 @@ class TestPoolManager:
         assert len(p.pools) == 0
 
     @pytest.mark.parametrize("url", ["http://@", None])
-    def test_nohost(self, url: Optional[str]) -> None:
+    def test_nohost(self, url: str | None) -> None:
         p = PoolManager(5)
         with pytest.raises(LocationValueError):
             p.connection_from_url(url=url)  # type: ignore[arg-type]
@@ -274,7 +275,7 @@ class TestPoolManager:
 
         msg = (
             "The 'strict' parameter is no longer needed on Python 3+. "
-            "This will raise an error in urllib3 v3.0.0."
+            "This will raise an error in urllib3 v2.1.0."
         )
         record = records[0]
         assert isinstance(record.message, Warning)

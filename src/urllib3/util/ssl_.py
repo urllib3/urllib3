@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import hmac
 import os
 import socket
 import sys
+import typing
 import warnings
 from binascii import unhexlify
 from hashlib import md5, sha1, sha256
-from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union, cast, overload
 
 from ..exceptions import ProxySchemeUnsupported, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
@@ -17,7 +19,7 @@ IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
 ALPN_PROTOCOLS = ["http/1.1"]
 
-_TYPE_VERSION_INFO = Tuple[int, int, int, str, int]
+_TYPE_VERSION_INFO = typing.Tuple[int, int, int, str, int]
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
@@ -68,7 +70,7 @@ def _is_has_never_check_common_name_reliable(
     )
 
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from ssl import VerifyMode
 
     from typing_extensions import Literal, TypedDict
@@ -76,13 +78,13 @@ if TYPE_CHECKING:
     from .ssltransport import SSLTransport as SSLTransportType
 
     class _TYPE_PEER_CERT_RET_DICT(TypedDict, total=False):
-        subjectAltName: Tuple[Tuple[str, str], ...]
-        subject: Tuple[Tuple[Tuple[str, str], ...], ...]
+        subjectAltName: tuple[tuple[str, str], ...]
+        subject: tuple[tuple[tuple[str, str], ...], ...]
         serialNumber: str
 
 
 # Mapping from 'ssl.PROTOCOL_TLSX' to 'TLSVersion.X'
-_SSL_VERSION_TO_TLS_VERSION: Dict[int, int] = {}
+_SSL_VERSION_TO_TLS_VERSION: dict[int, int] = {}
 
 try:  # Do we have ssl at all?
     import ssl
@@ -131,10 +133,10 @@ except ImportError:
     PROTOCOL_TLS_CLIENT = 16  # type: ignore[assignment]
 
 
-_TYPE_PEER_CERT_RET = Union["_TYPE_PEER_CERT_RET_DICT", bytes, None]
+_TYPE_PEER_CERT_RET = typing.Union["_TYPE_PEER_CERT_RET_DICT", bytes, None]
 
 
-def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
+def assert_fingerprint(cert: bytes | None, fingerprint: str) -> None:
     """
     Checks if given fingerprint matches the supplied certificate.
 
@@ -164,7 +166,7 @@ def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
         )
 
 
-def resolve_cert_reqs(candidate: Union[None, int, str]) -> "VerifyMode":
+def resolve_cert_reqs(candidate: None | int | str) -> VerifyMode:
     """
     Resolves the argument to a numeric constant, which can be passed to
     the wrap_socket function/method from the ssl module.
@@ -187,7 +189,7 @@ def resolve_cert_reqs(candidate: Union[None, int, str]) -> "VerifyMode":
     return candidate  # type: ignore[return-value]
 
 
-def resolve_ssl_version(candidate: Union[None, int, str]) -> int:
+def resolve_ssl_version(candidate: None | int | str) -> int:
     """
     like resolve_cert_reqs
     """
@@ -198,19 +200,19 @@ def resolve_ssl_version(candidate: Union[None, int, str]) -> int:
         res = getattr(ssl, candidate, None)
         if res is None:
             res = getattr(ssl, "PROTOCOL_" + candidate)
-        return cast(int, res)
+        return typing.cast(int, res)
 
     return candidate
 
 
 def create_urllib3_context(
-    ssl_version: Optional[int] = None,
-    cert_reqs: Optional[int] = None,
-    options: Optional[int] = None,
-    ciphers: Optional[str] = None,
-    ssl_minimum_version: Optional[int] = None,
-    ssl_maximum_version: Optional[int] = None,
-) -> "ssl.SSLContext":
+    ssl_version: int | None = None,
+    cert_reqs: int | None = None,
+    options: int | None = None,
+    ciphers: str | None = None,
+    ssl_minimum_version: int | None = None,
+    ssl_maximum_version: int | None = None,
+) -> ssl.SSLContext:
     """Creates and configures an :class:`ssl.SSLContext` instance for use with urllib3.
 
     :param ssl_version:
@@ -266,8 +268,7 @@ def create_urllib3_context(
             # keep the maximum version to be it's default value: 'TLSVersion.MAXIMUM_SUPPORTED'
             warnings.warn(
                 "'ssl_version' option is deprecated and will be "
-                "removed in a future release of urllib3 2.x. Instead "
-                "use 'ssl_minimum_version'",
+                "removed in urllib3 v2.1.0. Instead use 'ssl_minimum_version'",
                 category=DeprecationWarning,
                 stacklevel=2,
             )
@@ -346,59 +347,59 @@ def create_urllib3_context(
     return context
 
 
-@overload
+@typing.overload
 def ssl_wrap_socket(
     sock: socket.socket,
-    keyfile: Optional[str] = ...,
-    certfile: Optional[str] = ...,
-    cert_reqs: Optional[int] = ...,
-    ca_certs: Optional[str] = ...,
-    server_hostname: Optional[str] = ...,
-    ssl_version: Optional[int] = ...,
-    ciphers: Optional[str] = ...,
-    ssl_context: Optional["ssl.SSLContext"] = ...,
-    ca_cert_dir: Optional[str] = ...,
-    key_password: Optional[str] = ...,
-    ca_cert_data: Union[None, str, bytes] = ...,
-    tls_in_tls: "Literal[False]" = ...,
-) -> "ssl.SSLSocket":
+    keyfile: str | None = ...,
+    certfile: str | None = ...,
+    cert_reqs: int | None = ...,
+    ca_certs: str | None = ...,
+    server_hostname: str | None = ...,
+    ssl_version: int | None = ...,
+    ciphers: str | None = ...,
+    ssl_context: ssl.SSLContext | None = ...,
+    ca_cert_dir: str | None = ...,
+    key_password: str | None = ...,
+    ca_cert_data: None | str | bytes = ...,
+    tls_in_tls: Literal[False] = ...,
+) -> ssl.SSLSocket:
     ...
 
 
-@overload
+@typing.overload
 def ssl_wrap_socket(
     sock: socket.socket,
-    keyfile: Optional[str] = ...,
-    certfile: Optional[str] = ...,
-    cert_reqs: Optional[int] = ...,
-    ca_certs: Optional[str] = ...,
-    server_hostname: Optional[str] = ...,
-    ssl_version: Optional[int] = ...,
-    ciphers: Optional[str] = ...,
-    ssl_context: Optional["ssl.SSLContext"] = ...,
-    ca_cert_dir: Optional[str] = ...,
-    key_password: Optional[str] = ...,
-    ca_cert_data: Union[None, str, bytes] = ...,
+    keyfile: str | None = ...,
+    certfile: str | None = ...,
+    cert_reqs: int | None = ...,
+    ca_certs: str | None = ...,
+    server_hostname: str | None = ...,
+    ssl_version: int | None = ...,
+    ciphers: str | None = ...,
+    ssl_context: ssl.SSLContext | None = ...,
+    ca_cert_dir: str | None = ...,
+    key_password: str | None = ...,
+    ca_cert_data: None | str | bytes = ...,
     tls_in_tls: bool = ...,
-) -> Union["ssl.SSLSocket", "SSLTransportType"]:
+) -> ssl.SSLSocket | SSLTransportType:
     ...
 
 
 def ssl_wrap_socket(
     sock: socket.socket,
-    keyfile: Optional[str] = None,
-    certfile: Optional[str] = None,
-    cert_reqs: Optional[int] = None,
-    ca_certs: Optional[str] = None,
-    server_hostname: Optional[str] = None,
-    ssl_version: Optional[int] = None,
-    ciphers: Optional[str] = None,
-    ssl_context: Optional["ssl.SSLContext"] = None,
-    ca_cert_dir: Optional[str] = None,
-    key_password: Optional[str] = None,
-    ca_cert_data: Union[None, str, bytes] = None,
+    keyfile: str | None = None,
+    certfile: str | None = None,
+    cert_reqs: int | None = None,
+    ca_certs: str | None = None,
+    server_hostname: str | None = None,
+    ssl_version: int | None = None,
+    ciphers: str | None = None,
+    ssl_context: ssl.SSLContext | None = None,
+    ca_cert_dir: str | None = None,
+    key_password: str | None = None,
+    ca_cert_data: None | str | bytes = None,
     tls_in_tls: bool = False,
-) -> Union["ssl.SSLSocket", "SSLTransportType"]:
+) -> ssl.SSLSocket | SSLTransportType:
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
     the same meaning as they do when using :func:`ssl.wrap_socket`.
@@ -459,7 +460,7 @@ def ssl_wrap_socket(
     return ssl_sock
 
 
-def is_ipaddress(hostname: Union[str, bytes]) -> bool:
+def is_ipaddress(hostname: str | bytes) -> bool:
     """Detects whether the hostname given is an IPv4 or IPv6 address.
     Also detects IPv6 addresses with Zone IDs.
 
@@ -485,10 +486,10 @@ def _is_key_file_encrypted(key_file: str) -> bool:
 
 def _ssl_wrap_socket_impl(
     sock: socket.socket,
-    ssl_context: "ssl.SSLContext",
+    ssl_context: ssl.SSLContext,
     tls_in_tls: bool,
-    server_hostname: Optional[str] = None,
-) -> Union["ssl.SSLSocket", "SSLTransportType"]:
+    server_hostname: str | None = None,
+) -> ssl.SSLSocket | SSLTransportType:
     if tls_in_tls:
         if not SSLTransport:
             # Import error, ssl is not available.

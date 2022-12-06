@@ -46,8 +46,8 @@ zstd = [
   "zstandard>=0.18.0",
 ]
 secure = [
-  "pyOpenSSL>=0.14",
-  "cryptography>=1.3.4",
+  "pyOpenSSL>=17.1.0",
+  "cryptography>=1.9",
   "idna>=2.0.0",
   "certifi",
   "urllib3-secure-extra",
@@ -80,12 +80,33 @@ include = [
 [tool.pytest.ini_options]
 xfail_strict = true
 python_classes = ["Test", "*TestCase"]
+markers = ["limit_memory"]
+log_level = "DEBUG"
 filterwarnings = [
-    "error:There is no current event loop:DeprecationWarning:tornado.ioloop",
+    "error",
+    '''default:'urllib3\[secure\]' extra is deprecated and will be removed in urllib3 v2\.1\.0.*:DeprecationWarning''',
+    '''default:'urllib3\.contrib\.pyopenssl' module is deprecated and will be removed in urllib3 v2\.1\.0.*:DeprecationWarning''',
+    '''default:'urllib3\.contrib\.securetransport' module is deprecated and will be removed in urllib3 v2\.1\.0.*:DeprecationWarning''',
+    '''default:distutils Version classes are deprecated\. Use packaging\.version instead\.:DeprecationWarning''',
+    '''default:The 'pool' property is deprecated and will be removed in urllib3 v2\.1\.0\. use 'conn' instead:DeprecationWarning''',
+    '''default:'ssl_version' option is deprecated and will be removed in urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version':DeprecationWarning''',
+    '''default:.*:urllib3.exceptions.InsecureRequestWarning''',
+    '''default:No IPv6 support. Falling back to IPv4:urllib3.exceptions.HTTPWarning''',
+    '''default:No IPv6 support. skipping:urllib3.exceptions.HTTPWarning''',
+    '''default:ssl\.TLSVersion\.TLSv1 is deprecated:DeprecationWarning''',
+    '''default:ssl\.PROTOCOL_TLS is deprecated:DeprecationWarning''',
+    '''default:ssl\.PROTOCOL_TLSv1 is deprecated:DeprecationWarning''',
+    '''default:ssl\.TLSVersion\.TLSv1_1 is deprecated:DeprecationWarning''',
+    '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
+    '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
+    '''default:unclosed .*:ResourceWarning''',
+    '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
 ]
 
 [tool.isort]
 profile = "black"
+add_imports = "from __future__ import annotations"
+skip = ["setup.py"]
 
 [tool.mypy]
 mypy_path = "src"

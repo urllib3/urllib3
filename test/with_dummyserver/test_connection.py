@@ -1,5 +1,7 @@
+from __future__ import annotations
+
+import typing
 from http.client import ResponseNotReady
-from typing import Generator
 
 import pytest
 
@@ -9,7 +11,7 @@ from urllib3.response import HTTPResponse
 
 
 @pytest.fixture()
-def pool() -> Generator[HTTPConnectionPool, None, None]:
+def pool() -> typing.Generator[HTTPConnectionPool, None, None]:
     server.setup_class()
 
     with HTTPConnectionPool(server.host, server.port) as pool:

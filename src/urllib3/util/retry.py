@@ -1,19 +1,12 @@
+from __future__ import annotations
+
 import email
 import logging
 import re
 import time
+import typing
 from itertools import takewhile
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Collection,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Union,
-)
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -26,7 +19,7 @@ from ..exceptions import (
 )
 from .util import reraise
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from ..connectionpool import ConnectionPool
     from ..response import BaseHTTPResponse
 
@@ -34,12 +27,12 @@ log = logging.getLogger(__name__)
 
 
 # Data structure for representing the metadata of requests that result in a retry.
-class RequestHistory(NamedTuple):
-    method: Optional[str]
-    url: Optional[str]
-    error: Optional[Exception]
-    status: Optional[int]
-    redirect_location: Optional[str]
+class RequestHistory(typing.NamedTuple):
+    method: str | None
+    url: str | None
+    error: Exception | None
+    status: int | None
+    redirect_location: str | None
 
 
 class Retry:
@@ -195,25 +188,25 @@ class Retry:
     DEFAULT_BACKOFF_MAX = 120
 
     # Backward compatibility; assigned outside of the class.
-    DEFAULT: ClassVar["Retry"]
+    DEFAULT: typing.ClassVar[Retry]
 
     def __init__(
         self,
-        total: Optional[Union[bool, int]] = 10,
-        connect: Optional[int] = None,
-        read: Optional[int] = None,
-        redirect: Optional[Union[bool, int]] = None,
-        status: Optional[int] = None,
-        other: Optional[int] = None,
-        allowed_methods: Optional[Collection[str]] = DEFAULT_ALLOWED_METHODS,
-        status_forcelist: Optional[Collection[int]] = None,
+        total: bool | int | None = 10,
+        connect: int | None = None,
+        read: int | None = None,
+        redirect: bool | int | None = None,
+        status: int | None = None,
+        other: int | None = None,
+        allowed_methods: typing.Collection[str] | None = DEFAULT_ALLOWED_METHODS,
+        status_forcelist: typing.Collection[int] | None = None,
         backoff_factor: float = 0,
         backoff_max: float = DEFAULT_BACKOFF_MAX,
         raise_on_redirect: bool = True,
         raise_on_status: bool = True,
-        history: Optional[Tuple[RequestHistory, ...]] = None,
+        history: tuple[RequestHistory, ...] | None = None,
         respect_retry_after_header: bool = True,
-        remove_headers_on_redirect: Collection[
+        remove_headers_on_redirect: typing.Collection[
             str
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
     ) -> None:
@@ -240,7 +233,7 @@ class Retry:
             h.lower() for h in remove_headers_on_redirect
         )
 
-    def new(self, **kw: Any) -> "Retry":
+    def new(self, **kw: typing.Any) -> Retry:
         params = dict(
             total=self.total,
             connect=self.connect,
@@ -265,10 +258,10 @@ class Retry:
     @classmethod
     def from_int(
         cls,
-        retries: Optional[Union["Retry", bool, int]],
-        redirect: Optional[Union[bool, int]] = True,
-        default: Optional[Union["Retry", bool, int]] = None,
-    ) -> "Retry":
+        retries: Retry | bool | int | None,
+        redirect: bool | int | None = True,
+        default: Retry | bool | int | None = None,
+    ) -> Retry:
         """Backwards-compatibility for the old retries format."""
         if retries is None:
             retries = default if default is not None else cls.DEFAULT
@@ -315,17 +308,17 @@ class Retry:
 
         return seconds
 
-    def get_retry_after(self, response: "BaseHTTPResponse") -> Optional[float]:
+    def get_retry_after(self, response: BaseHTTPResponse) -> float | None:
         """Get the value of Retry-After in seconds."""
 
-        retry_after = response.getheader("Retry-After")
+        retry_after = response.headers.get("Retry-After")
 
         if retry_after is None:
             return None
 
         return self.parse_retry_after(retry_after)
 
-    def sleep_for_retry(self, response: "BaseHTTPResponse") -> bool:
+    def sleep_for_retry(self, response: BaseHTTPResponse) -> bool:
         retry_after = self.get_retry_after(response)
         if retry_after:
             time.sleep(retry_after)
@@ -339,7 +332,7 @@ class Retry:
             return
         time.sleep(backoff)
 
-    def sleep(self, response: Optional["BaseHTTPResponse"] = None) -> None:
+    def sleep(self, response: BaseHTTPResponse | None = None) -> None:
         """Sleep between retry attempts.
 
         This method will respect a server's ``Retry-After`` response header
@@ -420,13 +413,13 @@ class Retry:
 
     def increment(
         self,
-        method: Optional[str] = None,
-        url: Optional[str] = None,
-        response: Optional["BaseHTTPResponse"] = None,
-        error: Optional[Exception] = None,
-        _pool: Optional["ConnectionPool"] = None,
-        _stacktrace: Optional[TracebackType] = None,
-    ) -> "Retry":
+        method: str | None = None,
+        url: str | None = None,
+        response: BaseHTTPResponse | None = None,
+        error: Exception | None = None,
+        _pool: ConnectionPool | None = None,
+        _stacktrace: TracebackType | None = None,
+    ) -> Retry:
         """Return a new Retry object with incremented retry counters.
 
         :param response: A response object, or None, if the server did not

@@ -1,18 +1,21 @@
+from __future__ import annotations
+
 import contextlib
 import http.client as httplib
 import socket
 import ssl
 import sys
+import typing
 import zlib
 from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
 from io import BufferedReader, BytesIO, TextIOWrapper
 from test import onlyBrotli, onlyZstd
-from typing import Any, Generator, List, Optional
 from unittest import mock
 
 import pytest
 
+from urllib3 import HTTPHeaderDict
 from urllib3.exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
@@ -102,7 +105,7 @@ nP4HF2uWHA=="""
 
 
 @pytest.fixture
-def sock() -> Generator[socket.socket, None, None]:
+def sock() -> typing.Generator[socket.socket, None, None]:
     s = socket.socket()
     yield s
     s.close()
@@ -112,12 +115,20 @@ class TestLegacyResponse:
     def test_getheaders(self) -> None:
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.getheaders() == [("host", "example.com")]
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"HTTPResponse.getheaders\(\) is deprecated",
+        ):
+            assert r.getheaders() == HTTPHeaderDict(headers)
 
     def test_getheader(self) -> None:
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.getheader("host") == "example.com"
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"HTTPResponse.getheader\(\) is deprecated",
+        ):
+            assert r.getheader("host") == "example.com"
 
 
 class TestResponse:
@@ -556,6 +567,46 @@ class TestResponse:
         with pytest.raises(ValueError, match="I/O operation on closed file.?"):
             next(reader)
 
+    def test_read_with_illegal_mix_decode_toggle(self) -> None:
+        data = zlib.compress(b"foo")
+
+        fp = BytesIO(data)
+
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+
+        assert resp.read(1) == b"f"
+
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r"Calling read\(decode_content=False\) is not supported after "
+                r"read\(decode_content=True\) was called"
+            ),
+        ):
+            resp.read(1, decode_content=False)
+
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r"Calling read\(decode_content=False\) is not supported after "
+                r"read\(decode_content=True\) was called"
+            ),
+        ):
+            resp.read(decode_content=False)
+
+    def test_read_with_mix_decode_toggle(self) -> None:
+        data = zlib.compress(b"foo")
+
+        fp = BytesIO(data)
+
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+        assert resp.read(2, decode_content=False) is not None
+        assert resp.read(1, decode_content=True) == b"f"
+
     def test_streaming(self) -> None:
         fp = BytesIO(b"foo")
         resp = HTTPResponse(fp, preload_content=False)
@@ -833,7 +884,7 @@ class TestResponse:
         # object.
         class MockHTTPRequest:
             def __init__(self) -> None:
-                self.fp: Optional[BytesIO] = None
+                self.fp: BytesIO | None = None
 
             def read(self, amt: int) -> bytes:
                 assert self.fp is not None
@@ -872,7 +923,7 @@ class TestResponse:
     def test_mock_gzipped_transfer_encoding_chunked_decoded(self) -> None:
         """Show that we can decode the gzipped and chunked body."""
 
-        def stream() -> Generator[bytes, None, None]:
+        def stream() -> typing.Generator[bytes, None, None]:
             # Set up a generator to chunk the gzipped body
             compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
             data = compress.compress(b"foobar")
@@ -1094,7 +1145,7 @@ class TestResponse:
             (b"Hello\nworld\n\n\n!", [b"Hello\n", b"world\n", b"\n", b"\n", b"!"]),
         ],
     )
-    def test__iter__(self, payload: bytes, expected_stream: List[bytes]) -> None:
+    def test__iter__(self, payload: bytes, expected_stream: list[bytes]) -> None:
         actual_stream = []
         for chunk in HTTPResponse(BytesIO(payload), preload_content=False):
             actual_stream.append(chunk)
@@ -1102,7 +1153,7 @@ class TestResponse:
         assert actual_stream == expected_stream
 
     def test__iter__decode_content(self) -> None:
-        def stream() -> Generator[bytes, None, None]:
+        def stream() -> typing.Generator[bytes, None, None]:
             # Set up a generator to chunk the gzipped body
             compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
             data = compress.compress(b"foo\nbar")
@@ -1128,7 +1179,7 @@ class TestResponse:
         )
 
         @contextlib.contextmanager
-        def make_bad_mac_fp() -> Generator[BytesIO, None, None]:
+        def make_bad_mac_fp() -> typing.Generator[BytesIO, None, None]:
             fp = BytesIO(b"")
             with mock.patch.object(fp, "read") as fp_read:
                 # mac/decryption error
@@ -1148,7 +1199,7 @@ class TestResponse:
 
 
 class MockChunkedEncodingResponse:
-    def __init__(self, content: List[bytes]) -> None:
+    def __init__(self, content: list[bytes]) -> None:
         """
         content: collection of str, each str is a chunk in response
         """
@@ -1251,5 +1302,5 @@ class MockChunkedEncodingWithExtensions(MockChunkedEncodingResponse):
 
 class MockSock:
     @classmethod
-    def makefile(cls, *args: Any, **kwargs: Any) -> None:
+    def makefile(cls, *args: typing.Any, **kwargs: typing.Any) -> None:
         return

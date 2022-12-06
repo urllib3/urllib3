@@ -2,11 +2,13 @@
 Python HTTP library with thread-safe connection pooling, file post support, user friendly, and more
 """
 
+from __future__ import annotations
+
 # Set default logging handler to avoid "No handler found" warnings.
 import logging
+import typing
 import warnings
 from logging import NullHandler
-from typing import Any, Mapping, Optional, TextIO, Type, Union
 
 from . import exceptions
 from ._base_connection import _TYPE_BODY
@@ -51,7 +53,7 @@ except ModuleNotFoundError:
 else:
     warnings.warn(
         "'urllib3[secure]' extra is deprecated and will be removed "
-        "in a future release of urllib3 2.x. Read more in this issue: "
+        "in urllib3 v2.1.0. Read more in this issue: "
         "https://github.com/urllib3/urllib3/issues/2680",
         category=DeprecationWarning,
         stacklevel=2,
@@ -82,7 +84,9 @@ __all__ = (
 logging.getLogger(__name__).addHandler(NullHandler())
 
 
-def add_stderr_logger(level: int = logging.DEBUG) -> "logging.StreamHandler[TextIO]":
+def add_stderr_logger(
+    level: int = logging.DEBUG,
+) -> logging.StreamHandler[typing.TextIO]:
     """
     Helper for quickly adding a StreamHandler to the logger. Useful for
     debugging.
@@ -113,7 +117,7 @@ warnings.simplefilter("always", exceptions.SecurityWarning, append=True)
 warnings.simplefilter("default", exceptions.InsecurePlatformWarning, append=True)
 
 
-def disable_warnings(category: Type[Warning] = exceptions.HTTPWarning) -> None:
+def disable_warnings(category: type[Warning] = exceptions.HTTPWarning) -> None:
     """
     Helper for quickly disabling all urllib3 warnings.
     """
@@ -127,15 +131,15 @@ def request(
     method: str,
     url: str,
     *,
-    body: Optional[_TYPE_BODY] = None,
-    fields: Optional[_TYPE_FIELDS] = None,
-    headers: Optional[Mapping[str, str]] = None,
-    preload_content: Optional[bool] = True,
-    decode_content: Optional[bool] = True,
-    redirect: Optional[bool] = True,
-    retries: Optional[Union[Retry, bool, int]] = None,
-    timeout: Optional[Union[Timeout, float, int]] = 3,
-    json: Optional[Any] = None,
+    body: _TYPE_BODY | None = None,
+    fields: _TYPE_FIELDS | None = None,
+    headers: typing.Mapping[str, str] | None = None,
+    preload_content: bool | None = True,
+    decode_content: bool | None = True,
+    redirect: bool | None = True,
+    retries: Retry | bool | int | None = None,
+    timeout: Timeout | float | int | None = 3,
+    json: typing.Any | None = None,
 ) -> BaseHTTPResponse:
     """
     A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.

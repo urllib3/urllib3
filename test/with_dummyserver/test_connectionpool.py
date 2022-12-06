@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 import io
-import logging
 import socket
-import sys
 import time
+import typing
 import warnings
 from test import LONG_TIMEOUT, SHORT_TIMEOUT
 from threading import Event
-from typing import Dict, List, NoReturn, Optional, Sequence, Tuple, Type, Union
 from unittest import mock
 from urllib.parse import urlencode
 
@@ -36,10 +36,6 @@ from .. import INVALID_SOURCE_ADDRESSES, TARPIT_HOST, VALID_SOURCE_ADDRESSES
 from ..port_helpers import find_unused_port
 
 pytestmark = pytest.mark.flaky
-
-log = logging.getLogger("urllib3.connectionpool")
-log.setLevel(logging.NOTSET)
-log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 def wait_for_socket(ready_event: Event) -> None:
@@ -232,7 +228,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_upload(self) -> None:
         data = "I'm in ur multipart form-data, hazing a cheezburgr"
-        fields: Dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
+        fields: dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
             "upload_param": "filefield",
             "upload_filename": "lolcat.txt",
             "filefield": ("lolcat.txt", data),
@@ -271,7 +267,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         data = "\xe2\x99\xa5".encode()
         size = len(data)
 
-        fields: Dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
+        fields: dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
             "upload_param": fieldname,
             "upload_filename": filename,
             fieldname: (filename, data),
@@ -303,7 +299,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             ((socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),),
         ],
     )
-    def test_socket_options(self, socket_options: Tuple[int, int, int]) -> None:
+    def test_socket_options(self, socket_options: tuple[int, int, int]) -> None:
         """Test that connections accept socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries to
         # connect to the host provided so we need a dummyserver to be running.
@@ -324,7 +320,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @pytest.mark.parametrize("socket_options", [None, []])
     def test_disable_default_socket_options(
-        self, socket_options: Optional[List[int]]
+        self, socket_options: list[int] | None
     ) -> None:
         """Test that passing None or empty list disables all socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries
@@ -399,7 +395,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @socket_timeout_reuse_testdata
     def test_socket_timeout_updated_on_reuse_constructor(
-        self, timeout: _TYPE_TIMEOUT, expect_settimeout_calls: Sequence[Optional[float]]
+        self,
+        timeout: _TYPE_TIMEOUT,
+        expect_settimeout_calls: typing.Sequence[float | None],
     ) -> None:
         with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
             # Make a request to create a new connection.
@@ -420,7 +418,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @socket_timeout_reuse_testdata
     def test_socket_timeout_updated_on_reuse_parameter(
-        self, timeout: _TYPE_TIMEOUT, expect_settimeout_calls: Sequence[Optional[float]]
+        self,
+        timeout: _TYPE_TIMEOUT,
+        expect_settimeout_calls: typing.Sequence[float | None],
     ) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             # Make a request to create a new connection.
@@ -778,7 +778,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         "invalid_source_address, is_ipv6", INVALID_SOURCE_ADDRESSES
     )
     def test_source_address_error(
-        self, invalid_source_address: Tuple[str, int], is_ipv6: bool
+        self, invalid_source_address: tuple[str, int], is_ipv6: bool
     ) -> None:
         with HTTPConnectionPool(
             self.host, self.port, source_address=invalid_source_address, retries=False
@@ -920,7 +920,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     )
     @pytest.mark.parametrize("chunked", [True, False])
     def test_user_agent_header_not_sent_twice(
-        self, headers: Optional[Dict[str, str]], chunked: bool
+        self, headers: dict[str, str] | None, chunked: bool
     ) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/headers", headers=headers, chunked=chunked)
@@ -976,9 +976,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     @pytest.mark.parametrize("chunked", [True, False])
     def test_skip_header(
         self,
-        accept_encoding: Optional[str],
-        host: Optional[str],
-        user_agent: Optional[str],
+        accept_encoding: str | None,
+        host: str | None,
+        user_agent: str | None,
         chunked: bool,
     ) -> None:
         headers = {}
@@ -1031,7 +1031,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self,
         chunked: bool,
         pool_request: bool,
-        header_type: Type[Union[Dict[str, str], HTTPHeaderDict]],
+        header_type: type[dict[str, str] | HTTPHeaderDict],
     ) -> None:
         # Test that the .request*() methods of ConnectionPool and HTTPConnection
         # don't modify the given 'headers' structure, instead they should
@@ -1069,7 +1069,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             with pytest.warns(DeprecationWarning) as w:
                 conn.request_chunked("GET", "/headers")  # type: ignore[attr-defined]
             assert len(w) == 1 and str(w[0].message) == (
-                "HTTPConnection.request_chunked() is deprecated and will be removed in a future version. "
+                "HTTPConnection.request_chunked() is deprecated and will be removed in urllib3 v2.1.0. "
                 "Instead use HTTPConnection.request(..., chunked=True)."
             )
 
@@ -1403,7 +1403,7 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
         """Abort request if failed to get a position from tell()"""
 
         class BadTellObject(io.BytesIO):
-            def tell(self) -> NoReturn:
+            def tell(self) -> typing.NoReturn:
                 raise OSError
 
         body = BadTellObject(b"the data")

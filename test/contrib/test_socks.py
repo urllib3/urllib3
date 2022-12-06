@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import socket
 import threading
+import typing
 from socket import getaddrinfo as real_getaddrinfo
 from socket import timeout as SocketTimeout
 from test import SHORT_TIMEOUT
-from typing import Generator, List, Optional, Tuple, Union
 from unittest.mock import Mock, patch
 
 import pytest
@@ -73,7 +75,7 @@ def _read_until(sock: socket.socket, char: bytes) -> bytes:
     return b"".join(chunks)
 
 
-def _address_from_socket(sock: socket.socket) -> Union[bytes, str]:
+def _address_from_socket(sock: socket.socket) -> bytes | str:
     """
     Returns the address from the SOCKS socket
     """
@@ -106,13 +108,13 @@ def _set_up_fake_getaddrinfo(monkeypatch: pytest.MonkeyPatch) -> None:
     # it only sees a single address, which effectively disables retries.
     def fake_getaddrinfo(
         addr: str, port: int, family: int, socket_type: int
-    ) -> List[
-        Tuple[
+    ) -> list[
+        tuple[
             socket.AddressFamily,
             socket.SocketKind,
             int,
             str,
-            Union[Tuple[str, int], Tuple[str, int, int, int]],
+            tuple[str, int] | tuple[str, int, int, int],
         ]
     ]:
         gai_list = real_getaddrinfo(addr, port, family, socket_type)
@@ -125,9 +127,9 @@ def _set_up_fake_getaddrinfo(monkeypatch: pytest.MonkeyPatch) -> None:
 def handle_socks5_negotiation(
     sock: socket.socket,
     negotiate: bool,
-    username: Optional[bytes] = None,
-    password: Optional[bytes] = None,
-) -> Generator[Tuple[Union[bytes, str], int], bool, None]:
+    username: bytes | None = None,
+    password: bytes | None = None,
+) -> typing.Generator[tuple[bytes | str, int], bool, None]:
     """
     Handle the SOCKS5 handshake.
 
@@ -190,8 +192,8 @@ def handle_socks5_negotiation(
 
 
 def handle_socks4_negotiation(
-    sock: socket.socket, username: Optional[bytes] = None
-) -> Generator[Tuple[Union[bytes, str], int], bool, None]:
+    sock: socket.socket, username: bytes | None = None
+) -> typing.Generator[tuple[bytes | str, int], bool, None]:
     """
     Handle the SOCKS4 handshake.
 
@@ -205,7 +207,7 @@ def handle_socks4_negotiation(
     addr_raw = _read_exactly(sock, 4)
     provided_username = _read_until(sock, b"\x00")[:-1]  # Strip trailing null.
 
-    addr: Union[bytes, str]
+    addr: bytes | str
     if addr_raw == b"\x00\x00\x00\x01":
         # Magic string: means DNS name.
         addr = _read_until(sock, b"\x00")[:-1]  # Strip trailing null.
@@ -714,7 +716,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             sock = listener.accept()[0]
 
             handler = handle_socks4_negotiation(sock, username=b"user")
-            next(handler)
+            next(handler, None)
 
         self._start_server(request_handler)
         proxy_url = f"socks4a://{self.host}:{self.port}"

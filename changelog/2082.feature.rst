@@ -1,1 +1,0 @@
-Stopped configuring default ciphers for OpenSSL 1.1.1+ and SecureTransport as their own defaults are already secure.

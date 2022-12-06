@@ -32,6 +32,8 @@ license and by oscrypto's:
     DEALINGS IN THE SOFTWARE.
 """
 
+from __future__ import annotations
+
 import platform
 from ctypes import (
     CDLL,
@@ -48,7 +50,6 @@ from ctypes import (
     c_void_p,
 )
 from ctypes.util import find_library
-from typing import Optional
 
 if platform.system() != "Darwin":
     raise ImportError("Only macOS is supported")
@@ -66,7 +67,7 @@ def load_cdll(name: str, macos10_16_path: str) -> CDLL:
     try:
         # Big Sur is technically 11 but we use 10.16 due to the Big Sur
         # beta being labeled as 10.16.
-        path: Optional[str]
+        path: str | None
         if version_info >= (10, 16):
             path = macos10_16_path
         else:

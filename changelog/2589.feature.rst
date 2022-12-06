@@ -1,2 +1,0 @@
-Changed the error raised when connecting via HTTPS when the ``ssl`` module isn't
-available from ``SSLError`` to ``ImportError``.

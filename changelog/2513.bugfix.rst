@@ -1,1 +1,0 @@
-Fixed reading 2 or more GiB of data at a time using ``urllib3.response.HTTPResponse.read``.

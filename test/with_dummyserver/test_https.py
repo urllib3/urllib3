@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import datetime
-import logging
 import os.path
 import shutil
 import ssl
@@ -17,7 +18,6 @@ from test import (
     resolvesLocalhostFQDN,
 )
 from test.conftest import ServerConfig
-from typing import List, Optional
 from unittest import mock
 
 import pytest
@@ -51,11 +51,6 @@ from .. import has_alpn
 pytestmark = pytest.mark.flaky
 
 
-log = logging.getLogger("urllib3.connectionpool")
-log.setLevel(logging.NOTSET)
-log.addHandler(logging.StreamHandler(sys.stdout))
-
-
 TLSv1_CERTS = DEFAULT_CERTS.copy()
 TLSv1_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1", None)
 
@@ -77,12 +72,12 @@ CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
 
 
 class TestHTTPS(HTTPSDummyServerTestCase):
-    tls_protocol_name: Optional[str] = None
+    tls_protocol_name: str | None = None
 
     def tls_protocol_not_default(self) -> bool:
         return self.tls_protocol_name in {"TLSv1", "TLSv1.1"}
 
-    def tls_version(self) -> "ssl.TLSVersion":
+    def tls_version(self) -> ssl.TLSVersion:
         if self.tls_protocol_name is None:
             return pytest.skip("Skipping base test class")
         try:
@@ -243,7 +238,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 r = https_pool.request("GET", "/")
                 assert r.status == 200
 
-            assert w == []
+            assert [str(wm) for wm in w] == []
 
     def test_verified_with_context(self) -> None:
         ctx = util.ssl_.create_urllib3_context(
@@ -295,7 +290,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 r = https_pool.request("GET", "/")
                 assert r.status == 200
 
-            assert w == []
+            assert [str(wm) for wm in w] == []
 
     def test_invalid_common_name(self) -> None:
         with HTTPSConnectionPool(
@@ -735,7 +730,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def _request_without_resource_warnings(
         self, method: str, url: str
-    ) -> List[warnings.WarningMessage]:
+    ) -> list[warnings.WarningMessage]:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             with HTTPSConnectionPool(
@@ -767,7 +762,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             conn.set_cert()
         assert conn.cert_reqs == ssl.CERT_REQUIRED
         assert len(w) == 1 and str(w[0].message) == (
-            "HTTPSConnection.set_cert() is deprecated and will be removed in a future version. "
+            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v2.1.0. "
             "Instead provide the parameters to the HTTPSConnection constructor."
         )
 
@@ -787,7 +782,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             conn.ssl_context is not None and conn.ssl_context.verify_mode == verify_mode
         )
         assert len(w) == 1 and str(w[0].message) == (
-            "HTTPSConnection.set_cert() is deprecated and will be removed in a future version. "
+            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v2.1.0. "
             "Instead provide the parameters to the HTTPSConnection constructor."
         )
 
@@ -830,7 +825,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             str(x.message)
             == (
                 "'ssl_version' option is deprecated and will be removed in "
-                "a future release of urllib3 2.x. Instead use 'ssl_minimum_version'"
+                "urllib3 v2.1.0. Instead use 'ssl_minimum_version'"
             )
             for x in w
         )
@@ -839,7 +834,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         "ssl_version", [None, ssl.PROTOCOL_TLS, ssl.PROTOCOL_TLS_CLIENT]
     )
     def test_ssl_version_with_protocol_tls_or_client_not_deprecated(
-        self, ssl_version: Optional[int]
+        self, ssl_version: int | None
     ) -> None:
         if self.tls_protocol_name is None:
             pytest.skip("Skipping base test class")
@@ -858,7 +853,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
-        assert w == []
+        assert [str(wm) for wm in w] == []
 
     def test_no_tls_version_deprecation_with_ssl_context(self) -> None:
         if self.tls_protocol_name is None:
@@ -879,7 +874,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
-        assert w == []
+        assert [str(wm) for wm in w] == []
 
     def test_tls_version_maximum_and_minimum(self) -> None:
         if self.tls_protocol_name is None:
@@ -937,7 +932,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @pytest.mark.parametrize("sslkeylogfile", [None, ""])
     def test_sslkeylogfile_empty(
-        self, monkeypatch: pytest.MonkeyPatch, sslkeylogfile: Optional[str]
+        self, monkeypatch: pytest.MonkeyPatch, sslkeylogfile: str | None
     ) -> None:
         # Assert that an HTTPS connection doesn't error out when given
         # no SSLKEYLOGFILE or an empty value (ie 'SSLKEYLOGFILE=')
@@ -976,7 +971,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         # either the `ssl.TLSVersion.MAXIMUM_SUPPORTED` magic constant
         # or one of the exact versions if a system defines it.
         # https://github.com/urllib3/urllib3/issues/2477#issuecomment-1151452150
-        assert ctx.maximum_version == ssl.SSLContext().maximum_version
+        assert (
+            ctx.maximum_version
+            == ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT).maximum_version
+        )
 
     def test_ssl_context_ssl_version_uses_ssl_min_max_versions(self) -> None:
         ctx = urllib3.util.ssl_.create_urllib3_context(ssl_version=self.ssl_version())
@@ -1070,7 +1068,7 @@ class TestHTTPS_Hostname:
         except AttributeError:
             pytest.skip("Couldn't set 'SSLContext.hostname_checks_common_name'")
 
-        err: Optional[MaxRetryError]
+        err: MaxRetryError | None
         try:
             with HTTPSConnectionPool(
                 no_san_server.host,

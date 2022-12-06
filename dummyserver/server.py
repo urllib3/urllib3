@@ -15,10 +15,10 @@ import socket
 import ssl
 import sys
 import threading
+import typing
 import warnings
 from collections.abc import Coroutine, Generator
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 import tornado.httpserver
 import tornado.ioloop
@@ -31,7 +31,7 @@ from cryptography.hazmat.primitives import serialization
 from urllib3.exceptions import HTTPWarning
 from urllib3.util import ALPN_PROTOCOLS, resolve_cert_reqs, resolve_ssl_version
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from typing_extensions import ParamSpec
 
     P = ParamSpec("P")
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 CERTS_PATH = os.path.join(os.path.dirname(__file__), "certs")
-DEFAULT_CERTS: dict[str, Any] = {
+DEFAULT_CERTS: dict[str, typing.Any] = {
     "certfile": os.path.join(CERTS_PATH, "server.crt"),
     "keyfile": os.path.join(CERTS_PATH, "server.key"),
     "cert_reqs": ssl.CERT_OPTIONAL,
@@ -48,10 +48,6 @@ DEFAULT_CERTS: dict[str, Any] = {
 }
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
-DEFAULT_SERVER_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-DEFAULT_SERVER_CONTEXT.load_cert_chain(
-    DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"]
-)
 
 
 def _resolves_to_ipv6(host: str) -> bool:
@@ -104,7 +100,6 @@ HAS_IPV6 = _has_ipv6("::1")
 
 class NoIPv6Warning(HTTPWarning):
     "IPv6 is not available"
-    pass
 
 
 class SocketServerThread(threading.Thread):
@@ -119,7 +114,7 @@ class SocketServerThread(threading.Thread):
 
     def __init__(
         self,
-        socket_handler: Callable[[socket.socket], None],
+        socket_handler: typing.Callable[[socket.socket], None],
         host: str = "localhost",
         ready_event: threading.Event | None = None,
     ) -> None:
@@ -189,7 +184,7 @@ def ssl_options_to_context(  # type: ignore[no-untyped-def]
 
 def run_tornado_app(
     app: tornado.web.Application,
-    certs: dict[str, Any] | None,
+    certs: dict[str, typing.Any] | None,
     scheme: str,
     host: str,
 ) -> tuple[tornado.httpserver.HTTPServer, int]:
@@ -227,11 +222,13 @@ def encrypt_key_pem(private_key_pem: trustme.Blob, password: bytes) -> trustme.B
     return trustme.Blob(encrypted_key)
 
 
-R = TypeVar("R")
+R = typing.TypeVar("R")
 
 
 def _run_and_close_tornado(
-    async_fn: Callable[P, Coroutine[Any, Any, R]], *args: P.args, **kwargs: P.kwargs
+    async_fn: typing.Callable[P, Coroutine[typing.Any, typing.Any, R]],
+    *args: P.args,
+    **kwargs: P.kwargs,
 ) -> R:
     tornado_loop = None
 

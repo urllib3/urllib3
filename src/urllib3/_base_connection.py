@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 from .util.connection import _TYPE_SOCKET_OPTIONS
@@ -8,10 +10,10 @@ _TYPE_BODY = typing.Union[bytes, typing.IO[typing.Any], typing.Iterable[bytes], 
 
 
 class ProxyConfig(typing.NamedTuple):
-    ssl_context: typing.Optional["ssl.SSLContext"]
+    ssl_context: ssl.SSLContext | None
     use_forwarding_for_https: bool
-    assert_hostname: typing.Union[None, str, "Literal[False]"]
-    assert_fingerprint: typing.Optional[str]
+    assert_hostname: None | str | Literal[False]
+    assert_fingerprint: str | None
 
 
 class _ResponseOptions(typing.NamedTuple):
@@ -37,38 +39,38 @@ if typing.TYPE_CHECKING:
 
         host: str
         port: int
-        timeout: typing.Optional[
+        timeout: None | (
             float
-        ]  # Instance doesn't store _DEFAULT_TIMEOUT, must be resolved.
+        )  # Instance doesn't store _DEFAULT_TIMEOUT, must be resolved.
         blocksize: int
-        source_address: typing.Optional[typing.Tuple[str, int]]
-        socket_options: typing.Optional[_TYPE_SOCKET_OPTIONS]
+        source_address: tuple[str, int] | None
+        socket_options: _TYPE_SOCKET_OPTIONS | None
 
-        proxy: typing.Optional[Url]
-        proxy_config: typing.Optional[ProxyConfig]
+        proxy: Url | None
+        proxy_config: ProxyConfig | None
 
         is_verified: bool
-        proxy_is_verified: typing.Optional[bool]
+        proxy_is_verified: bool | None
 
         def __init__(
             self,
             host: str,
-            port: typing.Optional[int] = None,
+            port: int | None = None,
             *,
             timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-            source_address: typing.Optional[typing.Tuple[str, int]] = None,
+            source_address: tuple[str, int] | None = None,
             blocksize: int = 8192,
-            socket_options: typing.Optional[_TYPE_SOCKET_OPTIONS] = ...,
-            proxy: typing.Optional[Url] = None,
-            proxy_config: typing.Optional[ProxyConfig] = None,
+            socket_options: _TYPE_SOCKET_OPTIONS | None = ...,
+            proxy: Url | None = None,
+            proxy_config: ProxyConfig | None = None,
         ) -> None:
             ...
 
         def set_tunnel(
             self,
             host: str,
-            port: typing.Optional[int] = None,
-            headers: typing.Optional[typing.Mapping[str, str]] = None,
+            port: int | None = None,
+            headers: typing.Mapping[str, str] | None = None,
             scheme: str = "http",
         ) -> None:
             ...
@@ -80,8 +82,8 @@ if typing.TYPE_CHECKING:
             self,
             method: str,
             url: str,
-            body: typing.Optional[_TYPE_BODY] = None,
-            headers: typing.Optional[typing.Mapping[str, str]] = None,
+            body: _TYPE_BODY | None = None,
+            headers: typing.Mapping[str, str] | None = None,
             # We know *at least* botocore is depending on the order of the
             # first 3 parameters so to be safe we only mark the later ones
             # as keyword-only to ensure we have space to extend.
@@ -93,7 +95,7 @@ if typing.TYPE_CHECKING:
         ) -> None:
             ...
 
-        def getresponse(self) -> "BaseHTTPResponse":
+        def getresponse(self) -> BaseHTTPResponse:
             ...
 
         def close(self) -> None:
@@ -122,50 +124,50 @@ if typing.TYPE_CHECKING:
         default_socket_options: typing.ClassVar[_TYPE_SOCKET_OPTIONS]
 
         # Certificate verification methods
-        cert_reqs: typing.Optional[typing.Union[int, str]]
-        assert_hostname: typing.Union[None, str, "Literal[False]"]
-        assert_fingerprint: typing.Optional[str]
-        ssl_context: typing.Optional[ssl.SSLContext]
+        cert_reqs: int | str | None
+        assert_hostname: None | str | Literal[False]
+        assert_fingerprint: str | None
+        ssl_context: ssl.SSLContext | None
 
         # Trusted CAs
-        ca_certs: typing.Optional[str]
-        ca_cert_dir: typing.Optional[str]
-        ca_cert_data: typing.Union[None, str, bytes]
+        ca_certs: str | None
+        ca_cert_dir: str | None
+        ca_cert_data: None | str | bytes
 
         # TLS version
-        ssl_minimum_version: typing.Optional[int]
-        ssl_maximum_version: typing.Optional[int]
-        ssl_version: typing.Optional[typing.Union[int, str]]  # Deprecated
+        ssl_minimum_version: int | None
+        ssl_maximum_version: int | None
+        ssl_version: int | str | None  # Deprecated
 
         # Client certificates
-        cert_file: typing.Optional[str]
-        key_file: typing.Optional[str]
-        key_password: typing.Optional[str]
+        cert_file: str | None
+        key_file: str | None
+        key_password: str | None
 
         def __init__(
             self,
             host: str,
-            port: typing.Optional[int] = None,
+            port: int | None = None,
             *,
             timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-            source_address: typing.Optional[typing.Tuple[str, int]] = None,
+            source_address: tuple[str, int] | None = None,
             blocksize: int = 8192,
-            socket_options: typing.Optional[_TYPE_SOCKET_OPTIONS] = ...,
-            proxy: typing.Optional[Url] = None,
-            proxy_config: typing.Optional[ProxyConfig] = None,
-            cert_reqs: typing.Optional[typing.Union[int, str]] = None,
-            assert_hostname: typing.Union[None, str, "Literal[False]"] = None,
-            assert_fingerprint: typing.Optional[str] = None,
-            server_hostname: typing.Optional[str] = None,
-            ssl_context: typing.Optional["ssl.SSLContext"] = None,
-            ca_certs: typing.Optional[str] = None,
-            ca_cert_dir: typing.Optional[str] = None,
-            ca_cert_data: typing.Union[None, str, bytes] = None,
-            ssl_minimum_version: typing.Optional[int] = None,
-            ssl_maximum_version: typing.Optional[int] = None,
-            ssl_version: typing.Optional[typing.Union[int, str]] = None,  # Deprecated
-            cert_file: typing.Optional[str] = None,
-            key_file: typing.Optional[str] = None,
-            key_password: typing.Optional[str] = None,
+            socket_options: _TYPE_SOCKET_OPTIONS | None = ...,
+            proxy: Url | None = None,
+            proxy_config: ProxyConfig | None = None,
+            cert_reqs: int | str | None = None,
+            assert_hostname: None | str | Literal[False] = None,
+            assert_fingerprint: str | None = None,
+            server_hostname: str | None = None,
+            ssl_context: ssl.SSLContext | None = None,
+            ca_certs: str | None = None,
+            ca_cert_dir: str | None = None,
+            ca_cert_data: None | str | bytes = None,
+            ssl_minimum_version: int | None = None,
+            ssl_maximum_version: int | None = None,
+            ssl_version: int | str | None = None,  # Deprecated
+            cert_file: str | None = None,
+            key_file: str | None = None,
+            key_password: str | None = None,
         ) -> None:
             ...

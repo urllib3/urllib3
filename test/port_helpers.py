@@ -1,6 +1,8 @@
 # These helpers are copied from test/support/socket_helper.py in the Python 3.9 standard
 # library test suite.
 
+from __future__ import annotations
+
 import socket
 
 # Don't use "localhost", since resolving it uses the DNS under recent

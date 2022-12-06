@@ -1,14 +1,16 @@
+from __future__ import annotations
+
 import collections
 import contextlib
 import gzip
 import json
 import logging
 import sys
+import typing
 import zlib
 from datetime import datetime, timedelta
 from http.client import responses
 from io import BytesIO
-from typing import Any, Dict, NoReturn, Optional, Sequence, Tuple, Union
 from urllib.parse import urlsplit
 
 from tornado import httputil
@@ -22,10 +24,10 @@ log = logging.getLogger(__name__)
 class Response:
     def __init__(
         self,
-        body: Union[str, bytes, Sequence[Union[str, bytes]]] = "",
+        body: str | bytes | typing.Sequence[str | bytes] = "",
         status: str = "200 OK",
-        headers: Optional[Sequence[Tuple[str, Union[str, bytes]]]] = None,
-        json: Optional[Any] = None,
+        headers: typing.Sequence[tuple[str, str | bytes]] | None = None,
+        json: typing.Any | None = None,
     ) -> None:
         self.body = body
         self.status = status
@@ -54,10 +56,10 @@ class Response:
                 request_handler.flush()
 
 
-RETRY_TEST_NAMES: Dict[str, int] = collections.defaultdict(int)
+RETRY_TEST_NAMES: dict[str, int] = collections.defaultdict(int)
 
 
-def request_params(request: httputil.HTTPServerRequest) -> Dict[str, bytes]:
+def request_params(request: httputil.HTTPServerRequest) -> dict[str, bytes]:
     params = {}
     for k, v in request.arguments.items():
         params[k] = next(iter(v))
@@ -350,5 +352,5 @@ class TestingApp(RequestHandler):
         headers = [("Location", target), ("Retry-After", retry_after)]
         return Response(status="303 See Other", headers=headers)
 
-    def shutdown(self, request: httputil.HTTPServerRequest) -> NoReturn:
+    def shutdown(self, request: httputil.HTTPServerRequest) -> typing.NoReturn:
         sys.exit()

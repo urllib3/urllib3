@@ -1,9 +1,0 @@
-Added ``ssl_minimum_version`` and ``ssl_maximum_version`` options which set
-``SSLContext.minimum_version`` and ``SSLContext.maximum_version``.
-
-Changed ``ssl_version`` to instead set the corresponding ``SSLContext.minimum_version``
-and ``SSLContext.maximum_version`` values.  Regardless of ``ssl_version`` passed
-``SSLContext`` objects are now constructed using ``ssl.PROTOCOL_TLS_CLIENT``.
-
-Deprecated ``ssl_version`` option in favor of ``ssl_minimum_version``. ``ssl_version``
-will be removed in a future 2.x release of urllib3.

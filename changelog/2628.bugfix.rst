@@ -1,1 +1,0 @@
-Wrap OpenSSL.SSL.Error with ssl.SSLError in PyOpenSSLContext.load_cert_chain.

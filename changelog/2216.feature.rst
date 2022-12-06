@@ -1,1 +1,0 @@
-Added ``HTTPHeaderDict`` to the top-level ``urllib3`` namespace.

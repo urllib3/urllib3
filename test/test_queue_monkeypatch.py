@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import queue
 from unittest import mock
 
@@ -11,8 +13,6 @@ class BadError(Exception):
     """
     This should not be raised.
     """
-
-    pass
 
 
 class TestMonkeypatchResistance:
