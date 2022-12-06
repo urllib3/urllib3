@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import socket
+import sys
 import warnings
 from socket import error as SocketError
 from socket import timeout as SocketTimeout
@@ -169,6 +170,9 @@ class HTTPConnection(_HTTPConnection, object):
 
         if self.socket_options:
             extra_kw["socket_options"] = self.socket_options
+
+        if hasattr(sys, "audit"):
+            sys.audit("http.client.connect", self, self.host, self.port)
 
         try:
             conn = connection.create_connection(
