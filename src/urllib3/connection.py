@@ -198,7 +198,9 @@ class HTTPConnection(_HTTPConnection):
         :return: New socket connection.
         """
         try:
-            sys.audit("http.client.connect", self, self.host, self.port)
+            # Checking if `audit` attribute exist for sys lib, as it was added in python 3.8 and onwards
+            if hasattr(sys, "audit"):
+                sys.audit("http.client.connect", self, self.host, self.port)
             sock = connection.create_connection(
                 (self._dns_host, self.port),
                 self.timeout,
