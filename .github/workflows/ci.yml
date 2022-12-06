@@ -94,7 +94,7 @@ jobs:
       # versions because it sticks to alpha/beta releases.
       - if: ${{ endsWith(matrix.python-version, '-dev') && startsWith(matrix.os, 'ubuntu') }}
         name: "Setup Python ${{ matrix.python-version }}"
-        uses: deadsnakes/action@7ab8819e223c70d2bdedd692dfcea75824e0a617
+        uses: deadsnakes/action@e3117c2981fd8afe4af79f3e1be80066c82b70f5
         with:
           python-version: ${{ matrix.python-version }}
 
