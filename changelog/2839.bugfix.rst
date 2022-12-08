@@ -1,0 +1,1 @@
+Fix logging error when using ``add_stderr_logger``.
