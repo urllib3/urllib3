@@ -21,10 +21,10 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: "actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8"
+        uses: "actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b"
 
       - name: "Setup Python"
-        uses: "actions/setup-python@13ae5bb136fac2878aff31522b9efb785519f984"
+        uses: "actions/setup-python@2c3dd9e7e29afd70cc0950079bde6c979d1f69f9"
         with:
           python-version: "3.x"
 
@@ -84,7 +84,7 @@ jobs:
         gh release upload ${{ github.ref_name }} dist/* --repo ${{ github.repository }}
 
     - name: "Publish dists to PyPI"
-      uses: "pypa/gh-action-pypi-publish@37f50c210e3d2f9450da2cd423303d6a14a6e29f"
+      uses: "pypa/gh-action-pypi-publish@c7f29f7adef1a245bd91520e94867e5c6eedddcc"
       with:
         user: __token__
         password: ${{ secrets.PYPI_TOKEN }}

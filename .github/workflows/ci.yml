@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: "actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8"
+        uses: "actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b"
 
       - name: "Setup Python"
-        uses: "actions/setup-python@13ae5bb136fac2878aff31522b9efb785519f984"
+        uses: "actions/setup-python@2c3dd9e7e29afd70cc0950079bde6c979d1f69f9"
         with:
           python-version: "3.x"
           cache: "pip"
@@ -82,11 +82,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Checkout repository"
-        uses: "actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8"
+        uses: "actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b"
 
       - if: ${{ !(endsWith(matrix.python-version, '-dev') && startsWith(matrix.os, 'ubuntu')) }}
         name: "Setup Python ${{ matrix.python-version }}"
-        uses: "actions/setup-python@13ae5bb136fac2878aff31522b9efb785519f984"
+        uses: "actions/setup-python@2c3dd9e7e29afd70cc0950079bde6c979d1f69f9"
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -101,7 +101,7 @@ jobs:
       # Setup Python 3.x to run nox on behalf of Python 2.7
       - if: matrix.python-version == '2.7'
         name: "Setup Python 3.x"
-        uses: "actions/setup-python@13ae5bb136fac2878aff31522b9efb785519f984"
+        uses: "actions/setup-python@2c3dd9e7e29afd70cc0950079bde6c979d1f69f9"
         with:
           python-version: "3.x"
           cache: "pip"
@@ -129,10 +129,10 @@ jobs:
     needs: test
     steps:
       - name: "Checkout repository"
-        uses: "actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8"
+        uses: "actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b"
 
       - name: "Setup Python"
-        uses: "actions/setup-python@13ae5bb136fac2878aff31522b9efb785519f984"
+        uses: "actions/setup-python@2c3dd9e7e29afd70cc0950079bde6c979d1f69f9"
         with:
           python-version: "3.x"
 
