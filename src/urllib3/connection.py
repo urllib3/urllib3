@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import logging
 import os
+import sys
 import re
 import socket
 import typing
@@ -35,6 +36,10 @@ except (ImportError, AttributeError):
     class BaseSSLError(BaseException):  # type: ignore[no-redef]
         pass
 
+_SYSAUDIT = False
+
+if hasattr(sys, "audit"):
+    _SYSAUDIT = True
 
 from ._base_connection import _TYPE_BODY
 from ._base_connection import ProxyConfig as ProxyConfig
@@ -215,6 +220,9 @@ class HTTPConnection(_HTTPConnection):
             raise NewConnectionError(
                 self, f"Failed to establish a new connection: {e}"
             ) from e
+
+        if _SYSAUDIT:
+            sys.audit("http.client.connect", self, self.host, self.port)
 
         return sock
 
