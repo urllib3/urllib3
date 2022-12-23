@@ -1042,6 +1042,21 @@ class TestResponse:
         assert isinstance(orig_ex, InvalidChunkLength)
         assert orig_ex.length == fp.BAD_LENGTH_LINE.encode()
 
+    def test_truncated_before_chunk(self) -> None:
+        stream = [b"foooo", b"bbbbaaaaar"]
+        fp = MockChunkedNoChunks(stream)
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        with pytest.raises(ProtocolError) as ctx:
+            next(resp.read_chunked())
+
+        assert str(ctx.value) == "Response ended prematurely"
+
     def test_chunked_response_without_crlf_on_end(self) -> None:
         stream = [b"foo", b"bar", b"baz"]
         fp = MockChunkedEncodingWithoutCRLFOnEnd(stream)
@@ -1298,6 +1313,11 @@ class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
 class MockChunkedEncodingWithExtensions(MockChunkedEncodingResponse):
     def _encode_chunk(self, chunk: bytes) -> bytes:
         return f"{len(chunk):X};asd=qwe\r\n{chunk.decode()}\r\n".encode()
+
+
+class MockChunkedNoChunks(MockChunkedEncodingResponse):
+    def _encode_chunk(self, chunk: bytes) -> bytes:
+        return b""
 
 
 class MockSock:

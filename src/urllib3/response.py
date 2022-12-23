@@ -1001,9 +1001,13 @@ class HTTPResponse(BaseHTTPResponse):
         try:
             self.chunk_left = int(line, 16)
         except ValueError:
-            # Invalid chunked protocol response, abort.
             self.close()
-            raise InvalidChunkLength(self, line) from None
+            if line:
+                # Invalid chunked protocol response, abort.
+                raise InvalidChunkLength(self, line) from None
+            else:
+                # Truncated at start of next chunk
+                raise ProtocolError("Response ended prematurely") from None
 
     def _handle_chunk(self, amt: int | None) -> bytes:
         returned_chunk = None
