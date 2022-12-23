@@ -224,7 +224,7 @@ class HTTPConnection(_HTTPConnection):
 
         # Audit hooks are only available in versions >= 3.8
         if _SYSAUDIT:
-            sys.audit("http.client.connect", self, self.host, self.port)  # type: ignore
+            sys.audit("http.client.connect", self, self.host, self.port)
 
         return sock
 
