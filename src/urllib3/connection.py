@@ -3,9 +3,9 @@ from __future__ import annotations
 import datetime
 import logging
 import os
-import sys
 import re
 import socket
+import sys
 import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
@@ -36,10 +36,6 @@ except (ImportError, AttributeError):
     class BaseSSLError(BaseException):  # type: ignore[no-redef]
         pass
 
-_SYSAUDIT = False
-
-if hasattr(sys, "audit"):
-    _SYSAUDIT = True
 
 from ._base_connection import _TYPE_BODY
 from ._base_connection import ProxyConfig as ProxyConfig
@@ -80,6 +76,11 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2022, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+
+_SYSAUDIT = False
+
+if hasattr(sys, "audit"):
+    _SYSAUDIT = True
 
 
 class HTTPConnection(_HTTPConnection):
@@ -221,8 +222,9 @@ class HTTPConnection(_HTTPConnection):
                 self, f"Failed to establish a new connection: {e}"
             ) from e
 
+        # Audit hooks are only available in versions >= 3.8
         if _SYSAUDIT:
-            sys.audit("http.client.connect", self, self.host, self.port)
+            sys.audit("http.client.connect", self, self.host, self.port)  # type: ignore
 
         return sock
 

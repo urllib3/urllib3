@@ -33,17 +33,22 @@ def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
 
     assert isinstance(response, HTTPResponse)
 
+
 hook_reported = False
+
+
 def test_audit_event(pool: HTTPConnectionPool) -> None:
+    # Audit hooks are only available in versions >= 3.8
     if not hasattr(sys, "audit"):
         assert True
         return
 
-    def _hook(event, args):
+    def _hook(event: str, _: tuple[typing.Any]) -> None:
         global hook_reported
         if event == "http.client.connect":
             hook_reported = True
-    sys.addaudithook(_hook)
+
+    sys.addaudithook(_hook)  # type: ignore
 
     conn = pool._get_conn()
 
@@ -53,6 +58,7 @@ def test_audit_event(pool: HTTPConnectionPool) -> None:
     conn.request(method, path)
 
     assert hook_reported
+
 
 def test_does_not_release_conn(pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
