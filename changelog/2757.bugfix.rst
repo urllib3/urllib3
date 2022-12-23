@@ -1,0 +1,1 @@
+Send http.client.connect audit events
