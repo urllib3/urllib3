@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import typing
 from http.client import ResponseNotReady
 
@@ -32,6 +33,26 @@ def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
 
     assert isinstance(response, HTTPResponse)
 
+hook_reported = False
+def test_audit_event(pool: HTTPConnectionPool) -> None:
+    if not hasattr(sys, "audit"):
+        assert True
+        return
+
+    def _hook(event, args):
+        global hook_reported
+        if event == "http.client.connect":
+            hook_reported = True
+    sys.addaudithook(_hook)
+
+    conn = pool._get_conn()
+
+    method = "GET"
+    path = "/"
+
+    conn.request(method, path)
+
+    assert hook_reported
 
 def test_does_not_release_conn(pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
