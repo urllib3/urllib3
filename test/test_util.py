@@ -340,6 +340,13 @@ class TestUtil(object):
         with pytest.raises(LocationParseError):
             parse_url("https://www.google.com:-80/")
 
+    def test_parse_url_only_zeros(self):
+        url = parse_url("https://example.com:0")
+        assert url.port == 0
+
+        url = parse_url("https://example.com:000000000000")
+        assert url.port == 0
+
     def test_Url_str(self):
         U = Url("http", host="google.com")
         assert str(U) == U.url
