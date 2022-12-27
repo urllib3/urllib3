@@ -2,7 +2,7 @@
 
    <p align="center">
       <a href="https://github.com/urllib3/urllib3">
-         <img src="./docs/images/banner.svg" width="60%" alt="urllib3" />
+         <img src="./docs/_static/banner.svg" width="60%" alt="urllib3" />
       </a>
    </p>
    <p align="center">
@@ -51,8 +51,10 @@ urllib3 can be installed with `pip <https://pip.pypa.io>`_::
 
 Alternatively, you can grab the latest source code from `GitHub <https://github.com/urllib3/urllib3>`_::
 
-    $ git clone git://github.com/urllib3/urllib3.git
-    $ python setup.py install
+    $ git clone https://github.com/urllib3/urllib3.git
+    $ cd urllib3
+    $ git checkout 1.26.x
+    $ pip install .
 
 
 Documentation

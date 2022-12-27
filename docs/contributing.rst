@@ -24,7 +24,7 @@ Setting up your development environment
 In order to setup the development environment all that you need is
 `nox <https://nox.thea.codes/en/stable/index.html>`_ installed in your machine::
 
-  $ pip install --user --upgrade nox
+  $ python -m pip install --user --upgrade nox
 
 
 Running the tests
@@ -62,15 +62,16 @@ suite::
   .......
   .......
   nox > Session test-2.7 was successful.
-  nox > Session test-3.4 was successful.
-  nox > Session test-3.5 was successful.
   nox > Session test-3.6 was successful.
   nox > Session test-3.7 was successful.
   nox > Session test-3.8 was successful.
+  nox > Session test-3.9 was successful.
+  nox > Session test-3.10 was successful.
+  nox > Session test-3.11 was successful.
   nox > Session test-pypy was successful.
 
-Our test suite `runs continuously on Travis CI
-<https://travis-ci.org/urllib3/urllib3>`_ with every pull request.
+Our test suite `runs continuously on GitHub Actions
+<https://github.com/urllib3/urllib3/actions>`_ with every pull request.
 
 To run specific tests or quickly re-run without nox recreating the env, do the following::
 
@@ -94,25 +95,83 @@ further parameterize pytest for local testing.
 For all valid arguments, check `the pytest documentation
 <https://docs.pytest.org/en/stable/usage.html#stopping-after-the-first-or-n-failures>`_.
 
+Getting paid for your contributions
+-----------------------------------
+
+urllib3 has a `pool of money hosted on Open Collective <https://opencollective.com/urllib3#category-BUDGET>`_
+which the team uses to pay contributors for their work. **That could be you, too!** If you complete all tasks in an issue
+that is marked with the `"💰 Bounty $X00" label <https://github.com/urllib3/urllib3/issues?q=is%3Aopen+is%3Aissue+label%3A%22%F0%9F%92%B0+Bounty+%24100%22%2C%22%F0%9F%92%B0+Bounty+%24200%22%2C%22%F0%9F%92%B0+Bounty+%24300%22%2C%22%F0%9F%92%B0+Bounty+%24400%22%2C%22%F0%9F%92%B0+Bounty+%24500%22+no%3Aassignee>`_ then you're eligible to be paid for your work.
+
+- Ensure that you're able to `receive funds from Open Collective for working on OSS <https://docs.opencollective.com/help/expenses-and-getting-paid/submitting-expenses>`_.
+  Consider your employment contract and taxes for possible restrictions.
+- If an issue is already assigned to someone on GitHub then it's likely they've
+  made substantial progress on the issue and will be given the bounty.
+  If you're interested in bounties you should look for issues which
+  aren't assigned to anyone.
+- **Don't "claim" issues or ask whether someone is already working on an issue.**
+  Instead, focus on researching and working on the tasks in the issue. Once you
+  have made considerable progress on the tasks in an issue we can assign your
+  account to the issue to ensure others don't start working on it in parallel.
+- If you've been assigned to an issue and haven't made progress or given an update
+  in over a week you will be unassigned from the issue to allow others a chance
+  at solving the issue.
+- The amount you will be paid for the completing an issue is shown in the label (either $100, $200, $300, etc).
+- If you have questions about how to create an invoice on Open Collective
+  `try reading their FAQ <https://docs.opencollective.com/help/expenses-and-getting-paid/expenses>`_.
+- If you have a proposal to work on urllib3 that's not listed in the issue tracker please open an issue
+  with your proposal and our team will discuss whether we'd pay for your work on your proposal.
+- If you have other questions get in contact with a maintainer in the `urllib3 Discord channel <https://discord.gg/urllib3>`_ or via email.
+- The list above isn't an exhaustive list of criteria or rules for how/when money is distributed.
+  **The final say on whether money will be distributed is up to maintainers.**
+
+This program is an experiment so if you have positive or negative feedback on the process you can contact the maintainers through one of the above channels. 
+
+Note that this program isn't a "bug bounty" program, we don't distribute funds to reporters of bugs or security vulnerabilities at this time.
+
+Contributing to documentation
+-----------------------------
+
+You can build the docs locally using ``nox``:
+
+.. code-block:: bash
+
+  $ nox -rs docs
+
+While writing documentation you should follow these guidelines:
+
+- Use the top-level ``urllib3.request()`` function for smaller code examples. For more involved examples use PoolManager, etc.
+- Use double quotes for all strings. (Output, Declaration etc.)
+- Use keyword arguments everywhere except for method and url. (ie ``http.request("GET", "https://example.com", headers={...})`` )
+- Use HTTPS in URLs everywhere unless HTTP is needed.
+- Rules for code examples and naming variables:
+
+  - ``PoolManager`` instances should be named ``http``. (ie ``http = urllib3.PoolManager(...)``)
+  - ``ProxyManager`` instances should be named ``proxy``.
+  - ``ConnectionPool`` instances should be named ``pool``.
+  - ``Connection`` instances should be named ``conn``.
+  - ``HTTPResponse`` instances should be named ``resp``.
+  -  Only use ``example.com`` or ``httpbin.org`` for example URLs
+
+- Comments within snippets should be useful, if what's being done is apparent
+  (such as parsing JSON, making a request) then it can be skipped for that section.
+- Comments should always go above a code section rather than below with the exception of print
+  statements where the comment containing the result goes below.
+- Imports should be their own section separated from the rest of the example with a line of whitespace.
+- Imports should minimized if possible. Use import urllib3 instead of from urllib3 import X. 
+- Sort imports similarly to isort, standard library first and third-party (like urllib3) come after.
+- No whitespace is required between the sections as normally would be in case of isort.
+- Add print statements along with a comment below them showing the output, potentially compressed.
+- This helps users using the copy-paste button immediately see the results from a script.
+
 Releases
 --------
 
-A release candidate can be created by any contributor by creating a branch
-named ``release-x.x`` where ``x.x`` is the version of the proposed release.
+A release candidate can be created by any contributor.
 
-- Update ``CHANGES.rst`` and ``urllib3/__init__.py`` with the proper version number
-  and commit the changes to ``release-x.x``.
-- Open a pull request to merge the ``release-x.x`` branch into the ``master`` branch.
-- Integration tests are run against the release candidate on Travis. From here on all
-  the steps below will be handled by a maintainer so unless you receive review comments
-  you are done here.
-- Once the pull request is squash merged into master the merging maintainer
-  will tag the merge commit with the version number:
-
-  - ``git tag -a 1.24.1 [commit sha]``
-  - ``git push origin master --tags``
-
-- After the commit is tagged Travis will build the tagged commit and upload the sdist and wheel
-  to PyPI and create a draft release on GitHub for the tag. The merging maintainer will
-  ensure that the PyPI sdist and wheel are properly uploaded.
-- The merging maintainer will mark the draft release on GitHub as an approved release.
+- Announce intent to release on Discord, see if anyone wants to include last minute
+  changes.
+- Update ``urllib3/_version.py`` with the proper version number
+- Commit the changes to a ``release-X.Y.Z`` branch.
+- Create a pull request and append ``&expand=1&template=release.md`` to the URL before
+  submitting in order to include our release checklist in the pull request description.
+- Follow the checklist!

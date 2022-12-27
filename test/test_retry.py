@@ -141,7 +141,7 @@ class TestRetry(object):
 
     def test_backoff(self):
         """Backoff is computed correctly"""
-        max_backoff = Retry.BACKOFF_MAX
+        max_backoff = Retry.DEFAULT_BACKOFF_MAX
 
         retry = Retry(total=100, backoff_factor=0.2)
         assert retry.get_backoff_time() == 0  # First request

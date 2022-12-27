@@ -1,0 +1,90 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: "read"
+  # Needed to access the workflow's OIDC identity.
+  id-token: "write"
+
+jobs:
+  build:
+    name: "Build dists"
+    runs-on: "ubuntu-latest"
+    environment:
+      name: "publish"
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
+
+    steps:
+      - name: "Checkout repository"
+        uses: "actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8"
+
+      - name: "Setup Python"
+        uses: "actions/setup-python@13ae5bb136fac2878aff31522b9efb785519f984"
+        with:
+          python-version: "3.x"
+
+      - name: "Install dependencies"
+        run: python -m pip install build==0.8.0
+
+      - name: "Build dists"
+        run: |
+          SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) \
+          python -m build
+
+      - name: "Generate hashes"
+        id: hash
+        run: |
+          cd dist && echo "::set-output name=hashes::$(sha256sum * | base64 -w0)"
+
+      - name: "Upload dists"
+        uses: "actions/upload-artifact@83fd05a356d7e2593de66fc9913b3002723633cb"
+        with:
+          name: "dist"
+          path: "dist/"
+          if-no-files-found: error
+          retention-days: 5
+
+  provenance:
+    needs: [build]
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+    uses: "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.2.1"
+    with:
+      base64-subjects: "${{ needs.build.outputs.hashes }}"
+      attestation-name: "urllib3.intoto.jsonl"
+      upload-assets: true
+      compile-generator: true # Workaround for https://github.com/slsa-framework/slsa-github-generator/issues/1163
+
+  publish:
+    name: "Publish"
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: ["build", "provenance"]
+    permissions:
+      contents: write
+    runs-on: "ubuntu-latest"
+
+    steps:
+    - name: "Download dists"
+      uses: "actions/download-artifact@9782bd6a9848b53b110e712e20e42d89988822b7"
+      with:
+        name: "dist"
+        path: "dist/"
+
+    - name: "Upload dists to GitHub Release"
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      run: |
+        gh release upload ${{ github.ref_name }} dist/* --repo ${{ github.repository }}
+
+    - name: "Publish dists to PyPI"
+      uses: "pypa/gh-action-pypi-publish@37f50c210e3d2f9450da2cd423303d6a14a6e29f"
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_TOKEN }}

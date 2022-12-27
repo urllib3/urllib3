@@ -20,7 +20,7 @@ def server_client_ssl_contexts():
     if hasattr(ssl, "PROTOCOL_TLS_SERVER"):
         server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     else:
-        # python 2.7 and 3.5 workaround.
+        # python 2.7 workaround.
         # PROTOCOL_TLS_SERVER was added in 3.6
         server_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
     server_context.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])
@@ -28,7 +28,7 @@ def server_client_ssl_contexts():
     if hasattr(ssl, "PROTOCOL_TLS_CLIENT"):
         client_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     else:
-        # python 2.7 and 3.5 workaround.
+        # python 2.7 workaround.
         # PROTOCOL_TLS_SERVER was added in 3.6
         client_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
         client_context.verify_mode = ssl.CERT_REQUIRED

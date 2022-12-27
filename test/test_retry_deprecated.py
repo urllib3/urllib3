@@ -143,7 +143,7 @@ class TestRetry(object):
 
     def test_backoff(self):
         """Backoff is computed correctly"""
-        max_backoff = Retry.BACKOFF_MAX
+        max_backoff = Retry.DEFAULT_BACKOFF_MAX
 
         retry = Retry(total=100, backoff_factor=0.2)
         assert retry.get_backoff_time() == 0  # First request
@@ -384,6 +384,9 @@ class TestRetryDeprecations(object):
             == Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST
         )
 
+    def test_cls_get_default_backoff_max(self, expect_retry_deprecation):
+        assert Retry.DEFAULT_BACKOFF_MAX == Retry.BACKOFF_MAX
+
     def test_cls_set_default_method_whitelist(self, expect_retry_deprecation):
         old_setting = Retry.DEFAULT_METHOD_WHITELIST
         try:
@@ -428,6 +431,17 @@ class TestRetryDeprecations(object):
         finally:
             Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST = old_setting
             assert Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST == old_setting
+
+    def test_cls_set_default_backoff_max(self, expect_retry_deprecation):
+        old_setting = Retry.BACKOFF_MAX
+        try:
+            Retry.BACKOFF_MAX = 99
+            retry = Retry()
+            assert retry.DEFAULT_BACKOFF_MAX == 99
+            assert retry.BACKOFF_MAX == 99
+        finally:
+            Retry.BACKOFF_MAX = old_setting
+            assert Retry.BACKOFF_MAX == old_setting
 
     @pytest.mark.parametrize(
         "options", [(None, None), ({"GET"}, None), (None, {"GET"}), ({"GET"}, {"GET"})]

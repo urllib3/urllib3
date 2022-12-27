@@ -11,7 +11,6 @@ from test import (
     LONG_TIMEOUT,
     SHORT_TIMEOUT,
     TARPIT_HOST,
-    notOpenSSL098,
     notSecureTransport,
     onlyPy279OrNewer,
     requires_network,
@@ -291,7 +290,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @onlyPy279OrNewer
     @notSecureTransport  # SecureTransport does not support cert directories
-    @notOpenSSL098  # OpenSSL 0.9.8 does not support cert directories
     def test_ca_dir_verified(self, tmpdir):
         # OpenSSL looks up certificates by the hash for their name, see c_rehash
         # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
@@ -335,6 +333,22 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             assert "certificate verify failed" in str(e.value.reason), (
                 "Expected 'certificate verify failed', instead got: %r" % e.value.reason
             )
+
+    def test_wrap_socket_failure_resource_leak(self):
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=self.bad_ca_path,
+        ) as https_pool:
+            conn = https_pool._get_conn()
+            try:
+                with pytest.raises(ssl.SSLError):
+                    conn.connect()
+
+                assert conn.sock
+            finally:
+                conn.close()
 
     def test_verified_without_ca_certs(self):
         # default is cert_reqs=None which is ssl.CERT_NONE
@@ -857,6 +871,19 @@ class TestHTTPS_NoSAN:
                 r = https_pool.request("GET", "/")
                 assert r.status == 200
                 assert warn.called
+
+    def test_common_name_without_san_with_different_common_name(
+        self, no_san_server_with_different_commmon_name
+    ):
+        with HTTPSConnectionPool(
+            no_san_server_with_different_commmon_name.host,
+            no_san_server_with_different_commmon_name.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=no_san_server_with_different_commmon_name.ca_certs,
+        ) as https_pool:
+            with pytest.raises(MaxRetryError) as cm:
+                https_pool.request("GET", "/")
+            assert isinstance(cm.value.reason, SSLError)
 
 
 class TestHTTPS_IPV4SAN:

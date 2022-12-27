@@ -106,6 +106,9 @@ class TestUtil(object):
             "http://[2010:836b:4179::836b:4179]",
             ("http", "[2010:836b:4179::836b:4179]", None),
         ),
+        # Scoped IPv6 (with ZoneID), both RFC 6874 compliant and not.
+        ("http://[a::b%25zone]", ("http", "[a::b%zone]", None)),
+        ("http://[a::b%zone]", ("http", "[a::b%zone]", None)),
         # Hosts
         ("HTTP://GOOGLE.COM/mail/", ("http", "google.com", None)),
         ("GOogle.COM/mail", ("http", "google.com", None)),
@@ -181,6 +184,10 @@ class TestUtil(object):
             ),
             ("HTTPS://Example.Com/?Key=Value", "https://example.com/?Key=Value"),
             ("Https://Example.Com/#Fragment", "https://example.com/#Fragment"),
+            # IPv6 addresses with zone IDs. Both RFC 6874 (%25) as well as
+            # non-standard (unquoted %) variants.
+            ("[::1%zone]", "[::1%zone]"),
+            ("[::1%25zone]", "[::1%zone]"),
             ("[::1%25]", "[::1%25]"),
             ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%etH0%FF]/%AB%AF"),
             (
@@ -340,6 +347,10 @@ class TestUtil(object):
         with pytest.raises(LocationParseError):
             parse_url("https://www.google.com:-80/")
 
+    def test_parse_url_remove_leading_zeros(self):
+        url = parse_url("https://example.com:0000000000080")
+        assert url.port == 80
+        
     def test_parse_url_only_zeros(self):
         url = parse_url("https://example.com:0")
         assert url.port == 0
@@ -830,6 +841,28 @@ class TestUtil(object):
         getaddrinfo.return_value = [(None, None, None, None, None)]
         socket.return_value = Mock()
         create_connection((host, 80))
+
+    @patch("socket.getaddrinfo")
+    @patch("socket.socket")
+    def test_create_connection_with_scoped_ipv6(self, socket, getaddrinfo):
+        # Check that providing create_connection with a scoped IPv6 address
+        # properly propagates the scope to getaddrinfo, and that the returned
+        # scoped ID makes it to the socket creation call.
+        fake_scoped_sa6 = ("a::b", 80, 0, 42)
+        getaddrinfo.return_value = [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                fake_scoped_sa6,
+            )
+        ]
+        socket.return_value = fake_sock = Mock()
+
+        create_connection(("a::b%iface", 80))
+        assert getaddrinfo.call_args[0][0] == "a::b%iface"
+        fake_sock.connect.assert_called_once_with(fake_scoped_sa6)
 
 
 class TestUtilSSL(object):
