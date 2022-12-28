@@ -478,7 +478,8 @@ class TestPoolManager:
 
     def test_http_client_connect_audit_event(self) -> None:
         if hasattr(sys, "addaudithook"):
-            def _hook(event: str, args: tuple):  # type: ignore[type-arg]
+
+            def _hook(event: str, args: tuple) -> None:  # type: ignore[type-arg]
                 if event == "http.client.connect":
                     assert event == "http.client.connect"
 
