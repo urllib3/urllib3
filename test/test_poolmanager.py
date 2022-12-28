@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 import socket
+import sys
 from test import resolvesLocalhostFQDN
 from unittest import mock
 from unittest.mock import MagicMock, patch
@@ -474,3 +475,13 @@ class TestPoolManager:
 
         # Connection should be closed, because reference to pool_1 is gone.
         assert conn_queue.qsize() == 0
+
+    def test_http_client_connect_audit_event(self) -> None:
+        if hasattr(sys, "addaudithook"):
+            def _hook(event: str, args: tuple):  # type: ignore[type-arg]
+                if event == "http.client.connect":
+                    assert event == "http.client.connect"
+
+            sys.addaudithook(_hook)
+            http = PoolManager()
+            http.request("GET", "https://www.python.org")
