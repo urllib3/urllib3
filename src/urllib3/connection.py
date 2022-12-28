@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import socket
+import sys
 import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
@@ -35,13 +36,6 @@ except (ImportError, AttributeError):
     class BaseSSLError(BaseException):  # type: ignore[no-redef]
         pass
 
-
-try:
-    import sys
-
-    audit = sys.audit
-except AttributeError:
-    sys = None  # type: ignore[assignment]
 
 from ._base_connection import _TYPE_BODY
 from ._base_connection import ProxyConfig as ProxyConfig
