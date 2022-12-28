@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import socket
+import sys
 import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
@@ -36,13 +37,6 @@ except (ImportError, AttributeError):
         pass
 
 
-try:
-    import sys
-
-    audit = sys.audit
-except AttributeError:
-    sys = None  # type: ignore[assignment]
-
 from ._base_connection import _TYPE_BODY
 from ._base_connection import ProxyConfig as ProxyConfig
 from ._base_connection import _ResponseOptions as _ResponseOptions
@@ -67,6 +61,8 @@ from .util.ssl_ import (
 )
 from .util.ssl_match_hostname import CertificateError, match_hostname
 from .util.url import Url
+
+_HAS_SYS_AUDIT = hasattr(sys, "audit")
 
 # Not a no-op, we're adding this to the namespace so it can be imported.
 ConnectionError = ConnectionError
@@ -205,8 +201,8 @@ class HTTPConnection(_HTTPConnection):
         """
         try:
             # Checking if `audit` attribute exist for sys lib, as it was added in python 3.8 and onwards
-            if sys:
-                audit("http.client.connect", self, self.host, self.port)
+            if _HAS_SYS_AUDIT:
+                sys.audit("http.client.connect", self, self.host, self.port)
             sock = connection.create_connection(
                 (self._dns_host, self.port),
                 self.timeout,
