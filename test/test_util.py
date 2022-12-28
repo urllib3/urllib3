@@ -350,7 +350,7 @@ class TestUtil(object):
     def test_parse_url_remove_leading_zeros(self):
         url = parse_url("https://example.com:0000000000080")
         assert url.port == 80
-        
+
     def test_parse_url_only_zeros(self):
         url = parse_url("https://example.com:0")
         assert url.port == 0
