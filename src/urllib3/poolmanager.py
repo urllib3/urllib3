@@ -66,7 +66,7 @@ class PoolKey(typing.NamedTuple):
     key_host: str
     key_port: int | None
     key_timeout: Timeout | float | int | None
-    key_retries: Retry | int | None
+    key_retries: Retry | bool | int | None
     key_block: bool | None
     key_source_address: tuple[str, int] | None
     key_key_file: str | None
