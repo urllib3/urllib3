@@ -39,13 +39,13 @@ def test_audit_event(pool: HTTPConnectionPool) -> None:
     audit_event = None
     audit_args = None
 
-    def _hook(event: str, args: tuple[typing.Any]) -> None:
+    def hook(event: str, args: tuple[typing.Any]) -> None:
         nonlocal audit_event, audit_args
         if event == "http.client.connect":
             audit_event = event
             audit_args = args
 
-    sys.addaudithook(_hook)  # type: ignore
+    sys.addaudithook(hook)  # type: ignore
 
     conn = pool._get_conn()
     conn.request("GET", "/")
