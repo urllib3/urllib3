@@ -77,11 +77,7 @@ RECENT_DATE = datetime.date(2022, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
-_SYSAUDIT = False
-
-if hasattr(sys, "audit"):
-    _SYSAUDIT = True
-
+_HAS_SYS_AUDIT = hasattr(sys, "audit")
 
 class HTTPConnection(_HTTPConnection):
     """
@@ -223,7 +219,7 @@ class HTTPConnection(_HTTPConnection):
             ) from e
 
         # Audit hooks are only available in versions >= 3.8
-        if _SYSAUDIT:
+        if _HAS_SYS_AUDIT:
             sys.audit("http.client.connect", self, self.host, self.port)
 
         return sock
