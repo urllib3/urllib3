@@ -489,7 +489,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 new_e, (OSError, NewConnectionError, TimeoutError, SSLError)
             ) and (conn and conn.proxy and not conn.has_connected_to_proxy):
                 new_e = _wrap_proxy_error(new_e, conn.proxy.scheme)
-            raise new_e
+            raise new_e from e
 
         # conn.request() calls http.client.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
