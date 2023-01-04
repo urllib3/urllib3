@@ -37,7 +37,7 @@ def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
 @pytest.mark.skipif(not hasattr(sys, "audit"), reason="requires python 3.8")
 def test_audit_event(pool: HTTPConnectionPool) -> None:
     audit_event = None
-    audit_args : tuple[typing.Any, ...] = (None, None, None)
+    audit_args: tuple[typing.Any, ...] = (None, None, None)
 
     def hook(event: str, args: tuple[typing.Any]) -> None:
         nonlocal audit_event, audit_args
