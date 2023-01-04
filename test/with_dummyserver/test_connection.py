@@ -37,7 +37,7 @@ def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
 @pytest.mark.skipif(not hasattr(sys, "audit"), reason="requires python 3.8")
 def test_audit_event(pool: HTTPConnectionPool) -> None:
     audit_event = None
-    audit_args = None
+    audit_args : tuple[typing.Any, ...] = (None, None, None)
 
     def hook(event: str, args: tuple[typing.Any]) -> None:
         nonlocal audit_event, audit_args
@@ -51,7 +51,7 @@ def test_audit_event(pool: HTTPConnectionPool) -> None:
     conn.request("GET", "/")
 
     assert audit_event == "http.client.connect"
-    assert audit_args
+    assert len(audit_args) > 2
     assert audit_args[0] == conn
     assert audit_args[1] == conn.host
     assert audit_args[2] == conn.port
