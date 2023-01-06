@@ -74,7 +74,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = http.request("GET", f"{self.https_url}/")
             assert r.status == 200
 
-    @pytest.mark.xfail
     def test_basic_proxy_and_dotted_fqdn(self) -> None:
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
             r = http.request("GET", f"{self.http_url_dotted_fqdn}/")
@@ -91,7 +90,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = https.request("GET", f"{self.http_url}/")
             assert r.status == 200
 
-    @pytest.mark.xfail
     def test_https_proxy_and_dotted_fqdn(self) -> None:
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", f"{self.https_url_dotted_fqdn}/")

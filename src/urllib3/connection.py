@@ -646,7 +646,7 @@ class HTTPSConnection(HTTPConnection):
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
-            server_hostname=server_hostname,
+            server_hostname=server_hostname.rstrip("."),
             ssl_context=self.ssl_context,
             tls_in_tls=tls_in_tls,
             assert_hostname=self.assert_hostname,
