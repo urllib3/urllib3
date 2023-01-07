@@ -4,7 +4,7 @@ Changes
 1.26.14 (2023-01-07)
 --------------------
 
-* Fixed URL parsing to return port "0" when applicable instead of None.
+* Fixed parsing of port 0 (zero) returning None, instead of 0. (`#2850 <https://github.com/urllib3/urllib3/issues/2850>`__)
 * Removed deprecated getheaders() calls in contrib module.
 
 1.26.13 (2022-11-23)
