@@ -598,7 +598,7 @@ class ProxyManager(PoolManager):
         """
         headers_ = {"Accept": "*/*"}
 
-        netloc = parse_url(url).netloc
+        netloc = parse_url(url).netloc_without_trailing_dot
         if netloc:
             headers_["Host"] = netloc
 

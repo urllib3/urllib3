@@ -161,6 +161,17 @@ class Url(
         return self.host
 
     @property
+    def netloc_without_trailing_dot(self) -> str | None:
+        """
+        TODO
+        """
+        if self.host is None:
+            return None
+        if self.port:
+            return f"{self.host.rstrip('.')}:{self.port}"
+        return self.host.rstrip(".")
+
+    @property
     def url(self) -> str:
         """
         Convert self into a url

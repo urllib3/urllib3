@@ -1011,6 +1011,46 @@ class TestProxyManager(SocketDummyServerTestCase):
                 ]
             )
 
+    def test_simple_fqdn(self) -> None:
+        def echo_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+
+            sock.send(
+                (
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: text/plain\r\n"
+                    "Content-Length: %d\r\n"
+                    "\r\n"
+                    "%s" % (len(buf), buf.decode("utf-8"))
+                ).encode("utf-8")
+            )
+            sock.close()
+
+        self._start_server(echo_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+        with proxy_from_url(base_url) as proxy:
+            r = proxy.request("GET", "http://google.com./")
+
+            assert r.status == 200
+            # FIXME: The order of the headers is not predictable right now. We
+            # should fix that someday (maybe when we migrate to
+            # OrderedDict/MultiDict).
+            assert sorted(r.data.split(b"\r\n")) == sorted(
+                [
+                    b"GET http://google.com./ HTTP/1.1",
+                    b"Host: google.com",
+                    b"Accept-Encoding: identity",
+                    b"Accept: */*",
+                    b"User-Agent: " + _get_default_user_agent().encode("utf-8"),
+                    b"",
+                    b"",
+                ]
+            )
+
     def test_headers(self) -> None:
         def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
