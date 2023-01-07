@@ -1,6 +1,12 @@
 Changes
 =======
 
+1.26.14 (2023-01-07)
+--------------------
+
+* Fixed URL parsing to return port "0" when applicable instead of None.
+* Removed deprecated getheaders() calls in contrib module.
+
 1.26.13 (2022-11-23)
 --------------------
 
