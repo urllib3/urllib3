@@ -1036,7 +1036,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         conn.set_tunnel(
             scheme=tunnel_scheme,
-            host=self._tunnel_host,
+            host=self._tunnel_host.rstrip("."),
             port=self.port,
             headers=self.proxy_headers,
         )
