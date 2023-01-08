@@ -476,13 +476,17 @@ class TestPoolManager:
         # Connection should be closed, because reference to pool_1 is gone.
         assert conn_queue.qsize() == 0
 
+    @pytest.mark.skipif(not hasattr(sys, "audit"), reason="Requires python 3.8+")
     def test_http_client_connect_audit_event(self) -> None:
-        if hasattr(sys, "addaudithook"):
+        event_name = None
 
-            def _hook(event: str, args: tuple) -> None:  # type: ignore[type-arg]
+        def _hook(event: str, args: tuple) -> None:  # type: ignore[type-arg]
+            if event == "http.client.connect":
+                nonlocal event_name
                 if event == "http.client.connect":
-                    assert event == "http.client.connect"
+                    event_name = "http.client.connect"
 
-            sys.addaudithook(_hook)
-            http = PoolManager()
-            http.request("GET", "https://www.python.org")
+        sys.addaudithook(_hook)
+        http = PoolManager()
+        http.request("GET", "https://www.python.org")
+        assert event_name == "http.client.connect"
