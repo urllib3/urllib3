@@ -212,6 +212,7 @@ class HTTPDummyProxyTestCase:
     http_server: typing.ClassVar[httpserver.HTTPServer]
     http_port: typing.ClassVar[int]
     http_url: typing.ClassVar[str]
+    http_url_dotted_fqdn: typing.ClassVar[str]
     http_url_alt: typing.ClassVar[str]
 
     https_host: typing.ClassVar[str] = "localhost"
@@ -220,6 +221,7 @@ class HTTPDummyProxyTestCase:
     https_server: typing.ClassVar[httpserver.HTTPServer]
     https_port: typing.ClassVar[int]
     https_url: typing.ClassVar[str]
+    https_url_dotted_fqdn: typing.ClassVar[str]
     https_url_alt: typing.ClassVar[str]
 
     proxy_host: typing.ClassVar[str] = "localhost"
