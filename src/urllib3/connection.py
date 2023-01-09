@@ -157,40 +157,6 @@ class HTTPConnection(_HTTPConnection):
         self._tunnel_port: int | None = None
         self._tunnel_scheme: str | None = None
 
-    # https://github.com/python/mypy/issues/4125
-    # Mypy treats this as LSP violation, which is considered a bug.
-    # If `host` is made a property it violates LSP, because a writeable attribute is overridden with a read-only one.
-    # However, there is also a `host` setter so LSP is not violated.
-    # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
-    @property
-    def host(self) -> str:
-        """
-        Getter method to remove any trailing dots that indicate the hostname is an FQDN.
-
-        In general, SSL certificates don't include the trailing dot indicating a
-        fully-qualified domain name, and thus, they don't validate properly when
-        checked against a domain name that includes the dot. In addition, some
-        servers may not expect to receive the trailing dot when provided.
-
-        However, the hostname with trailing dot is critical to DNS resolution; doing a
-        lookup with the trailing dot will properly only resolve the appropriate FQDN,
-        whereas a lookup without a trailing dot will search the system's search domain
-        list. Thus, it's important to keep the original host around for use only in
-        those cases where it's appropriate (i.e., when doing DNS lookup to establish the
-        actual TCP connection across which we're going to send HTTP requests).
-        """
-        return self._dns_host.rstrip(".")
-
-    @host.setter
-    def host(self, value: str) -> None:
-        """
-        Setter for the `host` property.
-
-        We assume that only urllib3 uses the _dns_host attribute; httplib itself
-        only uses `host`, and it seems reasonable that other libraries follow suit.
-        """
-        self._dns_host = value
-
     def _new_conn(self) -> socket.socket:
         """Establish a socket connection and set nodelay settings on it.
 
@@ -198,7 +164,7 @@ class HTTPConnection(_HTTPConnection):
         """
         try:
             sock = connection.create_connection(
-                (self._dns_host, self.port),
+                (self.host, self.port),
                 self.timeout,
                 source_address=self.source_address,
                 socket_options=self.socket_options,
@@ -781,7 +747,7 @@ def _ssl_wrap_socket_and_match_hostname(
         ca_certs=ca_certs,
         ca_cert_dir=ca_cert_dir,
         ca_cert_data=ca_cert_data,
-        server_hostname=server_hostname,
+        server_hostname=server_hostname.rstrip("."),
         ssl_context=context,
         tls_in_tls=tls_in_tls,
     )
