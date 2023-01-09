@@ -31,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        python-version: ["2.7", "3.6", "3.7", "3.8", "3.9", "3.10"]
         os: [macos-11, windows-latest, ubuntu-latest]
         experimental: [false]
         nox-session: ['']
@@ -40,23 +40,11 @@ jobs:
             os: macos-11
             experimental: false
             nox-session: ''
-          - python-version: "2.7"
-            os: windows-latest
-            experimental: false
-            nox-session: ''
-          - python-version: "2.7"
+          - python-version: "3.6"
             os: ubuntu-20.04
             experimental: false
             nox-session: ''
-          - python-version: "3.6"
-            os: macos-11
-            experimental: false
-            nox-session: ''
-          - python-version: "3.6"
-            os: windows-latest
-            experimental: false
-            nox-session: ''
-          - python-version: "3.6"
+          - python-version: "3.7"
             os: ubuntu-20.04
             experimental: false
             nox-session: ''
@@ -84,6 +72,16 @@ jobs:
             os: ubuntu-latest
             experimental: true
             nox-session: test-3.11
+        exclude:
+          # GitHub Actions dropped support for Python 2.7 and 3.7 in Ubuntu 22.04
+          - python-version: "2.7"
+            os: ubuntu-latest
+          - python-version: "3.6"
+            os: ubuntu-latest
+          # Python 3.7 does not fully support OpenSSL 3, the default on Ubuntu 22.04
+          # https://bugs.python.org/issue38820
+          - python-version: "3.7"
+            os: ubuntu-latest
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-11":"macOS","windows-latest":"Windows","ubuntu-20.04":"Ubuntu 20.04","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
