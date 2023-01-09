@@ -86,7 +86,7 @@ jobs:
             nox-session: test-3.11
 
     runs-on: ${{ matrix.os }}
-    name: ${{ fromJson('{"macos-11":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
+    name: ${{ fromJson('{"macos-11":"macOS","windows-latest":"Windows","ubuntu-20.04":"Ubuntu 20.04","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
     steps:
       - name: Checkout Repository
