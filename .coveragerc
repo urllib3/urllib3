@@ -8,6 +8,12 @@ omit =
     src/urllib3/contrib/securetransport.py
     src/urllib3/contrib/_securetransport/*
 
+[paths]
+source =
+    src/urllib3
+    */urllib3
+    *\urllib3
+
 [report]
 exclude_lines =
     except ModuleNotFoundError:
