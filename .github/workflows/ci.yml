@@ -69,11 +69,11 @@ jobs:
           - python-version: "2.7"
             os: ubuntu-latest
             experimental: false
-            nox-session: google_brotli-2
+            nox-session: google_brotli-2.7
           - python-version: "3.9"
             os: ubuntu-latest
             experimental: false
-            nox-session: google_brotli-3
+            nox-session: google_brotli-3.9
           - python-version: "2.7"
             os: ubuntu-latest
             experimental: false
