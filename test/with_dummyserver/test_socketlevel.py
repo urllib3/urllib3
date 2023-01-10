@@ -1714,7 +1714,7 @@ class TestHeaders(SocketDummyServerTestCase):
         with HTTPConnectionPool(self.host + ".", self.port, retries=False) as pool:
             pool.request("GET", "/")
             self.assert_header_received(
-                self.received_headers, "Host", f"{self.host}:{self.port}"
+                self.received_headers, "Host", f"{self.host}.:{self.port}"
             )
 
     def test_response_headers_are_returned_in_the_original_order(self) -> None:

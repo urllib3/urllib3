@@ -690,6 +690,7 @@ def _ssl_wrap_socket_and_match_hostname(
     either via hostname or fingerprint. This function exists to guarantee
     that both proxies and targets have the same behavior when connecting via TLS.
     """
+    server_hostname = server_hostname.rstrip(".")
     default_ssl_context = False
     if ssl_context is None:
         default_ssl_context = True
@@ -747,7 +748,7 @@ def _ssl_wrap_socket_and_match_hostname(
         ca_certs=ca_certs,
         ca_cert_dir=ca_cert_dir,
         ca_cert_data=ca_cert_data,
-        server_hostname=server_hostname.rstrip("."),
+        server_hostname=server_hostname,
         ssl_context=context,
         tls_in_tls=tls_in_tls,
     )
