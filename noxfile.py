@@ -50,7 +50,7 @@ def test(session):
     tests_impl(session)
 
 
-@nox.session(python=["2.7", "3.10"])
+@nox.session(python=["2.7", "3"])
 def google_brotli(session):
     # https://pypi.org/project/Brotli/ is the Google version of brotli, so
     # install it separately and don't install our brotli extra (which installs
