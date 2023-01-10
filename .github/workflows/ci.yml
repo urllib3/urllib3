@@ -57,7 +57,7 @@ jobs:
             os: ubuntu-20.04  # CPython 2.7 is not available for ubuntu-22.04
             experimental: false
             nox-session: unsupported_setup_py
-          - python-version: "3.9"
+          - python-version: "3.x"
             os: ubuntu-latest
             experimental: false
             nox-session: test_brotlipy
