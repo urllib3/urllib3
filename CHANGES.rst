@@ -1,4 +1,4 @@
-2.0.0a2 (2023-01-07)
+2.0.0a3 (2023-01-07)
 ====================
 
 Bugfixes
@@ -9,7 +9,7 @@ Bugfixes
 - Fixed the type hint of ``PoolKey.key_retries`` by adding ``bool`` to the union. (`#2865 <https://github.com/urllib3/urllib3/issues/2865>`__)
 
 
-2.0.0a3 (2022-11-23)
+2.0.0a2 (2022-11-23)
 ====================
 
 Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`__ for help upgrading to the latest version of urllib3.
