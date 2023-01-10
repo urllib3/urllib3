@@ -84,7 +84,7 @@ def unsupported_setup_py(session: nox.Session) -> None:
     assert "Please use `python -m pip install .` instead." in process.stderr
 
 
-@nox.session(python=["3"])
+@nox.session(python=["3.10"])
 def test_brotlipy(session: nox.Session) -> None:
     """Check that if 'brotlipy' is installed instead of 'brotli' or
     'brotlicffi' that we still don't blow up.
