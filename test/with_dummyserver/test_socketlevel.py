@@ -60,9 +60,6 @@ if typing.TYPE_CHECKING:
 else:
     StrOrBytesPath = object
 
-# Retry failed tests
-pytestmark = pytest.mark.flaky
-
 
 class TestCookies(SocketDummyServerTestCase):
     def test_multi_setcookie(self) -> None:

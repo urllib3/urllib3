@@ -56,7 +56,6 @@ def tests_impl(
         "-ra",
         f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
         "--tb=native",
-        "--no-success-flaky-report",
         "--durations=10",
         "--strict-config",
         "--strict-markers",

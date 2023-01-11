@@ -13,9 +13,6 @@ from urllib3 import HTTPConnectionPool
 from urllib3.util import SKIP_HEADER
 from urllib3.util.retry import Retry
 
-# Retry failed tests
-pytestmark = pytest.mark.flaky
-
 
 class TestChunkedTransfer(SocketDummyServerTestCase):
     def start_chunked_handler(self) -> None:
