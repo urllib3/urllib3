@@ -1,7 +1,7 @@
 Changes
 =======
 
-1.26.14 (2023-01-07)
+1.26.14 (2023-01-11)
 --------------------
 
 * Fixed parsing of port 0 (zero) returning None, instead of 0. (`#2850 <https://github.com/urllib3/urllib3/issues/2850>`__)
