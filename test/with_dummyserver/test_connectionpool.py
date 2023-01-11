@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import io
-import logging
 import socket
-import sys
 import time
 import typing
 import warnings
@@ -38,10 +36,6 @@ from .. import INVALID_SOURCE_ADDRESSES, TARPIT_HOST, VALID_SOURCE_ADDRESSES
 from ..port_helpers import find_unused_port
 
 pytestmark = pytest.mark.flaky
-
-log = logging.getLogger("urllib3.connectionpool")
-log.setLevel(logging.NOTSET)
-log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 def wait_for_socket(ready_event: Event) -> None:

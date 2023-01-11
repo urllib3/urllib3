@@ -2,12 +2,6 @@
 source =
     urllib3
 
-omit =
-    *urllib3/packages/*
-    *urllib3/contrib/pyopenssl.py
-    *urllib3/contrib/securetransport.py
-    *urllib3/contrib/_securetransport/*
-
 [paths]
 source =
     src/urllib3
@@ -15,6 +9,11 @@ source =
     *\urllib3
 
 [report]
+omit =
+    src/urllib3/contrib/pyopenssl.py
+    src/urllib3/contrib/securetransport.py
+    src/urllib3/contrib/_securetransport/*
+
 exclude_lines =
     except ModuleNotFoundError:
     except ImportError:

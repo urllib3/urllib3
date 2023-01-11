@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import logging
 import os.path
 import shutil
 import ssl
@@ -50,11 +49,6 @@ from .. import has_alpn
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
-
-
-log = logging.getLogger("urllib3.connectionpool")
-log.setLevel(logging.NOTSET)
-log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 TLSv1_CERTS = DEFAULT_CERTS.copy()
