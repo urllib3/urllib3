@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import logging
 import os.path
 import shutil
 import ssl
@@ -47,11 +46,6 @@ from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import Timeout
 
 from .. import has_alpn
-
-log = logging.getLogger("urllib3.connectionpool")
-log.setLevel(logging.NOTSET)
-log.addHandler(logging.StreamHandler(sys.stdout))
-
 
 TLSv1_CERTS = DEFAULT_CERTS.copy()
 TLSv1_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1", None)
