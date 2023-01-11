@@ -1,3 +1,14 @@
+2.0.0a3 (2023-01-11)
+====================
+
+Bugfixes
+--------
+
+- Fix logging error when using ``add_stderr_logger``. (`#2839 <https://github.com/urllib3/urllib3/issues/2839>`__)
+- Fixed parsing of port 0 (zero) returning None, instead of 0. (`#2850 <https://github.com/urllib3/urllib3/issues/2850>`__)
+- Fixed the type hint of ``PoolKey.key_retries`` by adding ``bool`` to the union. (`#2865 <https://github.com/urllib3/urllib3/issues/2865>`__)
+
+
 2.0.0a2 (2022-11-23)
 ====================
 
