@@ -47,10 +47,6 @@ from urllib3.util.timeout import Timeout
 
 from .. import has_alpn
 
-# Retry failed tests
-pytestmark = pytest.mark.flaky
-
-
 TLSv1_CERTS = DEFAULT_CERTS.copy()
 TLSv1_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1", None)
 
