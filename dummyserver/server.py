@@ -212,7 +212,9 @@ def run_tornado_app(
         except OSError as e:
             if e.errno == errno.EADDRINUSE:
                 # TODO this should be a warning if there's a way for pytest to print it
-                print(f"Retrying bind_sockets({host}) after EADDRINUSE", stderr=True)
+                print(
+                    f"Retrying bind_sockets({host}) after EADDRINUSE", file=sys.stderr
+                )
                 continue
         break
 
