@@ -24,7 +24,7 @@ jobs:
         uses: "actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b"
 
       - name: "Setup Python"
-        uses: "actions/setup-python@2c3dd9e7e29afd70cc0950079bde6c979d1f69f9"
+        uses: "actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912"
         with:
           python-version: "3.x"
 
@@ -42,7 +42,7 @@ jobs:
           cd dist && echo "::set-output name=hashes::$(sha256sum * | base64 -w0)"
 
       - name: "Upload dists"
-        uses: "actions/upload-artifact@83fd05a356d7e2593de66fc9913b3002723633cb"
+        uses: "actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce"
         with:
           name: "dist"
           path: "dist/"
@@ -72,7 +72,7 @@ jobs:
 
     steps:
     - name: "Download dists"
-      uses: "actions/download-artifact@9782bd6a9848b53b110e712e20e42d89988822b7"
+      uses: "actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a"
       with:
         name: "dist"
         path: "dist/"
