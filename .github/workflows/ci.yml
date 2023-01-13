@@ -31,8 +31,6 @@ jobs:
           python -m twine check dist/*
 
   test:
-    env:
-      SETUPTOOLS_USE_DISTUTILS: ${{ matrix.distutils || 'stdlib' }}
     strategy:
       fail-fast: false
       matrix:
@@ -67,7 +65,6 @@ jobs:
             experimental: false
             nox-session: test-3.9
           - python-version: 3.12-dev
-            distutils: local
             experimental: true
         exclude:
           # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
