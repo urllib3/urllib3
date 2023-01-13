@@ -85,17 +85,8 @@ jobs:
       - name: "Checkout repository"
         uses: "actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b"
 
-      - if: ${{ !(endsWith(matrix.python-version, '-dev') && startsWith(matrix.os, 'ubuntu')) }}
-        name: "Setup Python ${{ matrix.python-version }}"
+      - name: "Setup Python ${{ matrix.python-version }}"
         uses: "actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912"
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      # Use deadsnakes for development versions on Ubuntu. GitHub Actions usually provides older
-      # versions because it sticks to alpha/beta releases.
-      - if: ${{ endsWith(matrix.python-version, '-dev') && startsWith(matrix.os, 'ubuntu') }}
-        name: "Setup Python ${{ matrix.python-version }}"
-        uses: deadsnakes/action@e3117c2981fd8afe4af79f3e1be80066c82b70f5
         with:
           python-version: ${{ matrix.python-version }}
 
