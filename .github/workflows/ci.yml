@@ -40,9 +40,9 @@ jobs:
           - windows-latest
           - ubuntu-20.04  # OpenSSL 1.1.1
           - ubuntu-22.04  # OpenSSL 3.0
-        experimental: [false]
         nox-session: ['']
         include:
+          - experimental: false
           - python-version: "pypy-3.7"
             os: ubuntu-latest
             experimental: false
