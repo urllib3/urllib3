@@ -18,7 +18,7 @@ jobs:
         uses: "actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b"
 
       - name: "Setup Python"
-        uses: "actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912"
+        uses: "actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435"
         with:
           python-version: "3.x"
           cache: "pip"
@@ -91,7 +91,7 @@ jobs:
         uses: "actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b"
 
       - name: "Setup Python ${{ matrix.python-version }}"
-        uses: "actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912"
+        uses: "actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435"
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -105,7 +105,7 @@ jobs:
       # Setup Python 3.x to run nox on behalf of Python 2.7
       - if: matrix.python-version == '2.7'
         name: "Setup Python 3.x"
-        uses: "actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912"
+        uses: "actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435"
         with:
           python-version: "3.x"
           cache: "pip"
@@ -136,7 +136,7 @@ jobs:
         uses: "actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b"
 
       - name: "Setup Python"
-        uses: "actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912"
+        uses: "actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435"
         with:
           python-version: "3.x"
 
