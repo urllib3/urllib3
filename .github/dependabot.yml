@@ -4,3 +4,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # Ignore all patch releases as we can manually
+      # upgrade if we run into a bug and need a fix.
+      - update-types: ["version-update:semver-patch"]
