@@ -380,7 +380,7 @@ class Retry:
             return False
         return True
 
-    def is_response_retry(self, method: str, response: "HTTPResponse") -> bool:
+    def is_response_retry(self, method: str, response: BaseHTTPResponse) -> bool:
         """Is this method/response retryable? (Based on allowlists and control
         variables such as the number of total retries to allow, whether to
         respect the Retry-After header, whether this header is present, and
