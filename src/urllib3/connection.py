@@ -231,7 +231,7 @@ class HTTPConnection(_HTTPConnection, object):
     def request(self, method, url, body=None, headers=None):
         # Update the inner socket's timeout value to send the request.
         # This only triggers if the connection is re-used.
-        if self.sock is not None:
+        if getattr(self, "sock", None) is not None:
             self.sock.settimeout(self.timeout)
 
         if headers is None:
