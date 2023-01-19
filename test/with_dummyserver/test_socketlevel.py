@@ -776,7 +776,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # leaking it. Because we don't want to hang this thread, we
             # actually use select.select to confirm that a new request is
             # coming in: this lets us time the thread out.
-            rlist, _, _ = select.select([listener], [], [], 1)
+            rlist, _, _ = select.select([listener], [], [])
             assert rlist
             new_sock = listener.accept()[0]
 
@@ -885,7 +885,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # Expect a new request. Because we don't want to hang this thread,
             # we actually use select.select to confirm that a new request is
             # coming in: this lets us time the thread out.
-            rlist, _, _ = select.select([listener], [], [], 5)
+            rlist, _, _ = select.select([listener], [], [])
             assert rlist
             sock = listener.accept()[0]
             consume_socket(sock)
