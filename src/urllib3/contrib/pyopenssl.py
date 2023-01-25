@@ -295,6 +295,9 @@ class WrappedSocket:
         self._io_refs = 0
         self._closed = False
 
+    def __getattr__(self, name: str) -> typing.Any:
+        return getattr(self.connection, name)
+
     def fileno(self) -> int:
         return self.socket.fileno()
 
@@ -426,6 +429,9 @@ class PyOpenSSLContext:
         self.check_hostname = False
         self._minimum_version: int = ssl.TLSVersion.MINIMUM_SUPPORTED
         self._maximum_version: int = ssl.TLSVersion.MAXIMUM_SUPPORTED
+
+    def __getattr__(self, name: str) -> typing.Any:
+        return getattr(self._ctx, name)
 
     @property
     def options(self) -> int:
