@@ -13,7 +13,7 @@ _NORMALIZABLE_SCHEMES = ("http", "https", None)
 # Almost all of these patterns were derived from the
 # 'rfc3986' module: https://github.com/python-hyper/rfc3986
 _PERCENT_RE = re.compile(r"%[a-fA-F0-9]{2}")
-_SCHEME_RE = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+-]*:|/)")
+_SCHEME_RE = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+-\.]*:|/)")
 _URI_RE = re.compile(
     r"^(?:([a-zA-Z][a-zA-Z0-9+.-]*):)?"
     r"(?://([^\\/?#]*))?"
