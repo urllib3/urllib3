@@ -348,6 +348,17 @@ class TestUtil:
         with pytest.raises(LocationParseError):
             parse_url("https://www.google.com:-80/")
 
+    def test_parse_url_remove_leading_zeros(self) -> None:
+        url = parse_url("https://example.com:0000000000080")
+        assert url.port == 80
+
+    def test_parse_url_only_zeros(self) -> None:
+        url = parse_url("https://example.com:0")
+        assert url.port == 0
+
+        url = parse_url("https://example.com:000000000000")
+        assert url.port == 0
+
     def test_Url_str(self) -> None:
         U = Url("http", host="google.com")
         assert str(U) == U.url
@@ -627,6 +638,7 @@ class TestUtil:
     def test_disable_warnings(self) -> None:
         with warnings.catch_warnings(record=True) as w:
             clear_warnings()
+            warnings.simplefilter("default", InsecureRequestWarning)
             warnings.warn("This is a test.", InsecureRequestWarning)
             assert len(w) == 1
             disable_warnings()

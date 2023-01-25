@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import contextlib
+import errno
 import logging
 import os
 import socket
@@ -199,7 +200,24 @@ def run_tornado_app(
     else:
         http_server = tornado.httpserver.HTTPServer(app)
 
-    sockets = tornado.netutil.bind_sockets(None, address=host)  # type: ignore[arg-type]
+    # When we request a socket with host localhost and port zero (None in Python), then
+    # Tornado gets a free IPv4 port and requests that same port in IPv6. But that port
+    # could easily be taken with IPv6, especially in crowded CI environments. For this
+    # reason we put bind_sockets in a retry loop. Full details:
+    #  * https://github.com/urllib3/urllib3/issues/2171
+    #  * https://github.com/tornadoweb/tornado/issues/1860
+    for i in range(10):
+        try:
+            sockets = tornado.netutil.bind_sockets(None, address=host)  # type: ignore[arg-type]
+        except OSError as e:
+            if e.errno == errno.EADDRINUSE:
+                # TODO this should be a warning if there's a way for pytest to print it
+                print(
+                    f"Retrying bind_sockets({host}) after EADDRINUSE", file=sys.stderr
+                )
+                continue
+        break
+
     port = sockets[0].getsockname()[1]
     http_server.add_sockets(sockets)
     return http_server, port
