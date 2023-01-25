@@ -1,0 +1,1 @@
+Added '.' as a character valid in a URL's scheme.
