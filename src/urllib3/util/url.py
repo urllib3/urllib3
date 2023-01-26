@@ -49,7 +49,7 @@ _variations = [
 ]
 
 _UNRESERVED_PAT = (
-    r"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._!\-~"
+    r"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._\-~"
 )
 _IPV6_PAT = "(?:" + "|".join([x % _subs for x in _variations]) + ")"
 _ZONE_ID_PAT = "(?:%25|%)(?:[" + _UNRESERVED_PAT + "]|%[a-fA-F0-9]{2})+"
