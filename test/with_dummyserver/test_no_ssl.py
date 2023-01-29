@@ -5,15 +5,10 @@ Note: Import urllib3 inside the test functions to get the importblocker to work
 """
 from __future__ import annotations
 
-import pytest
-
 import urllib3
 from dummyserver.testcase import HTTPDummyServerTestCase, HTTPSDummyServerTestCase
 
 from ..test_no_ssl import TestWithoutSSL
-
-# Retry failed tests
-pytestmark = pytest.mark.flaky
 
 
 class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
