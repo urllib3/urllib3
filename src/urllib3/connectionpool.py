@@ -545,7 +545,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         response._pool = self  # type: ignore[attr-defined]
 
         log.debug(
-            '%s://%s:%s "%s %s %s" %s',
+            '%s://%s:%s "%s %s %s" %s %s',
             self.scheme,
             self.host,
             self.port,
