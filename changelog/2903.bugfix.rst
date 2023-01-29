@@ -1,0 +1,1 @@
+Removed some code that incorrectly prepends relative paths with '/'.
