@@ -330,7 +330,7 @@ def _normalize_host(host: str | None, scheme: str | None) -> str | None:
 
 
 def _idna_encode(name: str) -> bytes:
-    if name and any([ord(x) > 128 for x in name]):
+    if not name.isascii():
         try:
             import idna
         except ImportError:
