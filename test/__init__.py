@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import errno
+import importlib.util
 import logging
 import os
 import platform
@@ -8,7 +9,9 @@ import socket
 import sys
 import typing
 import warnings
+from collections.abc import Sequence
 from importlib.abc import Loader, MetaPathFinder
+from importlib.machinery import ModuleSpec
 from types import ModuleType, TracebackType
 
 import pytest
@@ -287,8 +290,14 @@ class LogRecorder:
 
 
 class ImportBlockerLoader(Loader):
+    def __init__(self, fullname: str) -> None:
+        self._fullname = fullname
+
     def load_module(self, fullname: str) -> ModuleType:
         raise ImportError(f"import of {fullname} is blocked")
+
+    def exec_module(self, module: ModuleType) -> None:
+        raise ImportError(f"import of {self._fullname} is blocked")
 
 
 class ImportBlocker(MetaPathFinder):
@@ -306,8 +315,21 @@ class ImportBlocker(MetaPathFinder):
         self, fullname: str, path: typing.Sequence[bytes | str] | None = None
     ) -> Loader | None:
         if fullname in self.namestoblock:
-            return ImportBlockerLoader()
+            return ImportBlockerLoader(fullname)
         return None
+
+    def find_spec(
+        self,
+        fullname: str,
+        path: Sequence[bytes | str] | None,
+        target: ModuleType | None = None,
+    ) -> ModuleSpec | None:
+
+        loader = self.find_module(fullname, path)
+        if loader is None:
+            return None
+
+        return importlib.util.spec_from_loader(fullname, loader)
 
 
 class ModuleStash(MetaPathFinder):
