@@ -31,20 +31,18 @@ jobs:
           python -m twine check dist/*
 
   test:
-    env:
-      SETUPTOOLS_USE_DISTUTILS: stdlib
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12-dev"]
         os:
           - macos-11
           - windows-latest
           - ubuntu-20.04  # OpenSSL 1.1.1
           - ubuntu-22.04  # OpenSSL 3.0
-        experimental: [false]
         nox-session: ['']
         include:
+          - experimental: false
           - python-version: "pypy-3.7"
             os: ubuntu-latest
             experimental: false
@@ -66,14 +64,8 @@ jobs:
             os: ubuntu-20.04  # CPython 3.9.2 is not available for ubuntu-22.04.
             experimental: false
             nox-session: test-3.9
-          - python-version: 3.11
-            os: ubuntu-20.04
+          - python-version: "3.12-dev"
             experimental: true
-            nox-session: test-3.11
-          - python-version: 3.11
-            os: ubuntu-22.04
-            experimental: true
-            nox-session: test-3.11
         exclude:
           # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
           # https://github.com/python/cpython/issues/83001
@@ -81,6 +73,9 @@ jobs:
             os: ubuntu-22.04
           - python-version: "3.8"
             os: ubuntu-22.04
+          # Testing with non-final CPython on macOS is too slow for CI.
+          - python-version: "3.12-dev"
+            os: macos-11
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-11":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
@@ -92,13 +87,6 @@ jobs:
 
       - name: "Setup Python ${{ matrix.python-version }}"
         uses: "actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435"
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      # Use deadsnakes for development versions
-      - if: endsWith(matrix.python-version, '-dev')
-        name: "Setup Python ${{ matrix.python-version }}"
-        uses: deadsnakes/action@e3117c2981fd8afe4af79f3e1be80066c82b70f5
         with:
           python-version: ${{ matrix.python-version }}
 

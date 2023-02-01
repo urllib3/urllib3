@@ -8,4 +8,4 @@ trustme==0.9.0
 cryptography==39.0.0
 backports.zoneinfo==0.2.1;python_version<"3.9"
 towncrier==21.9.0
-pytest-memray==1.4.0;python_version>="3.8" and sys_platform!="win32" and implementation_name=="cpython"
+pytest-memray==1.4.0;python_version>="3.8" and python_version<"3.12" and sys_platform!="win32" and implementation_name=="cpython"
