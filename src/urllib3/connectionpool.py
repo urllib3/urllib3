@@ -316,7 +316,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # self.pool is None.
                 pass
             except queue.Full:
-
                 # Connection never got put back into the pool, close it.
                 if conn:
                     conn.close()
@@ -1001,7 +1000,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         ca_cert_dir: str | None = None,
         **conn_kw: typing.Any,
     ) -> None:
-
         super().__init__(
             host,
             port,

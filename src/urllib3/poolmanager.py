@@ -543,7 +543,6 @@ class ProxyManager(PoolManager):
         proxy_assert_fingerprint: str | None = None,
         **connection_pool_kw: typing.Any,
     ) -> None:
-
         if isinstance(proxy_url, HTTPConnectionPool):
             str_proxy_url = f"{proxy_url.scheme}://{proxy_url.host}:{proxy_url.port}"
         else:

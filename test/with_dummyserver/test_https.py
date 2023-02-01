@@ -508,7 +508,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ca_certs=DEFAULT_CA,
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-
             https_pool.assert_fingerprint = (
                 "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
             )
@@ -574,7 +573,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @requires_network()
     def test_https_timeout(self) -> None:
-
         timeout = Timeout(total=None, connect=SHORT_TIMEOUT)
         with HTTPSConnectionPool(
             TARPIT_HOST,
