@@ -1197,7 +1197,6 @@ class TestProxyManager(SocketDummyServerTestCase):
     def test_https_proxymanager_connected_to_http_proxy(
         self, target_scheme: str
     ) -> None:
-
         errored = Event()
 
         def http_socket_handler(listener: socket.socket) -> None:
@@ -1484,7 +1483,6 @@ class TestSSL(SocketDummyServerTestCase):
                 {"ca_certs": "a", "ca_cert_dir": "a"},
                 {"ssl_context": context},
             ]:
-
                 self._start_server(socket_handler)
 
                 with HTTPSConnectionPool(self.host, self.port, **kwargs) as pool:

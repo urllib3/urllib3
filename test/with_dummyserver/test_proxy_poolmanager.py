@@ -277,7 +277,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             proxy_headers={"Hickory": "dickory"},
             ca_certs=DEFAULT_CA,
         ) as http:
-
             r = http.request_encode_url("GET", f"{self.http_url}/headers")
             returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
@@ -353,7 +352,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             proxy_headers={"Hickory": "dickory"},
             ca_certs=DEFAULT_CA,
         ) as http:
-
             r = http.request_encode_url("GET", f"{self.http_url}/headers")
             returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
@@ -387,7 +385,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             ca_certs=DEFAULT_CA,
             use_forwarding_for_https=True,
         ) as http:
-
             r = http.request_encode_url("GET", f"{self.https_url}/headers")
             returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"

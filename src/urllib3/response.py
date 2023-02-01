@@ -106,7 +106,6 @@ class DeflateDecoder(ContentDecoder):
 
 
 class GzipDecoderState:
-
     FIRST_MEMBER = 0
     OTHER_MEMBERS = 1
     SWALLOW_DATA = 2
