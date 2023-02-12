@@ -1060,7 +1060,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_request_chunked_is_deprecated(
         self,
     ) -> None:
-
         with HTTPConnectionPool(self.host, self.port) as pool:
             conn = pool._get_conn()
 

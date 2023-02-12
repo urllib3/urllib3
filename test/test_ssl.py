@@ -47,7 +47,6 @@ class TestSSL:
     def test_create_urllib3_context_set_ciphers(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-
         ciphers = "ECDH+AESGCM:ECDH+CHACHA20"
         context = mock.create_autospec(ssl_.SSLContext)
         context.set_ciphers = mock.Mock()

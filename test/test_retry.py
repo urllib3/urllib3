@@ -328,7 +328,6 @@ class TestRetry:
     def test_respect_retry_after_header_propagated(
         self, respect_retry_after_header: bool
     ) -> None:
-
         retry = Retry(respect_retry_after_header=respect_retry_after_header)
         new_retry = retry.new()
         assert new_retry.respect_retry_after_header == respect_retry_after_header

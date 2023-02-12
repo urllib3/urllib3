@@ -1,0 +1,1 @@
+Corrected a sign error in a check for whether a character is in the ASCII range.

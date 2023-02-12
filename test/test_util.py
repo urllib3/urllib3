@@ -51,7 +51,6 @@ TIMEOUT_EPOCH = 1000
 
 
 class TestUtil:
-
     url_host_map = [
         # Hosts
         ("http://google.com/mail", ("http", "google.com", None)),

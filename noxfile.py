@@ -35,7 +35,11 @@ def tests_impl(
     session.run("python", "-m", "OpenSSL.debug")
 
     memray_supported = True
-    if sys.implementation.name != "cpython" or sys.version_info < (3, 8):
+    if (
+        sys.implementation.name != "cpython"
+        or sys.version_info < (3, 8)
+        or sys.version_info.releaselevel != "final"
+    ):
         memray_supported = False  # pytest-memray requires CPython 3.8+
     elif sys.platform == "win32":
         memray_supported = False
@@ -64,7 +68,7 @@ def tests_impl(
     )
 
 
-@nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11", "pypy"])
+@nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy"])
 def test(session: nox.Session) -> None:
     tests_impl(session)
 
@@ -142,9 +146,6 @@ def downstream_requests(session: nox.Session) -> None:
     session.cd(tmp_dir)
     git_clone(session, "https://github.com/psf/requests")
     session.chdir("requests")
-    session.run(
-        "git", "apply", f"{root}/ci/0003-requests-removed-warnings.patch", external=True
-    )
     session.run(
         "git", "apply", f"{root}/ci/0004-requests-chunked-requests.patch", external=True
     )
