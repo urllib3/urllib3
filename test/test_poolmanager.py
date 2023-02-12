@@ -483,8 +483,7 @@ class TestPoolManager:
         def _hook(event: str, args: tuple) -> None:  # type: ignore[type-arg]
             if event == "http.client.connect":
                 nonlocal event_name
-                if event == "http.client.connect":
-                    event_name = "http.client.connect"
+                event_name = "http.client.connect"
 
         sys.addaudithook(_hook)
         http = PoolManager()
