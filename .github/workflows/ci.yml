@@ -26,8 +26,6 @@ jobs:
           rstcheck README.rst CHANGES.rst
           python3.7 -m twine check dist/*
   test:
-    env:
-      SETUPTOOLS_USE_DISTUTILS: stdlib
     strategy:
       fail-fast: false
       matrix:
