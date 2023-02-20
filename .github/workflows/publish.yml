@@ -55,7 +55,7 @@ jobs:
       actions: read
       contents: write
       id-token: write
-    uses: "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.2.1"
+    uses: "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.4.0"
     with:
       base64-subjects: "${{ needs.build.outputs.hashes }}"
       attestation-name: "urllib3.intoto.jsonl"
