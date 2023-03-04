@@ -960,15 +960,20 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_default_ssl_context_ssl_min_max_versions(self) -> None:
         ctx = urllib3.util.ssl_.create_urllib3_context()
         assert ctx.minimum_version == ssl.TLSVersion.TLSv1_2
-        # urllib3 is not expected to change the maximum version, so the
-        # version should be the same as in a pure context. It will be
-        # either the `ssl.TLSVersion.MAXIMUM_SUPPORTED` magic constant
-        # or one of the exact versions if a system defines it.
+        # urllib3 sets a default maximum version only when it is
+        # injected with PyOpenSSL- or SecureTransport-backed
+        # SSL-support.
+        # Otherwise, the default maximum version is set by Python's
+        # `ssl.SSLContext`. The value respects OpenSSL configuration and
+        # can be different from `ssl.TLSVersion.MAXIMUM_SUPPORTED`.
         # https://github.com/urllib3/urllib3/issues/2477#issuecomment-1151452150
-        assert (
-            ctx.maximum_version
-            == ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT).maximum_version
-        )
+        if util.IS_PYOPENSSL or util.IS_SECURETRANSPORT:
+            expected_maximum_version = ssl.TLSVersion.MAXIMUM_SUPPORTED
+        else:
+            expected_maximum_version = ssl.SSLContext(
+                ssl.PROTOCOL_TLS_CLIENT
+            ).maximum_version
+        assert ctx.maximum_version == expected_maximum_version
 
     def test_ssl_context_ssl_version_uses_ssl_min_max_versions(self) -> None:
         ctx = urllib3.util.ssl_.create_urllib3_context(ssl_version=self.ssl_version())
