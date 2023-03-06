@@ -58,7 +58,6 @@ jobs:
     uses: "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.4.0"
     with:
       base64-subjects: "${{ needs.build.outputs.hashes }}"
-      attestation-name: "urllib3.intoto.jsonl"
       upload-assets: true
       compile-generator: true # Workaround for https://github.com/slsa-framework/slsa-github-generator/issues/1163
 
