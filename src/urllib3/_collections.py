@@ -266,7 +266,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             return key.lower() in self._container
         return False
 
-    def setdefault(self, key: str, default: str = "") -> str:
+    def setdefault(self, key: str, default: str = "") -> str:  # type: ignore[override]
         return super().setdefault(key, default)
 
     def __eq__(self, other: object) -> bool:
