@@ -122,6 +122,14 @@ Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migr
 * Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()`` (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__).
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
 
+1.26.15 (2023-03-10)
+--------------------
+
+* Fix socket timeout value when ``HTTPConnection`` is reused (`#2645 <https://github.com/urllib3/urllib3/issues/2645>`__)
+* Remove "!" character from the unreserved characters in IPv6 Zone ID parsing
+  (`#2899 <https://github.com/urllib3/urllib3/issues/2899>`__)
+* Fix IDNA handling of '\x80' byte (`#2901 <https://github.com/urllib3/urllib3/issues/2901>`__)
+
 1.26.14 (2023-01-11)
 --------------------
 
