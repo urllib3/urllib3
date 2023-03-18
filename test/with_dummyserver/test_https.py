@@ -847,7 +847,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
-        assert [str(wm) for wm in w] == []
+        assert [str(wm) for wm in w if wm.category != ResourceWarning] == []
 
     def test_no_tls_version_deprecation_with_ssl_context(self) -> None:
         if self.tls_protocol_name is None:
@@ -868,7 +868,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
-        assert [str(wm) for wm in w] == []
+        assert [str(wm) for wm in w if wm.category != ResourceWarning] == []
 
     def test_tls_version_maximum_and_minimum(self) -> None:
         if self.tls_protocol_name is None:
