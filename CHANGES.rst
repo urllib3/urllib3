@@ -1,13 +1,7 @@
 2.0.0a3 (2023-01-11)
 ====================
 
-Bugfixes
---------
-
-- Fix logging error when using ``add_stderr_logger``. (`#2839 <https://github.com/urllib3/urllib3/issues/2839>`__)
-- Fixed parsing of port 0 (zero) returning None, instead of 0. (`#2850 <https://github.com/urllib3/urllib3/issues/2850>`__)
-- Fixed the type hint of ``PoolKey.key_retries`` by adding ``bool`` to the union. (`#2865 <https://github.com/urllib3/urllib3/issues/2865>`__)
-
+* Fix logging error when using ``add_stderr_logger``. (`#2839 <https://github.com/urllib3/urllib3/issues/2839>`__)
 
 2.0.0a2 (2022-11-23)
 ====================
@@ -127,6 +121,20 @@ Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migr
 * Fixed a bug where ``headers`` would be modified by the ``remove_headers_on_redirect`` feature (`#2272 <https://github.com/urllib3/urllib3/issues/2272>`__).
 * Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()`` (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__).
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
+
+1.26.15 (2023-03-10)
+--------------------
+
+* Fix socket timeout value when ``HTTPConnection`` is reused (`#2645 <https://github.com/urllib3/urllib3/issues/2645>`__)
+* Remove "!" character from the unreserved characters in IPv6 Zone ID parsing
+  (`#2899 <https://github.com/urllib3/urllib3/issues/2899>`__)
+* Fix IDNA handling of '\x80' byte (`#2901 <https://github.com/urllib3/urllib3/issues/2901>`__)
+
+1.26.14 (2023-01-11)
+--------------------
+
+* Fixed parsing of port 0 (zero) returning None, instead of 0. (`#2850 <https://github.com/urllib3/urllib3/issues/2850>`__)
+* Removed deprecated getheaders() calls in contrib module. Fixed the type hint of ``PoolKey.key_retries`` by adding ``bool`` to the union. (`#2865 <https://github.com/urllib3/urllib3/issues/2865>`__)
 
 1.26.13 (2022-11-23)
 --------------------

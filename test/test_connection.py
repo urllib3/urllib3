@@ -62,7 +62,7 @@ class TestConnection:
                 "bar",
                 {"subjectAltName": (("DNS", "foo"),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     def test_match_hostname_no_dns(self) -> None:
         cert: _TYPE_PEER_CERT_RET_DICT = {"subjectAltName": (("DNS", ""),)}
@@ -77,7 +77,7 @@ class TestConnection:
                 "bar",
                 {"subjectAltName": (("DNS", ""),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     def test_match_hostname_startwith_wildcard(self) -> None:
         cert: _TYPE_PEER_CERT_RET_DICT = {"subjectAltName": (("DNS", "*"),)}
@@ -137,7 +137,7 @@ class TestConnection:
                 "1.1.1.2",
                 {"subjectAltName": (("IP Address", "1.1.1.1"),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     @pytest.mark.parametrize(
         ["asserted_hostname", "san_ip"],
@@ -171,7 +171,7 @@ class TestConnection:
                 "1:2::2:2",
                 {"subjectAltName": (("IP Address", "1:2::2:1"),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     def test_match_hostname_dns_with_brackets_doesnt_match(self) -> None:
         cert: _TYPE_PEER_CERT_RET_DICT = {

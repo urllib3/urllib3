@@ -6,7 +6,6 @@ from enum import Enum, auto
 from threading import RLock
 
 if typing.TYPE_CHECKING:
-
     # We can only import Protocol if TYPE_CHECKING because it's a development
     # dependency, and is not available at runtime.
     from typing_extensions import Protocol
@@ -267,7 +266,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             return key.lower() in self._container
         return False
 
-    def setdefault(self, key: str, default: str = "") -> str:
+    def setdefault(self, key: str, default: str = "") -> str:  # type: ignore[override]
         return super().setdefault(key, default)
 
     def __eq__(self, other: object) -> bool:

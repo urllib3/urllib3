@@ -90,7 +90,6 @@ def validate_response(
 
 
 def validate_peercert(ssl_socket: SSLTransport) -> None:
-
     binary_cert = ssl_socket.getpeercert(binary_form=True)
     assert type(binary_cert) == bytes
     assert len(binary_cert) > 0
@@ -440,7 +439,6 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             with SSLTransport(
                 proxy_sock, self.client_context, server_hostname="localhost"
             ) as destination_sock:
-
                 file = destination_sock.makefile("rwb", buffering)
                 file.write(sample_request())  # type: ignore[arg-type]
                 file.flush()
@@ -476,7 +474,6 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             with SSLTransport(
                 proxy_sock, self.client_context, server_hostname="localhost"
             ) as destination_sock:
-
                 read = destination_sock.makefile("r", encoding="utf-8")
                 write = destination_sock.makefile("w", encoding="utf-8")
 
@@ -510,7 +507,6 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             with SSLTransport(
                 proxy_sock, self.client_context, server_hostname="localhost"
             ) as destination_sock:
-
                 destination_sock.sendall(sample_request())
                 response = bytearray(65536)
                 destination_sock.recv_into(response)

@@ -328,7 +328,6 @@ class HTTPConnection(_HTTPConnection):
         decode_content: bool = True,
         enforce_content_length: bool = True,
     ) -> None:
-
         # Update the inner socket's timeout value to send the request.
         # This only triggers if the connection is re-used.
         if self.sock is not None:
@@ -533,7 +532,6 @@ class HTTPSConnection(HTTPConnection):
         key_file: str | None = None,
         key_password: str | None = None,
     ) -> None:
-
         super().__init__(
             host,
             port=port,

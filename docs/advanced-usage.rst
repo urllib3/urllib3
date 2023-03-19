@@ -619,7 +619,7 @@ flag that isn't set by default, and then makes a HTTPS request:
     import ssl
 
     from urllib3 import PoolManager
-    from urllib3.util.ssl_ import create_urllib3_context
+    from urllib3.util import create_urllib3_context
 
     ctx = create_urllib3_context()
     ctx.load_default_certs()
