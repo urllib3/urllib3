@@ -89,7 +89,7 @@ Next you should try installing urllib3 v2.0 locally and run your test suite.
 
 .. code-block:: bash
 
-  $ python -m pip install -U --pre 'urllib3>2'
+  $ python -m pip install -U --pre 'urllib3>=2.0.0a1'
 
 
 Because there are many ``DeprecationWarnings`` you should ensure that you're
