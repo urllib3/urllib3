@@ -432,3 +432,24 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         if header_name in self:
             return potential_value in self._container[header_name.lower()][1:]
         return False
+
+    def __ior__(self, other: object) -> HTTPHeaderDict:
+        # Supports extending a header dict in-place using operator |=
+        # combining items with add instead of __setitem__
+        maybe_constructable = ensure_can_construct_http_header_dict(other)
+        if maybe_constructable is None:
+            return NotImplemented
+        other_as_http_header_dict = type(self)(maybe_constructable)
+        self.extend(other_as_http_header_dict)
+        return self
+
+    def __or__(self, other: object) -> HTTPHeaderDict:
+        # Supports merging header dicts using operator |
+        # combining items with add instead of __setitem__
+        maybe_constructable = ensure_can_construct_http_header_dict(other)
+        if maybe_constructable is None:
+            return NotImplemented
+        result = self.copy()
+        other_as_http_header_dict = type(self)(maybe_constructable)
+        result.extend(other_as_http_header_dict)
+        return result

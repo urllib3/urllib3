@@ -379,6 +379,28 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 ["Extra", "extra"],
             ]
 
+    def test_merge_headers_with_pool_manager_headers(self) -> None:
+        headers = HTTPHeaderDict()
+        headers.add("Cookie", "choc-chip")
+        headers.add("Cookie", "oatmeal-raisin")
+        orig = headers.copy()
+        added_headers = {"Cookie": "tim-tam"}
+
+        with PoolManager(headers=headers) as http:
+            r = http.request(
+                "GET",
+                f"{self.base_url}/multi_headers",
+                headers=http.headers | added_headers,
+            )
+            returned_headers = r.json()["headers"]
+            assert returned_headers[-3:] == [
+                ["Cookie", "choc-chip"],
+                ["Cookie", "oatmeal-raisin"],
+                ["Cookie", "tim-tam"],
+            ]
+            # make sure the pool headers weren't modified
+            assert http.headers == orig
+
     def test_headers_http_multi_header_multipart(self) -> None:
         headers = HTTPHeaderDict()
         headers.add("Multi", "1")

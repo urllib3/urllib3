@@ -423,3 +423,23 @@ class TestHTTPHeaderDict:
         d._container[marker] = ["some", "strings"]  # type: ignore[index]
         assert marker not in d
         assert marker in d._container
+
+    def test_union(self, d: HTTPHeaderDict) -> None:
+        to_merge = {"Cookie": "tim-tam"}
+        result = d | to_merge
+        assert result == HTTPHeaderDict({"Cookie": "foo, bar, tim-tam"})
+        assert to_merge == {"Cookie": "tim-tam"}
+        assert d == HTTPHeaderDict({"Cookie": "foo, bar"})
+
+    def test_inplace_union(self, d: HTTPHeaderDict) -> None:
+        to_merge = {"Cookie": "tim-tam"}
+        d |= to_merge
+        assert d == HTTPHeaderDict({"Cookie": "foo, bar, tim-tam"})
+
+    def test_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
+        with pytest.raises(TypeError, match="unsupported operand type.*'int'"):
+            d | 42
+
+    def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
+        with pytest.raises(TypeError, match="unsupported operand type.*'NoneType'"):
+            d |= None
