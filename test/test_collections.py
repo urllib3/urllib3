@@ -431,6 +431,13 @@ class TestHTTPHeaderDict:
         assert to_merge == {"Cookie": "tim-tam"}
         assert d == HTTPHeaderDict({"Cookie": "foo, bar"})
 
+    def test_union_rhs(self, d: HTTPHeaderDict) -> None:
+        to_merge = {"Cookie": "tim-tam"}
+        result = to_merge | d
+        assert result == HTTPHeaderDict({"Cookie": "tim-tam, foo, bar"})
+        assert to_merge == {"Cookie": "tim-tam"}
+        assert d == HTTPHeaderDict({"Cookie": "foo, bar"})
+
     def test_inplace_union(self, d: HTTPHeaderDict) -> None:
         to_merge = {"Cookie": "tim-tam"}
         d |= to_merge

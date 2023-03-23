@@ -453,3 +453,13 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         other_as_http_header_dict = type(self)(maybe_constructable)
         result.extend(other_as_http_header_dict)
         return result
+
+    def __ror__(self, other: object) -> HTTPHeaderDict:
+        # Supports merging header dicts using operator | when other is on left side
+        # combining items with add instead of __setitem__
+        maybe_constructable = ensure_can_construct_http_header_dict(other)
+        if maybe_constructable is None:
+            return NotImplemented
+        result = type(self)(maybe_constructable)
+        result.extend(self)
+        return result
