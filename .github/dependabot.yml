@@ -7,4 +7,5 @@ updates:
     ignore:
       # Ignore all patch releases as we can manually
       # upgrade if we run into a bug and need a fix.
-      - update-types: ["version-update:semver-patch"]
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
