@@ -446,6 +446,8 @@ class TestHTTPHeaderDict:
     def test_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
         with pytest.raises(TypeError, match="unsupported operand type.*'int'"):
             d | 42
+        with pytest.raises(TypeError, match="unsupported operand type.*'float'"):
+            3.14 | d
 
     def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
         with pytest.raises(TypeError, match="unsupported operand type.*'NoneType'"):
