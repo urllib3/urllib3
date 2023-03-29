@@ -352,7 +352,10 @@ class TestResponse:
         fp = BytesIO(data)
 
         with pytest.raises(DecodeError):
-            HTTPResponse(fp, headers={"content-encoding": "zstd"})
+            r = HTTPResponse(
+                fp, headers={"content-encoding": "zstd"}, preload_content=False
+            )
+            r.read()
 
     def test_multi_decoding_deflate_deflate(self) -> None:
         data = zlib.compress(zlib.compress(b"foo"))
