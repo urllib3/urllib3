@@ -349,8 +349,16 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
     def test_decode_zstd_error(self, data: bytes) -> None:
+        fp = BytesIO(data)
+
+        with pytest.raises(DecodeError):
+            HTTPResponse(fp, headers={"content-encoding": "zstd"})
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
+    def test_decode_zstd_incomplete(self, data: bytes) -> None:
         data = zstd.compress(data)
-        fp = BytesIO(data[:-1])  # purposely use incomplete frame
+        fp = BytesIO(data[:-1])
 
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "zstd"})
