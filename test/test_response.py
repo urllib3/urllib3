@@ -349,13 +349,11 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
     def test_decode_zstd_error(self, data: bytes) -> None:
-        fp = BytesIO(data)
+        data = zstd.compress(data)
+        fp = BytesIO(data[:-1])  # purposely use incomplete frame
 
         with pytest.raises(DecodeError):
-            r = HTTPResponse(
-                fp, headers={"content-encoding": "zstd"}, preload_content=False
-            )
-            r.read()
+            HTTPResponse(fp, headers={"content-encoding": "zstd"})
 
     def test_multi_decoding_deflate_deflate(self) -> None:
         data = zlib.compress(zlib.compress(b"foo"))
