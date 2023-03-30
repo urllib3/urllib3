@@ -1,1 +1,1 @@
-Added jitter to ``urllib3.Retry`` backoff.
+Added optional `backoff_jitter` to ``urllib3.Retry``.
