@@ -146,9 +146,9 @@ class Retry:
             {backoff factor} * (2 ** ({number of total retries} - 1))
 
         seconds. If `backoff_jitter` is set (not by default), this sleep is extended by::
-        
+
             random.uniform(0, {backoff jitter})
-        
+
         seconds. For example, if the backoff_factor is 0.1, then :func:`Retry.sleep` will
         sleep for [0.0s, 0.2s, 0.4s, 0.8s, ...] between retries. No backoff will ever
         be longer than `backoff_max`.
