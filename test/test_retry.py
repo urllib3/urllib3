@@ -184,7 +184,6 @@ class TestRetry:
         """Backoff with jitter is computed correctly"""
         max_backoff = 1
         jitter = 0.4
-
         retry = Retry(
             total=100,
             backoff_factor=0.2,
