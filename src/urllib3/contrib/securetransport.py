@@ -317,6 +317,7 @@ class WrappedSocket:
         self.context = None
         self._io_refs = 0
         self._closed = False
+        self._real_closed = False
         self._exception: Exception | None = None
         self._keychain = None
         self._keychain_dir: str | None = None
@@ -553,7 +554,7 @@ class WrappedSocket:
         self, buffer: ctypes.Array[ctypes.c_char], nbytes: int | None = None
     ) -> int:
         # Read short on EOF.
-        if self._closed:
+        if self._real_closed:
             return 0
 
         if nbytes is None:
@@ -634,6 +635,7 @@ class WrappedSocket:
             self._real_close()
 
     def _real_close(self) -> None:
+        self._real_closed = True
         if self.context:
             CoreFoundation.CFRelease(self.context)
             self.context = None
