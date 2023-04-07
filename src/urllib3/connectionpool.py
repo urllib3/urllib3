@@ -1115,7 +1115,7 @@ def _normalize_host(host, scheme):
     return host
 
 
-def _close_pool_connections(pool: "queue.LifoQueue[Any]") -> None:
+def _close_pool_connections(pool):
     """Drains a queue of connections and closes each one."""
     try:
         while True:
