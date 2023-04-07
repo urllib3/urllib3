@@ -376,7 +376,7 @@ class TestPoolManager(object):
 
         assert create_connection.call_args[0][0] == ("a::b%zone", 80)
 
-    def test_thread_safty(self) -> None:
+    def test_thread_safty(self):
         pool_manager = PoolManager(num_pools=2)
 
         # thread 1 gets a pool for host x
