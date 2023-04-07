@@ -1432,6 +1432,17 @@ class TestSSL(SocketDummyServerTestCase):
         context.load_default_certs = mock.Mock()
         context.options = 0
 
+        class MockSSLSocket:
+            def __init__(
+                self, sock: socket.socket, *args: object, **kwargs: object
+            ) -> None:
+                self._sock = sock
+
+            def close(self) -> None:
+                self._sock.close()
+
+        context.wrap_socket = MockSSLSocket
+
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
             self._start_server(socket_handler)
             with HTTPSConnectionPool(self.host, self.port) as pool:
@@ -1473,6 +1484,17 @@ class TestSSL(SocketDummyServerTestCase):
         context = mock.create_autospec(ssl_.SSLContext)
         context.load_default_certs = mock.Mock()
         context.options = 0
+
+        class MockSSLSocket:
+            def __init__(
+                self, sock: socket.socket, *args: object, **kwargs: object
+            ) -> None:
+                self._sock = sock
+
+            def close(self) -> None:
+                self._sock.close()
+
+        context.wrap_socket = MockSSLSocket
 
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
             for kwargs in [
