@@ -1,6 +1,11 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branch:
+      - main
+      - 1.26.x
+  pull_request:
 
 permissions: "read-all"
 

@@ -2151,14 +2151,32 @@ class TestBrokenPipe(SocketDummyServerTestCase):
         # a buffer that will cause two sendall calls
         buf = "a" * 1024 * 1024 * 4
 
+        import platform
+        _IS_MACOS = platform.system() == "Darwin"
+
+        if _IS_MACOS:
+            print(">> test start")
+
         def connect_and_wait(*args: typing.Any, **kw: typing.Any) -> None:
+            if _IS_MACOS:
+                print(">> connect_and_wait")
             ret = orig_connect(*args, **kw)
+            if _IS_MACOS:
+                print(">> connect_and_wait::wait")
             assert sock_shut.wait(5)
+            if _IS_MACOS:
+                print(">> connect_and_wait::ret")
             return ret
 
         def socket_handler(listener: socket.socket) -> None:
+            if _IS_MACOS:
+                print(">> socket_handler")
             for i in range(2):
+                if _IS_MACOS:
+                    print(">> socket_handler::", i, "::accept")
                 sock = listener.accept()[0]
+                if _IS_MACOS:
+                    print(">> socket_handler::", i, "::sock.send")
                 sock.send(
                     b"HTTP/1.1 404 Not Found\r\n"
                     b"Connection: close\r\n"
@@ -2166,19 +2184,33 @@ class TestBrokenPipe(SocketDummyServerTestCase):
                     b"\r\n"
                     b"xxxxxxxxxx"
                 )
+                if _IS_MACOS:
+                    print(">> socket_handler::", i, "::sock.shutdown")
                 sock.shutdown(socket.SHUT_RDWR)
                 sock_shut.set()
+                if _IS_MACOS:
+                    print(">> socket_handler::", i, "::sock.close")
                 sock.close()
 
         monkeypatch.setattr(HTTPConnection, "connect", connect_and_wait)
+        if _IS_MACOS:
+            print(">> start_server")
         self._start_server(socket_handler)
         with HTTPConnectionPool(self.host, self.port) as pool:
+            if _IS_MACOS:
+                print(">> req1")
             r = pool.request("POST", "/", body=buf)
+            if _IS_MACOS:
+                print(">> resp1")
             assert r.status == 404
             assert r.headers["content-length"] == "10"
             assert r.data == b"xxxxxxxxxx"
 
+            if _IS_MACOS:
+                print(">> req2")
             r = pool.request("POST", "/admin", chunked=True, body=buf)
+            if _IS_MACOS:
+                print(">> resp2")
             assert r.status == 404
             assert r.headers["content-length"] == "10"
             assert r.data == b"xxxxxxxxxx"
