@@ -53,9 +53,11 @@ from .util.url import get_host, parse_url
 finalize = None
 try:  # Platform-specific: Python 3
     import weakref
+
     finalize = weakref.finalize
 except AttributeError:  # Platform-specific: Python 2
     from .packages.backports.finalize import backport_finalize
+
     finalize = backport_finalize
 
 xrange = six.moves.xrange
@@ -237,7 +239,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Close all the HTTPConnections in the pool before the
         # HTTPConnectionPool object is garbage collected.
         finalize(self, _close_pool_connections, pool)
-        
+
     def _new_conn(self):
         """
         Return a fresh :class:`HTTPConnection`.
