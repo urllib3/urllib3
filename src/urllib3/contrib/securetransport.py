@@ -635,9 +635,6 @@ class WrappedSocket:
             self._real_close()
 
     def _real_close(self) -> None:
-        if self._real_closed:
-            return
-
         self._real_closed = True
         if self.context:
             CoreFoundation.CFRelease(self.context)
