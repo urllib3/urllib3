@@ -601,7 +601,7 @@ class HTTPSConnection(HTTPConnection):
         self.ca_cert_data = ca_cert_data
 
     def _tunnel(self) -> None:
-        # work-around cpython leaving response open
+        # work-around https://github.com/python/cpython/issues/103472 leaving response open
         connect = b"CONNECT %s:%d HTTP/1.0\r\n" % (  # type: ignore[str-format]
             self._tunnel_host.encode("ascii"),  # type: ignore[union-attr]
             self._tunnel_port,
