@@ -229,8 +229,11 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             assert ssock.selected_npn_protocol() is None
 
             shared_ciphers = ssock.shared_ciphers()
-            assert type(shared_ciphers) == list
-            assert len(shared_ciphers) > 0
+            # SSLContext.shared_ciphers() changed behavior completely in a patch version.
+            # See: https://github.com/python/cpython/issues/96931
+            assert shared_ciphers is None or (
+                type(shared_ciphers) is list and len(shared_ciphers) > 0
+            )
 
             assert ssock.compression() is None
 
