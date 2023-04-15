@@ -4,7 +4,6 @@ import platform
 import select
 import socket
 import ssl
-import sys
 import typing
 from unittest import mock
 
@@ -230,16 +229,11 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             assert ssock.selected_npn_protocol() is None
 
             shared_ciphers = ssock.shared_ciphers()
-            # https://github.com/python/cpython/issues/96931
-            if (
-                (3, 11) > sys.version_info >= (3, 10, 11)
-                or (3, 12) > sys.version_info >= (3, 11, 3)
-                or sys.version_info >= (3, 12, 0, "alpha", 7)
-            ):
-                assert shared_ciphers is None
-            else:
-                assert type(shared_ciphers) == list
-                assert len(shared_ciphers) > 0
+            # SSLContext.shared_ciphers() changed behavior completely in a patch version.
+            # See: https://github.com/python/cpython/issues/96931
+            assert shared_ciphers is None or (
+                type(shared_ciphers) is list and len(shared_ciphers) > 0
+            )
 
             assert ssock.compression() is None
 
