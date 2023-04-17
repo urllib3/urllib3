@@ -3,6 +3,7 @@ from __future__ import annotations
 from test import DUMMY_POOL
 from unittest import mock
 
+import freezegun  # type: ignore[import]
 import pytest
 
 from urllib3.exceptions import (
@@ -361,7 +362,6 @@ class TestRetry:
         new_retry = retry.new()
         assert new_retry.respect_retry_after_header == respect_retry_after_header
 
-    @pytest.mark.freeze_time("2019-06-03 11:00:00", tz_offset=0)
     @pytest.mark.parametrize(
         "retry_after_header,respect_retry_after_header,sleep_duration",
         [
@@ -400,7 +400,9 @@ class TestRetry:
     ) -> None:
         retry = Retry(respect_retry_after_header=respect_retry_after_header)
 
-        with mock.patch("time.sleep") as sleep_mock:
+        with freezegun.freeze_time("2019-06-03 11:00:00", tz_offset=0), mock.patch(
+            "time.sleep"
+        ) as sleep_mock:
             # for the default behavior, it must be in RETRY_AFTER_STATUS_CODES
             response = HTTPResponse(
                 status=503, headers={"Retry-After": retry_after_header}
