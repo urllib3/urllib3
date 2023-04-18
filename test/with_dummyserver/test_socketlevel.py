@@ -42,6 +42,7 @@ from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.connectionpool import _url_from_pool
 from urllib3.exceptions import (
+    InsecureRequestWarning,
     MaxRetryError,
     ProtocolError,
     ProxyError,
@@ -1188,7 +1189,8 @@ class TestProxyManager(SocketDummyServerTestCase):
             url = f"https://[{ipv6_addr}]"
             conn = proxy.connection_from_url(url)
             try:
-                r = conn.urlopen("GET", url, retries=0)
+                with pytest.warns(InsecureRequestWarning):
+                    r = conn.urlopen("GET", url, retries=0)
                 assert r.status == 200
             except MaxRetryError:
                 pytest.fail("Invalid IPv6 format in HTTP CONNECT request")
