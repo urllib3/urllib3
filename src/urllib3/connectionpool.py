@@ -50,15 +50,12 @@ from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
 from .util.url import get_host, parse_url
 
-finalize = None
 try:  # Platform-specific: Python 3
     import weakref
 
-    finalize = weakref.finalize
+    weakref_finalize = weakref.finalize
 except AttributeError:  # Platform-specific: Python 2
-    from .packages.backports.finalize import backport_finalize
-
-    finalize = backport_finalize
+    from .packages.backports.weakref_finalize import weakref_finalize
 
 xrange = six.moves.xrange
 
@@ -238,7 +235,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Close all the HTTPConnections in the pool before the
         # HTTPConnectionPool object is garbage collected.
-        finalize(self, _close_pool_connections, pool)
+        weakref_finalize(self, _close_pool_connections, pool)
 
     def _new_conn(self):
         """

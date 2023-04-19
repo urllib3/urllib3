@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-backports.finalize
+backports.weakref_finalize
 ~~~~~~~~~~~~~~~~~~
 
 Backports the Python 3 ``weakref.finalize`` method.
@@ -11,10 +11,10 @@ import itertools
 import sys
 from weakref import ref
 
-__all__ = ["finalize"]
+__all__ = ["weakref_finalize"]
 
 
-class backport_finalize(object):
+class weakref_finalize(object):
     """Class for finalization of weakrefable objects
     finalize(obj, func, *args, **kwargs) returns a callable finalizer
     object which will be called when obj is garbage collected. The
@@ -47,7 +47,7 @@ class backport_finalize(object):
             import atexit
 
             atexit.register(self._exitfunc)
-            backport_finalize._registered_with_atexit = True
+            weakref_finalize._registered_with_atexit = True
         info = self._Info()
         info.weakref = ref(obj, self)
         info.func = func
@@ -56,7 +56,7 @@ class backport_finalize(object):
         info.atexit = True
         info.index = next(self._index_iter)
         self._registry[self] = info
-        backport_finalize._dirty = True
+        weakref_finalize._dirty = True
 
     def __call__(self, _=None):
         """If alive then mark as dead and return func(*args, **kwargs);
@@ -133,9 +133,9 @@ class backport_finalize(object):
                     gc.disable()
                 pending = None
                 while True:
-                    if pending is None or backport_finalize._dirty:
+                    if pending is None or weakref_finalize._dirty:
                         pending = cls._select_for_exit()
-                        backport_finalize._dirty = False
+                        weakref_finalize._dirty = False
                     if not pending:
                         break
                     f = pending.pop()
@@ -150,6 +150,6 @@ class backport_finalize(object):
                     assert f not in cls._registry
         finally:
             # prevent any more finalizers from executing during shutdown
-            backport_finalize._shutdown = True
+            weakref_finalize._shutdown = True
             if reenable_gc:
                 gc.enable()
