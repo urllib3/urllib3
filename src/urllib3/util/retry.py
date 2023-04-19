@@ -145,7 +145,7 @@ class Retry:
 
             {backoff factor} * (2 ** ({number of total retries} - 1))
 
-        seconds. If `backoff_jitter` is set (not by default), this sleep is extended by::
+        seconds. If `backoff_jitter` is non-zero, this sleep is extended by::
 
             random.uniform(0, {backoff jitter})
 
@@ -214,7 +214,7 @@ class Retry:
         remove_headers_on_redirect: typing.Collection[
             str
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
-        backoff_jitter: float | None = None,
+        backoff_jitter: float = 0.0,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -297,7 +297,7 @@ class Retry:
             return 0
 
         backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
-        if self.backoff_jitter is not None:
+        if self.backoff_jitter > 0.0:
             backoff_value += random.random() * self.backoff_jitter
         return float(min(self.backoff_max, backoff_value))
 
