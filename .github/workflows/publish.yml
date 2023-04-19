@@ -6,9 +6,7 @@ on:
       - "*"
 
 permissions:
-  contents: "read"
-  # Needed to access the workflow's OIDC identity.
-  id-token: "write"
+  contents: read
 
 jobs:
   build:
@@ -54,7 +52,7 @@ jobs:
     permissions:
       actions: read
       contents: write
-      id-token: write
+      id-token: write # Needed to access the workflow's OIDC identity.
     uses: "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.5.0"
     with:
       base64-subjects: "${{ needs.build.outputs.hashes }}"

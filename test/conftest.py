@@ -290,11 +290,11 @@ def supported_tls_versions() -> typing.AbstractSet[str | None]:
 
     _server = HTTPSDummyServerTestCase()
     _server._start_server()
-    for _ssl_version_name in (
-        "PROTOCOL_TLSv1",
-        "PROTOCOL_TLSv1_1",
-        "PROTOCOL_TLSv1_2",
-        "PROTOCOL_TLS",
+    for _ssl_version_name, min_max_version in (
+        ("PROTOCOL_TLSv1", ssl.TLSVersion.TLSv1),
+        ("PROTOCOL_TLSv1_1", ssl.TLSVersion.TLSv1_1),
+        ("PROTOCOL_TLSv1_2", ssl.TLSVersion.TLSv1_2),
+        ("PROTOCOL_TLS", None),
     ):
         _ssl_version = getattr(ssl, _ssl_version_name, 0)
         if _ssl_version == 0:
@@ -302,7 +302,12 @@ def supported_tls_versions() -> typing.AbstractSet[str | None]:
         _sock = socket.create_connection((_server.host, _server.port))
         try:
             _sock = ssl_.ssl_wrap_socket(
-                _sock, cert_reqs=ssl.CERT_NONE, ssl_version=_ssl_version
+                _sock,
+                ssl_context=ssl_.create_urllib3_context(
+                    cert_reqs=ssl.CERT_NONE,
+                    ssl_minimum_version=min_max_version,
+                    ssl_maximum_version=min_max_version,
+                ),
             )
         except ssl.SSLError:
             pass
