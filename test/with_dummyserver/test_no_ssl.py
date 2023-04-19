@@ -1,29 +1,57 @@
 """
 Test connections without the builtin ssl module
-
-Note: Import urllib3 inside the test functions to get the importblocker to work
 """
 from __future__ import annotations
 
-import urllib3
-from dummyserver.testcase import HTTPDummyServerTestCase, HTTPSDummyServerTestCase
+import subprocess
+import sys
+import textwrap
 
-from ..test_no_ssl import TestWithoutSSL
+from dummyserver.testcase import HTTPDummyServerTestCase
 
 
-class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
+class TestHTTPWithoutSSL(HTTPDummyServerTestCase):
     def test_simple(self) -> None:
-        with urllib3.HTTPConnectionPool(self.host, self.port) as pool:
-            r = pool.request("GET", "/")
-            assert r.status == 200, r.data
+        script = textwrap.dedent(
+            """\
+            import sys
+
+            sys.modules["ssl"] = None
+            sys.modules["_ssl"] = None
+
+            import urllib3
+
+            host = sys.argv[1]
+            port = int(sys.argv[2])
+
+            with urllib3.HTTPConnectionPool(host, port) as pool:
+                r = pool.request("GET", "/")
+                assert r.status == 200, r.data
+            """
+        )
+        subprocess.run(
+            [sys.executable, "-c", script, self.host, str(self.port)], check=True
+        )
 
 
-class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):
-    def test_simple(self) -> None:
+def test_https_without_ssl() -> None:
+    script = textwrap.dedent(
+        """\
+        import sys
+
+        sys.modules["ssl"] = None
+        sys.modules["_ssl"] = None
+
+        import pytest
+        import urllib3
+
         with urllib3.HTTPSConnectionPool(
-            self.host, self.port, cert_reqs="NONE"
+            "localhost", 443, cert_reqs="NONE"
         ) as pool:
-            try:
+            with pytest.raises(
+                ImportError, match=r"SSL module is not available"
+            ):
                 pool.request("GET", "/")
-            except urllib3.exceptions.SSLError as e:
-                assert "SSL module is not available" in str(e)
+        """
+    )
+    subprocess.run([sys.executable, "-c", script], check=True)

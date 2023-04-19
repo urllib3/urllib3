@@ -4,11 +4,13 @@ import io
 import logging
 import socket
 import ssl
+import subprocess
 import sys
+import textwrap
 import typing
 import warnings
 from itertools import chain
-from test import ImportBlocker, ModuleStash, notBrotli, notZstd, onlyBrotli, onlyZstd
+from test import notBrotli, notZstd, onlyBrotli, onlyZstd
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
 from urllib.parse import urlparse
@@ -1098,24 +1100,21 @@ class TestUtilSSL:
         )
 
 
-idna_blocker = ImportBlocker("idna")
-module_stash = ModuleStash("urllib3")
+def test_parse_url_without_idna() -> None:
+    script = textwrap.dedent(
+        """\
+        import sys
 
+        sys.modules["idna"] = None
 
-class TestUtilWithoutIdna:
-    @classmethod
-    def setup_class(cls) -> None:
-        sys.modules.pop("idna", None)
+        import pytest
 
-        module_stash.stash()
-        sys.meta_path.insert(0, idna_blocker)
+        from urllib3.util.url import parse_url
+        from urllib3.exceptions import LocationParseError
 
-    @classmethod
-    def teardown_class(cls) -> None:
-        sys.meta_path.remove(idna_blocker)
-        module_stash.pop()
-
-    def test_parse_url_without_idna(self) -> None:
         url = "http://\uD7FF.com"
         with pytest.raises(LocationParseError, match=f"Failed to parse: {url}"):
             parse_url(url)
+        """
+    )
+    subprocess.run([sys.executable, "-c", script], check=True)

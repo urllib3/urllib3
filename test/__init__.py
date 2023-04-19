@@ -1,18 +1,13 @@
 from __future__ import annotations
 
 import errno
-import importlib.util
 import logging
 import os
 import platform
 import socket
-import sys
 import typing
 import warnings
-from collections.abc import Sequence
-from importlib.abc import Loader, MetaPathFinder
-from importlib.machinery import ModuleSpec
-from types import ModuleType, TracebackType
+from types import TracebackType
 
 import pytest
 
@@ -287,78 +282,3 @@ class LogRecorder:
     ) -> Literal[False]:
         self.uninstall()
         return False
-
-
-class ImportBlockerLoader(Loader):
-    def __init__(self, fullname: str) -> None:
-        self._fullname = fullname
-
-    def load_module(self, fullname: str) -> ModuleType:
-        raise ImportError(f"import of {fullname} is blocked")
-
-    def exec_module(self, module: ModuleType) -> None:
-        raise ImportError(f"import of {self._fullname} is blocked")
-
-
-class ImportBlocker(MetaPathFinder):
-    """
-    Block Imports
-
-    To be placed on ``sys.meta_path``. This ensures that the modules
-    specified cannot be imported, even if they are a builtin.
-    """
-
-    def __init__(self, *namestoblock: str) -> None:
-        self.namestoblock = namestoblock
-
-    def find_module(
-        self, fullname: str, path: typing.Sequence[bytes | str] | None = None
-    ) -> Loader | None:
-        if fullname in self.namestoblock:
-            return ImportBlockerLoader(fullname)
-        return None
-
-    def find_spec(
-        self,
-        fullname: str,
-        path: Sequence[bytes | str] | None,
-        target: ModuleType | None = None,
-    ) -> ModuleSpec | None:
-        loader = self.find_module(fullname, path)
-        if loader is None:
-            return None
-
-        return importlib.util.spec_from_loader(fullname, loader)
-
-
-class ModuleStash(MetaPathFinder):
-    """
-    Stashes away previously imported modules
-
-    If we reimport a module the data from coverage is lost, so we reuse the old
-    modules
-    """
-
-    def __init__(
-        self, namespace: str, modules: dict[str, ModuleType] = sys.modules
-    ) -> None:
-        self.namespace = namespace
-        self.modules = modules
-        self._data: dict[str, ModuleType] = {}
-
-    def stash(self) -> None:
-        if self.namespace in self.modules:
-            self._data[self.namespace] = self.modules.pop(self.namespace)
-
-        for module in list(self.modules.keys()):
-            if module.startswith(self.namespace + "."):
-                self._data[module] = self.modules.pop(module)
-
-    def pop(self) -> None:
-        self.modules.pop(self.namespace, None)
-
-        for module in list(self.modules.keys()):
-            if module.startswith(self.namespace + "."):
-                self.modules.pop(module)
-
-        self.modules.update(self._data)
