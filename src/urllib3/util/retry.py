@@ -299,7 +299,7 @@ class Retry:
         backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
         if self.backoff_jitter != 0.0:
             backoff_value += random.random() * self.backoff_jitter
-        return float(min(self.backoff_max, backoff_value))
+        return float(max(0, min(self.backoff_max, backoff_value)))
 
     def parse_retry_after(self, retry_after: str) -> float:
         seconds: float
