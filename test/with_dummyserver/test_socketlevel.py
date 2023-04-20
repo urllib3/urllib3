@@ -969,17 +969,17 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
     def test_socket_close_socket_then_file(self) -> None:
         def consume_ssl_socket(listener: socket.socket) -> None:
-            with listener.accept()[0] as sock, original_ssl_wrap_socket(
-                sock,
-                server_side=True,
-                keyfile=DEFAULT_CERTS["keyfile"],
-                certfile=DEFAULT_CERTS["certfile"],
-                ca_certs=DEFAULT_CA,
-            ) as ssl_sock:
-                try:
+            try:
+                with listener.accept()[0] as sock, original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                ) as ssl_sock:
                     consume_socket(ssl_sock)
-                except ConnectionResetError:
-                    pass
+            except (ConnectionResetError, ConnectionAbortedError):
+                pass
 
         self._start_server(consume_ssl_socket)
         with socket.create_connection(
@@ -999,17 +999,17 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
     def test_socket_close_stays_open_with_makefile_open(self) -> None:
         def consume_ssl_socket(listener: socket.socket) -> None:
-            with listener.accept()[0] as sock, original_ssl_wrap_socket(
-                sock,
-                server_side=True,
-                keyfile=DEFAULT_CERTS["keyfile"],
-                certfile=DEFAULT_CERTS["certfile"],
-                ca_certs=DEFAULT_CA,
-            ) as ssl_sock:
-                try:
+            try:
+                with listener.accept()[0] as sock, original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                ) as ssl_sock:
                     consume_socket(ssl_sock)
-                except ConnectionResetError:
-                    pass
+            except (ConnectionResetError, ConnectionAbortedError):
+                pass
 
         self._start_server(consume_ssl_socket)
         with socket.create_connection(
