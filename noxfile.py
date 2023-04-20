@@ -64,20 +64,6 @@ def test(session: nox.Session) -> None:
     tests_impl(session)
 
 
-@nox.session(python=["2.7"])
-def unsupported_setup_py(session: nox.Session) -> None:
-    # Can't check both returncode and output with session.run
-    process = subprocess.run(
-        ["python", "setup.py", "install"],
-        env={**session.env},
-        text=True,
-        capture_output=True,
-    )
-    assert process.returncode == 1
-    print(process.stderr)
-    assert "Please use `python -m pip install .` instead." in process.stderr
-
-
 @nox.session(python=["3"])
 def test_brotlipy(session: nox.Session) -> None:
     """Check that if 'brotlipy' is installed instead of 'brotli' or
