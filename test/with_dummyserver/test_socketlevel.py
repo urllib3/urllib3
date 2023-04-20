@@ -978,7 +978,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     ca_certs=DEFAULT_CA,
                 ) as ssl_sock:
                     consume_socket(ssl_sock)
-            except (ConnectionResetError, ConnectionAbortedError):
+            except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
         self._start_server(consume_ssl_socket)
@@ -1008,7 +1008,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     ca_certs=DEFAULT_CA,
                 ) as ssl_sock:
                     consume_socket(ssl_sock)
-            except (ConnectionResetError, ConnectionAbortedError):
+            except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
         self._start_server(consume_ssl_socket)
