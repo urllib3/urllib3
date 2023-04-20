@@ -7,15 +7,6 @@ import sys
 
 import nox
 
-SOURCE_FILES = [
-    "docs/",
-    "dummyserver/",
-    "src/",
-    "test/",
-    "noxfile.py",
-    "setup.py",
-]
-
 
 def tests_impl(
     session: nox.Session,
