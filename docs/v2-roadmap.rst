@@ -80,15 +80,15 @@ verification in Python or OpenSSL will be immediately
 available.
 
 
-**✨ Optimized for Python 3.6+**
+**✨ Optimized for Python 3.7+**
 --------------------------------
 
 In v2.0 we'll be specifically be targeting
-CPython 3.6+ and PyPy 7.0+ (compatible with CPython 3.6)
-and dropping support Python versions 2.7 and 3.5.
+CPython 3.7+ and PyPy 7.3.2+ (compatible with CPython 3.7)
+and dropping support Python versions 2.7 and 3.6.
 
 By dropping end-of-life Python versions we're able to optimize
-the codebase for Python 3.6+ by using new features to improve
+the codebase for Python 3.7+ by using new features to improve
 performance and reduce the amount of code that needs to be executed
 in order to support legacy versions.
 
