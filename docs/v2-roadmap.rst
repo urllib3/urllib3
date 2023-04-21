@@ -84,7 +84,7 @@ available.
 --------------------------------
 
 In v2.0 we'll be specifically be targeting
-CPython 3.7+ and PyPy 7.3.2+ (compatible with CPython 3.7)
+CPython 3.7+ and PyPy 7.3.10+ (compatible with CPython 3.8)
 and dropping support Python versions 2.7 and 3.6.
 
 By dropping end-of-life Python versions we're able to optimize
