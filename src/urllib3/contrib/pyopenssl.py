@@ -380,14 +380,15 @@ class WrappedSocket:
         self.connection.shutdown()
 
     def close(self) -> None:
-        if self._io_refs < 1:
-            try:
-                self._closed = True
-                return self.connection.close()  # type: ignore[no-any-return]
-            except OpenSSL.SSL.Error:
-                return
-        else:
-            self._io_refs -= 1
+        self._closed = True
+        if self._io_refs <= 0:
+            self._real_close()
+
+    def _real_close(self) -> None:
+        try:
+            return self.connection.close()  # type: ignore[no-any-return]
+        except OpenSSL.SSL.Error:
+            return
 
     def getpeercert(
         self, binary_form: bool = False
