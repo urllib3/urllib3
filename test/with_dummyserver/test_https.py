@@ -735,8 +735,19 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA
         ) as https_pool:
-            https_pool.ssl_version = self.certs["ssl_version"]
-            r = https_pool.request("GET", "/")
+            https_pool.ssl_version = ssl_version = self.certs["ssl_version"]
+            if ssl_version is getattr(ssl, "PROTOCOL_TLS", object()):
+                cmgr: contextlib.AbstractContextManager[
+                    object
+                ] = contextlib.nullcontext()
+            else:
+                cmgr = pytest.warns(
+                    DeprecationWarning,
+                    match=r"'ssl_version' option is deprecated and will be removed "
+                    r"in urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version'",
+                )
+            with cmgr:
+                r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
 
     def test_set_cert_default_cert_required(self) -> None:
@@ -793,7 +804,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.host, self.port, ca_certs=DEFAULT_CA, ssl_version=self.ssl_version()
         ) as https_pool:
             with contextlib.closing(https_pool._get_conn()) as conn:
-                with warnings.catch_warnings(record=True) as w:
+                with pytest.warns(DeprecationWarning) as w:
                     conn.connect()
 
         assert len(w) >= 1
@@ -950,7 +961,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         assert ctx.maximum_version == expected_maximum_version
 
     def test_ssl_context_ssl_version_uses_ssl_min_max_versions(self) -> None:
-        ctx = urllib3.util.ssl_.create_urllib3_context(ssl_version=self.ssl_version())
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"'ssl_version' option is deprecated and will be removed in "
+            r"urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version'",
+        ):
+            ctx = urllib3.util.ssl_.create_urllib3_context(
+                ssl_version=self.ssl_version()
+            )
         assert ctx.minimum_version == self.tls_version()
         assert ctx.maximum_version == self.tls_version()
 

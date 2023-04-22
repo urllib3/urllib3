@@ -2,19 +2,9 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 import sys
 
 import nox
-
-SOURCE_FILES = [
-    "docs/",
-    "dummyserver/",
-    "src/",
-    "test/",
-    "noxfile.py",
-    "setup.py",
-]
 
 
 def tests_impl(
@@ -71,20 +61,6 @@ def tests_impl(
 @nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy"])
 def test(session: nox.Session) -> None:
     tests_impl(session)
-
-
-@nox.session(python=["2.7"])
-def unsupported_setup_py(session: nox.Session) -> None:
-    # Can't check both returncode and output with session.run
-    process = subprocess.run(
-        ["python", "setup.py", "install"],
-        env={**session.env},
-        text=True,
-        capture_output=True,
-    )
-    assert process.returncode == 1
-    print(process.stderr)
-    assert "Please use `python -m pip install .` instead." in process.stderr
 
 
 @nox.session(python=["3"])
