@@ -372,14 +372,15 @@ class WrappedSocket(object):
         self.connection.shutdown()
 
     def close(self):
-        if self._makefile_refs < 1:
-            try:
-                self._closed = True
-                return self.connection.close()
-            except OpenSSL.SSL.Error:
-                return
-        else:
-            self._makefile_refs -= 1
+        self._closed = True
+        if self._makefile_refs <= 0:
+            self._real_close()
+
+    def _real_close(self):
+        try:
+            return self.connection.close()
+        except OpenSSL.SSL.Error:
+            return
 
     def getpeercert(self, binary_form=False):
         x509 = self.connection.get_peer_certificate()

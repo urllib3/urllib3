@@ -33,6 +33,7 @@ except ImportError:
         pass
 
 
+import contextlib
 import os
 import os.path
 import platform
@@ -928,6 +929,71 @@ class TestSocketClosing(SocketDummyServerTestCase):
             response.read()
             assert pool.pool.qsize() == 1
             assert response.connection is None
+
+    def test_socket_close_socket_then_file(self):
+        def consume_ssl_socket(listener):
+            try:
+                with contextlib.closing(
+                    listener.accept()[0]
+                ) as sock, contextlib.closing(
+                    ssl.wrap_socket(
+                        sock,
+                        server_side=True,
+                        keyfile=DEFAULT_CERTS["keyfile"],
+                        certfile=DEFAULT_CERTS["certfile"],
+                        ca_certs=DEFAULT_CA,
+                    )
+                ) as ssl_sock:
+                    consume_socket(ssl_sock)
+            except (ConnectionResetError, ConnectionAbortedError, OSError):
+                pass
+
+        self._start_server(consume_ssl_socket)
+        with contextlib.closing(
+            socket.create_connection((self.host, self.port))
+        ) as sock, contextlib.closing(
+            ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
+        ) as ssl_sock, ssl_sock.makefile(
+            "rb"
+        ) as f:
+            ssl_sock.close()
+            f.close()
+            # SecureTransport is supposed to raise OSError but raises
+            # ssl.SSLError when closed because ssl_sock.context is None
+            with pytest.raises((OSError, ssl.SSLError)):
+                ssl_sock.sendall(b"hello")
+            assert ssl_sock.fileno() == -1
+
+    def test_socket_close_stays_open_with_makefile_open(self):
+        def consume_ssl_socket(listener):
+            try:
+                with contextlib.closing(
+                    listener.accept()[0]
+                ) as sock, contextlib.closing(
+                    ssl.wrap_socket(
+                        sock,
+                        server_side=True,
+                        keyfile=DEFAULT_CERTS["keyfile"],
+                        certfile=DEFAULT_CERTS["certfile"],
+                        ca_certs=DEFAULT_CA,
+                    )
+                ) as ssl_sock:
+                    consume_socket(ssl_sock)
+            except (ConnectionResetError, ConnectionAbortedError, OSError):
+                pass
+
+        self._start_server(consume_ssl_socket)
+        with contextlib.closing(
+            socket.create_connection((self.host, self.port))
+        ) as sock, contextlib.closing(
+            ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
+        ) as ssl_sock, ssl_sock.makefile(
+            "rb"
+        ):
+            ssl_sock.close()
+            ssl_sock.close()
+            ssl_sock.sendall(b"hello")
+            assert ssl_sock.fileno() > 0
 
 
 class TestProxyManager(SocketDummyServerTestCase):

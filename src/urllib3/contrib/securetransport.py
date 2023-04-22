@@ -336,6 +336,7 @@ class WrappedSocket(object):
         self.context = None
         self._makefile_refs = 0
         self._closed = False
+        self._real_closed = False
         self._exception = None
         self._keychain = None
         self._keychain_dir = None
@@ -367,7 +368,7 @@ class WrappedSocket(object):
         yield
         if self._exception is not None:
             exception, self._exception = self._exception, None
-            self.close()
+            self._real_close()
             raise exception
 
     def _set_ciphers(self):
@@ -428,7 +429,7 @@ class WrappedSocket(object):
         # l_linger = 0, linger for 0 seoncds
         opts = struct.pack("ii", 1, 0)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, opts)
-        self.close()
+        self._real_close()
         raise ssl.SSLError("certificate verify failed, %s" % reason)
 
     def _evaluate_trust(self, trust_bundle):
@@ -582,7 +583,7 @@ class WrappedSocket(object):
 
     def recv_into(self, buffer, nbytes=None):
         # Read short on EOF.
-        if self._closed:
+        if self._real_closed:
             return 0
 
         if nbytes is None:
@@ -615,7 +616,7 @@ class WrappedSocket(object):
             # well. Note that we don't actually return here because in
             # principle this could actually be fired along with return data.
             # It's unlikely though.
-            self.close()
+            self._real_close()
         else:
             _assert_no_error(result)
 
@@ -657,23 +658,25 @@ class WrappedSocket(object):
             Security.SSLClose(self.context)
 
     def close(self):
+        self._closed = True
         # TODO: should I do clean shutdown here? Do I have to?
-        if self._makefile_refs < 1:
-            self._closed = True
-            if self.context:
-                CoreFoundation.CFRelease(self.context)
-                self.context = None
-            if self._client_cert_chain:
-                CoreFoundation.CFRelease(self._client_cert_chain)
-                self._client_cert_chain = None
-            if self._keychain:
-                Security.SecKeychainDelete(self._keychain)
-                CoreFoundation.CFRelease(self._keychain)
-                shutil.rmtree(self._keychain_dir)
-                self._keychain = self._keychain_dir = None
-            return self.socket.close()
-        else:
-            self._makefile_refs -= 1
+        if self._makefile_refs <= 0:
+            self._real_close()
+
+    def _real_close(self):
+        self._real_closed = True
+        if self.context:
+            CoreFoundation.CFRelease(self.context)
+            self.context = None
+        if self._client_cert_chain:
+            CoreFoundation.CFRelease(self._client_cert_chain)
+            self._client_cert_chain = None
+        if self._keychain:
+            Security.SecKeychainDelete(self._keychain)
+            CoreFoundation.CFRelease(self._keychain)
+            shutil.rmtree(self._keychain_dir)
+            self._keychain = self._keychain_dir = None
+        return self.socket.close()
 
     def getpeercert(self, binary_form=False):
         # Urgh, annoying.
