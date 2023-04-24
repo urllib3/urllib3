@@ -1,1 +1,0 @@
-Added optional `backoff_jitter` parameter to ``Retry``.
