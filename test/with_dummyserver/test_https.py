@@ -608,7 +608,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             cert_reqs="CERT_NONE",
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            https_pool.request("GET", "/")
+            with pytest.warns(InsecureRequestWarning):
+                https_pool.request("GET", "/")
 
     def test_tunnel(self) -> None:
         """test the _tunnel behavior"""
@@ -626,7 +627,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 with mock.patch.object(
                     conn, "_tunnel", create=True, return_value=None
                 ) as conn_tunnel:
-                    https_pool._make_request(conn, "GET", "/")
+                    with pytest.warns(InsecureRequestWarning):
+                        https_pool._make_request(conn, "GET", "/")
                 conn_tunnel.assert_called_once_with()
             finally:
                 conn.close()
