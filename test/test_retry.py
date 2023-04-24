@@ -165,6 +165,27 @@ class TestRetry(object):
 
         assert retry.get_backoff_time() == max_backoff
 
+    def test_backoff_jitter(self) -> None:
+         """Backoff with jitter is computed correctly"""
+         jitter = 0.4
+         retry = Retry(
+             total=100,
+             backoff_factor=0.2,
+             backoff_jitter=jitter,
+         )
+         assert retry.get_backoff_time() == 0  # First request
+
+         retry = retry.increment(method="GET")
+         assert retry.get_backoff_time() == 0  # First retry
+
+         retry = retry.increment(method="GET")
+         assert retry.backoff_factor == 0.2
+         assert retry.total == 98
+         assert 0.4 <= retry.get_backoff_time() <= 0.8  # Start backoff
+
+         retry = retry.increment(method="GET")
+         assert 0.8 <= retry.get_backoff_time() <= 1.6
+
     def test_zero_backoff(self):
         retry = Retry()
         assert retry.get_backoff_time() == 0
