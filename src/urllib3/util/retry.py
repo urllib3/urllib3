@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import email
 import logging
+import random
 import re
 import time
 import typing
@@ -144,11 +145,15 @@ class Retry:
 
             {backoff factor} * (2 ** ({number of total retries} - 1))
 
-        seconds. If the backoff_factor is 0.1, then :func:`Retry.sleep` will sleep
-        for [0.0s, 0.2s, 0.4s, ...] between retries. It will never be longer
-        than `backoff_max`.
+        seconds. If `backoff_jitter` is non-zero, this sleep is extended by::
 
-        By default, backoff is disabled (set to 0).
+            random.uniform(0, {backoff jitter})
+
+        seconds. For example, if the backoff_factor is 0.1, then :func:`Retry.sleep` will
+        sleep for [0.0s, 0.2s, 0.4s, 0.8s, ...] between retries. No backoff will ever
+        be longer than `backoff_max`.
+
+        By default, backoff is disabled (factor set to 0).
 
     :param bool raise_on_redirect: Whether, if the number of redirects is
         exhausted, to raise a MaxRetryError, or to return a response with a
@@ -209,6 +214,7 @@ class Retry:
         remove_headers_on_redirect: typing.Collection[
             str
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
+        backoff_jitter: float = 0.0,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -232,6 +238,7 @@ class Retry:
         self.remove_headers_on_redirect = frozenset(
             h.lower() for h in remove_headers_on_redirect
         )
+        self.backoff_jitter = backoff_jitter
 
     def new(self, **kw: typing.Any) -> Retry:
         params = dict(
@@ -250,6 +257,7 @@ class Retry:
             history=self.history,
             remove_headers_on_redirect=self.remove_headers_on_redirect,
             respect_retry_after_header=self.respect_retry_after_header,
+            backoff_jitter=self.backoff_jitter,
         )
 
         params.update(kw)
@@ -289,7 +297,9 @@ class Retry:
             return 0
 
         backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
-        return float(min(self.backoff_max, backoff_value))
+        if self.backoff_jitter != 0.0:
+            backoff_value += random.random() * self.backoff_jitter
+        return float(max(0, min(self.backoff_max, backoff_value)))
 
     def parse_retry_after(self, retry_after: str) -> float:
         seconds: float
