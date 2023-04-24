@@ -99,11 +99,11 @@ jobs:
         with:
           python-version: "3"
 
-      - if: matrix.python-version == '2.7'
+      - if: matrix.python-version == '2.7' || matrix.python-version == 'pypy2.7'
         name: Install Dependencies
         run: python -m pip install --upgrade pip setuptools nox 'virtualenv<20.22.0'
 
-      - if: matrix.python-version != '2.7'
+      - if: matrix.python-version != '2.7' && matrix.python-version != 'pypy2.7'
         name: Install Dependencies
         run: python -m pip install --upgrade pip setuptools nox
 
