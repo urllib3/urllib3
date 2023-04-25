@@ -1,3 +1,12 @@
+2.0.0a4 (2023-04-24)
+====================
+
+- Removed the ``setup.py`` shim, ``python setup.py install`` will print ``[Errno 2] No such file or directory`` instead of a warning to use pip (`#2975 <https://github.com/urllib3/urllib3/issues/2975>`__)
+- Added optional ``backoff_jitter`` parameter to ``Retry``. (`#2952 <https://github.com/urllib3/urllib3/issues/2952>`__)
+- Fixed URL encoding by removing '!' from the 'unreserved' character set specified in RFC 3986. (`#2899 <https://github.com/urllib3/urllib3/issues/2899>`__)
+- Fixed a sign error in a check for whether a character is in the ASCII range. (`#2901 <https://github.com/urllib3/urllib3/issues/2901>`__)
+- Fixed ``urllib3.contrib.pyopenssl.WrappedSocket`` and ``urllib3.contrib.securetransport.WrappedSocket`` close methods (`#2970 <https://github.com/urllib3/urllib3/issues/2970>`__)
+
 2.0.0a3 (2023-01-11)
 ====================
 
