@@ -1,0 +1,1 @@
+avoid a ``ResourceWarning`` if ``assert_fingerprint`` or ``match_hostname`` fail
