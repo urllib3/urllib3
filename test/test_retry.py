@@ -169,9 +169,9 @@ class TestRetry(object):
         """Backoff with jitter is computed correctly"""
         jitter = 0.4
         retry = Retry(
-         total=100,
-         backoff_factor=0.2,
-         backoff_jitter=jitter,
+            total=100,
+            backoff_factor=0.2,
+            backoff_jitter=jitter,
         )
         assert retry.get_backoff_time() == 0  # First request
 
