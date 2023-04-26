@@ -105,7 +105,6 @@ Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migr
 * Fixed a bug where ``headers`` would be modified by the ``remove_headers_on_redirect`` feature (`#2272 <https://github.com/urllib3/urllib3/issues/2272>`__).
 * Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()`` (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__).
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
-* Fixed deprecation warning when using cryptography v39.0.0. This fix requires using pyOpenSSL>=17.1.0 and cryptography>=1.9. (`#2829 <https://github.com/urllib3/urllib3/pull/2829>`__)
 * Fixed ``urllib3.contrib.pyopenssl.WrappedSocket`` and ``urllib3.contrib.securetransport.WrappedSocket`` close methods (`#2970 <https://github.com/urllib3/urllib3/issues/2970>`__)
 
 1.26.15 (2023-03-10)
