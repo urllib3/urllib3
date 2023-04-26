@@ -85,9 +85,6 @@ Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migr
 * Changed ``server_hostname`` to behave like other parameters only used by ``HTTPSConnectionPool`` (`#2537 <https://github.com/urllib3/urllib3/pull/2537>`__).
 * Changed the default ``blocksize`` to 16KB to match OpenSSL's default read amounts (`#2348 <https://github.com/urllib3/urllib3/pull/2348>`__).
 * Changed ``HTTPResponse.read()`` to raise an error when calling with ``decode_content=False`` after using ``decode_content=True`` to prevent data loss (`#2800 <https://github.com/urllib3/urllib3/issues/2800>`__).
-* Changed ``HTTPResponse.getheaders()`` and ``.getheader()`` to previous behavior in 1.26.x.
-  Instead we are deprecating these methods in favor of ``HTTPResponse.headers.items()`` and ``HTTPResponse.headers.get()``. Both deprecated
-  methods will be removed in v2.1.0 (`#2814 <https://github.com/urllib3/urllib3/issues/2814>`__)
 
 * Deprecated ``HTTPResponse.getheaders()`` and ``HTTPResponse.getheader()`` which will be removed in urllib3 v2.1.0. Instead use ``HTTPResponse.headers`` and ``HTTPResponse.headers.get(name, default)``. (`#1543 <https://github.com/urllib3/urllib3/issues/1543>`__, `#2814 <https://github.com/urllib3/urllib3/issues/2814>`__).
 * Deprecated ``urllib3.contrib.pyopenssl`` module which will be removed in urllib3 v2.1.0 (`#2691 <https://github.com/urllib3/urllib3/issues/2691>`__).
@@ -108,12 +105,7 @@ Read the `v2.0 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migr
 * Fixed a bug where ``headers`` would be modified by the ``remove_headers_on_redirect`` feature (`#2272 <https://github.com/urllib3/urllib3/issues/2272>`__).
 * Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()`` (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__).
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
-* Fixed an issue where parsing a URL with leading zeroes in the port would be rejected
-  even when the port number after removing the zeroes was valid. (`#2806 <https://github.com/urllib3/urllib3/pull/2806>`__)
 * Fixed deprecation warning when using cryptography v39.0.0. This fix requires using pyOpenSSL>=17.1.0 and cryptography>=1.9. (`#2829 <https://github.com/urllib3/urllib3/pull/2829>`__)
-* Fixed logging error when using ``add_stderr_logger``. (`#2839 <https://github.com/urllib3/urllib3/issues/2839>`__)
-* Fixed URL encoding by removing '!' from the 'unreserved' character set specified in RFC 3986. (`#2899 <https://github.com/urllib3/urllib3/issues/2899>`__)
-* Fixed a sign error in a check for whether a character is in the ASCII range. (`#2901 <https://github.com/urllib3/urllib3/issues/2901>`__)
 * Fixed ``urllib3.contrib.pyopenssl.WrappedSocket`` and ``urllib3.contrib.securetransport.WrappedSocket`` close methods (`#2970 <https://github.com/urllib3/urllib3/issues/2970>`__)
 
 1.26.15 (2023-03-10)
