@@ -76,10 +76,13 @@ Changed
 ~~~~~~~
 
 * Changed ``urllib3.response.HTTPResponse.read`` to respect the semantics of ``io.BufferedIOBase`` regardless of compression. Specifically, this method:
+
   * Only returns an empty bytes object to indicate EOF (that is, the response has been fully consumed).
   * Never returns more bytes than requested.
   * Can issue any number of system calls: zero, one or multiple.
+
   If you want each ``urllib3.response.HTTPResponse.read`` call to issue a single system call, you need to disable decompression by setting ``decode_content=False`` (`#2128 <https://github.com/urllib3/urllib3/issues/2128>`__).
+* Changed ``urllib3.HTTPConnection.getresponse`` to return an instance of ``urllib3.HTTPResponse`` instead of ``http.client.HTTPResponse`` (`#2648 <https://github.com/urllib3/urllib3/issues/2648>`__).
 * Changed ``ssl_version`` to instead set the corresponding ``SSLContext.minimum_version``
   and ``SSLContext.maximum_version`` values.  Regardless of ``ssl_version`` passed
   ``SSLContext`` objects are now constructed using ``ssl.PROTOCOL_TLS_CLIENT`` (`#2110 <https://github.com/urllib3/urllib3/issues/2110>`__).
@@ -88,7 +91,6 @@ Changed
 * Changed ``urllib3.util.create_urllib3_context`` to not override the system cipher suites with
   a default value. The new default will be cipher suites configured by the operating system (`#2168 <https://github.com/urllib3/urllib3/issues/2168>`__).
 * Changed ``multipart/form-data`` header parameter formatting matches the WHATWG HTML Standard as of 2021-06-10. Control characters in filenames are no longer percent encoded (`#2257 <https://github.com/urllib3/urllib3/issues/2257>`__).
-* Changed ``urllib3.HTTPConnection.getresponse`` to return an instance of ``urllib3.HTTPResponse`` instead of ``http.client.HTTPResponse`` (`#2648 <https://github.com/urllib3/urllib3/issues/2648>`__).
 * Changed the error raised when connecting via HTTPS when the ``ssl`` module isn't available from ``SSLError`` to ``ImportError`` (`#2589 <https://github.com/urllib3/urllib3/issues/2589>`__).
 * Changed ``HTTPConnection.request()`` to always use lowercase chunk boundaries when sending requests with ``Transfer-Encoding: chunked`` (`#2515 <https://github.com/urllib3/urllib3/issues/2515>`__).
 * Changed ``enforce_content_length`` default to True, preventing silent data loss when reading streamed responses (`#2514 <https://github.com/urllib3/urllib3/issues/2514>`__).
@@ -96,7 +98,6 @@ Changed
 * Changed the ``urllib3.contrib.pyopenssl`` module to wrap ``OpenSSL.SSL.Error`` with ``ssl.SSLError`` in ``PyOpenSSLContext.load_cert_chain`` (`#2628 <https://github.com/urllib3/urllib3/issues/2628>`__).
 * Changed usage of the deprecated ``socket.error`` to ``OSError`` (`#2120 <https://github.com/urllib3/urllib3/issues/2120>`__).
 * Changed all parameters in the ``HTTPConnection`` and ``HTTPSConnection`` constructors to be keyword-only except ``host`` and ``port`` (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__).
-* Changed ``urllib3.util.is_connection_dropped()`` to use ``HTTPConnection.is_connected`` (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__).
 * Changed ``HTTPConnection.getresponse()`` to set the socket timeout from ``HTTPConnection.timeout`` value before reading
   data from the socket. This previously was done manually by the ``HTTPConnectionPool`` calling ``HTTPConnection.sock.settimeout(...)`` (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__).
 * Changed the ``_proxy_host`` property to ``_tunnel_host`` in ``HTTPConnectionPool`` to more closely match how the property is used (value in ``HTTPConnection.set_tunnel()``) (`#1985 <https://github.com/urllib3/urllib3/issues/1985>`__).
