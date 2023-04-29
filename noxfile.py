@@ -100,7 +100,6 @@ def downstream_botocore(session: nox.Session) -> None:
     session.chdir("botocore")
     for patch in [
         "0001-Mark-100-Continue-tests-as-failing.patch",
-        "0002-Stop-relying-on-removed-DEFAULT_CIPHERS.patch",
     ]:
         session.run("git", "apply", f"{root}/ci/{patch}", external=True)
     session.run("git", "rev-parse", "HEAD", external=True)

@@ -1,1 +1,0 @@
-Removed '!' from _UNRESERVED_PAT as specified in the RFC.
