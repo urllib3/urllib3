@@ -1,1 +1,1 @@
-avoid a ``ResourceWarning`` if ``assert_fingerprint`` or ``match_hostname`` fail
+Fixed a socket leak when fingerprint or hostname verifications fail.
