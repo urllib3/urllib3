@@ -17,7 +17,8 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     _url_from_connection,
     _wrap_proxy_error,
 )
-from urllib3.exceptions import HTTPError, ProxyError
+from urllib3.exceptions import HTTPError, ProxyError, SSLError
+from urllib3.util import ssl_
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
@@ -235,3 +236,32 @@ class TestConnection:
         # Should error if a request has not been sent
         with pytest.raises(ResponseNotReady):
             conn.getresponse()
+
+    def test_assert_fingerprint_closes_socket(self) -> None:
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.wrap_socket.return_value.getpeercert.return_value = b"fake cert"
+        conn = HTTPSConnection(
+            "google.com",
+            port=443,
+            assert_fingerprint="AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA",
+            ssl_context=context,
+        )
+        with mock.patch.object(conn, "_new_conn"):
+            with pytest.raises(SSLError):
+                conn.connect()
+
+        context.wrap_socket.return_value.close.assert_called_once_with()
+
+    def test_assert_hostname_closes_socket(self) -> None:
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.wrap_socket.return_value.getpeercert.return_value = {
+            "subjectAltName": (("DNS", "google.com"),)
+        }
+        conn = HTTPSConnection(
+            "google.com", port=443, assert_hostname="example.com", ssl_context=context
+        )
+        with mock.patch.object(conn, "_new_conn"):
+            with pytest.raises(ImplementationCertificateError):
+                conn.connect()
+
+        context.wrap_socket.return_value.close.assert_called_once_with()
