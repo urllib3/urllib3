@@ -45,9 +45,8 @@ from .util.request import _TYPE_BODY_POSITION, set_file_position
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
-from .util.url import Url, _encode_target
+from .util.url import Url, _encode_target, parse_url
 from .util.url import _normalize_host as normalize_host
-from .util.url import parse_url
 from .util.util import to_str
 
 if typing.TYPE_CHECKING:

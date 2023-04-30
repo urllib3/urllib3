@@ -100,10 +100,6 @@ filterwarnings = [
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
 ]
 
-[tool.isort]
-profile = "black"
-add_imports = "from __future__ import annotations"
-
 [tool.mypy]
 mypy_path = "src"
 check_untyped_defs = true
@@ -121,3 +117,86 @@ warn_redundant_casts = true
 warn_return_any = true
 warn_unused_configs = true
 warn_unused_ignores = true
+
+[tool.ruff]
+select = [
+  "C90",    # McCabe cyclomatic complexity
+  "E",      # pycodestyle
+  "EXE",    # flake8-executable
+  "F",      # Pyflakes
+  "G",      # flake8-logging-format
+  "I",      # isort
+  "ICN",    # flake8-import-conventions
+  "INP",    # flake8-no-pep420
+  "INT",    # flake8-gettext
+  "PIE",    # flake8-pie
+  "PL",     # Pylint
+  "PYI",    # flake8-pyi
+  "RSE",    # flake8-raise
+  "RUF",    # Ruff-specific rules
+  "T10",    # flake8-debugger
+  "TID",    # flake8-tidy-imports
+  "UP",     # pyupgrade
+  "W",      # pycodestyle
+  "YTT",    # flake8-2020
+  # "A",    # flake8-builtins
+  # "ANN",  # flake8-annotations
+  # "ARG",  # flake8-unused-arguments
+  # "B",    # flake8-bugbear
+  # "BLE",  # flake8-blind-except
+  # "C4",   # flake8-comprehensions
+  # "COM",  # flake8-commas
+  # "D",    # pydocstyle
+  # "DJ",   # flake8-django
+  # "DTZ",  # flake8-datetimez
+  # "EM",   # flake8-errmsg
+  # "ERA",  # eradicate
+  # "FBT",  # flake8-boolean-trap
+  # "ISC",  # flake8-implicit-str-concat
+  # "N",    # pep8-naming
+  # "NPY",  # NumPy-specific rules
+  # "PD",   # pandas-vet
+  # "PGH",  # pygrep-hooks
+  # "PT",   # flake8-pytest-style
+  # "PTH",  # flake8-use-pathlib
+  # "Q",    # flake8-quotes
+  # "RET",  # flake8-return
+  # "S",    # flake8-bandit
+  # "SIM",  # flake8-simplify
+  # "SLF",  # flake8-self
+  # "T20",  # flake8-print
+  # "TCH",  # flake8-type-checking
+  # "TRY",  # tryceratops
+]
+ignore = [
+  "PLC0414",
+  "PLC1901",
+  "PLR0402",
+  "PLR2004",
+  "PLR5501",
+  "PLW0603",
+  "PLW2901",
+  "RSE102",
+  "RUF001",
+  "RUF005",
+  "RUF100",
+  "TID252",
+]
+line-length = 301
+target-version = "py37"
+
+[tool.ruff.isort]
+known-first-party = ["urllib3"]
+required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.mccabe]
+max-complexity = 25
+
+[tool.ruff.pylint]
+max-args = 19
+max-branches = 30
+max-statements = 90
+
+[tool.ruff.per-file-ignores]
+"docs/conf.py" = ["E402", "INP001"]
+"test/*" = ["S101"]

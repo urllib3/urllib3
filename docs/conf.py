@@ -73,7 +73,7 @@ html_favicon = "images/favicon.png"
 html_static_path = ["_static"]
 html_theme_options = {
     "announcement": """
-        <a style=\"text-decoration: none; color: white;\" 
+        <a style=\"text-decoration: none; color: white;\"
            href=\"https://github.com/sponsors/urllib3\">
            <img src=\"/en/latest/_static/favicon.png\"/> Support urllib3 on GitHub Sponsors
         </a>

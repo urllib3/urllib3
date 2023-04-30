@@ -154,21 +154,21 @@ class Timeout:
             float(value)
         except (TypeError, ValueError):
             raise ValueError(
-                "Timeout value %s was %s, but it must be an "
-                "int, float or None." % (name, value)
+                "Timeout value {} was {}, but it must be an "
+                "int, float or None.".format(name, value)
             ) from None
 
         try:
             if value <= 0:
                 raise ValueError(
-                    "Attempted to set %s timeout to %s, but the "
+                    "Attempted to set {} timeout to {}, but the "
                     "timeout cannot be set to a value less "
-                    "than or equal to 0." % (name, value)
+                    "than or equal to 0.".format(name, value)
                 )
         except TypeError:
             raise ValueError(
-                "Timeout value %s was %s, but it must be an "
-                "int, float or None." % (name, value)
+                "Timeout value {} was {}, but it must be an "
+                "int, float or None.".format(name, value)
             ) from None
 
         return value

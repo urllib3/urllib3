@@ -96,7 +96,7 @@ class RequestMethods:
         if json is not None:
             if headers is None:
                 headers = self.headers.copy()  # type: ignore
-            if not ("content-type" in map(str.lower, headers.keys())):
+            if "content-type" not in map(str.lower, headers.keys()):
                 headers["Content-Type"] = "application/json"  # type: ignore
 
             body = _json.dumps(json, separators=(",", ":"), ensure_ascii=False).encode(

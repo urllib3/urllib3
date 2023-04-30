@@ -150,8 +150,10 @@ def match_hostname(
 
     if len(dnsnames) > 1:
         raise CertificateError(
-            "hostname %r "
-            "doesn't match either of %s" % (hostname, ", ".join(map(repr, dnsnames)))
+            "hostname {!r} "
+            "doesn't match either of {}".format(
+                hostname, ", ".join(map(repr, dnsnames))
+            )
         )
     elif len(dnsnames) == 1:
         raise CertificateError(f"hostname {hostname!r} doesn't match {dnsnames[0]!r}")

@@ -31,7 +31,7 @@ class TestPickle:
             LocationParseError(""),
             ConnectTimeoutError(None),
             HTTPError("foo"),
-            HTTPError("foo", IOError("foo")),
+            HTTPError("foo", OSError("foo")),
             MaxRetryError(HTTPConnectionPool("localhost"), "/", None),
             LocationParseError("fake location"),
             ClosedPoolError(HTTPConnectionPool("localhost"), ""),

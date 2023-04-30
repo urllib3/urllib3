@@ -304,7 +304,7 @@ class TestConnectionPool:
             "Max retries exceeded with url: Test. (Caused by None)"
         )
 
-        err = SocketError("Test")
+        err = OSError("Test")
 
         # using err.__class__ here, as socket.error is an alias for OSError
         # since Py3.3 and gets printed as this
