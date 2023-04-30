@@ -1,3 +1,13 @@
+2.0.1 (2023-04-30)
+==================
+
+Fixes
+-----
+
+- Fixed a socket leak when fingerprint or hostname verifications fail. (`#2991 <https://github.com/urllib3/urllib3/issues/2991>`__)
+- Fixed an error when ``HTTPResponse.read(0)`` was the first ``read`` call or when the internal response body buffer was otherwise empty. (`#2998 <https://github.com/urllib3/urllib3/issues/2998>`__)
+
+
 2.0.0 (2023-04-26)
 ==================
 

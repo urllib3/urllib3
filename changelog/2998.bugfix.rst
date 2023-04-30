@@ -1,1 +1,0 @@
-Fixed ``HTTPResponse.read(0)`` call when underlying buffer is empty.
