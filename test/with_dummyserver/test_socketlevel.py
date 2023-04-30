@@ -1285,16 +1285,13 @@ class TestSSL(SocketDummyServerTestCase):
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             sock2 = sock.dup()
-            try:
-                ssl_sock = original_ssl_wrap_socket(
-                    sock,
-                    server_side=True,
-                    keyfile=DEFAULT_CERTS["keyfile"],
-                    certfile=DEFAULT_CERTS["certfile"],
-                    ca_certs=DEFAULT_CA,
-                )
-            except ssl.SSLError:
-                return
+            ssl_sock = original_ssl_wrap_socket(
+                sock,
+                server_side=True,
+                keyfile=DEFAULT_CERTS["keyfile"],
+                certfile=DEFAULT_CERTS["certfile"],
+                ca_certs=DEFAULT_CA,
+            )
 
             buf = b""
             while not buf.endswith(b"\r\n\r\n"):
@@ -1312,10 +1309,11 @@ class TestSSL(SocketDummyServerTestCase):
             ssl_sock.close()
 
         self._start_server(socket_handler)
-        with HTTPSConnectionPool(self.host, self.port) as pool:
-            with pytest.raises(MaxRetryError) as cm:
-                pool.request("GET", "/", retries=0)
-            assert isinstance(cm.value.reason, SSLError)
+        with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
+            with pytest.raises(
+                SSLError, match=r"(wrong version number|record overflow)"
+            ):
+                pool.request("GET", "/", retries=False)
 
     @notSecureTransport()
     def test_ssl_read_timeout(self) -> None:
