@@ -34,8 +34,7 @@ urllib3 is powerful and easy to use:
 
 ```python3
 >>> import urllib3
->>> http = urllib3.PoolManager()
->>> resp = http.request("GET", "http://httpbin.org/robots.txt")
+>>> resp = urllib3.request("GET", "http://httpbin.org/robots.txt")
 >>> resp.status
 200
 >>> resp.data
