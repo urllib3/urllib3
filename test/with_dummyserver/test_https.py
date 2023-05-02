@@ -457,12 +457,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
+            assert_fingerprint=("55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            https_pool.assert_fingerprint = (
-                "55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
-            )
-
             https_pool.request("GET", "/")
 
     def test_assert_fingerprint_sha1(self) -> None:
@@ -471,11 +468,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
+            assert_fingerprint=(
+                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
+            ),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            https_pool.assert_fingerprint = (
-                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            )
             https_pool.request("GET", "/")
 
     def test_assert_fingerprint_sha256(self) -> None:
@@ -484,12 +481,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
-            ssl_minimum_version=self.tls_version(),
-        ) as https_pool:
-            https_pool.assert_fingerprint = (
+            assert_fingerprint=(
                 "E3:59:8E:69:FF:C5:9F:C7:88:87:44:58:22:7F:90:8D:D9:BC:12:C4:90:79:D5:"
                 "DC:A8:5D:4F:60:40:1E:A6:D2"
-            )
+            ),
+            ssl_minimum_version=self.tls_version(),
+        ) as https_pool:
             https_pool.request("GET", "/")
 
     def test_assert_invalid_fingerprint(self) -> None:
@@ -507,7 +504,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
             https_pool.assert_fingerprint = (
-                "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
+                "AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
             )
             e = _test_request(https_pool)
             expected = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -529,11 +526,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_verify_none_and_bad_fingerprint(self) -> None:
         with HTTPSConnectionPool(
-            "127.0.0.1", self.port, cert_reqs="CERT_NONE", ca_certs=self.bad_ca_path
+            "127.0.0.1",
+            self.port,
+            cert_reqs="CERT_NONE",
+            assert_hostname=False,
+            assert_fingerprint=(
+                "AA:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
+            ),
         ) as https_pool:
-            https_pool.assert_fingerprint = (
-                "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
-            )
             with pytest.raises(MaxRetryError) as cm:
                 https_pool.request("GET", "/", retries=0)
             assert isinstance(cm.value.reason, SSLError)
@@ -543,12 +543,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             "127.0.0.1",
             self.port,
             cert_reqs="CERT_NONE",
-            ca_certs=self.bad_ca_path,
-            ssl_minimum_version=self.tls_version(),
-        ) as https_pool:
-            https_pool.assert_fingerprint = (
+            assert_hostname=False,
+            assert_fingerprint=(
                 "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            )
+            ),
+        ) as https_pool:
             https_pool.request("GET", "/")
 
     @notSecureTransport()
@@ -562,11 +561,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
+            assert_fingerprint=(
+                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
+            ),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            https_pool.assert_fingerprint = (
-                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            )
             https_pool.request("GET", "/")
 
     @requires_network()
@@ -590,12 +589,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             timeout=timeout,
             retries=False,
             cert_reqs="CERT_REQUIRED",
+            ca_certs=DEFAULT_CA,
+            assert_fingerprint=(
+                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
+            ),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            https_pool.ca_certs = DEFAULT_CA
-            https_pool.assert_fingerprint = (
-                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            )
+            # TODO This was removed in https://github.com/urllib3/urllib3/pull/703/files
+            # We need to put something back or remove this block.
+            pass
 
         timeout = Timeout(total=None)
         with HTTPSConnectionPool(

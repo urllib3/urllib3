@@ -243,7 +243,7 @@ class TestConnection:
         conn = HTTPSConnection(
             "google.com",
             port=443,
-            assert_fingerprint="AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA",
+            assert_fingerprint="AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA",
             ssl_context=context,
         )
         with mock.patch.object(conn, "_new_conn"):

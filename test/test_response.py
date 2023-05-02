@@ -44,6 +44,8 @@ class TestBytesQueueBuffer:
         with pytest.raises(RuntimeError, match="buffer is empty"):
             assert buffer.get(10)
 
+        assert buffer.get(0) == b""
+
         buffer.put(b"foo")
         with pytest.raises(ValueError, match="n should be > 0"):
             buffer.get(-1)
@@ -181,6 +183,7 @@ class TestResponse:
         fp = BytesIO(b"foo")
         r = HTTPResponse(fp, preload_content=False)
 
+        assert r.read(0) == b""
         assert r.read(1) == b"f"
         assert r.read(2) == b"oo"
         assert r.read() == b""
