@@ -229,8 +229,11 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             assert ssock.selected_npn_protocol() is None
 
             shared_ciphers = ssock.shared_ciphers()
-            assert type(shared_ciphers) == list
-            assert len(shared_ciphers) > 0
+            # SSLContext.shared_ciphers() changed behavior completely in a patch version.
+            # See: https://github.com/python/cpython/issues/96931
+            assert shared_ciphers is None or (
+                type(shared_ciphers) is list and len(shared_ciphers) > 0
+            )
 
             assert ssock.compression() is None
 
@@ -440,7 +443,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 proxy_sock, self.client_context, server_hostname="localhost"
             ) as destination_sock:
                 file = destination_sock.makefile("rwb", buffering)
-                file.write(sample_request())  # type: ignore[arg-type]
+                file.write(sample_request())  # type: ignore[call-overload]
                 file.flush()
 
                 response = bytearray(65536)
@@ -477,7 +480,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 read = destination_sock.makefile("r", encoding="utf-8")
                 write = destination_sock.makefile("w", encoding="utf-8")
 
-                write.write(sample_request(binary=False))  # type: ignore[arg-type]
+                write.write(sample_request(binary=False))  # type: ignore[arg-type, call-overload]
                 write.flush()
 
                 response = read.read()

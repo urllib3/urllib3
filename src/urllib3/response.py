@@ -244,7 +244,9 @@ class BytesQueueBuffer:
         self._size += len(data)
 
     def get(self, n: int) -> bytes:
-        if not self.buffer:
+        if n == 0:
+            return b""
+        elif not self.buffer:
             raise RuntimeError("buffer is empty")
         elif n < 0:
             raise ValueError("n should be > 0")

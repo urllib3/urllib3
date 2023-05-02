@@ -2,6 +2,7 @@
 # rather than the socket level-ness of it.
 from __future__ import annotations
 
+import contextlib
 import errno
 import io
 import os
@@ -42,6 +43,7 @@ from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.connectionpool import _url_from_pool
 from urllib3.exceptions import (
+    InsecureRequestWarning,
     MaxRetryError,
     ProtocolError,
     ProxyError,
@@ -966,6 +968,63 @@ class TestSocketClosing(SocketDummyServerTestCase):
             assert pool.pool.qsize() == 1
             assert response.connection is None
 
+    def test_socket_close_socket_then_file(self) -> None:
+        def consume_ssl_socket(listener: socket.socket) -> None:
+            try:
+                with listener.accept()[0] as sock, original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                ) as ssl_sock:
+                    consume_socket(ssl_sock)
+            except (ConnectionResetError, ConnectionAbortedError, OSError):
+                pass
+
+        self._start_server(consume_ssl_socket)
+        with socket.create_connection(
+            (self.host, self.port)
+        ) as sock, contextlib.closing(
+            ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
+        ) as ssl_sock, ssl_sock.makefile(
+            "rb"
+        ) as f:
+            ssl_sock.close()
+            f.close()
+            # SecureTransport is supposed to raise OSError but raises
+            # ssl.SSLError when closed because ssl_sock.context is None
+            with pytest.raises((OSError, ssl.SSLError)):
+                ssl_sock.sendall(b"hello")
+            assert ssl_sock.fileno() == -1
+
+    def test_socket_close_stays_open_with_makefile_open(self) -> None:
+        def consume_ssl_socket(listener: socket.socket) -> None:
+            try:
+                with listener.accept()[0] as sock, original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                ) as ssl_sock:
+                    consume_socket(ssl_sock)
+            except (ConnectionResetError, ConnectionAbortedError, OSError):
+                pass
+
+        self._start_server(consume_ssl_socket)
+        with socket.create_connection(
+            (self.host, self.port)
+        ) as sock, contextlib.closing(
+            ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
+        ) as ssl_sock, ssl_sock.makefile(
+            "rb"
+        ):
+            ssl_sock.close()
+            ssl_sock.close()
+            ssl_sock.sendall(b"hello")
+            assert ssl_sock.fileno() > 0
+
 
 class TestProxyManager(SocketDummyServerTestCase):
     def test_simple(self) -> None:
@@ -1188,7 +1247,8 @@ class TestProxyManager(SocketDummyServerTestCase):
             url = f"https://[{ipv6_addr}]"
             conn = proxy.connection_from_url(url)
             try:
-                r = conn.urlopen("GET", url, retries=0)
+                with pytest.warns(InsecureRequestWarning):
+                    r = conn.urlopen("GET", url, retries=0)
                 assert r.status == 200
             except MaxRetryError:
                 pytest.fail("Invalid IPv6 format in HTTP CONNECT request")
@@ -1225,16 +1285,13 @@ class TestSSL(SocketDummyServerTestCase):
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             sock2 = sock.dup()
-            try:
-                ssl_sock = original_ssl_wrap_socket(
-                    sock,
-                    server_side=True,
-                    keyfile=DEFAULT_CERTS["keyfile"],
-                    certfile=DEFAULT_CERTS["certfile"],
-                    ca_certs=DEFAULT_CA,
-                )
-            except ssl.SSLError:
-                return
+            ssl_sock = original_ssl_wrap_socket(
+                sock,
+                server_side=True,
+                keyfile=DEFAULT_CERTS["keyfile"],
+                certfile=DEFAULT_CERTS["certfile"],
+                ca_certs=DEFAULT_CA,
+            )
 
             buf = b""
             while not buf.endswith(b"\r\n\r\n"):
@@ -1252,10 +1309,11 @@ class TestSSL(SocketDummyServerTestCase):
             ssl_sock.close()
 
         self._start_server(socket_handler)
-        with HTTPSConnectionPool(self.host, self.port) as pool:
-            with pytest.raises(MaxRetryError) as cm:
-                pool.request("GET", "/", retries=0)
-            assert isinstance(cm.value.reason, SSLError)
+        with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
+            with pytest.raises(
+                SSLError, match=r"(wrong version number|record overflow)"
+            ):
+                pool.request("GET", "/", retries=False)
 
     @notSecureTransport()
     def test_ssl_read_timeout(self) -> None:

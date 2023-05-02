@@ -44,6 +44,8 @@ class TestBytesQueueBuffer:
         with pytest.raises(RuntimeError, match="buffer is empty"):
             assert buffer.get(10)
 
+        assert buffer.get(0) == b""
+
         buffer.put(b"foo")
         with pytest.raises(ValueError, match="n should be > 0"):
             buffer.get(-1)
@@ -181,6 +183,7 @@ class TestResponse:
         fp = BytesIO(b"foo")
         r = HTTPResponse(fp, preload_content=False)
 
+        assert r.read(0) == b""
         assert r.read(1) == b"f"
         assert r.read(2) == b"oo"
         assert r.read() == b""
@@ -350,6 +353,15 @@ class TestResponse:
     @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
     def test_decode_zstd_error(self, data: bytes) -> None:
         fp = BytesIO(data)
+
+        with pytest.raises(DecodeError):
+            HTTPResponse(fp, headers={"content-encoding": "zstd"})
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
+    def test_decode_zstd_incomplete(self, data: bytes) -> None:
+        data = zstd.compress(data)
+        fp = BytesIO(data[:-1])
 
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "zstd"})

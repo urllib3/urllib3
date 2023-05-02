@@ -24,6 +24,7 @@ from urllib3.connection import VerifiedHTTPSConnection
 from urllib3.connectionpool import connection_from_url
 from urllib3.exceptions import (
     ConnectTimeoutError,
+    InsecureRequestWarning,
     MaxRetryError,
     ProxyError,
     ProxySchemeUnknown,
@@ -418,11 +419,13 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert len(http.pools) == 1
 
             for x in range(2):
-                http.urlopen("GET", self.https_url)
+                with pytest.warns(InsecureRequestWarning):
+                    http.urlopen("GET", self.https_url)
             assert len(http.pools) == 2
 
             for x in range(2):
-                http.urlopen("GET", self.https_url_alt)
+                with pytest.warns(InsecureRequestWarning):
+                    http.urlopen("GET", self.https_url_alt)
             assert len(http.pools) == 3
 
     def test_proxy_pooling_ext(self) -> None:
