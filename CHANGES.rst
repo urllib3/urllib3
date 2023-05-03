@@ -1,9 +1,6 @@
 2.0.2 (2023-05-03)
 ==================
 
-Fixes
------
-
 - Fixed ``HTTPResponse.stream()`` to continue yielding bytes if buffered decompressed data
   was still available to be read even if the underlying socket is closed. This prevents
   a compressed response from being truncated. (`#3009 <https://github.com/urllib3/urllib3/issues/3009>`__)
@@ -11,9 +8,6 @@ Fixes
 
 2.0.1 (2023-04-30)
 ==================
-
-Fixes
------
 
 - Fixed a socket leak when fingerprint or hostname verifications fail. (`#2991 <https://github.com/urllib3/urllib3/issues/2991>`__)
 - Fixed an error when ``HTTPResponse.read(0)`` was the first ``read`` call or when the internal response body buffer was otherwise empty. (`#2998 <https://github.com/urllib3/urllib3/issues/2998>`__)
