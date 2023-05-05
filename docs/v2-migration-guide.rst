@@ -179,6 +179,70 @@ bug fixes will be shipped to the 1.26.x release stream**.
 If your organization relies on urllib3 and is interested in continuing support you can learn
 more about the `Tidelift Subscription for Enterprise <https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs>`_.
 
+**🤔 Common upgrading issues**
+-------------------------------
+
+The following sections explain common issues and their remediation. If all else fails, you should
+pin urllib3 to 1.26.x using ``urllib3<2`` in your requirements. For more details on the recommended
+way to handle your dependencies in general, see `Semantic Versioning Will Not Save You
+<https://hynek.me/articles/semver-will-not-save-you/>`_. The second half even uses urllib3 2.0 as an
+example.
+
+ssl module is compiled with OpenSSL 1.0.2.k-fips
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: text
+
+  ImportError: urllib3 v2.0 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with OpenSSL 1.0.2k-fips  26 Jan 2017.
+  See: https://github.com/urllib3/urllib3/issues/2168
+
+Remediation depends on your system.
+
+- **AWS Lambda**: Upgrade to the Python 3.9 or 3.10 runtimes that come OpenSSL 1.1.1.
+  Alternatively, you can use a `custom Docker image
+  <https://aws.amazon.com/blogs/aws/new-for-aws-lambda-container-image-support/>`_ and ensure you
+  use a Python build that uses OpenSSL 1.1.1 or later.
+- **Amazon Linux 2**: Upgrade to `Amazon Linux 2023
+  <https://aws.amazon.com/linux/amazon-linux-2023/>`_. Alternatively, you can install OpenSSL 1.1.1
+  on Amazon Linux 2 using ``yum install openssl11 openssl11-devel`` and then install Python with a
+  tool like pyenv.
+- **Red Hat Enterpritse Linux 7 (RHEL 7)**: Upgrade to RHEL 8 or RHEL 9.
+- **Read the Docs**: Upgrade your `configuration file to use Ubuntu 22.04
+  <https://docs.readthedocs.io/en/stable/config-file/v2.html>`_. Feel free to use the `urllib3
+  configuration <https://github.com/urllib3/urllib3/blob/2.0.0/.readthedocs.yml>`_ as an
+  inspiration.
+
+docker.errors.dockerexception: error while fetching server api version: request() got an unexpected keyword argument 'chunked'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+docker-py swaps some of the urllib3 internals in an unsupported way. The following pull request
+solves the issue: https://github.com/docker/docker-py/pull/3116. Until it gets reviewed, merged and
+released, your only option is to pin urllib3 to 1.26.x using ``urllib3<2.0``.
+
+ImportError: cannot import name 'gaecontrib' from 'requests_toolbelt._compat'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To be compatible with urllib3 2.0, Requests Toolbelt released version 1.0.0 without Google App
+Engine Standard Python 2.7 support. Most users that reported this issue were using the Pyrebase
+library that provides an API for the Firebase API. This library is unmaintained, see
+https://github.com/thisbejim/Pyrebase/issues/435 for possible replacements.
+
+AttributeError: module 'urllib3.connectionpool' has no attribute 'VerifiedHTTPSConnection'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``VerifiedHTTPSConnection`` class has always been documented to be in the
+:mod:`~urllib3.connection` module. It used to be possible to import it from
+:mod:`~urllib3.connectionpool` but that was acccidental and is no longer possible due to a
+refactoring in urllib3 2.0.
+
+Note that the new name of this class is :class:`~urllib3.connection.HTTPSConnection`. It can be used
+starting from urllib3 1.25.9.
+
+AttributeError: 'HTTPResponse' object has no attribute 'strict'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The strict parameter is unneeded with Python 3 and should be removed. We are considering adding it
+back to help users of the unmaintained cachecontrol library, see https://github.com/urllib3/urllib3/issues/3010.
 
 **💪 User-friendly features**
 -----------------------------

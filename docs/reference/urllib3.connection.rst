@@ -1,6 +1,8 @@
 Connections
 ===========
 
+.. automodule:: urllib3.connectionpool
+
 .. autoclass:: urllib3.connection.HTTPConnection
     :members:
     :exclude-members: putrequest
