@@ -1,7 +1,7 @@
 Connections
 ===========
 
-.. automodule:: urllib3.connectionpool
+.. automodule:: urllib3.connection
 
 .. autoclass:: urllib3.connection.HTTPConnection
     :members:

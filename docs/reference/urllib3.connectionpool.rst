@@ -1,7 +1,7 @@
 Connection Pools
 ================
 
-.. automodule:: urllib3.connection
+.. automodule:: urllib3.connectionpool
 
 .. autoclass:: urllib3.HTTPConnectionPool
     :members:
