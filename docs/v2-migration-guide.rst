@@ -227,6 +227,14 @@ Engine Standard Python 2.7 support. Most users that reported this issue were usi
 library that provides an API for the Firebase API. This library is unmaintained, see
 https://github.com/thisbejim/Pyrebase/issues/435 for possible replacements.
 
+ImportError: cannot import name 'DEFAULT_CIPHERS' from 'urllib3.util.ssl_'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This likely happens because you're using botocore which does not support urllib3 2.0 yet:
+https://github.com/boto/botocore/issues/2921. The good news is that botocore explcitly declares in
+its dependencies that it only supports urllib3<1.27. Make sure to use a recent pip. That way, pip
+will install urllib3 1.26.x until botocore starts supporting urllib3 2.0.
+
 AttributeError: module 'urllib3.connectionpool' has no attribute 'VerifiedHTTPSConnection'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
