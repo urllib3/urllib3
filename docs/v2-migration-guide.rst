@@ -231,9 +231,14 @@ https://github.com/thisbejim/Pyrebase/issues/435 for possible replacements.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This likely happens because you're using botocore which does not support urllib3 2.0 yet:
-https://github.com/boto/botocore/issues/2921. The good news is that botocore explcitly declares in
+https://github.com/boto/botocore/issues/2921. The good news is that botocore explicitly declares in
 its dependencies that it only supports urllib3<1.27. Make sure to use a recent pip. That way, pip
 will install urllib3 1.26.x until botocore starts supporting urllib3 2.0.
+
+If you're deploying to an AWS environment such as Lambda or a host using Amazon Linux 2,
+you'll need to explicitly pin to `urllib3<1.27` in your project to ensure urllib3 2.0 isn't
+brought into your environment. Otherwise, this may result in unintended side effects with
+the default boto3 installation.
 
 AttributeError: module 'urllib3.connectionpool' has no attribute 'VerifiedHTTPSConnection'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
