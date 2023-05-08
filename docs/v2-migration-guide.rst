@@ -190,10 +190,10 @@ ssl module is compiled with OpenSSL 1.0.2.k-fips
   ImportError: urllib3 v2.0 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with OpenSSL 1.0.2k-fips  26 Jan 2017.
   See: https://github.com/urllib3/urllib3/issues/2168
 
-Remediation depends on your system.
+Remediation depends on your system:
 
-- **AWS Lambda**: Upgrade to the Python3.10 runtime as it uses OpenSSL 1.1.1.
-  Alternatively, you can use a `custom Docker image
+- **AWS Lambda**: Upgrade to the Python3.10 runtime as it uses OpenSSL 1.1.1. Alternatively, you can
+  use a `custom Docker image
   <https://aws.amazon.com/blogs/aws/new-for-aws-lambda-container-image-support/>`_ and ensure you
   use a Python build that uses OpenSSL 1.1.1 or later.
 - **Amazon Linux 2**: Upgrade to `Amazon Linux 2023
@@ -202,8 +202,8 @@ Remediation depends on your system.
   tool like pyenv.
 - **Red Hat Enterpritse Linux 7 (RHEL 7)**: Upgrade to RHEL 8 or RHEL 9.
 - **Read the Docs**: Upgrade your `configuration file to use Ubuntu 22.04
-  <https://docs.readthedocs.io/en/stable/config-file/v2.html>`_ by using `os: ubuntu-22.04` in the
-  `build` section. Feel free to use the `urllib3 configuration
+  <https://docs.readthedocs.io/en/stable/config-file/v2.html>`_ by using ``os: ubuntu-22.04`` in the
+  ``build`` section. Feel free to use the `urllib3 configuration
   <https://github.com/urllib3/urllib3/blob/2.0.0/.readthedocs.yml>`_ as an inspiration.
 
 docker.errors.dockerexception: error while fetching server api version: request() got an unexpected keyword argument 'chunked'
@@ -215,20 +215,21 @@ ImportError: cannot import name 'gaecontrib' from 'requests_toolbelt._compat'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To be compatible with urllib3 2.0, Requests Toolbelt released version 1.0.0 without Google App
-Engine Standard Python 2.7 support. Most users that reported this issue were using the Pyrebase
-library that provides an API for the Firebase API. This library is unmaintained, but `replacements
-exist <https://github.com/thisbejim/Pyrebase/issues/435>`_.
+Engine Standard Python 2.7 support. Most users that reported this issue were using the `Pyrebase
+<https://github.com/thisbejim/Pyrebase>`_ library that provides an API for the Firebase API. This
+library is unmaintained, but `replacements exist
+<https://github.com/thisbejim/Pyrebase/issues/435>`_.
 
 ``ImportError: cannot import name 'DEFAULT_CIPHERS' from 'urllib3.util.ssl_'``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This likely happens because you're using botocore which `does not support urllib3 2.0 yet
 <https://github.com/boto/botocore/issues/2921>`_. The good news is that botocore explicitly declares
-in its dependencies that it only supports urllib3<2. Make sure to use a recent pip. That way, pip
+in its dependencies that it only supports ``urllib3<2``. Make sure to use a recent pip. That way, pip
 will install urllib3 1.26.x until botocore starts supporting urllib3 2.0.
 
 If you're deploying to an AWS environment such as Lambda or a host using Amazon Linux 2,
-you'll need to explicitly pin to `urllib3<2` in your project to ensure urllib3 2.0 isn't
+you'll need to explicitly pin to ``urllib3<2`` in your project to ensure urllib3 2.0 isn't
 brought into your environment. Otherwise, this may result in unintended side effects with
 the default boto3 installation.
 
@@ -246,18 +247,20 @@ starting from urllib3 1.25.9.
 AttributeError: 'HTTPResponse' object has no attribute 'strict'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The strict parameter is unneeded with Python 3 and should be removed.
+The ``strict`` parameter is unneeded with Python 3 and should be removed.
 
 Pinning urllib3<2
 ~~~~~~~~~~~~~~~~~
 
-If the advice from the above section did not help, you can pin urllib3 to 1.26.x by installing
-``urllib3<2`` (and not ``urllib3=1.26.15``!). While urllib3 1.26.x is still supported, it won't get
-new features or bug fixes, just security updates. Consider opening a tracking issue to unpin urllib3
-in the future to not stay on 1.26.x indefinitely.  For more details on the recommended way to handle
-your dependencies in general, see `Semantic Versioning Will Not Save You
-<https://hynek.me/articles/semver-will-not-save-you/>`_. The second half even uses urllib3 2.0 as an
-example.
+If the advice from the above sections did not help, you can pin urllib3 to 1.26.x by installing
+``urllib3<2``. Please do **not** specify ``urllib3==1.26.15`` to make sure you continue getting
+1.26.x updates!
+
+While urllib3 1.26.x is still supported, it won't get new features or bug fixes, just security
+updates. Consider opening a tracking issue to unpin urllib3 in the future to not stay on 1.26.x
+indefinitely.  For more details on the recommended way to handle your dependencies in general, see
+`Semantic Versioning Will Not Save You <https://hynek.me/articles/semver-will-not-save-you/>`_. The
+second half even uses urllib3 2.0 as an example!
 
 
 **💪 User-friendly features**
