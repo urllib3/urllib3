@@ -209,9 +209,7 @@ Remediation depends on your system.
 docker.errors.dockerexception: error while fetching server api version: request() got an unexpected keyword argument 'chunked'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-docker-py swaps some of the urllib3 internals in an unsupported way. The following pull request
-solves the issue: https://github.com/docker/docker-py/pull/3116. Until it gets reviewed, merged and
-released, your only option is to pin urllib3 to 1.26.x using ``urllib3<2.0``.
+Upgrade to ``docker==6.1.0`` that is compatible with urllib3 2.0.
 
 ImportError: cannot import name 'gaecontrib' from 'requests_toolbelt._compat'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
