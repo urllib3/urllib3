@@ -202,9 +202,9 @@ Remediation depends on your system.
   tool like pyenv.
 - **Red Hat Enterpritse Linux 7 (RHEL 7)**: Upgrade to RHEL 8 or RHEL 9.
 - **Read the Docs**: Upgrade your `configuration file to use Ubuntu 22.04
-  <https://docs.readthedocs.io/en/stable/config-file/v2.html>`_. Feel free to use the `urllib3
-  configuration <https://github.com/urllib3/urllib3/blob/2.0.0/.readthedocs.yml>`_ as an
-  inspiration.
+  <https://docs.readthedocs.io/en/stable/config-file/v2.html>`_ by using `os: ubuntu-22.04` in the
+  `build` section. Feel free to use the `urllib3 configuration
+  <https://github.com/urllib3/urllib3/blob/2.0.0/.readthedocs.yml>`_ as an inspiration.
 
 docker.errors.dockerexception: error while fetching server api version: request() got an unexpected keyword argument 'chunked'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
