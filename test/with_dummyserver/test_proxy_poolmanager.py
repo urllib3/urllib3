@@ -534,6 +534,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert type(e.value.reason) == ProxyError
             assert type(e.value.reason.original_error) == ConnectTimeoutError
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme"], [("http", "https"), ("https", "https")]
@@ -613,6 +616,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 proxy.request("GET", self.https_url)
             assert type(e.value.reason) == SSLError
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_scheme_host_case_insensitive(self) -> None:
         """Assert that upper-case schemes and hosts are normalized."""
         with proxy_from_url(self.proxy_url.upper(), ca_certs=DEFAULT_CA) as http:
@@ -707,6 +713,9 @@ class TestHTTPSProxyVerification:
         ) as https:
             https.request("GET", destination_url)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_assert_fingerprint_md5_non_matching(
         self, no_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
@@ -728,6 +737,9 @@ class TestHTTPSProxyVerification:
 
             assert "Fingerprints did not match" in str(e)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_assert_hostname(
         self, san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
