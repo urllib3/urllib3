@@ -550,6 +550,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert type(e.value.reason) == ProxyError
             assert type(e.value.reason.original_error) == ConnectTimeoutError
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     @requires_network()
     @pytest.mark.parametrize(
         ["target_scheme", "use_forwarding_for_https"],
