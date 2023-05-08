@@ -480,6 +480,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             # target so we put the blame on the target.
             assert type(e.value.reason) == ReadTimeoutError
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme"], [("http", "https"), ("https", "https")]
