@@ -192,7 +192,7 @@ ssl module is compiled with OpenSSL 1.0.2.k-fips
 
 Remediation depends on your system.
 
-- **AWS Lambda**: Upgrade to the Python 3.9 or 3.10 runtimes that come OpenSSL 1.1.1.
+- **AWS Lambda**: Upgrade to the Python3.10 runtime as it uses OpenSSL 1.1.1.
   Alternatively, you can use a `custom Docker image
   <https://aws.amazon.com/blogs/aws/new-for-aws-lambda-container-image-support/>`_ and ensure you
   use a Python build that uses OpenSSL 1.1.1 or later.
