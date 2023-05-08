@@ -503,6 +503,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
             assert type(e.value.reason) == ReadTimeoutError
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme", "use_forwarding_for_https"],
@@ -577,6 +580,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert type(e.value.reason) == ProxyError
             assert type(e.value.reason.original_error) == SSLError
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "use_forwarding_for_https"],
@@ -649,6 +655,9 @@ class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
         cls.https_url_alt = f"https://{cls.https_host_alt}:{int(cls.https_port)}"
         cls.proxy_url = f"http://[{cls.proxy_host}]:{int(cls.proxy_port)}"
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_basic_ipv6_proxy(self) -> None:
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
             r = http.request("GET", f"{self.http_url}/")
@@ -680,6 +689,9 @@ class TestHTTPSProxyVerification:
         # Transform ipv6 like '::1' to 0:0:0:0:0:0:0:1 via '0000:0000:0000:0000:0000:0000:0000:0001'
         return addr.exploded.replace("0000", "0").replace("000", "")
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_assert_fingerprint_md5(
         self, no_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
@@ -727,6 +739,9 @@ class TestHTTPSProxyVerification:
         ) as https:
             https.request("GET", destination_url)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_assert_hostname_non_matching(
         self, san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
