@@ -216,8 +216,8 @@ ImportError: cannot import name 'gaecontrib' from 'requests_toolbelt._compat'
 
 To be compatible with urllib3 2.0, Requests Toolbelt released version 1.0.0 without Google App
 Engine Standard Python 2.7 support. Most users that reported this issue were using the Pyrebase
-library that provides an API for the Firebase API. This library is unmaintained, see
-https://github.com/thisbejim/Pyrebase/issues/435 for possible replacements.
+library that provides an API for the Firebase API. This library is unmaintained, but `replacements
+exist <https://github.com/thisbejim/Pyrebase/issues/435>`_.
 
 ``ImportError: cannot import name 'DEFAULT_CIPHERS' from 'urllib3.util.ssl_'``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
