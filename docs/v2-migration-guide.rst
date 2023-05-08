@@ -246,8 +246,7 @@ starting from urllib3 1.25.9.
 AttributeError: 'HTTPResponse' object has no attribute 'strict'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The strict parameter is unneeded with Python 3 and should be removed. We are considering adding it
-back to help users of the unmaintained cachecontrol library, see https://github.com/urllib3/urllib3/issues/3010.
+The strict parameter is unneeded with Python 3 and should be removed.
 
 Pinning urllib3<2
 ~~~~~~~~~~~~~~~~~
