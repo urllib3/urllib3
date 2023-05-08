@@ -182,12 +182,6 @@ more about the `Tidelift Subscription for Enterprise <https://tidelift.com/subsc
 **🤔 Common upgrading issues**
 -------------------------------
 
-The following sections explain common issues and their remediation. If all else fails, you should
-pin urllib3 to 1.26.x using ``urllib3<2`` in your requirements. For more details on the recommended
-way to handle your dependencies in general, see `Semantic Versioning Will Not Save You
-<https://hynek.me/articles/semver-will-not-save-you/>`_. The second half even uses urllib3 2.0 as an
-example.
-
 ssl module is compiled with OpenSSL 1.0.2.k-fips
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -256,6 +250,18 @@ AttributeError: 'HTTPResponse' object has no attribute 'strict'
 
 The strict parameter is unneeded with Python 3 and should be removed. We are considering adding it
 back to help users of the unmaintained cachecontrol library, see https://github.com/urllib3/urllib3/issues/3010.
+
+Pinning urllib3<2
+~~~~~~~~~~~~~~~~~
+
+If the advice from the above section did not help, you can pin urllib3 to 1.26.x by installing
+``urllib3<2`` (and not ``urllib3=1.26.15``!). While urllib3 1.26.x is still supported, it won't get
+new features or bug fixes, just security updates. Consider opening a tracking issue to unpin urllib3
+in the future to not stay on 1.26.x indefinitely.  For more details on the recommended way to handle
+your dependencies in general, see `Semantic Versioning Will Not Save You
+<https://hynek.me/articles/semver-will-not-save-you/>`_. The second half even uses urllib3 2.0 as an
+example.
+
 
 **💪 User-friendly features**
 -----------------------------
