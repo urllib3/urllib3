@@ -773,6 +773,9 @@ class TestHTTPSProxyVerification:
             msg = f"hostname \\'{proxy_hostname}\\' doesn\\'t match \\'{proxy_host}\\'"
             assert msg in str(e)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_hostname_verification(
         self, no_localhost_san_server: ServerConfig
     ) -> None:
@@ -802,6 +805,9 @@ class TestHTTPSProxyVerification:
                 ssl_error
             ) or "Hostname mismatch" in str(ssl_error)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_ipv4_san(
         self, ipv4_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
