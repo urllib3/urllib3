@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import http.client as httplib
+import os
 import socket
 import ssl
 import sys
@@ -331,6 +332,17 @@ class TestResponse:
         fp = BytesIO(data)
         r = HTTPResponse(fp, headers={"content-encoding": "zstd"})
         assert r.data == b"foo"
+
+    @onlyZstd()
+    def test_decode_zstd_multiple_frames(self) -> None:
+        # TODO: Can we dynamically generate data that caused the bug too?
+        with open(os.path.join(os.path.dirname(__file__), "text.txt.zstd"), "rb") as f:
+            data = f.read()
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={"content-encoding": "zstd"})
+        # Each frame size is 1048576 so correct data should be longer.
+        assert len(r.data) > 1048576
 
     @onlyZstd()
     def test_chunked_decoding_zstd(self) -> None:

@@ -164,18 +164,37 @@ if zstd is not None:
 
     class ZstdDecoder(ContentDecoder):
         def __init__(self) -> None:
-            self._obj = zstd.ZstdDecompressor().decompressobj()
+            self._zstd_stream = io.BytesIO()
+            self._sr = zstd.ZstdDecompressor().stream_reader(
+                self._zstd_stream, read_across_frames=True)
 
         def decompress(self, data: bytes) -> bytes:
             if not data:
                 return b""
-            return self._obj.decompress(data)  # type: ignore[no-any-return]
+
+            # Push more data to the end, then go back to the previous position.
+            current_position = self._zstd_stream.tell()
+            self._zstd_stream.seek(0, io.SEEK_END)
+            self._zstd_stream.write(data)
+            self._zstd_stream.seek(current_position)
+            bytes_available = (len(self._zstd_stream.getvalue()) -
+                current_position)
+
+            if bytes_available >= zstd.DECOMPRESSION_RECOMMENDED_INPUT_SIZE:
+                return self._sr.read(zstd.DECOMPRESSION_RECOMMENDED_INPUT_SIZE)
+
+            # Not enough data available for a decompress operation.
+            return b""
+
+        def _is_stream_at_end(self) -> bool:
+            return (len(self._zstd_stream.getvalue()) ==
+                    self._zstd_stream.tell())
 
         def flush(self) -> bytes:
-            ret = self._obj.flush()
-            if not self._obj.eof:
-                raise DecodeError("Zstandard data is incomplete")
-            return ret  # type: ignore[no-any-return]
+            if self._is_stream_at_end():
+                return b""
+
+            return self._sr.readall()
 
 
 class MultiDecoder(ContentDecoder):
@@ -439,6 +458,9 @@ class BaseHTTPResponse(io.IOBase):
             if self._decoder:
                 data = self._decoder.decompress(data)
                 self._has_decoded_content = True
+
+                if flush_decoder:
+                    data += self._flush_decoder()
         except self.DECODER_ERROR_CLASSES as e:
             content_encoding = self.headers.get("content-encoding", "").lower()
             raise DecodeError(
@@ -446,8 +468,6 @@ class BaseHTTPResponse(io.IOBase):
                 "failed to decode it." % content_encoding,
                 e,
             ) from e
-        if flush_decoder:
-            data += self._flush_decoder()
 
         return data
 
