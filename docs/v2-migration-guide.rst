@@ -152,11 +152,11 @@ The best way to visualize relationships between your dependencies is using `pipd
   # We only care about packages requiring urllib3
   $ pipdeptree --reverse | grep "requires: urllib3"
 
-  - botocore==1.29.8 [requires: urllib3>=1.25.4,<1.27]
-  - requests==2.28.1 [requires: urllib3>=1.21.1,<1.27]
+  - botocore==1.29.8 [requires: urllib3>=1.25.4,<2]
+  - requests==2.28.1 [requires: urllib3>=1.21.1,<2]
 
 Reading the output from above, there are two packages which depend on urllib3: ``botocore`` and ``requests``.
-The versions of these two packages both require urllib3 that is less than v2.0 (ie ``<1.27``).
+The versions of these two packages both require urllib3 that is less than v2.0 (ie ``<2``).
 
 Because both of these packages require urllib3 before v2.0 the new version of urllib3 can't be installed
 by default. There are ways to force installing the newer version of urllib3 v2.0 (ie pinning to ``urllib3==2.0.0``)
@@ -222,13 +222,13 @@ exist <https://github.com/thisbejim/Pyrebase/issues/435>`_.
 ``ImportError: cannot import name 'DEFAULT_CIPHERS' from 'urllib3.util.ssl_'``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This likely happens because you're using botocore which does not support urllib3 2.0 yet:
-https://github.com/boto/botocore/issues/2921. The good news is that botocore explicitly declares in
-its dependencies that it only supports urllib3<1.27. Make sure to use a recent pip. That way, pip
+This likely happens because you're using botocore which `does not support urllib3 2.0 yet
+<https://github.com/boto/botocore/issues/2921>`_. The good news is that botocore explicitly declares
+in its dependencies that it only supports urllib3<2. Make sure to use a recent pip. That way, pip
 will install urllib3 1.26.x until botocore starts supporting urllib3 2.0.
 
 If you're deploying to an AWS environment such as Lambda or a host using Amazon Linux 2,
-you'll need to explicitly pin to `urllib3<1.27` in your project to ensure urllib3 2.0 isn't
+you'll need to explicitly pin to `urllib3<2` in your project to ensure urllib3 2.0 isn't
 brought into your environment. Otherwise, this may result in unintended side effects with
 the default boto3 installation.
 
