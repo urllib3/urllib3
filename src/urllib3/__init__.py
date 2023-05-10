@@ -31,10 +31,11 @@ except ImportError:
     pass
 else:
     if not ssl.OPENSSL_VERSION.startswith("OpenSSL "):  # Defensive
-        raise exceptions.NotOpenSSLWarning(
+        warnings.warn(
             "urllib3 v2.0 only supports OpenSSL 1.1.1+, currently "
             f"the 'ssl' module is compiled with {ssl.OPENSSL_VERSION}. "
-            "See: https://github.com/urllib3/urllib3/issues/3020"
+            "See: https://github.com/urllib3/urllib3/issues/3020",
+            exceptions.NotOpenSSLWarning,
         )
     elif ssl.OPENSSL_VERSION_INFO < (1, 1, 1):  # Defensive:
         raise ImportError(
