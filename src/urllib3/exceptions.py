@@ -214,6 +214,10 @@ class InsecureRequestWarning(SecurityWarning):
     """Warned when making an unverified HTTPS request."""
 
 
+class NotOpenSSLWarning(SecurityWarning):
+    """Warned when using unsupported SSL library"""
+
+
 class SystemTimeWarning(SecurityWarning):
     """Warned when system time is suspected to be wrong"""
 

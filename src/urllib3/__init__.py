@@ -30,17 +30,18 @@ try:
 except ImportError:
     pass
 else:
-    # fmt: off
-    if (
-        not ssl.OPENSSL_VERSION.startswith("OpenSSL ")
-        or ssl.OPENSSL_VERSION_INFO < (1, 1, 1)
-    ):  # Defensive:
+    if not ssl.OPENSSL_VERSION.startswith("OpenSSL "):  # Defensive
+        raise exceptions.NotOpenSSLWarning(
+            "urllib3 v2.0 only supports OpenSSL 1.1.1+, currently "
+            f"the 'ssl' module is compiled with {ssl.OPENSSL_VERSION}. "
+            "See: https://github.com/urllib3/urllib3/issues/3020"
+        )
+    elif ssl.OPENSSL_VERSION_INFO < (1, 1, 1):  # Defensive:
         raise ImportError(
             "urllib3 v2.0 only supports OpenSSL 1.1.1+, currently "
             f"the 'ssl' module is compiled with {ssl.OPENSSL_VERSION}. "
             "See: https://github.com/urllib3/urllib3/issues/2168"
         )
-    # fmt: on
 
 # === NOTE TO REPACKAGERS AND VENDORS ===
 # Please delete this block, this logic is only
