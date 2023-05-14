@@ -81,6 +81,11 @@ if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") == "true":
 
 DUMMY_POOL = ConnectionPool("dummy")
 
+try:
+    _TRAEFIK_AVAILABLE = bool(socket.getaddrinfo("httpbin.local", 8888))
+except socket.gaierror:
+    _TRAEFIK_AVAILABLE = False
+
 
 def _can_resolve(host: str) -> bool:
     """Returns True if the system can resolve host to an address."""
@@ -154,6 +159,13 @@ def notZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         zstd is not None,
         reason="only run if a python-zstandard library is not installed",
+    )
+
+
+def requireTraefik() -> typing.Callable[[_TestFuncT], _TestFuncT]:
+    return pytest.mark.skipif(
+        _TRAEFIK_AVAILABLE is False,
+        reason="only run if the Traefik (golang) server is available",
     )
 
 

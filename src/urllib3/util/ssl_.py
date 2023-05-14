@@ -369,6 +369,7 @@ def ssl_wrap_socket(
     key_password: str | None = ...,
     ca_cert_data: None | str | bytes = ...,
     tls_in_tls: Literal[False] = ...,
+    alpn_protocols: list[str] | None = ...,
 ) -> ssl.SSLSocket:
     ...
 
@@ -388,6 +389,7 @@ def ssl_wrap_socket(
     key_password: str | None = ...,
     ca_cert_data: None | str | bytes = ...,
     tls_in_tls: bool = ...,
+    alpn_protocols: list[str] | None = ...,
 ) -> ssl.SSLSocket | SSLTransportType:
     ...
 
@@ -406,6 +408,7 @@ def ssl_wrap_socket(
     key_password: str | None = None,
     ca_cert_data: None | str | bytes = None,
     tls_in_tls: bool = False,
+    alpn_protocols: list[str] | None = None,
 ) -> ssl.SSLSocket | SSLTransportType:
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
@@ -429,6 +432,8 @@ def ssl_wrap_socket(
         passing as the cadata parameter to SSLContext.load_verify_locations()
     :param tls_in_tls:
         Use SSLTransport to wrap the existing socket.
+    :param alpn_protocols:
+        Manually specify other protocols to be announced during tls handshake.
     """
     context = ssl_context
     if context is None:
@@ -459,7 +464,7 @@ def ssl_wrap_socket(
             context.load_cert_chain(certfile, keyfile, key_password)
 
     try:
-        context.set_alpn_protocols(ALPN_PROTOCOLS)
+        context.set_alpn_protocols(alpn_protocols or ALPN_PROTOCOLS)
     except NotImplementedError:  # Defensive: in CI, we always have set_alpn_protocols
         pass
 

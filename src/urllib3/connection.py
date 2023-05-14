@@ -7,7 +7,6 @@ import re
 import socket
 import typing
 import warnings
-from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
@@ -40,6 +39,13 @@ from ._base_connection import _TYPE_BODY
 from ._base_connection import ProxyConfig as ProxyConfig
 from ._base_connection import _ResponseOptions as _ResponseOptions
 from ._version import __version__
+from .backend import (
+    BaseBackend,
+    HfaceBackend,
+    HttpVersion,
+    LegacyBackend,
+    QuicPreemptiveCacheType,
+)
 from .exceptions import (
     ConnectTimeoutError,
     HeaderParsingError,
@@ -75,11 +81,14 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2022, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+_HTTPConnection: type[BaseBackend] = (
+    LegacyBackend if HfaceBackend is NotImplemented else HfaceBackend  # type: ignore[assignment]
+)
 
 
-class HTTPConnection(_HTTPConnection):
+class HTTPConnection(_HTTPConnection):  # type: ignore[valid-type,misc]
     """
-    Based on :class:`http.client.HTTPConnection` but provides an extra constructor
+    Based on :class:`urllib3.backend.BaseBackend` but provides an extra constructor
     backwards-compatibility layer between older and newer Pythons.
 
     Additional keyword parameters are used to configure attributes of the connection.
@@ -102,20 +111,8 @@ class HTTPConnection(_HTTPConnection):
       Or you may want to disable the defaults by passing an empty list (e.g., ``[]``).
     """
 
-    default_port: typing.ClassVar[int] = port_by_scheme["http"]  # type: ignore[misc]
-
-    #: Disable Nagle's algorithm by default.
-    #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options: typing.ClassVar[connection._TYPE_SOCKET_OPTIONS] = [
-        (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    ]
-
-    #: Whether this connection verifies the host's certificate.
-    is_verified: bool = False
-
-    #: Whether this proxy connection verified the proxy host's certificate.
-    # If no proxy is currently connected to the value will be ``None``.
-    proxy_is_verified: bool | None = None
+    scheme = "http"
+    default_port: typing.ClassVar[int] = port_by_scheme[scheme]
 
     blocksize: int
     source_address: tuple[str, int] | None
@@ -136,9 +133,11 @@ class HTTPConnection(_HTTPConnection):
         source_address: tuple[str, int] | None = None,
         blocksize: int = 8192,
         socket_options: None
-        | (connection._TYPE_SOCKET_OPTIONS) = default_socket_options,
+        | (connection._TYPE_SOCKET_OPTIONS) = _HTTPConnection.default_socket_options,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
+        disabled_svn: set[HttpVersion] | None = None,
+        preemptive_quic_cache: QuicPreemptiveCacheType | None = None,
     ) -> None:
         super().__init__(
             host=host,
@@ -146,16 +145,15 @@ class HTTPConnection(_HTTPConnection):
             timeout=Timeout.resolve_default_timeout(timeout),
             source_address=source_address,
             blocksize=blocksize,
+            socket_options=socket_options,
+            disabled_svn=disabled_svn,
+            preemptive_quic_cache=preemptive_quic_cache,
         )
-        self.socket_options = socket_options
         self.proxy = proxy
         self.proxy_config = proxy_config
 
         self._has_connected_to_proxy = False
         self._response_options = None
-        self._tunnel_host: str | None = None
-        self._tunnel_port: int | None = None
-        self._tunnel_scheme: str | None = None
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
@@ -196,12 +194,15 @@ class HTTPConnection(_HTTPConnection):
 
         :return: New socket connection.
         """
+        super()._new_conn()
+
         try:
             sock = connection.create_connection(
                 (self._dns_host, self.port),
                 self.timeout,
                 source_address=self.source_address,
                 socket_options=self.socket_options,
+                socket_kind=self.socket_kind,
             )
         except socket.gaierror as e:
             raise NameResolutionError(self.host, self, e) from e
@@ -235,12 +236,14 @@ class HTTPConnection(_HTTPConnection):
     def connect(self) -> None:
         self.sock = self._new_conn()
         if self._tunnel_host:
+            self._post_conn()
             # If we're tunneling it means we're connected to our proxy.
             self._has_connected_to_proxy = True
 
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
-            self._tunnel()  # type: ignore[attr-defined]
+            self._tunnel()
 
+        self._post_conn()
         # If there's a proxy to be connected to we are fully connected.
         # This is set twice (once above and here) due to forwarding proxies
         # not using tunnelling.
@@ -266,7 +269,7 @@ class HTTPConnection(_HTTPConnection):
         finally:
             # Reset all stateful properties so connection
             # can be re-used without leaking prior configs.
-            self.sock = None
+            self.sock = None  # type: ignore[assignment]
             self.is_verified = False
             self.proxy_is_verified = None
             self._has_connected_to_proxy = False
@@ -291,7 +294,7 @@ class HTTPConnection(_HTTPConnection):
                 f"Method cannot contain non-token characters {method!r} (found at least {match.group()!r})"
             )
 
-        return super().putrequest(
+        return super().putrequest(  # type: ignore[no-any-return]
             method, url, skip_host=skip_host, skip_accept_encoding=skip_accept_encoding
         )
 
@@ -309,7 +312,7 @@ class HTTPConnection(_HTTPConnection):
 
     # `request` method's signature intentionally violates LSP.
     # urllib3's API is different from `http.client.HTTPConnection` and the subclassing is only incidental.
-    def request(  # type: ignore[override]
+    def request(
         self,
         method: str,
         url: str,
@@ -357,6 +360,17 @@ class HTTPConnection(_HTTPConnection):
         chunks = chunks_and_cl.chunks
         content_length = chunks_and_cl.content_length
 
+        overrule_content_length: bool = False
+
+        # users may send plain 'str' and assign a Content-Length that will
+        # disagree with the actual amount of data to send (encoded, aka. bytes)
+        if (
+            isinstance(body, str)
+            and "content-length" in header_keys
+            and len(body) != content_length
+        ):
+            overrule_content_length = True
+
         # When chunked is explicit set to 'True' we respect that.
         if chunked:
             if "transfer-encoding" not in header_keys:
@@ -384,6 +398,8 @@ class HTTPConnection(_HTTPConnection):
         if "user-agent" not in header_keys:
             self.putheader("User-Agent", _get_default_user_agent())
         for header, value in headers.items():
+            if overrule_content_length and header.lower() == "content-length":
+                value = str(content_length)
             self.putheader(header, value)
         self.endheaders()
 
@@ -425,7 +441,7 @@ class HTTPConnection(_HTTPConnection):
         )
         self.request(method, url, body=body, headers=headers, chunked=True)
 
-    def getresponse(  # type: ignore[override]
+    def getresponse(
         self,
     ) -> HTTPResponse:
         """
@@ -453,17 +469,21 @@ class HTTPConnection(_HTTPConnection):
         # Get the response from http.client.HTTPConnection
         httplib_response = super().getresponse()
 
-        try:
-            assert_header_parsing(httplib_response.msg)
-        except (HeaderParsingError, TypeError) as hpe:
-            log.warning(
-                "Failed to parse headers (url=%s): %s",
-                _url_from_connection(self, resp_options.request_url),
-                hpe,
-                exc_info=True,
-            )
+        # backend other than legacy can directly return HTTPHeaderDict
+        if not isinstance(httplib_response.msg, HTTPHeaderDict):
+            try:
+                assert_header_parsing(httplib_response.msg)
+            except (HeaderParsingError, TypeError) as hpe:
+                log.warning(
+                    "Failed to parse headers (url=%s): %s",
+                    _url_from_connection(self, resp_options.request_url),
+                    hpe,
+                    exc_info=True,
+                )
 
-        headers = HTTPHeaderDict(httplib_response.msg.items())
+            headers = HTTPHeaderDict(httplib_response.msg.items())
+        else:
+            headers = httplib_response.msg
 
         response = HTTPResponse(
             body=httplib_response,
@@ -487,7 +507,8 @@ class HTTPSConnection(HTTPConnection):
     socket by means of :py:func:`urllib3.util.ssl_wrap_socket`.
     """
 
-    default_port = port_by_scheme["https"]  # type: ignore[misc]
+    scheme = "https"
+    default_port = port_by_scheme[scheme]
 
     cert_reqs: int | str | None = None
     ca_certs: str | None = None
@@ -508,6 +529,8 @@ class HTTPSConnection(HTTPConnection):
         blocksize: int = 8192,
         socket_options: None
         | (connection._TYPE_SOCKET_OPTIONS) = HTTPConnection.default_socket_options,
+        disabled_svn: set[HttpVersion] | None = None,
+        preemptive_quic_cache: QuicPreemptiveCacheType | None = None,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
         cert_reqs: int | str | None = None,
@@ -534,6 +557,8 @@ class HTTPSConnection(HTTPConnection):
             socket_options=socket_options,
             proxy=proxy,
             proxy_config=proxy_config,
+            disabled_svn=disabled_svn,
+            preemptive_quic_cache=preemptive_quic_cache,
         )
 
         self.key_file = key_file
@@ -602,63 +627,100 @@ class HTTPSConnection(HTTPConnection):
     def connect(self) -> None:
         sock: socket.socket | ssl.SSLSocket
         self.sock = sock = self._new_conn()
-        server_hostname: str = self.host
-        tls_in_tls = False
 
-        # Do we need to establish a tunnel?
-        if self._tunnel_host is not None:
-            # We're tunneling to an HTTPS origin so need to do TLS-in-TLS.
-            if self._tunnel_scheme == "https":
-                self.sock = sock = self._connect_tls_proxy(self.host, sock)
-                tls_in_tls = True
-
-            # If we're tunneling it means we're connected to our proxy.
-            self._has_connected_to_proxy = True
-
-            self._tunnel()  # type: ignore[attr-defined]
-            # Override the host with the one we're requesting data from.
-            server_hostname = self._tunnel_host
-
-        if self.server_hostname is not None:
-            server_hostname = self.server_hostname
-
-        is_time_off = datetime.date.today() < RECENT_DATE
-        if is_time_off:
-            warnings.warn(
-                (
-                    f"System time is way off (before {RECENT_DATE}). This will probably "
-                    "lead to SSL verification errors"
-                ),
-                SystemTimeWarning,
+        try:
+            self._custom_tls(
+                self.ssl_context,
+                self.ca_certs,
+                self.ca_cert_dir,
+                self.ca_cert_data,
+                self.ssl_minimum_version,
+                self.ssl_maximum_version,
+                self.cert_file,
+                self.key_file,
+                self.key_password,
             )
+        except NotImplementedError:
+            server_hostname: str = self.host
+            tls_in_tls = False
 
-        sock_and_verified = _ssl_wrap_socket_and_match_hostname(
-            sock=sock,
-            cert_reqs=self.cert_reqs,
-            ssl_version=self.ssl_version,
-            ssl_minimum_version=self.ssl_minimum_version,
-            ssl_maximum_version=self.ssl_maximum_version,
-            ca_certs=self.ca_certs,
-            ca_cert_dir=self.ca_cert_dir,
-            ca_cert_data=self.ca_cert_data,
-            cert_file=self.cert_file,
-            key_file=self.key_file,
-            key_password=self.key_password,
-            server_hostname=server_hostname,
-            ssl_context=self.ssl_context,
-            tls_in_tls=tls_in_tls,
-            assert_hostname=self.assert_hostname,
-            assert_fingerprint=self.assert_fingerprint,
-        )
-        self.sock = sock_and_verified.socket
-        self.is_verified = sock_and_verified.is_verified
+            alpn_protocols: list[str] = []
+
+            # we explicitly skip h3 while still over TCP
+            for svn in HTTPSConnection.supported_svn:
+                if svn in self.disabled_svn:
+                    continue
+                if svn == HttpVersion.h11:
+                    alpn_protocols.append("http/1.1")
+                elif svn == HttpVersion.h2:
+                    alpn_protocols.append("h2")
+
+            # Do we need to establish a tunnel?
+            if self._tunnel_host is not None:
+                # We're tunneling to an HTTPS origin so need to do TLS-in-TLS.
+                if self._tunnel_scheme == "https":
+                    self.sock = sock = self._connect_tls_proxy(
+                        self.host, sock, ["http/1.1"]
+                    )
+                    tls_in_tls = True
+
+                self._post_conn()
+
+                # If we're tunneling it means we're connected to our proxy.
+                self._has_connected_to_proxy = True
+
+                self._tunnel()
+                # Override the host with the one we're requesting data from.
+                server_hostname = self._tunnel_host
+
+            if self.server_hostname is not None:
+                server_hostname = self.server_hostname
+
+            is_time_off = datetime.date.today() < RECENT_DATE
+            if is_time_off:
+                warnings.warn(
+                    (
+                        f"System time is way off (before {RECENT_DATE}). This will probably "
+                        "lead to SSL verification errors"
+                    ),
+                    SystemTimeWarning,
+                )
+
+            sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                sock=sock,
+                cert_reqs=self.cert_reqs,
+                ssl_version=self.ssl_version,
+                ssl_minimum_version=self.ssl_minimum_version,
+                ssl_maximum_version=self.ssl_maximum_version,
+                ca_certs=self.ca_certs,
+                ca_cert_dir=self.ca_cert_dir,
+                ca_cert_data=self.ca_cert_data,
+                cert_file=self.cert_file,
+                key_file=self.key_file,
+                key_password=self.key_password,
+                server_hostname=server_hostname,
+                ssl_context=self.ssl_context,
+                tls_in_tls=tls_in_tls,
+                assert_hostname=self.assert_hostname,
+                assert_fingerprint=self.assert_fingerprint,
+                alpn_protocols=alpn_protocols,
+            )
+            self.sock = sock_and_verified.socket  # type: ignore[assignment]
+            self.is_verified = sock_and_verified.is_verified
+
+        self._post_conn()
 
         # If there's a proxy to be connected to we are fully connected.
         # This is set twice (once above and here) due to forwarding proxies
         # not using tunnelling.
         self._has_connected_to_proxy = bool(self.proxy)
 
-    def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> ssl.SSLSocket:
+    def _connect_tls_proxy(
+        self,
+        hostname: str,
+        sock: socket.socket,
+        alpn_protocols: list[str] | None = None,
+    ) -> ssl.SSLSocket:
         """
         Establish a TLS connection to the proxy using the provided SSL context.
         """
@@ -683,8 +745,9 @@ class HTTPSConnection(HTTPConnection):
             key_file=None,
             key_password=None,
             tls_in_tls=False,
+            alpn_protocols=alpn_protocols,
         )
-        self.proxy_is_verified = sock_and_verified.is_verified
+        self.proxy_is_verified = sock_and_verified.is_verified  # type: ignore[assignment]
         return sock_and_verified.socket  # type: ignore[return-value]
 
 
@@ -716,6 +779,7 @@ def _ssl_wrap_socket_and_match_hostname(
     server_hostname: str | None,
     ssl_context: ssl.SSLContext | None,
     tls_in_tls: bool = False,
+    alpn_protocols: list[str] | None = None,
 ) -> _WrappedAndVerifiedSocket:
     """Logic for constructing an SSLContext from all TLS parameters, passing
     that down into ssl_wrap_socket, and then doing certificate verification
@@ -784,6 +848,7 @@ def _ssl_wrap_socket_and_match_hostname(
         server_hostname=server_hostname,
         ssl_context=context,
         tls_in_tls=tls_in_tls,
+        alpn_protocols=alpn_protocols,
     )
 
     try:

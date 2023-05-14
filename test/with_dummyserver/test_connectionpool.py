@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import socket
+import sys
 import time
 import typing
 import warnings
@@ -806,12 +807,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                     preload_content=False,
                     retries=False,
                 )
-                for chunk in response.stream():
+                for chunk in response.stream(amt=3):
                     assert chunk == b"123"
 
             assert pool.num_connections == 1
             assert pool.num_requests == x
 
+    @pytest.mark.usefixtures("only_httplib")
     def test_read_chunked_short_circuit(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             response = pool.request("GET", "/chunked", preload_content=False)
@@ -819,6 +821,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             with pytest.raises(StopIteration):
                 next(response.read_chunked())
 
+    @pytest.mark.usefixtures("only_httplib")
     def test_read_chunked_on_closed_response(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             response = pool.request("GET", "/chunked", preload_content=False)
@@ -989,6 +992,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         if accept_encoding is not None:
             headers[accept_encoding] = SKIP_HEADER
+
+        # hface backend explicitly disallow this
+        if "urllib3_ext_hface" in sys.modules and host is not None:
+            host = None
+
         if host is not None:
             headers[host] = SKIP_HEADER
         if user_agent is not None:
@@ -1089,14 +1097,23 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert request_headers["User-Agent"] == "test header"
 
     @pytest.mark.parametrize(
-        "user_agent", ["Schönefeld/1.18.0", "Schönefeld/1.18.0".encode("iso-8859-1")]
+        "user_agent, should_encode",
+        [("Schönefeld/1.18.0", False), ("Schönefeld/1.18.0", True)],
     )
-    def test_user_agent_non_ascii_user_agent(self, user_agent: str) -> None:
+    def test_user_agent_non_ascii_user_agent(
+        self, user_agent: str, should_encode: bool
+    ) -> None:
+        ua_value: str | bytes
+
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            if should_encode is False:
+                ua_value = user_agent
+            else:
+                ua_value = user_agent.encode("iso-8859-1")
             r = pool.urlopen(
                 "GET",
                 "/headers",
-                headers={"User-Agent": user_agent},
+                headers={"User-Agent": ua_value},  # type: ignore[dict-item]
             )
             request_headers = r.json()
             assert "User-Agent" in request_headers

@@ -1,13 +1,12 @@
 name: CI
 
-on:
-  push:
-    branch:
-      - main
-      - 1.26.x
-  pull_request:
+on: [push, pull_request]
 
 permissions: "read-all"
+
+concurrency:
+  group: ci-${{ github.ref_name }}
+  cancel-in-progress: true
 
 defaults:
   run:
@@ -41,13 +40,19 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12-dev"]
         os:
-          - macos-latest
+          - macos-11
           - windows-latest
           - ubuntu-20.04  # OpenSSL 1.1.1
           - ubuntu-22.04  # OpenSSL 3.0
         nox-session: ['']
         include:
           - experimental: false
+            traefik-server: false
+          - python-version: "3.11"
+            os: ubuntu-latest
+            nox-session: test_h2n3
+            experimental: false
+            traefik-server: true
           - python-version: "pypy-3.7"
             os: ubuntu-latest
             experimental: false
@@ -76,15 +81,157 @@ jobs:
             os: ubuntu-22.04
           # Testing with non-final CPython on macOS is too slow for CI.
           - python-version: "3.12-dev"
-            os: macos-latest
+            os: macos-11
 
     runs-on: ${{ matrix.os }}
-    name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
+    name: ${{ fromJson('{"macos-11":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session }}
     continue-on-error: ${{ matrix.experimental }}
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: "Checkout repository"
         uses: "actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3"
+
+      - name: "Traefik: Fake CA and Domain"
+        if: ${{ matrix.traefik-server }}
+        run: |
+          wget https://github.com/FiloSottile/mkcert/releases/download/v1.4.4/mkcert-v1.4.4-linux-amd64
+          chmod +x mkcert-v1.4.4-linux-amd64
+          sudo cp mkcert-v1.4.4-linux-amd64 /usr/local/bin/mkcert
+          sudo apt install libnss3-tools
+          mkdir ./certs
+          mkcert -install
+          mkcert -cert-file ./certs/httpbin.local.pem -key-file ./certs/httpbin.local.key httpbin.local alt.httpbin.local
+          echo "127.0.0.1   httpbin.local alt.httpbin.local" | sudo tee -a /etc/hosts
+      - name: "Traefik: Produce Compose & Config"
+        if: ${{ matrix.traefik-server }}
+        env:
+          TRAEFIK_CERTIFICATE_TOML: |
+            [[tls.certificates]]
+              certFile = "/certs/httpbin.local.pem"
+              keyFile = "/certs/httpbin.local.key"
+          TRAEFIK_COMPOSE_SCHEMA: |
+            services:
+              proxy:
+                image: traefik:v2.10
+                restart: unless-stopped
+                healthcheck:
+                  test: [ "CMD", "traefik" ,"healthcheck", "--ping" ]
+                  interval: 3s
+                  timeout: 3s
+                  retries: 10
+                ports:
+                  - target: 8888
+                    published: 8888
+                    protocol: tcp
+                    mode: host
+                  - target: 4443
+                    published: 4443
+                    protocol: tcp
+                    mode: host
+                  - target: 4443
+                    published: 4443
+                    protocol: udp
+                    mode: host
+                volumes:
+                  - /var/run/docker.sock:/var/run/docker.sock
+                  - ./certs:/certs
+                command:
+                  # Enable Docker in Traefik, so that it reads labels from Docker services
+                  - --providers.docker
+                  # TLS providers
+                  - --providers.file.directory=/certs/
+                  # Auto discovery
+                  - --providers.file.watch=true
+                  # Do not expose all Docker services, only the ones explicitly exposed
+                  - --providers.docker.exposedbydefault=false
+                  # Create an entrypoint "http" listening on port 8080
+                  - --entrypoints.http.address=:8888
+                  # Create an entrypoint "https" listening on port 4443
+                  - --entrypoints.https.address=:4443
+                  # QUIC Related Configuration
+                  - --experimental.http3=true
+                  - --entrypoints.https.http3=true
+                  # Enable the access log, with HTTP requests
+                  - --accesslog
+                  # Enable the Traefik log, for configurations and errors
+                  - --log
+                  # Disable the Dashboard and API
+                  - --api.dashboard=false
+                  # Enable healthcheck
+                  - --ping
+                  - --log.level=DEBUG
+              
+              proxy_alt:
+                image: traefik:v2.10
+                restart: unless-stopped
+                healthcheck:
+                  test: [ "CMD", "traefik" ,"healthcheck", "--ping" ]
+                  interval: 3s
+                  timeout: 3s
+                  retries: 10
+                ports:
+                  - target: 9999
+                    published: 9999
+                    protocol: tcp
+                    mode: host
+                  - target: 8754
+                    published: 8754
+                    protocol: tcp
+                    mode: host
+                volumes:
+                  - /var/run/docker.sock:/var/run/docker.sock
+                  - ./certs:/certs
+                command:
+                  # Enable Docker in Traefik, so that it reads labels from Docker services
+                  - --providers.docker
+                  # TLS providers
+                  - --providers.file.directory=/certs/
+                  # Auto discovery
+                  - --providers.file.watch=true
+                  # Do not expose all Docker services, only the ones explicitly exposed
+                  - --providers.docker.exposedbydefault=false
+                  # Create an entrypoint "http" listening on port 9999
+                  - --entrypoints.http.address=:9999
+                  # Create an entrypoint "https" listening on port 8754
+                  - --entrypoints.https.address=:8754
+                  # Enable the access log, with HTTP requests
+                  - --accesslog
+                  # Enable the Traefik log, for configurations and errors
+                  - --log
+                  # Disable the Dashboard and API
+                  - --api.dashboard=false
+                  # Enable healthcheck
+                  - --ping
+              
+              httpbin:
+                image: mccutchen/go-httpbin:v2.8.0
+                restart: unless-stopped
+                depends_on:
+                  proxy:
+                    condition: service_healthy
+                labels:
+                  - traefik.enable=true
+                  - traefik.http.routers.httpbin-http.rule=Host(`httpbin.local`) || Host(`alt.httpbin.local`)
+                  - traefik.http.routers.httpbin-http.entrypoints=http
+                  - traefik.http.routers.httpbin-https.rule=Host(`httpbin.local`) || Host(`alt.httpbin.local`)
+                  - traefik.http.routers.httpbin-https.entrypoints=https
+                  - traefik.http.routers.httpbin-https.tls=true
+                  - traefik.http.services.httpbin.loadbalancer.server.port=8080
+        run: |
+          echo "$TRAEFIK_COMPOSE_SCHEMA" > ./docker-compose.yaml
+          echo "$TRAEFIK_CERTIFICATE_TOML" > ./certs/certificate.toml
+
+      - name: "Traefik: Start stack"
+        if: ${{ matrix.traefik-server }}
+        run: docker compose up -d
+
+      - name: "Traefik: Wait for service"
+        if: ${{ matrix.traefik-server }}
+        run: curl --retry 30 --retry-max-time 120 --fail --retry-all-errors https://httpbin.local:4443/get
+
+      - name: "mkcert: export MKCERT_CA_ROOT"
+        if: ${{ matrix.traefik-server }}
+        run: export MKCERT_CA_ROOT=`mkcert -CAROOT`
 
       - name: "Setup Python ${{ matrix.python-version }}"
         uses: "actions/setup-python@57ded4d7d5e986d7296eab16560982c6dd7c923b"

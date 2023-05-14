@@ -21,8 +21,10 @@ def tests_impl(
     # Print the Python version and bytesize.
     session.run("python", "--version")
     session.run("python", "-c", "import struct; print(struct.calcsize('P') * 8)")
-    # Print OpenSSL information.
-    session.run("python", "-m", "OpenSSL.debug")
+
+    if "secure" in extras:
+        # Print OpenSSL information.
+        session.run("python", "-m", "OpenSSL.debug")
 
     memray_supported = True
     if (
@@ -61,6 +63,16 @@ def tests_impl(
 @nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy"])
 def test(session: nox.Session) -> None:
     tests_impl(session)
+
+
+@nox.session(python=["3.11"])
+def test_h2n3(session: nox.Session) -> None:
+    """experimental, does not yet support 3.12-dev and pypy."""
+    tests_impl(
+        session,
+        byte_string_comparisons=False,
+        extras="brotli,zstd,h2n3",
+    )
 
 
 @nox.session(python=["3"])
@@ -134,6 +146,33 @@ def downstream_requests(session: nox.Session) -> None:
 
 
 @nox.session()
+def downstream_requests_h2n3(session: nox.Session) -> None:
+    root = os.getcwd()
+    tmp_dir = session.create_tmp()
+
+    session.cd(tmp_dir)
+    git_clone(session, "https://github.com/psf/requests")
+
+    session.chdir("requests")
+
+    for patch in [
+        "0002-Requests-Hface.patch",
+    ]:
+        session.run("git", "apply", f"{root}/ci/{patch}", external=True)
+
+    session.run("git", "rev-parse", "HEAD", external=True)
+    session.install(".", silent=False)
+    session.install("-r", "requirements-dev.txt", silent=False)
+
+    session.cd(root)
+    session.install(".[h2n3]", silent=False)
+    session.cd(f"{tmp_dir}/requests")
+
+    session.run("python", "-c", "import urllib3; print(urllib3.__version__)")
+    session.run("pytest", "tests")
+
+
+@nox.session()
 def format(session: nox.Session) -> None:
     """Run code formatters."""
     lint(session)
@@ -164,7 +203,7 @@ def mypy(session: nox.Session) -> None:
 @nox.session
 def docs(session: nox.Session) -> None:
     session.install("-r", "docs/requirements.txt")
-    session.install(".[socks,secure,brotli,zstd]")
+    session.install(".[socks,secure,brotli,zstd,h2n3]")
 
     session.chdir("docs")
     if os.path.exists("_build"):

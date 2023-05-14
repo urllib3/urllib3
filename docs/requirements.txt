@@ -3,4 +3,5 @@ sphinx>3.0.0
 requests
 furo
 sphinx-copybutton
+urllib3-ext-hface>=0.3.0,<0.4.0
 sphinxext-opengraph

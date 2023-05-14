@@ -29,6 +29,7 @@ def create_connection(
     timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
     source_address: tuple[str, int] | None = None,
     socket_options: _TYPE_SOCKET_OPTIONS | None = None,
+    socket_kind: socket.SocketKind = socket.SOCK_STREAM,
 ) -> socket.socket:
     """Connect to *address* and return the socket object.
 
@@ -57,7 +58,7 @@ def create_connection(
     except UnicodeError:
         raise LocationParseError(f"'{host}', label empty or too long") from None
 
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+    for res in socket.getaddrinfo(host, port, family, socket_kind):
         af, socktype, proto, canonname, sa = res
         sock = None
         try:

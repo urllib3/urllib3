@@ -167,6 +167,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             te_headers = self._get_header_lines(b"transfer-encoding")
             assert len(te_headers) == 1
 
+    @pytest.mark.usefixtures("only_httplib")
     def test_preserve_transfer_encoding_header(self) -> None:
         self.start_chunked_handler()
         chunks = [b"foo", b"bar", b"", b"bazzzzzzzzzzzzzzzzzzzzzz"]
@@ -259,7 +260,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
                 if i == 0:
                     # Bad HTTP version will trigger a connection close
-                    sock.sendall(b"HTTP/0.5 200 OK\r\n\r\n")
+                    sock.sendall(b"HTTP/9 200 OK\r\n\r\n")
                 else:
                     sock.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
                 sock.close()

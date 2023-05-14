@@ -45,6 +45,7 @@ from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.connectionpool import _url_from_pool
 from urllib3.exceptions import (
     InsecureRequestWarning,
+    InvalidHeader,
     MaxRetryError,
     ProtocolError,
     ProxyError,
@@ -676,6 +677,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             with pytest.raises(ProtocolError):
                 response.read()
 
+    @pytest.mark.usefixtures("only_httplib")
     def test_retry_weird_http_version(self) -> None:
         """Retry class should handle httplib.BadStatusLine errors properly"""
 
@@ -760,6 +762,45 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 assert poolsize == pool.pool.qsize()
             finally:
                 timed_out.set()
+
+    def test_invalid_http_status(self) -> None:
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            # Consume request
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf = sock.recv(65536)
+
+            # Send partial response and close socket.
+            sock.send(b"HTTP/1.1   OK\r\n\r\n")
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            with pytest.raises(ProtocolError):
+                pool.request("GET", "/", retries=False)
+
+    @pytest.mark.usefixtures("not_httplib")
+    def test_invalid_incoming_header(self) -> None:
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            # Consume request
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf = sock.recv(65536)
+
+            # Send partial response and close socket.
+            sock.send(b"HTTP/1.1 200 OK\r\nX Invalid-Header: Value\r\n\r\n")
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            with pytest.raises(InvalidHeader):
+                pool.request("GET", "/", retries=False)
 
     def test_connection_cleanup_on_protocol_error_during_read(self) -> None:
         body = "Response"
@@ -1068,6 +1109,26 @@ class TestProxyManager(SocketDummyServerTestCase):
                 ]
             )
 
+    def test_proxy_tunnel_connect_nak(self) -> None:
+        def echo_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+
+            sock.send(b"HTTP/1.1 401 Unauthorized\r\n\r\n")
+            sock.close()
+
+        self._start_server(echo_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        with ProxyManager(base_url) as proxy:
+            with pytest.raises(
+                MaxRetryError, match=r"Tunnel connection failed: 401 Unauthorized"
+            ):
+                proxy.request("GET", "https://www.google.com/", retries=0)
+
     def test_headers(self) -> None:
         def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -1091,7 +1152,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         base_url = f"http://{self.host}:{self.port}"
 
         # Define some proxy headers.
-        proxy_headers = HTTPHeaderDict({"For The Proxy": "YEAH!"})
+        proxy_headers = HTTPHeaderDict({"For-The-Proxy": "YEAH!"})
         with proxy_from_url(base_url, proxy_headers=proxy_headers) as proxy:
             conn = proxy.connection_from_url("http://www.google.com/")
 
@@ -1101,7 +1162,7 @@ class TestProxyManager(SocketDummyServerTestCase):
             # FIXME: The order of the headers is not predictable right now. We
             # should fix that someday (maybe when we migrate to
             # OrderedDict/MultiDict).
-            assert b"For The Proxy: YEAH!\r\n" in r.data
+            assert b"For-The-Proxy: YEAH!\r\n" in r.data
 
     def test_retries(self) -> None:
         close_event = Event()
@@ -1677,6 +1738,7 @@ class TestErrorWrapping(SocketDummyServerTestCase):
 
 
 class TestHeaders(SocketDummyServerTestCase):
+    @pytest.mark.usefixtures("only_httplib")
     def test_httplib_headers_case_insensitive(self) -> None:
         self.start_response_handler(
             b"HTTP/1.1 200 OK\r\n"
@@ -1714,6 +1776,7 @@ class TestHeaders(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
+    @pytest.mark.usefixtures("only_httplib")
     def test_headers_are_sent_with_the_original_case(self) -> None:
         headers = {"foo": "bar", "bAz": "quux"}
 
@@ -1730,7 +1793,7 @@ class TestHeaders(SocketDummyServerTestCase):
             assert expected_headers == self.parsed_headers
 
     def test_ua_header_can_be_overridden(self) -> None:
-        headers = {"uSeR-AgENt": "Definitely not urllib3!"}
+        headers = {"User-Agent": "Definitely not urllib3!"}
 
         self.start_parsing_handler()
         expected_headers = {
@@ -1781,7 +1844,7 @@ class TestHeaders(SocketDummyServerTestCase):
         #       so that if the internal implementation tries to sort them,
         #       a change will be detected.
         expected_response_headers = [
-            (f"X-Header-{int(i)}", str(i)) for i in reversed(range(K))
+            (f"x-header-{int(i)}", str(i)) for i in reversed(range(K))
         ]
 
         def socket_handler(listener: socket.socket) -> None:
@@ -1799,7 +1862,7 @@ class TestHeaders(SocketDummyServerTestCase):
                         for (k, v) in expected_response_headers
                     ]
                 )
-                + b"\r\n"
+                + b"\r\n\r\n"
             )
             sock.close()
 
@@ -1807,7 +1870,9 @@ class TestHeaders(SocketDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/", retries=0)
             actual_response_headers = [
-                (k, v) for (k, v) in r.headers.items() if k.startswith("X-Header-")
+                (k, v)
+                for (k, v) in r.headers.items()
+                if k.lower().startswith("x-header-")
             ]
             assert expected_response_headers == actual_response_headers
 
@@ -1912,12 +1977,15 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
                         return
             pytest.fail("Missing log about unparsed headers")
 
+    @pytest.mark.usefixtures("only_httplib")
     def test_header_without_name(self) -> None:
         self._test_broken_header_parsing([b": Value", b"Another: Header"])
 
+    @pytest.mark.usefixtures("only_httplib")
     def test_header_without_name_or_value(self) -> None:
         self._test_broken_header_parsing([b":", b"Another: Header"])
 
+    @pytest.mark.usefixtures("only_httplib")
     def test_header_without_colon_or_value(self) -> None:
         self._test_broken_header_parsing(
             [b"Broken Header", b"Another: Header"], "Broken Header"
@@ -2079,7 +2147,11 @@ class TestBadContentLength(SocketDummyServerTestCase):
                 "GET", url="/", preload_content=False, enforce_content_length=True
             )
             data = get_response.stream(100)
-            with pytest.raises(ProtocolError, match="12 bytes read, 10 more expected"):
+            if "urllib3_ext_hface" in sys.modules:
+                match = "received 12 bytes, expected 22"
+            else:
+                match = "12 bytes read, 10 more expected"
+            with pytest.raises(ProtocolError, match=match):
                 next(data)
             done_event.set()
 
@@ -2151,32 +2223,14 @@ class TestBrokenPipe(SocketDummyServerTestCase):
         # a buffer that will cause two sendall calls
         buf = "a" * 1024 * 1024 * 4
 
-        import platform
-        _IS_MACOS = platform.system() == "Darwin"
-
-        if _IS_MACOS:
-            print(">> test start")
-
         def connect_and_wait(*args: typing.Any, **kw: typing.Any) -> None:
-            if _IS_MACOS:
-                print(">> connect_and_wait")
             ret = orig_connect(*args, **kw)
-            if _IS_MACOS:
-                print(">> connect_and_wait::wait")
             assert sock_shut.wait(5)
-            if _IS_MACOS:
-                print(">> connect_and_wait::ret")
             return ret
 
         def socket_handler(listener: socket.socket) -> None:
-            if _IS_MACOS:
-                print(">> socket_handler")
             for i in range(2):
-                if _IS_MACOS:
-                    print(">> socket_handler::", i, "::accept")
                 sock = listener.accept()[0]
-                if _IS_MACOS:
-                    print(">> socket_handler::", i, "::sock.send")
                 sock.send(
                     b"HTTP/1.1 404 Not Found\r\n"
                     b"Connection: close\r\n"
@@ -2184,33 +2238,19 @@ class TestBrokenPipe(SocketDummyServerTestCase):
                     b"\r\n"
                     b"xxxxxxxxxx"
                 )
-                if _IS_MACOS:
-                    print(">> socket_handler::", i, "::sock.shutdown")
                 sock.shutdown(socket.SHUT_RDWR)
                 sock_shut.set()
-                if _IS_MACOS:
-                    print(">> socket_handler::", i, "::sock.close")
                 sock.close()
 
         monkeypatch.setattr(HTTPConnection, "connect", connect_and_wait)
-        if _IS_MACOS:
-            print(">> start_server")
         self._start_server(socket_handler)
         with HTTPConnectionPool(self.host, self.port) as pool:
-            if _IS_MACOS:
-                print(">> req1")
             r = pool.request("POST", "/", body=buf)
-            if _IS_MACOS:
-                print(">> resp1")
             assert r.status == 404
             assert r.headers["content-length"] == "10"
             assert r.data == b"xxxxxxxxxx"
 
-            if _IS_MACOS:
-                print(">> req2")
             r = pool.request("POST", "/admin", chunked=True, body=buf)
-            if _IS_MACOS:
-                print(">> resp2")
             assert r.status == 404
             assert r.headers["content-length"] == "10"
             assert r.data == b"xxxxxxxxxx"

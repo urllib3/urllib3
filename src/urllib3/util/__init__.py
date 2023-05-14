@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from .connection import is_connection_dropped
 from .request import SKIP_HEADER, SKIPPABLE_HEADERS, make_headers
-from .response import is_fp_closed
+from .response import is_fp_closed, parse_alt_svc
 from .retry import Retry
 from .ssl_ import (
     ALPN_PROTOCOLS,
@@ -41,4 +41,5 @@ __all__ = (
     "wait_for_write",
     "SKIP_HEADER",
     "SKIPPABLE_HEADERS",
+    "parse_alt_svc",
 )

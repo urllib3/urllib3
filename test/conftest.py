@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import socket
 import ssl
+import sys
 import typing
 from pathlib import Path
 
@@ -347,3 +348,17 @@ def requires_tlsv1_3(supported_tls_versions: typing.AbstractSet[str]) -> None:
         or "TLSv1.3" not in supported_tls_versions
     ):
         pytest.skip("Test requires TLSv1.3")
+
+
+@pytest.fixture(scope="function")
+def only_httplib() -> None:
+    """Disable this test while not using http.client backend"""
+    if "urllib3_ext_hface" in sys.modules:
+        pytest.skip("Test require httplib backend")
+
+
+@pytest.fixture(scope="function")
+def not_httplib() -> None:
+    """Disable this test while using http.client backend"""
+    if "urllib3_ext_hface" not in sys.modules:
+        pytest.skip("Test require hface backend")

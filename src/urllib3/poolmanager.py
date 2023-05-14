@@ -9,6 +9,7 @@ from urllib.parse import urljoin
 
 from ._collections import RecentlyUsedContainer
 from ._request_methods import RequestMethods
+from .backend import HttpVersion, QuicPreemptiveCacheType
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
@@ -90,6 +91,7 @@ class PoolKey(typing.NamedTuple):
     key_assert_fingerprint: str | None
     key_server_hostname: str | None
     key_blocksize: int | None
+    key_disabled_svn: set[HttpVersion] | None
 
 
 def _default_key_normalizer(
@@ -123,6 +125,8 @@ def _default_key_normalizer(
     for key in ("headers", "_proxy_headers", "_socks_options"):
         if key in context and context[key] is not None:
             context[key] = frozenset(context[key].items())
+    if "disabled_svn" in context:
+        context["disabled_svn"] = frozenset(context["disabled_svn"])
 
     # The socket_options key may be a list and needs to be transformed into a
     # tuple.
@@ -200,6 +204,7 @@ class PoolManager(RequestMethods):
         self,
         num_pools: int = 10,
         headers: typing.Mapping[str, str] | None = None,
+        preemptive_quic_cache: QuicPreemptiveCacheType | None = None,
         **connection_pool_kw: typing.Any,
     ) -> None:
         super().__init__(headers)
@@ -212,6 +217,8 @@ class PoolManager(RequestMethods):
         # override them.
         self.pool_classes_by_scheme = pool_classes_by_scheme
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
+
+        self._preemptive_quic_cache = preemptive_quic_cache
 
     def __enter__(self: _SelfT) -> _SelfT:
         return self
@@ -261,6 +268,8 @@ class PoolManager(RequestMethods):
         if scheme == "http":
             for kw in SSL_KEYWORDS:
                 request_context.pop(kw, None)
+
+        request_context["preemptive_quic_cache"] = self._preemptive_quic_cache
 
         return pool_cls(host, port, **request_context)
 
@@ -324,6 +333,9 @@ class PoolManager(RequestMethods):
         if not pool_key_constructor:
             raise URLSchemeUnknown(scheme)
         pool_key = pool_key_constructor(request_context)
+
+        if self._preemptive_quic_cache is not None:
+            request_context["preemptive_quic_cache"] = self._preemptive_quic_cache
 
         return self.connection_from_pool_key(pool_key, request_context=request_context)
 

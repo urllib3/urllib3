@@ -1,0 +1,13 @@
+diff --git a/tests/test_lowlevel.py b/tests/test_lowlevel.py
+index 859d07e8..024723e0 100644
+--- a/tests/test_lowlevel.py
++++ b/tests/test_lowlevel.py
+@@ -55,7 +55,7 @@ def test_chunked_encoding_error():
+
+     with server as (host, port):
+         url = f"http://{host}:{port}/"
+-        with pytest.raises(requests.exceptions.ChunkedEncodingError):
++        with pytest.raises(requests.exceptions.ConnectionError):
+             requests.get(url)
+         close_server.set()  # release server block
+

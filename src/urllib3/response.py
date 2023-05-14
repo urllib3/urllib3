@@ -788,7 +788,10 @@ class HTTPResponse(BaseHTTPResponse):
                     amt -= chunk_amt
                 else:
                     chunk_amt = max_chunk_amt
-                data = self._fp.read(chunk_amt)
+                try:
+                    data = self._fp.read(chunk_amt)
+                except ValueError:  # Defensive: overly protective
+                    break  # Defensive: can also be an indicator that read ended, should not happen.
                 if not data:
                     break
                 buffer.write(data)

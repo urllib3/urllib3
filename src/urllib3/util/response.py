@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import http.client as httplib
+import re
+import typing
 from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
 
 from ..exceptions import HeaderParsingError
@@ -99,3 +101,14 @@ def is_response_to_head(response: httplib.HTTPResponse) -> bool:
     # FIXME: Can we do this somehow without accessing private httplib _method?
     method_str = response._method  # type: str  # type: ignore[attr-defined]
     return method_str.upper() == "HEAD"
+
+
+def parse_alt_svc(value: str) -> typing.Iterable[tuple[str, str]]:
+    """Given an Alt-Svc value, extract from it the protocol-id and the alt-authority.
+    https://httpwg.org/specs/rfc7838.html#alt-svc"""
+    pattern = re.compile(
+        r"(h[0-9]{1,3}(?:[\-0-9]{0,5}))=(?:[\"\']?)([a-z0-9\-_:.]+)(?:[\"\']?)",
+        re.IGNORECASE,
+    )
+
+    yield from re.findall(pattern, value)

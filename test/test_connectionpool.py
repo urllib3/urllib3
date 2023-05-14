@@ -45,7 +45,7 @@ class HTTPUnixConnection(HTTPConnection):
         super().__init__("localhost")
         self.unix_socket = host
         self.timeout = timeout
-        self.sock = None
+        self.sock = None  # type: ignore[assignment]
 
 
 class HTTPUnixConnectionPool(HTTPConnectionPool):

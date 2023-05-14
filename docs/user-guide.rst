@@ -13,6 +13,17 @@ urllib3 can be installed with `pip <https://pip.pypa.io>`_
   $ python -m pip install urllib3
 
 
+HTTP/2 and HTTP/3 support
+-------------------------
+
+If you want to support more HTTP protocols like HTTP/2 and HTTP/3 over QUIC, install urllib3 with
+
+.. code-block:: bash
+
+  $ python -m pip install urllib3[h2n3]
+
+This will detach urllib3 from the legacy http.client package, even for HTTP/1.1 requests.
+
 Making Requests
 ---------------
 
@@ -98,6 +109,8 @@ The :class:`~response.HTTPResponse` object provides
     # b"{\n  "origin": "104.232.115.37"\n}\n"
     print(resp.headers)
     # HTTPHeaderDict({"Content-Length": "32", ...})
+    print(resp.version)
+    # 20
 
 JSON Content
 ~~~~~~~~~~~~

@@ -11,4 +11,5 @@ API Reference
    urllib3.response
    urllib3.fields
    urllib3.util
+   urllib3.backend
    contrib/index

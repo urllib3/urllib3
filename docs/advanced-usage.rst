@@ -186,6 +186,10 @@ You can connect to a proxy using HTTP, HTTPS or SOCKS. urllib3's behavior will
 be different depending on the type of proxy you selected and the destination
 you're contacting.
 
+Note that regardless of HTTP version support, the tunneling will always start a HTTP/1.1 connection.
+HTTP/2 can be negotiated afterward. Also note that using a proxy disable HTTP/3 if supported, the connection
+will never be upgraded.
+
 HTTP and HTTPS Proxies
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -631,3 +635,56 @@ flag that isn't set by default, and then makes a HTTPS request:
 Note that this is different from passing an ``options`` argument to
 :func:`~urllib3.util.create_urllib3_context` because we don't overwrite
 the default options: we only add a new one.
+
+Remembering HTTP/3 over QUIC support
+------------------------------------
+
+There is a chance that you may want to speed up HTTP/3 negotiation. urllib3 does
+not remember if a particular host, port HTTP server is capable of serving QUIC.
+
+In practice, we always have to initiate a TCP connection and then observe the first response headers
+in order to determine if the remote is capable of communicating through QUIC.
+
+.. note::
+
+    HTTP/2 and HTTP/3 require installing ``urllib3[h2n3]`` extra.
+
+.. code-block:: python
+
+    from urllib3 import PoolManager
+
+    quic_cache = dict()
+
+    with PoolManager(preemptive_quic_cache=quic_cache) as pool:
+        pool.request("GET", "https://www.cloudflare.com")
+
+In bellow example, the variable ``quic_cache`` will be populated with a single entry and
+if you pickle and restore this variable in between interpreter run, it should not make TCP connection
+prior to the QUIC one.
+
+urllib3 is meant to be thread safe, so we do not provide any 'default' solution for the caching. It
+is up to you.
+
+``preemptive_quic_cache`` takes any ``MutableMapping[Tuple[str, int], Tuple[str, int] | None]``.
+
+Note that to lower the attack surface we won't allow hostname switching from saved Alt-Svc entry.
+
+Explicitly disable HTTP/2 and/or HTTP/3
+---------------------------------------
+
+You can, at your own discretion, disable HTTP/2 and/or HTTP/3 by passing the argument ``disabled_svn``
+to your ``PoolManager``.
+It takes a ``set`` of ``HttpVersion`` like so:
+
+.. code-block:: python
+
+    from urllib3 import PoolManager, HttpVersion
+
+    with PoolManager(disabled_svn={HttpVersion.h3, HttpVersion.h2}) as pool:
+        resp = pool.request("GET", "https://www.cloudflare.com")
+        print(resp.version)  # 11
+
+.. note::
+
+    HTTP/2 and HTTP/3 require installing ``urllib3[h2n3]`` extra. Setting disabled_svn has no effect otherwise.
+    Also, you cannot disable HTTP/1.1 at the current state of affairs.

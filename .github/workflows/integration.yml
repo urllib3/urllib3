@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        downstream: [botocore, requests]
+        downstream: [botocore, requests, requests_h2n3]
     runs-on: ubuntu-22.04
     timeout-minutes: 30
 

@@ -27,18 +27,21 @@ standard libraries:
 - File uploads with multipart encoding.
 - Helpers for retrying requests and dealing with HTTP redirects.
 - Support for gzip, deflate, brotli, and zstd encoding.
+- HTTP/1.1, HTTP/2 and HTTP/3 support.
 - Proxy support for HTTP and SOCKS.
 - 100% test coverage.
 
 urllib3 is powerful and easy to use:
 
-```python3
+```python
 >>> import urllib3
->>> resp = urllib3.request("GET", "http://httpbin.org/robots.txt")
+>>> resp = urllib3.request("GET", "https://httpbin.org/robots.txt")
 >>> resp.status
 200
 >>> resp.data
 b"User-agent: *\nDisallow: /deny\n"
+>>> resp.version
+20
 ```
 
 ## Installing
@@ -49,6 +52,10 @@ urllib3 can be installed with [pip](https://pip.pypa.io):
 $ python -m pip install urllib3
 ```
 
+to (experimentally) enable HTTP/2, HTTP/3 (and detach yourself from the legacy http.client for HTTP/1.1) you must install urllib3 with:
+```bash
+$ python -m pip install urllib3[h2n3]
+```
 Alternatively, you can grab the latest source code from [GitHub](https://github.com/urllib3/urllib3):
 
 ```bash

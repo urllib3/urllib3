@@ -1,0 +1,26 @@
+Added experimental support for HTTP/1.1, HTTP/2 and HTTP/3 independently of httplib.
+
+Currently urllib3 does not offer async http request and the backend is the http.client package
+shipped alongside Python. This implementation is not scheduled to improve, even less to support latest
+protocol.
+
+Without proxies, the negotiation is as follow:
+
+- http requests are always made using HTTP/1.1.
+- https requests are made with HTTP/2 if TLS-ALPN yield its support otherwise HTTP/1.1.
+
+- https requests may upgrade to HTTP/3 if latest response contain a valid Alt-Svc header.
+
+With proxies:
+
+- The initial proxy request is always issued using HTTP/1.1 regardless if its http or https.
+- Subsequents requests follow the previous section (Without proxies) at the sole exception that HTTP/3 upgrade is disabled.
+
+You may explicitly disable HTTP/2 or, and, HTTP/3 by passing ``disabled_svn={HttpVersion.h2}`` to your ``BaseHttpConnection`` instance.
+Disabling HTTP/1.1 is forbidden and raise an error.
+
+Note that a valid or accepted Alt-Svc header in urllib3 means looking for the "h3" (final specification) protocol and disallow switching hostname for security
+reasons.
+
+Starting now, users may start to experiment detaching themselves from it by installing urllib
+as follow ``pip install urllib3[h2n3]``.
