@@ -67,6 +67,7 @@ jobs:
     needs: ["build", "provenance"]
     permissions:
       contents: write
+      id-token: write # Needed for trusted publishing to PyPI.
     runs-on: "ubuntu-latest"
 
     steps:
@@ -83,7 +84,4 @@ jobs:
         gh release upload ${{ github.ref_name }} dist/* --repo ${{ github.repository }}
 
     - name: "Publish dists to PyPI"
-      uses: "pypa/gh-action-pypi-publish@37f50c210e3d2f9450da2cd423303d6a14a6e29f"
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
+      uses: "pypa/gh-action-pypi-publish@a56da0b891b3dc519c7ee3284aff1fad93cc8598"
