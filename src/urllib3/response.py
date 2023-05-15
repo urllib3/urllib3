@@ -169,10 +169,15 @@ if zstd is not None:
         def decompress(self, data: bytes) -> bytes:
             if not data:
                 return b""
-            return self._obj.decompress(data)  # type: ignore[no-any-return]
+            data_parts = [self._obj.decompress(data)]
+            while self._obj.eof and self._obj.unused_data:
+                unused_data = self._obj.unused_data
+                self._obj = zstd.ZstdDecompressor().decompressobj()
+                data_parts.append(self._obj.decompress(unused_data))
+            return b"".join(data_parts)
 
         def flush(self) -> bytes:
-            ret = self._obj.flush()
+            ret = self._obj.flush()  # note: this is a no-op
             if not self._obj.eof:
                 raise DecodeError("Zstandard data is incomplete")
             return ret  # type: ignore[no-any-return]
@@ -931,7 +936,7 @@ class HTTPResponse(BaseHTTPResponse):
         if self.chunked and self.supports_chunked_reads():
             yield from self.read_chunked(amt, decode_content=decode_content)
         else:
-            while not is_fp_closed(self._fp):
+            while not is_fp_closed(self._fp) or len(self._decoded_buffer) > 0:
                 data = self.read(amt=amt, decode_content=decode_content)
 
                 if data:
