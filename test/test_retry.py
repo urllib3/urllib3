@@ -3,6 +3,7 @@ from __future__ import annotations
 from test import DUMMY_POOL
 from unittest import mock
 
+import freezegun  # type: ignore[import]
 import pytest
 
 from urllib3.exceptions import (
@@ -180,6 +181,35 @@ class TestRetry:
         retry = retry.increment(method="GET")
         assert retry.get_backoff_time() == max_backoff
 
+    def test_backoff_jitter(self) -> None:
+        """Backoff with jitter is computed correctly"""
+        max_backoff = 1
+        jitter = 0.4
+        retry = Retry(
+            total=100,
+            backoff_factor=0.2,
+            backoff_max=max_backoff,
+            backoff_jitter=jitter,
+        )
+        assert retry.get_backoff_time() == 0  # First request
+
+        retry = retry.increment(method="GET")
+        assert retry.get_backoff_time() == 0  # First retry
+
+        retry = retry.increment(method="GET")
+        assert retry.backoff_factor == 0.2
+        assert retry.total == 98
+        assert 0.4 <= retry.get_backoff_time() <= 0.8  # Start backoff
+
+        retry = retry.increment(method="GET")
+        assert 0.8 <= retry.get_backoff_time() <= max_backoff
+
+        retry = retry.increment(method="GET")
+        assert retry.get_backoff_time() == max_backoff
+
+        retry = retry.increment(method="GET")
+        assert retry.get_backoff_time() == max_backoff
+
     def test_zero_backoff(self) -> None:
         retry = Retry()
         assert retry.get_backoff_time() == 0
@@ -332,7 +362,6 @@ class TestRetry:
         new_retry = retry.new()
         assert new_retry.respect_retry_after_header == respect_retry_after_header
 
-    @pytest.mark.freeze_time("2019-06-03 11:00:00", tz_offset=0)
     @pytest.mark.parametrize(
         "retry_after_header,respect_retry_after_header,sleep_duration",
         [
@@ -371,7 +400,9 @@ class TestRetry:
     ) -> None:
         retry = Retry(respect_retry_after_header=respect_retry_after_header)
 
-        with mock.patch("time.sleep") as sleep_mock:
+        with freezegun.freeze_time("2019-06-03 11:00:00", tz_offset=0), mock.patch(
+            "time.sleep"
+        ) as sleep_mock:
             # for the default behavior, it must be in RETRY_AFTER_STATUS_CODES
             response = HTTPResponse(
                 status=503, headers={"Retry-After": retry_after_header}
