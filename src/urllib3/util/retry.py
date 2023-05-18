@@ -143,7 +143,7 @@ class Retry:
         (most errors are resolved immediately by a second try without a
         delay). urllib3 will sleep for::
 
-            {backoff factor} * (2 ** ({number of total retries} - 1))
+            {backoff factor} * (2 ** ({number of previous retries}))
 
         seconds. If `backoff_jitter` is non-zero, this sleep is extended by::
 
