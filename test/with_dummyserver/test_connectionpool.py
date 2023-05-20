@@ -468,7 +468,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_redirect_relative_url_no_deprecation(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             with warnings.catch_warnings():
-                warnings.simplefilter("error")
+                warnings.simplefilter("error", DeprecationWarning)
                 pool.request("GET", "/redirect", fields={"target": "/"})
 
     def test_redirect(self) -> None:
