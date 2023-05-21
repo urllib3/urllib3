@@ -287,7 +287,6 @@ class HTTPConnection(_HTTPConnection):
         decode_content: bool = True,
         enforce_content_length: bool = True,
     ) -> None:
-
         # Update the inner socket's timeout value to send the request.
         # This only triggers if the connection is re-used.
         if self.sock is not None:
@@ -492,7 +491,6 @@ class HTTPSConnection(HTTPConnection):
         key_file: str | None = None,
         key_password: str | None = None,
     ) -> None:
-
         super().__init__(
             host,
             port=port,
@@ -754,36 +752,42 @@ def _ssl_wrap_socket_and_match_hostname(
         tls_in_tls=tls_in_tls,
     )
 
-    if assert_fingerprint:
-        _assert_fingerprint(ssl_sock.getpeercert(binary_form=True), assert_fingerprint)
-    elif (
-        context.verify_mode != ssl.CERT_NONE
-        and not context.check_hostname
-        and assert_hostname is not False
-    ):
-        cert: _TYPE_PEER_CERT_RET_DICT = ssl_sock.getpeercert()  # type: ignore[assignment]
+    try:
+        if assert_fingerprint:
+            _assert_fingerprint(
+                ssl_sock.getpeercert(binary_form=True), assert_fingerprint
+            )
+        elif (
+            context.verify_mode != ssl.CERT_NONE
+            and not context.check_hostname
+            and assert_hostname is not False
+        ):
+            cert: _TYPE_PEER_CERT_RET_DICT = ssl_sock.getpeercert()  # type: ignore[assignment]
 
-        # Need to signal to our match_hostname whether to use 'commonName' or not.
-        # If we're using our own constructed SSLContext we explicitly set 'False'
-        # because PyPy hard-codes 'True' from SSLContext.hostname_checks_common_name.
-        if default_ssl_context:
-            hostname_checks_common_name = False
-        else:
-            hostname_checks_common_name = (
-                getattr(context, "hostname_checks_common_name", False) or False
+            # Need to signal to our match_hostname whether to use 'commonName' or not.
+            # If we're using our own constructed SSLContext we explicitly set 'False'
+            # because PyPy hard-codes 'True' from SSLContext.hostname_checks_common_name.
+            if default_ssl_context:
+                hostname_checks_common_name = False
+            else:
+                hostname_checks_common_name = (
+                    getattr(context, "hostname_checks_common_name", False) or False
+                )
+
+            _match_hostname(
+                cert,
+                assert_hostname or server_hostname,  # type: ignore[arg-type]
+                hostname_checks_common_name,
             )
 
-        _match_hostname(
-            cert,
-            assert_hostname or server_hostname,  # type: ignore[arg-type]
-            hostname_checks_common_name,
+        return _WrappedAndVerifiedSocket(
+            socket=ssl_sock,
+            is_verified=context.verify_mode == ssl.CERT_REQUIRED
+            or bool(assert_fingerprint),
         )
-
-    return _WrappedAndVerifiedSocket(
-        socket=ssl_sock,
-        is_verified=context.verify_mode == ssl.CERT_REQUIRED
-        or bool(assert_fingerprint),
-    )
+    except BaseException:
+        ssl_sock.close()
+        raise
 
 
 def _match_hostname(

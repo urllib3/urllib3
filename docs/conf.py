@@ -35,7 +35,15 @@ extensions = [
     "sphinx_copybutton",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
+    "sphinxext.opengraph",
 ]
+
+# Open Graph metadata
+ogp_title = "urllib3 documentation"
+ogp_site_url = "https://urllib3.readthedocs.io"
+ogp_type = "website"
+ogp_image = "https://github.com/urllib3/urllib3/raw/main/docs/_static/banner_github.svg"
+ogp_description = "urllib3 is a user-friendly HTTP client library for Python."
 
 # Test code blocks only when explicitly specified
 doctest_test_doctest_blocks = ""

@@ -2,19 +2,9 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 import sys
 
 import nox
-
-SOURCE_FILES = [
-    "docs/",
-    "dummyserver/",
-    "src/",
-    "test/",
-    "noxfile.py",
-    "setup.py",
-]
 
 
 def tests_impl(
@@ -35,7 +25,11 @@ def tests_impl(
     session.run("python", "-m", "OpenSSL.debug")
 
     memray_supported = True
-    if sys.implementation.name != "cpython" or sys.version_info < (3, 8):
+    if (
+        sys.implementation.name != "cpython"
+        or sys.version_info < (3, 8)
+        or sys.version_info.releaselevel != "final"
+    ):
         memray_supported = False  # pytest-memray requires CPython 3.8+
     elif sys.platform == "win32":
         memray_supported = False
@@ -64,23 +58,9 @@ def tests_impl(
     )
 
 
-@nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11", "pypy"])
+@nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy"])
 def test(session: nox.Session) -> None:
     tests_impl(session)
-
-
-@nox.session(python=["2.7"])
-def unsupported_setup_py(session: nox.Session) -> None:
-    # Can't check both returncode and output with session.run
-    process = subprocess.run(
-        ["python", "setup.py", "install"],
-        env={**session.env},
-        text=True,
-        capture_output=True,
-    )
-    assert process.returncode == 1
-    print(process.stderr)
-    assert "Please use `python -m pip install .` instead." in process.stderr
 
 
 @nox.session(python=["3"])
@@ -120,7 +100,6 @@ def downstream_botocore(session: nox.Session) -> None:
     session.chdir("botocore")
     for patch in [
         "0001-Mark-100-Continue-tests-as-failing.patch",
-        "0002-Stop-relying-on-removed-DEFAULT_CIPHERS.patch",
     ]:
         session.run("git", "apply", f"{root}/ci/{patch}", external=True)
     session.run("git", "rev-parse", "HEAD", external=True)
@@ -142,12 +121,6 @@ def downstream_requests(session: nox.Session) -> None:
     session.cd(tmp_dir)
     git_clone(session, "https://github.com/psf/requests")
     session.chdir("requests")
-    session.run(
-        "git", "apply", f"{root}/ci/0003-requests-removed-warnings.patch", external=True
-    )
-    session.run(
-        "git", "apply", f"{root}/ci/0004-requests-chunked-requests.patch", external=True
-    )
     session.run("git", "rev-parse", "HEAD", external=True)
     session.install(".[socks]", silent=False)
     session.install("-r", "requirements-dev.txt", silent=False)

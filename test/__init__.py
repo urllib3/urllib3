@@ -94,7 +94,7 @@ def _can_resolve(host: str) -> bool:
 def has_alpn(ctx_cls: type[ssl.SSLContext] | None = None) -> bool:
     """Detect if ALPN support is enabled."""
     ctx_cls = ctx_cls or util.SSLContext
-    ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)  # type: ignore[misc]
+    ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)  # type: ignore[misc, attr-defined]
     try:
         if hasattr(ctx, "set_alpn_protocols"):
             ctx.set_alpn_protocols(ssl_.ALPN_PROTOCOLS)
@@ -218,9 +218,9 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     )
 
 
-def requires_ssl_context_keyfile_password() -> typing.Callable[
-    [_TestFuncT], _TestFuncT
-]:
+def requires_ssl_context_keyfile_password() -> (
+    typing.Callable[[_TestFuncT], _TestFuncT]
+):
     return pytest.mark.skipif(
         lazy_condition(lambda: ssl_.IS_SECURETRANSPORT),
         reason="Test requires password parameter for SSLContext.load_cert_chain()",
@@ -324,7 +324,6 @@ class ImportBlocker(MetaPathFinder):
         path: Sequence[bytes | str] | None,
         target: ModuleType | None = None,
     ) -> ModuleSpec | None:
-
         loader = self.find_module(fullname, path)
         if loader is None:
             return None

@@ -90,7 +90,6 @@ def validate_response(
 
 
 def validate_peercert(ssl_socket: SSLTransport) -> None:
-
     binary_cert = ssl_socket.getpeercert(binary_form=True)
     assert type(binary_cert) == bytes
     assert len(binary_cert) > 0
@@ -230,8 +229,11 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             assert ssock.selected_npn_protocol() is None
 
             shared_ciphers = ssock.shared_ciphers()
-            assert type(shared_ciphers) == list
-            assert len(shared_ciphers) > 0
+            # SSLContext.shared_ciphers() changed behavior completely in a patch version.
+            # See: https://github.com/python/cpython/issues/96931
+            assert shared_ciphers is None or (
+                type(shared_ciphers) is list and len(shared_ciphers) > 0
+            )
 
             assert ssock.compression() is None
 
@@ -440,9 +442,8 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             with SSLTransport(
                 proxy_sock, self.client_context, server_hostname="localhost"
             ) as destination_sock:
-
                 file = destination_sock.makefile("rwb", buffering)
-                file.write(sample_request())  # type: ignore[arg-type]
+                file.write(sample_request())  # type: ignore[call-overload]
                 file.flush()
 
                 response = bytearray(65536)
@@ -476,11 +477,10 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             with SSLTransport(
                 proxy_sock, self.client_context, server_hostname="localhost"
             ) as destination_sock:
-
                 read = destination_sock.makefile("r", encoding="utf-8")
                 write = destination_sock.makefile("w", encoding="utf-8")
 
-                write.write(sample_request(binary=False))  # type: ignore[arg-type]
+                write.write(sample_request(binary=False))  # type: ignore[arg-type, call-overload]
                 write.flush()
 
                 response = read.read()
@@ -510,7 +510,6 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             with SSLTransport(
                 proxy_sock, self.client_context, server_hostname="localhost"
             ) as destination_sock:
-
                 destination_sock.sendall(sample_request())
                 response = bytearray(65536)
                 destination_sock.recv_into(response)

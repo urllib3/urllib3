@@ -17,7 +17,8 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     _url_from_connection,
     _wrap_proxy_error,
 )
-from urllib3.exceptions import HTTPError, ProxyError
+from urllib3.exceptions import HTTPError, ProxyError, SSLError
+from urllib3.util import ssl_
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
@@ -62,7 +63,7 @@ class TestConnection:
                 "bar",
                 {"subjectAltName": (("DNS", "foo"),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     def test_match_hostname_no_dns(self) -> None:
         cert: _TYPE_PEER_CERT_RET_DICT = {"subjectAltName": (("DNS", ""),)}
@@ -77,7 +78,7 @@ class TestConnection:
                 "bar",
                 {"subjectAltName": (("DNS", ""),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     def test_match_hostname_startwith_wildcard(self) -> None:
         cert: _TYPE_PEER_CERT_RET_DICT = {"subjectAltName": (("DNS", "*"),)}
@@ -137,7 +138,7 @@ class TestConnection:
                 "1.1.1.2",
                 {"subjectAltName": (("IP Address", "1.1.1.1"),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     @pytest.mark.parametrize(
         ["asserted_hostname", "san_ip"],
@@ -171,7 +172,7 @@ class TestConnection:
                 "1:2::2:2",
                 {"subjectAltName": (("IP Address", "1:2::2:1"),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     def test_match_hostname_dns_with_brackets_doesnt_match(self) -> None:
         cert: _TYPE_PEER_CERT_RET_DICT = {
@@ -235,3 +236,32 @@ class TestConnection:
         # Should error if a request has not been sent
         with pytest.raises(ResponseNotReady):
             conn.getresponse()
+
+    def test_assert_fingerprint_closes_socket(self) -> None:
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.wrap_socket.return_value.getpeercert.return_value = b"fake cert"
+        conn = HTTPSConnection(
+            "google.com",
+            port=443,
+            assert_fingerprint="AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA",
+            ssl_context=context,
+        )
+        with mock.patch.object(conn, "_new_conn"):
+            with pytest.raises(SSLError):
+                conn.connect()
+
+        context.wrap_socket.return_value.close.assert_called_once_with()
+
+    def test_assert_hostname_closes_socket(self) -> None:
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.wrap_socket.return_value.getpeercert.return_value = {
+            "subjectAltName": (("DNS", "google.com"),)
+        }
+        conn = HTTPSConnection(
+            "google.com", port=443, assert_hostname="example.com", ssl_context=context
+        )
+        with mock.patch.object(conn, "_new_conn"):
+            with pytest.raises(ImplementationCertificateError):
+                conn.connect()
+
+        context.wrap_socket.return_value.close.assert_called_once_with()

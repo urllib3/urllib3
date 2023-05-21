@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import datetime
 import os.path
 import shutil
@@ -459,12 +460,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
+            assert_fingerprint=("55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            https_pool.assert_fingerprint = (
-                "55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
-            )
-
             https_pool.request("GET", "/")
 
     def test_assert_fingerprint_sha1(self) -> None:
@@ -473,11 +471,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
+            assert_fingerprint=(
+                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
+            ),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            https_pool.assert_fingerprint = (
-                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            )
             https_pool.request("GET", "/")
 
     def test_assert_fingerprint_sha256(self) -> None:
@@ -486,12 +484,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
-            ssl_minimum_version=self.tls_version(),
-        ) as https_pool:
-            https_pool.assert_fingerprint = (
+            assert_fingerprint=(
                 "E3:59:8E:69:FF:C5:9F:C7:88:87:44:58:22:7F:90:8D:D9:BC:12:C4:90:79:D5:"
                 "DC:A8:5D:4F:60:40:1E:A6:D2"
-            )
+            ),
+            ssl_minimum_version=self.tls_version(),
+        ) as https_pool:
             https_pool.request("GET", "/")
 
     def test_assert_invalid_fingerprint(self) -> None:
@@ -508,9 +506,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ca_certs=DEFAULT_CA,
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-
             https_pool.assert_fingerprint = (
-                "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
+                "AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
             )
             e = _test_request(https_pool)
             expected = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -532,11 +529,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_verify_none_and_bad_fingerprint(self) -> None:
         with HTTPSConnectionPool(
-            "127.0.0.1", self.port, cert_reqs="CERT_NONE", ca_certs=self.bad_ca_path
+            "127.0.0.1",
+            self.port,
+            cert_reqs="CERT_NONE",
+            assert_hostname=False,
+            assert_fingerprint=(
+                "AA:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
+            ),
         ) as https_pool:
-            https_pool.assert_fingerprint = (
-                "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
-            )
             with pytest.raises(MaxRetryError) as cm:
                 https_pool.request("GET", "/", retries=0)
             assert isinstance(cm.value.reason, SSLError)
@@ -546,12 +546,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             "127.0.0.1",
             self.port,
             cert_reqs="CERT_NONE",
-            ca_certs=self.bad_ca_path,
-            ssl_minimum_version=self.tls_version(),
-        ) as https_pool:
-            https_pool.assert_fingerprint = (
+            assert_hostname=False,
+            assert_fingerprint=(
                 "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            )
+            ),
+        ) as https_pool:
             https_pool.request("GET", "/")
 
     @notSecureTransport()
@@ -565,16 +564,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
+            assert_fingerprint=(
+                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
+            ),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            https_pool.assert_fingerprint = (
-                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            )
             https_pool.request("GET", "/")
 
     @requires_network()
     def test_https_timeout(self) -> None:
-
         timeout = Timeout(total=None, connect=SHORT_TIMEOUT)
         with HTTPSConnectionPool(
             TARPIT_HOST,
@@ -594,12 +592,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             timeout=timeout,
             retries=False,
             cert_reqs="CERT_REQUIRED",
+            ca_certs=DEFAULT_CA,
+            assert_fingerprint=(
+                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
+            ),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            https_pool.ca_certs = DEFAULT_CA
-            https_pool.assert_fingerprint = (
-                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            )
+            # TODO This was removed in https://github.com/urllib3/urllib3/pull/703/files
+            # We need to put something back or remove this block.
+            pass
 
         timeout = Timeout(total=None)
         with HTTPSConnectionPool(
@@ -609,7 +610,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             cert_reqs="CERT_NONE",
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            https_pool.request("GET", "/")
+            with pytest.warns(InsecureRequestWarning):
+                https_pool.request("GET", "/")
 
     def test_tunnel(self) -> None:
         """test the _tunnel behavior"""
@@ -627,7 +629,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 with mock.patch.object(
                     conn, "_tunnel", create=True, return_value=None
                 ) as conn_tunnel:
-                    https_pool._make_request(conn, "GET", "/")
+                    with pytest.warns(InsecureRequestWarning):
+                        https_pool._make_request(conn, "GET", "/")
                 conn_tunnel.assert_called_once_with()
             finally:
                 conn.close()
@@ -748,8 +751,19 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA
         ) as https_pool:
-            https_pool.ssl_version = self.certs["ssl_version"]
-            r = https_pool.request("GET", "/")
+            https_pool.ssl_version = ssl_version = self.certs["ssl_version"]
+            if ssl_version is getattr(ssl, "PROTOCOL_TLS", object()):
+                cmgr: contextlib.AbstractContextManager[
+                    object
+                ] = contextlib.nullcontext()
+            else:
+                cmgr = pytest.warns(
+                    DeprecationWarning,
+                    match=r"'ssl_version' option is deprecated and will be removed "
+                    r"in urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version'",
+                )
+            with cmgr:
+                r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
 
     def test_set_cert_default_cert_required(self) -> None:
@@ -810,7 +824,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ) as https_pool:
             conn = https_pool._get_conn()
             try:
-                with warnings.catch_warnings(record=True) as w:
+                with pytest.warns(DeprecationWarning) as w:
                     conn.connect()
             finally:
                 conn.close()
@@ -849,7 +863,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
-        assert [str(wm) for wm in w] == []
+        assert [str(wm) for wm in w if wm.category != ResourceWarning] == []
 
     def test_no_tls_version_deprecation_with_ssl_context(self) -> None:
         if self.tls_protocol_name is None:
@@ -870,7 +884,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
-        assert [str(wm) for wm in w] == []
+        assert [str(wm) for wm in w if wm.category != ResourceWarning] == []
 
     def test_tls_version_maximum_and_minimum(self) -> None:
         if self.tls_protocol_name is None:
@@ -962,18 +976,30 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_default_ssl_context_ssl_min_max_versions(self) -> None:
         ctx = urllib3.util.ssl_.create_urllib3_context()
         assert ctx.minimum_version == ssl.TLSVersion.TLSv1_2
-        # urllib3 is not expected to change the maximum version, so the
-        # version should be the same as in a pure context. It will be
-        # either the `ssl.TLSVersion.MAXIMUM_SUPPORTED` magic constant
-        # or one of the exact versions if a system defines it.
+        # urllib3 sets a default maximum version only when it is
+        # injected with PyOpenSSL- or SecureTransport-backed
+        # SSL-support.
+        # Otherwise, the default maximum version is set by Python's
+        # `ssl.SSLContext`. The value respects OpenSSL configuration and
+        # can be different from `ssl.TLSVersion.MAXIMUM_SUPPORTED`.
         # https://github.com/urllib3/urllib3/issues/2477#issuecomment-1151452150
-        assert (
-            ctx.maximum_version
-            == ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT).maximum_version
-        )
+        if util.IS_PYOPENSSL or util.IS_SECURETRANSPORT:
+            expected_maximum_version = ssl.TLSVersion.MAXIMUM_SUPPORTED
+        else:
+            expected_maximum_version = ssl.SSLContext(
+                ssl.PROTOCOL_TLS_CLIENT
+            ).maximum_version
+        assert ctx.maximum_version == expected_maximum_version
 
     def test_ssl_context_ssl_version_uses_ssl_min_max_versions(self) -> None:
-        ctx = urllib3.util.ssl_.create_urllib3_context(ssl_version=self.ssl_version())
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"'ssl_version' option is deprecated and will be removed in "
+            r"urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version'",
+        ):
+            ctx = urllib3.util.ssl_.create_urllib3_context(
+                ssl_version=self.ssl_version()
+            )
         assert ctx.minimum_version == self.tls_version()
         assert ctx.maximum_version == self.tls_version()
 

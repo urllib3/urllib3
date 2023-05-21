@@ -47,7 +47,6 @@ class TestSSL:
     def test_create_urllib3_context_set_ciphers(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-
         ciphers = "ECDH+AESGCM:ECDH+CHACHA20"
         context = mock.create_autospec(ssl_.SSLContext)
         context.set_ciphers = mock.Mock()
@@ -182,6 +181,16 @@ class TestSSL:
                 "ssl_version": None,
                 "ssl_minimum_version": ssl.TLSVersion.MINIMUM_SUPPORTED,
             },
+        ],
+    )
+    def test_create_urllib3_context_ssl_version_and_ssl_min_max_version_no_warning(
+        self, kwargs: dict[str, typing.Any]
+    ) -> None:
+        ssl_.create_urllib3_context(**kwargs)
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
             {"ssl_version": ssl.PROTOCOL_TLSv1, "ssl_minimum_version": None},
             {"ssl_version": ssl.PROTOCOL_TLSv1, "ssl_maximum_version": None},
             {
@@ -194,7 +203,12 @@ class TestSSL:
     def test_create_urllib3_context_ssl_version_and_ssl_min_max_version_no_error(
         self, kwargs: dict[str, typing.Any]
     ) -> None:
-        ssl_.create_urllib3_context(**kwargs)
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"'ssl_version' option is deprecated and will be removed in "
+            r"urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version'",
+        ):
+            ssl_.create_urllib3_context(**kwargs)
 
     def test_assert_fingerprint_raises_exception_on_none_cert(self) -> None:
         with pytest.raises(SSLError):
