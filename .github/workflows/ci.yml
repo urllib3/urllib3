@@ -123,6 +123,7 @@ jobs:
 
 
   coverage:
+    if: always()
     runs-on: "ubuntu-latest"
     needs: test
     steps:
