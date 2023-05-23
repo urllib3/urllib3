@@ -1,6 +1,13 @@
 Changes
 =======
 
+1.26.16 (2023-05-23)
+--------------------
+
+* Fixed thread-safety issue where accessing a ``PoolManager`` with many distinct origins
+  would cause connection pools to be closed while requests are in progress (`#2954 <https://github.com/urllib3/urllib3/pull/2954>`_)
+
+
 1.26.15 (2023-03-10)
 --------------------
 
