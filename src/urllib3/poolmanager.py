@@ -419,6 +419,16 @@ class PoolManager(RequestMethods):
         """
         u = parse_url(url)
 
+        if u.scheme is None:
+            warnings.warn(
+                "URLs without a scheme (ie 'https://') are deprecated and will raise an error "
+                "in a future version of urllib3. To avoid this DeprecationWarning ensure all URLs "
+                "start with 'https://' or 'http://'. Read more in this issue: "
+                "https://github.com/urllib3/urllib3/issues/2920",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
         kw["assert_same_host"] = False

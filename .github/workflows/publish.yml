@@ -53,7 +53,7 @@ jobs:
       actions: read
       contents: write
       id-token: write # Needed to access the workflow's OIDC identity.
-    uses: "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.5.0"
+    uses: "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.6.0"
     with:
       base64-subjects: "${{ needs.build.outputs.hashes }}"
       upload-assets: true
@@ -65,6 +65,7 @@ jobs:
     needs: ["build", "provenance"]
     permissions:
       contents: write
+      id-token: write # Needed for trusted publishing to PyPI.
     runs-on: "ubuntu-latest"
 
     steps:
@@ -81,7 +82,4 @@ jobs:
         gh release upload ${{ github.ref_name }} dist/* --repo ${{ github.repository }}
 
     - name: "Publish dists to PyPI"
-      uses: "pypa/gh-action-pypi-publish@48b317d84d5f59668bb13be49d1697e36b3ad009"
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
+      uses: "pypa/gh-action-pypi-publish@a56da0b891b3dc519c7ee3284aff1fad93cc8598"

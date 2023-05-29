@@ -333,6 +333,25 @@ class TestResponse:
         assert r.data == b"foo"
 
     @onlyZstd()
+    def test_decode_multiframe_zstd(self) -> None:
+        data = (
+            # Zstandard frame
+            zstd.compress(b"foo")
+            # skippable frame (must be ignored)
+            + bytes.fromhex(
+                "50 2A 4D 18"  # Magic_Number (little-endian)
+                "07 00 00 00"  # Frame_Size (little-endian)
+                "00 00 00 00 00 00 00"  # User_Data
+            )
+            # Zstandard frame
+            + zstd.compress(b"bar")
+        )
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={"content-encoding": "zstd"})
+        assert r.data == b"foobar"
+
+    @onlyZstd()
     def test_chunked_decoding_zstd(self) -> None:
         data = zstd.compress(b"foobarbaz")
 
