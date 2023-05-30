@@ -85,6 +85,7 @@ markers = ["limit_memory"]
 log_level = "DEBUG"
 filterwarnings = [
     "error",
+    '''default:urllib3 v2.0 only supports OpenSSL 1.1.1+.*''',
     '''default:'urllib3\[secure\]' extra is deprecated and will be removed in urllib3 v2\.1\.0.*:DeprecationWarning''',
     '''default:'urllib3\.contrib\.pyopenssl' module is deprecated and will be removed in urllib3 v2\.1\.0.*:DeprecationWarning''',
     '''default:'urllib3\.contrib\.securetransport' module is deprecated and will be removed in urllib3 v2\.1\.0.*:DeprecationWarning''',
@@ -98,6 +99,7 @@ filterwarnings = [
     '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
     '''default:unclosed .*:ResourceWarning''',
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
+    '''default:URLs without a scheme''',
 ]
 
 [tool.isort]
