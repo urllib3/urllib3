@@ -9,7 +9,7 @@ from contextlib import contextmanager
 import pytest
 
 try:
-    import zoneinfo # type: ignore[import]
+    import zoneinfo  # type: ignore[import]
 except ImportError:
     # Python < 3.9
     from backports import zoneinfo  # type: ignore[no-redef]
