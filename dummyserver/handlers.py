@@ -8,7 +8,7 @@ import logging
 import sys
 import typing
 import zlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from http.client import responses
 from io import BytesIO
 from urllib.parse import urlsplit
@@ -344,7 +344,9 @@ class TestingApp(RequestHandler):
         date = params.get("date")
         if date:
             retry_after = str(
-                httputil.format_timestamp(datetime.utcfromtimestamp(float(date)))
+                httputil.format_timestamp(
+                    datetime.fromtimestamp(float(date), tz=timezone.utc)
+                )
             )
         else:
             retry_after = "1"

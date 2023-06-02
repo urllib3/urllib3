@@ -51,6 +51,7 @@ Here's a short summary of which changes in urllib3 v2.0 are most important:
 - Deprecated the ``urllib3[secure]`` extra, will be removed in v2.1.0.
 - Deprecated the ``HTTPResponse.getheaders()`` method in favor of ``HTTPResponse.headers``, will be removed in v2.1.0.
 - Deprecated the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``, will be removed in v2.1.0.
+- Deprecated URLs without a scheme (ie 'https://') and will be raising an error in a future version of urllib3.
 - Changed the default minimum TLS version to TLS 1.2 (previously was TLS 1.0).
 - Removed support for verifying certificate hostnames via ``commonName``, now only ``subjectAltName`` is used.
 - Removed the default set of TLS ciphers, instead now urllib3 uses the list of ciphers configured by the system.
@@ -187,7 +188,7 @@ ssl module is compiled with OpenSSL 1.0.2.k-fips
 
 .. code-block:: text
 
-  ImportError: urllib3 v2.0 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with OpenSSL 1.0.2k-fips  26 Jan 2017.
+  ImportError: urllib3 v2.0 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'OpenSSL 1.0.2k-fips  26 Jan 2017'.
   See: https://github.com/urllib3/urllib3/issues/2168
 
 Remediation depends on your system:

@@ -45,29 +45,6 @@ class ProxyHandler(tornado.web.RequestHandler):
     SUPPORTED_METHODS = ["GET", "POST", "CONNECT"]  # type: ignore[assignment]
 
     async def get(self) -> None:
-        async def handle_response(response: tornado.httpclient.HTTPResponse) -> None:
-            if response.error and not isinstance(
-                response.error, tornado.httpclient.HTTPError
-            ):
-                self.set_status(500)
-                self.write("Internal server error:\n" + str(response.error))
-                await self.finish()
-            else:
-                self.set_status(response.code)
-                for header in (
-                    "Date",
-                    "Cache-Control",
-                    "Server",
-                    "Content-Type",
-                    "Location",
-                ):
-                    v = response.headers.get(header)
-                    if v:
-                        self.set_header(header, v)
-                if response.body:
-                    self.write(response.body)
-                await self.finish()
-
         upstream_ca_certs = self.application.settings.get("upstream_ca_certs", None)
         ssl_options = None
 
@@ -87,16 +64,21 @@ class ProxyHandler(tornado.web.RequestHandler):
         )
 
         client = tornado.httpclient.AsyncHTTPClient()
-        try:
-            response = await client.fetch(req)
-            await handle_response(response)
-        except tornado.httpclient.HTTPError as e:
-            if hasattr(e, "response") and e.response:
-                await handle_response(e.response)
-            else:
-                self.set_status(500)
-                self.write("Internal server error:\n" + str(e))
-                self.finish()
+        response = await client.fetch(req, raise_error=False)
+        self.set_status(response.code)
+        for header in (
+            "Date",
+            "Cache-Control",
+            "Server",
+            "Content-Type",
+            "Location",
+        ):
+            v = response.headers.get(header)
+            if v:
+                self.set_header(header, v)
+        if response.body:
+            self.write(response.body)
+        await self.finish()
 
     async def post(self) -> None:
         await self.get()
