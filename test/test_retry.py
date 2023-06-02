@@ -3,7 +3,6 @@ from __future__ import annotations
 from test import DUMMY_POOL
 from unittest import mock
 
-import freezegun  # type: ignore[import]
 import pytest
 
 from urllib3.exceptions import (
@@ -400,7 +399,7 @@ class TestRetry:
     ) -> None:
         retry = Retry(respect_retry_after_header=respect_retry_after_header)
 
-        with freezegun.freeze_time("2019-06-03 11:00:00", tz_offset=0), mock.patch(
+        with mock.patch("time.time", return_value=1559559600.0), mock.patch(
             "time.sleep"
         ) as sleep_mock:
             # for the default behavior, it must be in RETRY_AFTER_STATUS_CODES
