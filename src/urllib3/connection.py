@@ -771,6 +771,9 @@ def _ssl_wrap_socket_and_match_hostname(
         if is_ipaddress(normalized):
             server_hostname = normalized
 
+    if not assert_hostname:
+        context.check_hostname = False
+
     ssl_sock = ssl_wrap_socket(
         sock=sock,
         keyfile=key_file,

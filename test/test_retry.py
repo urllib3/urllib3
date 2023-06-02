@@ -3,7 +3,7 @@ from __future__ import annotations
 from test import DUMMY_POOL
 from unittest import mock
 
-import freezegun  # type: ignore[import]
+import freezegun # type: ignore[import]
 import pytest
 
 from urllib3.exceptions import (
