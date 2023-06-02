@@ -741,6 +741,8 @@ def _ssl_wrap_socket_and_match_hostname(
         # `ssl` can't verify fingerprints or alternate hostnames
         assert_fingerprint
         or assert_hostname
+        # assert_hostname can be set to False to disable hostname checking
+        or assert_hostname is False
         # We still support OpenSSL 1.0.2, which prevents us from verifying
         # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
         or ssl_.IS_PYOPENSSL
