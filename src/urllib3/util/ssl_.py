@@ -244,8 +244,6 @@ def create_urllib3_context(
     :param ciphers:
         Which cipher suites to allow the server to select. Defaults to either system configured
         ciphers if OpenSSL 1.1.1+, otherwise uses a secure default set of ciphers.
-    :param set_default_context:
-        Whether to set this context as the default context for all new.
     :returns:
         Constructed SSLContext object with specified options
     :rtype: SSLContext
@@ -298,6 +296,8 @@ def create_urllib3_context(
     # the case of OpenSSL 1.1.1+ or use our own secure default ciphers.
     if ciphers:
         context.set_ciphers(ciphers)
+    else:
+        context.set_ciphers("DEFAULT")
 
     # Setting the default here, as we may have no ssl module on import
     cert_reqs = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
@@ -353,13 +353,6 @@ def create_urllib3_context(
         sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
         if sslkeylogfile:
             context.keylog_filename = sslkeylogfile
-
-    if set_default_context:
-        # Default ciphers needed as of python 3.10
-        context = ssl.create_default_context()
-        context.set_ciphers("DEFAULT")
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
 
     return context
 
