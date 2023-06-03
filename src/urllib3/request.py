@@ -4,11 +4,10 @@ import sys
 import warnings
 
 from .filepost import encode_multipart_formdata
+from .packages import six
 from .packages.six.moves.urllib.parse import urlencode
 
-from .packages import six
-
-__all__ = ["request"]
+__all__ = ["RequestMethods"]
 
 
 class RequestMethods(object):
@@ -175,7 +174,7 @@ class RequestMethods(object):
         return self.urlopen(method, url, **extra_kw)
 
 
-if six.PY3:
+if not six.PY2:
 
     class RequestModule(object):
         def __call__(self, *args, **kwargs):
