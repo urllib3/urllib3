@@ -1,1 +1,1 @@
-Fixed ``urllib3.utils.create_urllib3_context()`` when missing default context.
+Fixed ``urllib3.utils.create_urllib3_context()`` when missing set_ciphers default in the context.
