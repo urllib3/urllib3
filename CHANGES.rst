@@ -1,10 +1,7 @@
 2.0.3 (2023-05-03)
 ==================
 
-- Fixed ``HTTPResponse.stream()`` to continue yielding bytes if buffered decompressed data
-  was still available to be read even if the underlying socket is closed. This prevents
-  a compressed response from being truncated. (`#3009 <https://github.com/urllib3/urllib3/issues/3009>`__)
-
+- Fixed ``urllib3.utils.create_urllib3_context()`` when missing default context. (`#3059 <https://github.com/urllib3/urllib3/issues/3059>`__)
 
 2.0.2 (2023-05-03)
 ==================
