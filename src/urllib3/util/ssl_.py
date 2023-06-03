@@ -351,6 +351,12 @@ def create_urllib3_context(
         if sslkeylogfile:
             context.keylog_filename = sslkeylogfile
 
+    # Default ciphers needed as of python 3.10
+    context = ssl.create_default_context()
+    context.set_ciphers("DEFAULT")
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+
     return context
 
 
