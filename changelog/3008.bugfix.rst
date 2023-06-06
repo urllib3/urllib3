@@ -1,1 +1,0 @@
-Fixed response decoding with Zstandard when compressed data is made of several frames.
