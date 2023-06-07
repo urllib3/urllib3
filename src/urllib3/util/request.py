@@ -213,7 +213,7 @@ def body_to_chunks(
 
     # Bytes or strings become bytes
     elif isinstance(body, (str, bytes)):
-        chunks = (to_bytes(body),)
+        chunks = (to_bytes(body, "latin-1"),)
         content_length = len(chunks[0])
 
     # File-like object, TODO: use seek() and tell() for length?

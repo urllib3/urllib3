@@ -55,6 +55,7 @@ from urllib3.poolmanager import proxy_from_url
 from urllib3.util import ssl_, ssl_wrap_socket
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
+from urllib3.util.util import to_bytes
 
 from .. import LogRecorder, has_alpn
 
@@ -2255,6 +2256,38 @@ class TestContentFraming(SocketDummyServerTestCase):
         assert b"Accept-Encoding: identity\r\n" in sent_bytes
         assert b"Content-Length: 0\r\n" in sent_bytes
         assert b"transfer-encoding" not in sent_bytes.lower()
+
+    def test_encode_body_latin_1(self) -> None:
+        buffer = bytearray()
+
+        def socket_handler(listener: socket.socket) -> None:
+            nonlocal buffer
+            sock = listener.accept()[0]
+            sock.settimeout(0)
+
+            start = time.perf_counter()
+            while time.perf_counter() - start < (LONG_TIMEOUT / 2):
+                try:
+                    buffer += sock.recv(65536)
+                except OSError:
+                    continue
+
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: example.com\r\n"
+                b"Content-Length: 0\r\n\r\n"
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        with HTTPConnectionPool(self.host, self.port, timeout=3) as pool:
+            resp = pool.request("POST", "/", body="\x80")
+            assert resp.status == 200
+
+        sent_bytes = bytes(buffer)
+        assert to_bytes("\x80", "latin-1") in sent_bytes
+        assert to_bytes("\x80", "utf-8") not in sent_bytes
 
     @pytest.mark.parametrize("chunked", [True, False])
     @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
