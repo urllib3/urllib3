@@ -1089,7 +1089,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert request_headers["User-Agent"] == "test header"
 
     @pytest.mark.parametrize(
-        "user_agent", ["Schönefeld/1.18.0", "Schönefeld/1.18.0".encode("iso-8859-1")]
+        "user_agent", ["Schönefeld/1.18.0", "Schönefeld/1.18.0".encode("latin-1")]
     )
     def test_user_agent_non_ascii_user_agent(self, user_agent: str) -> None:
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
