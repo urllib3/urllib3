@@ -65,7 +65,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
             assert b"Transfer-Encoding: chunked" in header.split(b"\r\n")
             if data:
-                bdata = data if isinstance(data, bytes) else data.encode("utf-8")
+                bdata = data if isinstance(data, bytes) else data.encode("latin-1")
                 assert b"\r\n" + bdata + b"\r\n" in body
                 assert body.endswith(b"\r\n0\r\n\r\n")
 
