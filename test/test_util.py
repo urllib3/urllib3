@@ -1068,19 +1068,21 @@ class TestUtilSSL:
         warn.assert_not_called()
 
     @pytest.mark.parametrize(
-        "openssl_version, openssl_version_number, implementation_name, version_info, reliable",
+        "openssl_version, openssl_version_number, implementation_name, version_info, pypy_version_info, reliable",
         [
             # OpenSSL and Python OK -> reliable
-            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 3), True),
+            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 3), None, True),
             # Python OK -> reliable
-            ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), True),
-            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 6, 9), False),
+            ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), None, True),
+            # PyPy: depends on the version
+            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 6, 9), (7, 3, 7), False),
+            ("OpenSSL 1.1.1", 0x101010CF, "pypy", (3, 6, 9), (7, 3, 8), True),
             # OpenSSL OK -> reliable
-            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 2), True),
+            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 2), None, True),
             # not OpenSSSL -> unreliable
-            ("LibreSSL 2.8.3", 0x101010CF, "cpython", (3, 10, 0), False),
+            ("LibreSSL 2.8.3", 0x101010CF, "cpython", (3, 10, 0), None, False),
             # old OpenSSL and old Python, unreliable
-            ("OpenSSL 1.1.0", 0x10101000, "cpython", (3, 9, 2), False),
+            ("OpenSSL 1.1.0", 0x10101000, "cpython", (3, 9, 2), None, False),
         ],
     )
     def test_is_has_never_check_common_name_reliable(
@@ -1089,6 +1091,7 @@ class TestUtilSSL:
         openssl_version_number: int,
         implementation_name: str,
         version_info: _TYPE_VERSION_INFO,
+        pypy_version_info: _TYPE_VERSION_INFO | None,
         reliable: bool,
     ) -> None:
         assert (
@@ -1097,6 +1100,7 @@ class TestUtilSSL:
                 openssl_version_number,
                 implementation_name,
                 version_info,
+                pypy_version_info,
             )
             == reliable
         )

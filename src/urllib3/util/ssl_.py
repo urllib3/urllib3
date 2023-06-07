@@ -26,7 +26,9 @@ HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
 
 
 def _is_bpo_43522_fixed(
-    implementation_name: str, version_info: _TYPE_VERSION_INFO
+    implementation_name: str,
+    version_info: _TYPE_VERSION_INFO,
+    pypy_version_info: _TYPE_VERSION_INFO | None,
 ) -> bool:
     """Return True for CPython 3.8.9+, 3.9.3+ or 3.10+ and PyPy 7.3.8+ where
     setting SSLContext.hostname_checks_common_name to False works.
@@ -40,7 +42,7 @@ def _is_bpo_43522_fixed(
     """
     if implementation_name == "pypy":
         # https://foss.heptapod.net/pypy/pypy/-/issues/3129
-        return sys.pypy_version_info >= (7, 3, 8)  # type: ignore
+        return pypy_version_info >= (7, 3, 8)  # type: ignore[operator]
     elif implementation_name == "cpython":
         major_minor = version_info[:2]
         micro = version_info[2]
@@ -58,6 +60,7 @@ def _is_has_never_check_common_name_reliable(
     openssl_version_number: int,
     implementation_name: str,
     version_info: _TYPE_VERSION_INFO,
+    pypy_version_info: _TYPE_VERSION_INFO | None,
 ) -> bool:
     # As of May 2023, all released versions of LibreSSL fail to reject certificates with
     # only common names, see https://github.com/urllib3/urllib3/pull/3024
@@ -70,7 +73,7 @@ def _is_has_never_check_common_name_reliable(
 
     return is_openssl and (
         is_openssl_issue_14579_fixed
-        or _is_bpo_43522_fixed(implementation_name, version_info)
+        or _is_bpo_43522_fixed(implementation_name, version_info, pypy_version_info)
     )
 
 
@@ -116,6 +119,7 @@ try:  # Do we have ssl at all?
         OPENSSL_VERSION_NUMBER,
         sys.implementation.name,
         sys.version_info,
+        sys.pypy_version_info if sys.implementation.name == "pypy" else None,  # type: ignore[attr-defined]
     ):
         HAS_NEVER_CHECK_COMMON_NAME = False
 
