@@ -2377,30 +2377,34 @@ class TestContentFraming(SocketDummyServerTestCase):
         self._start_server(socket_handler)
 
         body: typing.Any
+        # \x80 encodes to two bytes with UTF-8, so it's good way to make sure that
+        # latin-1 was in fact used
+        body_str = "x" * 9 + "\x80"
+        body_bytes = body_str.encode("latin-1")
         if body_type == "generator":
 
             def body_generator() -> typing.Generator[bytes, None, None]:
-                yield b"x" * 10
+                yield body_bytes
 
             body = body_generator()
             should_be_chunked = True
 
         elif body_type == "file":
-            body = io.BytesIO(b"x" * 10)
+            body = io.BytesIO(body_bytes)
             body.seek(0, 0)
             should_be_chunked = True
 
         elif body_type == "file_text":
-            body = io.StringIO("x" * 10)
+            body = io.StringIO(body_str)
             body.seek(0, 0)
             should_be_chunked = True
 
         elif body_type == "bytearray":
-            body = bytearray(b"x" * 10)
+            body = bytearray(body_bytes)
             should_be_chunked = False
 
         else:
-            body = b"x" * 10
+            body = body_bytes
             should_be_chunked = False
 
         with HTTPConnectionPool(
@@ -2418,12 +2422,13 @@ class TestContentFraming(SocketDummyServerTestCase):
         if should_be_chunked:
             assert b"content-length" not in sent_bytes.lower()
             assert b"Transfer-Encoding: chunked\r\n" in sent_bytes
-            assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes
-
+            expected_str_body = f"\r\n\r\na\r\n{body_str}\r\n0\r\n\r\n"
+            assert to_bytes(expected_str_body, "latin-1") in sent_bytes
+            assert to_bytes(expected_str_body, "utf-8") not in sent_bytes
         else:
             assert b"Content-Length: 10\r\n" in sent_bytes
             assert b"transfer-encoding" not in sent_bytes.lower()
-            assert sent_bytes.endswith(b"\r\n\r\nxxxxxxxxxx")
+            assert sent_bytes.endswith(to_bytes(f"\r\n\r\n{body_str}", "latin-1"))
 
     @pytest.mark.parametrize(
         "header_transform",
