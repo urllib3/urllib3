@@ -28,30 +28,29 @@ HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
 def _is_bpo_43522_fixed(
     implementation_name: str, version_info: _TYPE_VERSION_INFO
 ) -> bool:
-    """Return True for CPython 3.8.9+, 3.9.3+ or 3.10+ where setting
-    SSLContext.hostname_checks_common_name to False works.
-
-    PyPy 7.3.7 doesn't work as it doesn't ship with OpenSSL 1.1.1l+
-    so we're waiting for a version of PyPy that works before
-    allowing this function to return 'True'.
+    """Return True for CPython 3.8.9+, 3.9.3+ or 3.10+ and PyPy 7.3.8+ where
+    setting SSLContext.hostname_checks_common_name to False works.
 
     Outside of CPython and PyPy we don't know which implementations work
     or not so we conservatively use our hostname matching as we know that works
     on all implementations.
 
     https://github.com/urllib3/urllib3/issues/2192#issuecomment-821832963
-    https://foss.heptapod.net/pypy/pypy/-/issues/3539#
+    https://foss.heptapod.net/pypy/pypy/-/issues/3539
     """
-    if implementation_name != "cpython":
+    if implementation_name == "pypy":
+        # https://foss.heptapod.net/pypy/pypy/-/issues/3129
+        return sys.pypy_version_info >= (7, 3, 8)  # type: ignore
+    elif implementation_name == "cpython":
+        major_minor = version_info[:2]
+        micro = version_info[2]
+        return (
+            (major_minor == (3, 8) and micro >= 9)
+            or (major_minor == (3, 9) and micro >= 3)
+            or major_minor >= (3, 10)
+        )
+    else:  # Defensive:
         return False
-
-    major_minor = version_info[:2]
-    micro = version_info[2]
-    return (
-        (major_minor == (3, 8) and micro >= 9)
-        or (major_minor == (3, 9) and micro >= 3)
-        or major_minor >= (3, 10)
-    )
 
 
 def _is_has_never_check_common_name_reliable(
