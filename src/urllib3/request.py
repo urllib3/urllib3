@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import sys
-import warnings
 
 from .filepost import encode_multipart_formdata
 from .packages import six
@@ -176,16 +175,18 @@ class RequestMethods(object):
 
 if not six.PY2:
 
-    class RequestModule(object):
+    class RequestModule(sys.modules[__name__].__class__):
         def __call__(self, *args, **kwargs):
             """
             If user tries to call this module directly urllib3 v2.x style raise an error to the user
+            suggesting they may need urllib3 v2
             """
-            warnings.warn(
-                "urllib3.requests() method is not supported in this release\n"
+            raise TypeError(
+                "TypeError: 'module' object is not callable\n"
+                "urllib3.requests() method is not supported in this release, "
                 "upgrade to urllib3 v2 to use it"
             )
 
         RequestMethods = RequestMethods
 
-    sys.modules[__name__] = RequestModule()
+    sys.modules[__name__].__class__ = RequestModule
