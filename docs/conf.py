@@ -72,6 +72,9 @@ exclude_patterns = ["_build"]
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "friendly"
 
+# The base URL with a proper language and version.
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "/")
+
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 html_theme = "furo"
