@@ -1,3 +1,5 @@
+import types
+
 import pytest
 import six
 
@@ -16,6 +18,9 @@ class TestRequestImport(object):
             urllib3.request(1, a=2)
         assert "urllib3 v2" in exc_info.value.args[0]
 
-    def test_request_method_import(self):
-        """Ensure that * method imports are not broken by this change"""
-        from urllib3.request import urlencode  # noqa: F401
+    def test_request_module_properties(self):
+        """Ensure properties of the overridden request module
+        are still present"""
+        assert isinstance(urllib3.request, types.ModuleType)
+        expected_attrs = {"RequestMethods", "encode_multipart_formdata", "urlencode"}
+        assert set(dir(urllib3.request)).issuperset(expected_attrs)

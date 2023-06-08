@@ -131,7 +131,7 @@ class RequestMethods(object):
                 'fakefile': ('foofile.txt', 'contents of foofile'),
                 'realfile': ('barfile.txt', open('realfile').read()),
                 'typedfile': ('bazfile.bin', open('bazfile').read(),
-                            'image/jpeg'),
+                              'image/jpeg'),
                 'nonamefile': 'contents of nonamefile field',
             }
 
@@ -182,11 +182,9 @@ if not six.PY2:
             suggesting they may need urllib3 v2
             """
             raise TypeError(
-                "TypeError: 'module' object is not callable\n"
-                "urllib3.requests() method is not supported in this release, "
+                "'module' object is not callable\n"
+                "urllib3.request() method is not supported in this release, "
                 "upgrade to urllib3 v2 to use it"
             )
-
-        RequestMethods = RequestMethods
 
     sys.modules[__name__].__class__ = RequestModule
