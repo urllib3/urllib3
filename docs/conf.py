@@ -41,7 +41,7 @@ extensions = [
 # Open Graph metadata
 ogp_title = "urllib3 documentation"
 ogp_type = "website"
-ogp_image = "https://github.com/urllib3/urllib3/raw/main/docs/_static/banner_github.svg"
+ogp_social_cards = {"image": "images/logo.png", "line_color": "#F09837"}
 ogp_description = "urllib3 is a user-friendly HTTP client library for Python."
 
 # Test code blocks only when explicitly specified
