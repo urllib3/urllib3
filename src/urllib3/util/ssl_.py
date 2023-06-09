@@ -342,7 +342,10 @@ def create_urllib3_context(
         context.check_hostname = False
         context.verify_mode = cert_reqs
 
-    context.hostname_checks_common_name = False
+    try:
+        context.hostname_checks_common_name = False
+    except AttributeError:  # Defensive: needed for PyPy Python 3.7 support
+        pass
 
     # Enable logging of TLS session keys via defacto standard environment variable
     # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+). Skip empty values.
