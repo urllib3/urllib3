@@ -1,9 +1,9 @@
 import types
 
 import pytest
-import six
 
 import urllib3
+from urllib3.packages import six
 
 
 @pytest.mark.skipif(
