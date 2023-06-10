@@ -184,7 +184,8 @@ if not six.PY2:
             raise TypeError(
                 "'module' object is not callable\n"
                 "urllib3.request() method is not supported in this release, "
-                "upgrade to urllib3 v2 to use it"
+                "upgrade to urllib3 v2 to use it\n"
+                "see https://urllib3.readthedocs.io/en/stable/v2-migration-guide.html"
             )
 
     sys.modules[__name__].__class__ = RequestModule
