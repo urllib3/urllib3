@@ -28,6 +28,7 @@ from .exceptions import (
     EmptyPoolError,
     FullPoolError,
     HostChangedError,
+    InsecureProxyWarning,
     InsecureRequestWarning,
     LocationValueError,
     MaxRetryError,
@@ -1091,7 +1092,22 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if conn.is_closed:
             conn.connect()
 
-        if not conn.is_verified:
+        if (
+            conn.proxy
+            and conn.proxy.scheme == "https"
+            and conn.proxy_is_verified is False
+        ):
+            warnings.warn(
+                (
+                    f"Unverified HTTPS request is being made using proxy host '{conn.host}'. "
+                    "Adding certificate verification is strongly advised. See: "
+                    "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
+                    "#tls-warnings"
+                ),
+                InsecureProxyWarning,
+            )
+
+        elif not conn.is_verified:
             warnings.warn(
                 (
                     f"Unverified HTTPS request is being made to host '{conn.host}'. "
