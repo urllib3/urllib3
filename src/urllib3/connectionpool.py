@@ -1099,7 +1099,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         ):
             warnings.warn(
                 (
-                    f"Unverified HTTPS request is being made using proxy host '{conn.host}'. "
+                    f"Unverified HTTPS request is being made using proxy host '{conn.proxy.host}'. "
                     "Adding certificate verification is strongly advised. See: "
                     "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
                     "#tls-warnings"

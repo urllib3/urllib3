@@ -8,8 +8,8 @@ from __future__ import annotations
 import pytest
 
 import urllib3
-from dummyserver.testcase import HTTPDummyServerTestCase, HTTPSDummyServerTestCase
-from urllib3.exceptions import InsecureRequestWarning
+from dummyserver.testcase import HTTPDummyProxyTestCase, HTTPDummyServerTestCase
+from urllib3.exceptions import InsecureProxyWarning, InsecureRequestWarning
 
 from ..test_no_ssl import TestWithoutSSL
 
@@ -21,12 +21,21 @@ class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
             assert r.status == 200, r.data
 
 
-class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):
+class TestHTTPSWithoutSSL(HTTPDummyProxyTestCase, TestWithoutSSL):
     def test_simple(self) -> None:
         with urllib3.HTTPSConnectionPool(
-            self.host, self.port, cert_reqs="NONE"
+            self.https_host, self.https_port, cert_reqs="NONE"
         ) as pool:
             with pytest.warns(InsecureRequestWarning):
+                try:
+                    pool.request("GET", "/")
+                except urllib3.exceptions.SSLError as e:
+                    assert "SSL module is not available" in str(e)
+
+    def test_simple_proxy(self) -> None:
+        https_proxy_url = f"https://{self.proxy_host}:{int(self.https_proxy_port)}"
+        with urllib3.ProxyManager(https_proxy_url, cert_reqs="NONE") as pool:
+            with pytest.warns(InsecureProxyWarning):
                 try:
                     pool.request("GET", "/")
                 except urllib3.exceptions.SSLError as e:
