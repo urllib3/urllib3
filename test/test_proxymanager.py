@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import pytest
+import ssl
 
 from urllib3.exceptions import MaxRetryError, NewConnectionError, ProxyError
 from urllib3.poolmanager import ProxyManager
 from urllib3.util.retry import Retry
 from urllib3.util.url import parse_url
+import urllib3.util.ssl_
+from dummyserver.server import DEFAULT_CA
 
 from .port_helpers import find_unused_port
 
@@ -69,6 +72,36 @@ class TestProxyManager:
         with ProxyManager("https://proxy:8080", use_forwarding_for_https=True) as p:
             assert p._proxy_requires_url_absolute_form(http_url)
             assert p._proxy_requires_url_absolute_form(https_url)
+
+    def test_proxy_ssl_context_and_proxy_ssl_context(self) -> None:
+        """When both proxy_ssl_context and ssl_context are set when using
+        use_forwarding_for_https, raise a value error"""
+
+        proxy_ssl_context = urllib3.util.ssl_.create_urllib3_context()
+        proxy_ssl_context.load_verify_locations(DEFAULT_CA)
+        ctx = ssl.create_default_context()
+        with pytest.raises(ValueError) as exc_info:
+            ProxyManager(
+                "https://proxy:8080",
+                use_forwarding_for_https=True,
+                proxy_ssl_context=proxy_ssl_context,
+                ssl_context=ctx,
+            )
+        assert (
+            "ssl_context and proxy_ssl_context are both defined"
+            in exc_info.value.args[0]
+        )
+
+    def test_proxy_ssl_context_only(self) -> None:
+        """When only ssl_context is set when using use_forwarding_for_https
+        in urllib3 2.x, raise a deprecation error"""
+
+        ctx = ssl.create_default_context()
+        with pytest.raises(ValueError) as exc_info:
+            ProxyManager(
+                "https://proxy:8080", use_forwarding_for_https=True, ssl_context=ctx
+            )
+        assert "proxy_ssl_context should be used" in exc_info.value.args[0]
 
     def test_proxy_connect_retry(self) -> None:
         retry = Retry(total=None, connect=False)

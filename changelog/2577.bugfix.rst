@@ -1,0 +1,2 @@
+`proxy_ssl_context` is now used to connect to HTTPS proxies when 
+using `use_forwarding_with_https = True`.
