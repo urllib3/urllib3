@@ -55,18 +55,23 @@ def _is_bpo_43522_fixed(
 
 
 def _is_has_never_check_common_name_reliable(
+    openssl_version: str,
     openssl_version_number: int,
     implementation_name: str,
     version_info: _TYPE_VERSION_INFO,
 ) -> bool:
+    # As of May 2023, all released versions of LibreSSL fail to reject certificates with
+    # only common names, see https://github.com/urllib3/urllib3/pull/3024
+    is_openssl = openssl_version.startswith("OpenSSL ")
     # Before fixing OpenSSL issue #14579, the SSL_new() API was not copying hostflags
     # like X509_CHECK_FLAG_NEVER_CHECK_SUBJECT, which tripped up CPython.
     # https://github.com/openssl/openssl/issues/14579
     # This was released in OpenSSL 1.1.1l+ (>=0x101010cf)
     is_openssl_issue_14579_fixed = openssl_version_number >= 0x101010CF
 
-    return is_openssl_issue_14579_fixed or _is_bpo_43522_fixed(
-        implementation_name, version_info
+    return is_openssl and (
+        is_openssl_issue_14579_fixed
+        or _is_bpo_43522_fixed(implementation_name, version_info)
     )
 
 
@@ -93,6 +98,7 @@ try:  # Do we have ssl at all?
         HAS_NEVER_CHECK_COMMON_NAME,
         OP_NO_COMPRESSION,
         OP_NO_TICKET,
+        OPENSSL_VERSION,
         OPENSSL_VERSION_NUMBER,
         PROTOCOL_TLS,
         PROTOCOL_TLS_CLIENT,
@@ -107,6 +113,7 @@ try:  # Do we have ssl at all?
     # Setting SSLContext.hostname_checks_common_name = False didn't work before CPython
     # 3.8.9, 3.9.3, and 3.10 (but OK on PyPy) or OpenSSL 1.1.1l+
     if HAS_NEVER_CHECK_COMMON_NAME and not _is_has_never_check_common_name_reliable(
+        OPENSSL_VERSION,
         OPENSSL_VERSION_NUMBER,
         sys.implementation.name,
         sys.version_info,

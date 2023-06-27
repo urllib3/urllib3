@@ -51,6 +51,7 @@ Here's a short summary of which changes in urllib3 v2.0 are most important:
 - Deprecated the ``urllib3[secure]`` extra, will be removed in v2.1.0.
 - Deprecated the ``HTTPResponse.getheaders()`` method in favor of ``HTTPResponse.headers``, will be removed in v2.1.0.
 - Deprecated the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``, will be removed in v2.1.0.
+- Deprecated URLs without a scheme (ie 'https://') and will be raising an error in a future version of urllib3.
 - Changed the default minimum TLS version to TLS 1.2 (previously was TLS 1.0).
 - Removed support for verifying certificate hostnames via ``commonName``, now only ``subjectAltName`` is used.
 - Removed the default set of TLS ciphers, instead now urllib3 uses the list of ciphers configured by the system.
@@ -152,11 +153,11 @@ The best way to visualize relationships between your dependencies is using `pipd
   # We only care about packages requiring urllib3
   $ pipdeptree --reverse | grep "requires: urllib3"
 
-  - botocore==1.29.8 [requires: urllib3>=1.25.4,<1.27]
-  - requests==2.28.1 [requires: urllib3>=1.21.1,<1.27]
+  - botocore==1.29.8 [requires: urllib3>=1.25.4,<2]
+  - requests==2.28.1 [requires: urllib3>=1.21.1,<2]
 
 Reading the output from above, there are two packages which depend on urllib3: ``botocore`` and ``requests``.
-The versions of these two packages both require urllib3 that is less than v2.0 (ie ``<1.27``).
+The versions of these two packages both require urllib3 that is less than v2.0 (ie ``<2``).
 
 Because both of these packages require urllib3 before v2.0 the new version of urllib3 can't be installed
 by default. There are ways to force installing the newer version of urllib3 v2.0 (ie pinning to ``urllib3==2.0.0``)
@@ -178,6 +179,89 @@ bug fixes will be shipped to the 1.26.x release stream**.
 
 If your organization relies on urllib3 and is interested in continuing support you can learn
 more about the `Tidelift Subscription for Enterprise <https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs>`_.
+
+**🤔 Common upgrading issues**
+-------------------------------
+
+ssl module is compiled with OpenSSL 1.0.2.k-fips
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: text
+
+  ImportError: urllib3 v2.0 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'OpenSSL 1.0.2k-fips  26 Jan 2017'.
+  See: https://github.com/urllib3/urllib3/issues/2168
+
+Remediation depends on your system:
+
+- **AWS Lambda**: Upgrade to the Python3.10 runtime as it uses OpenSSL 1.1.1. Alternatively, you can
+  use a `custom Docker image
+  <https://aws.amazon.com/blogs/aws/new-for-aws-lambda-container-image-support/>`_ and ensure you
+  use a Python build that uses OpenSSL 1.1.1 or later.
+- **Amazon Linux 2**: Upgrade to `Amazon Linux 2023
+  <https://aws.amazon.com/linux/amazon-linux-2023/>`_. Alternatively, you can install OpenSSL 1.1.1
+  on Amazon Linux 2 using ``yum install openssl11 openssl11-devel`` and then install Python with a
+  tool like pyenv.
+- **Red Hat Enterpritse Linux 7 (RHEL 7)**: Upgrade to RHEL 8 or RHEL 9.
+- **Read the Docs**: Upgrade your `configuration file to use Ubuntu 22.04
+  <https://docs.readthedocs.io/en/stable/config-file/v2.html>`_ by using ``os: ubuntu-22.04`` in the
+  ``build`` section. Feel free to use the `urllib3 configuration
+  <https://github.com/urllib3/urllib3/blob/2.0.0/.readthedocs.yml>`_ as an inspiration.
+
+docker.errors.dockerexception: error while fetching server api version: request() got an unexpected keyword argument 'chunked'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Upgrade to ``docker==6.1.0`` that is compatible with urllib3 2.0.
+
+ImportError: cannot import name 'gaecontrib' from 'requests_toolbelt._compat'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To be compatible with urllib3 2.0, Requests Toolbelt released version 1.0.0 without Google App
+Engine Standard Python 2.7 support. Most users that reported this issue were using the `Pyrebase
+<https://github.com/thisbejim/Pyrebase>`_ library that provides an API for the Firebase API. This
+library is unmaintained, but `replacements exist
+<https://github.com/thisbejim/Pyrebase/issues/435>`_.
+
+``ImportError: cannot import name 'DEFAULT_CIPHERS' from 'urllib3.util.ssl_'``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This likely happens because you're using botocore which `does not support urllib3 2.0 yet
+<https://github.com/boto/botocore/issues/2921>`_. The good news is that botocore explicitly declares
+in its dependencies that it only supports ``urllib3<2``. Make sure to use a recent pip. That way, pip
+will install urllib3 1.26.x until botocore starts supporting urllib3 2.0.
+
+If you're deploying to an AWS environment such as Lambda or a host using Amazon Linux 2,
+you'll need to explicitly pin to ``urllib3<2`` in your project to ensure urllib3 2.0 isn't
+brought into your environment. Otherwise, this may result in unintended side effects with
+the default boto3 installation.
+
+AttributeError: module 'urllib3.connectionpool' has no attribute 'VerifiedHTTPSConnection'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``VerifiedHTTPSConnection`` class has always been documented to be in the
+:mod:`~urllib3.connection` module. It used to be possible to import it from
+:mod:`~urllib3.connectionpool` but that was acccidental and is no longer possible due to a
+refactoring in urllib3 2.0.
+
+Note that the new name of this class is :class:`~urllib3.connection.HTTPSConnection`. It can be used
+starting from urllib3 1.25.9.
+
+AttributeError: 'HTTPResponse' object has no attribute 'strict'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``strict`` parameter is unneeded with Python 3 and should be removed.
+
+Pinning urllib3<2
+~~~~~~~~~~~~~~~~~
+
+If the advice from the above sections did not help, you can pin urllib3 to 1.26.x by installing
+``urllib3<2``. Please do **not** specify ``urllib3==1.26.15`` to make sure you continue getting
+1.26.x updates!
+
+While urllib3 1.26.x is still supported, it won't get new features or bug fixes, just security
+updates. Consider opening a tracking issue to unpin urllib3 in the future to not stay on 1.26.x
+indefinitely.  For more details on the recommended way to handle your dependencies in general, see
+`Semantic Versioning Will Not Save You <https://hynek.me/articles/semver-will-not-save-you/>`_. The
+second half even uses urllib3 2.0 as an example!
 
 
 **💪 User-friendly features**

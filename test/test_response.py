@@ -44,6 +44,8 @@ class TestBytesQueueBuffer:
         with pytest.raises(RuntimeError, match="buffer is empty"):
             assert buffer.get(10)
 
+        assert buffer.get(0) == b""
+
         buffer.put(b"foo")
         with pytest.raises(ValueError, match="n should be > 0"):
             buffer.get(-1)
@@ -181,6 +183,7 @@ class TestResponse:
         fp = BytesIO(b"foo")
         r = HTTPResponse(fp, preload_content=False)
 
+        assert r.read(0) == b""
         assert r.read(1) == b"f"
         assert r.read(2) == b"oo"
         assert r.read() == b""
@@ -328,6 +331,25 @@ class TestResponse:
         fp = BytesIO(data)
         r = HTTPResponse(fp, headers={"content-encoding": "zstd"})
         assert r.data == b"foo"
+
+    @onlyZstd()
+    def test_decode_multiframe_zstd(self) -> None:
+        data = (
+            # Zstandard frame
+            zstd.compress(b"foo")
+            # skippable frame (must be ignored)
+            + bytes.fromhex(
+                "50 2A 4D 18"  # Magic_Number (little-endian)
+                "07 00 00 00"  # Frame_Size (little-endian)
+                "00 00 00 00 00 00 00"  # User_Data
+            )
+            # Zstandard frame
+            + zstd.compress(b"bar")
+        )
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={"content-encoding": "zstd"})
+        assert r.data == b"foobar"
 
     @onlyZstd()
     def test_chunked_decoding_zstd(self) -> None:
