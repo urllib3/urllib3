@@ -1,1 +1,1 @@
-Added ``BaseHTTPResponse`` to ``__all__``
+Added ``BaseHTTPResponse`` to ``__all__`` in ``__init__.py``
