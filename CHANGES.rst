@@ -1,10 +1,10 @@
-2.0.3 (2023-07-10)
+2.0.4 (2023-07-10)
 ==================
 
 Features
 --------
 
-- Added ``BaseHTTPResponse`` to ``__all__`` in ``__init__.py`` (`#3078 <https://github.com/urllib3/urllib3/issues/3078>`__)
+- Added ``BaseHTTPResponse`` to ``urllib3.__all__`` (`#3078 <https://github.com/urllib3/urllib3/issues/3078>`__)
 
 
 2.0.3 (2023-06-07)
