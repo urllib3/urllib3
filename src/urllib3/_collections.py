@@ -439,8 +439,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         maybe_constructable = ensure_can_construct_http_header_dict(other)
         if maybe_constructable is None:
             return NotImplemented
-        other_as_http_header_dict = type(self)(maybe_constructable)
-        self.extend(other_as_http_header_dict)
+        self.extend(maybe_constructable)
         return self
 
     def __or__(self, other: object) -> HTTPHeaderDict:
@@ -450,8 +449,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         if maybe_constructable is None:
             return NotImplemented
         result = self.copy()
-        other_as_http_header_dict = type(self)(maybe_constructable)
-        result.extend(other_as_http_header_dict)
+        result.extend(maybe_constructable)
         return result
 
     def __ror__(self, other: object) -> HTTPHeaderDict:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import typing
 from test import LONG_TIMEOUT
 from unittest import mock
 
@@ -390,7 +391,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             r = http.request(
                 "GET",
                 f"{self.base_url}/multi_headers",
-                headers=http.headers | added_headers,
+                headers=typing.cast(HTTPHeaderDict, http.headers) | added_headers,
             )
             returned_headers = r.json()["headers"]
             assert returned_headers[-3:] == [
