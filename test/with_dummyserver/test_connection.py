@@ -10,6 +10,8 @@ from dummyserver.testcase import HTTPDummyServerTestCase as server
 from urllib3 import HTTPConnectionPool
 from urllib3.response import HTTPResponse
 
+from unittest import mock
+
 
 @pytest.fixture()
 def pool() -> typing.Generator[HTTPConnectionPool, None, None]:
@@ -35,7 +37,7 @@ def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
 
 
 @pytest.mark.skipif(not hasattr(sys, "audit"), reason="requires python 3.8")
-@patch("urllib3.connection.sys.audit")
+@mock.patch("urllib3.connection.sys.audit")
 def test_audit_event(audit_mock: Mock, pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
     conn.request("GET", "/")
