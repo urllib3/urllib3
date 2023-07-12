@@ -35,26 +35,16 @@ def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
 
 
 @pytest.mark.skipif(not hasattr(sys, "audit"), reason="requires python 3.8")
-def test_audit_event(pool: HTTPConnectionPool) -> None:
-    audit_event = None
-    audit_args: tuple[typing.Any, ...] = (None, None, None)
-
-    def hook(event: str, args: tuple[typing.Any]) -> None:
-        nonlocal audit_event, audit_args
-        if event == "http.client.connect":
-            audit_event = event
-            audit_args = args
-
-    sys.addaudithook(hook)  # type: ignore
-
+@patch("urllib3.connection.sys.audit")
+def test_audit_event(audit_mock: Mock, pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
     conn.request("GET", "/")
-
-    assert audit_event == "http.client.connect"
-    assert len(audit_args) > 2
-    assert audit_args[0] == conn
-    assert audit_args[1] == conn.host
-    assert audit_args[2] == conn.port
+    audit_mock.assert_any_call("http.client.connect", conn, conn.host, conn.port)
+    # Ensure the event is raised only once.
+    connect_events = [
+        call for call in audit_mock.mock_calls if call.args[0] == "http.client.connect"
+    ]
+    assert len(connect_events) == 1
 
 
 def test_does_not_release_conn(pool: HTTPConnectionPool) -> None:
