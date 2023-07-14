@@ -344,7 +344,7 @@ def create_urllib3_context(
 
     try:
         context.hostname_checks_common_name = False
-    except AttributeError:  # Defensive: needed for PyPy Python 3.7 support
+    except AttributeError:  # Defensive: for CPython < 3.8.9 and 3.9.3; for PyPy < 7.3.8
         pass
 
     # Enable logging of TLS session keys via defacto standard environment variable
