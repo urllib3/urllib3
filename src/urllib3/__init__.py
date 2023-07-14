@@ -81,6 +81,7 @@ __all__ = (
     "make_headers",
     "proxy_from_url",
     "request",
+    "BaseHTTPResponse",
 )
 
 logging.getLogger(__name__).addHandler(NullHandler())

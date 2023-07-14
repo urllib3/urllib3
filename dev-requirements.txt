@@ -1,5 +1,4 @@
 coverage==7.0.4
-freezegun==1.2.2
 tornado==6.2
 PySocks==1.7.1
 pytest==7.2.0

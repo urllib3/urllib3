@@ -40,9 +40,8 @@ extensions = [
 
 # Open Graph metadata
 ogp_title = "urllib3 documentation"
-ogp_site_url = "https://urllib3.readthedocs.io"
 ogp_type = "website"
-ogp_image = "https://github.com/urllib3/urllib3/raw/main/docs/_static/banner_github.svg"
+ogp_social_cards = {"image": "images/logo.png", "line_color": "#F09837"}
 ogp_description = "urllib3 is a user-friendly HTTP client library for Python."
 
 # Test code blocks only when explicitly specified
@@ -72,6 +71,9 @@ exclude_patterns = ["_build"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "friendly"
+
+# The base URL with a proper language and version.
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "/")
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
