@@ -42,7 +42,7 @@ def _is_bpo_43522_fixed(
     """
     if implementation_name == "pypy":
         # https://foss.heptapod.net/pypy/pypy/-/issues/3129
-        return pypy_version_info >= (7, 3, 8)  # type: ignore[operator]
+        return pypy_version_info >= (7, 3, 8) and version_info >= (3, 8)  # type: ignore[operator]
     elif implementation_name == "cpython":
         major_minor = version_info[:2]
         micro = version_info[2]
