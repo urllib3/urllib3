@@ -1117,6 +1117,32 @@ class TestHTTPS_Hostname:
                 err.reason.args[0], (ssl.SSLCertVerificationError, CertificateError)
             )
 
+    def test_assert_hostname_invalid_san(
+        self, no_localhost_san_server: ServerConfig
+    ) -> None:
+        """Ensure SAN errors are not raised while assert_hostname is false"""
+        with HTTPSConnectionPool(
+            no_localhost_san_server.host,
+            no_localhost_san_server.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=no_localhost_san_server.ca_certs,
+            assert_hostname=False,
+        ) as https_pool:
+            https_pool.request("GET", "/")
+
+    def test_assert_hostname_invalid_cn(
+        self, no_san_server_with_different_commmon_name: ServerConfig
+    ) -> None:
+        """Ensure CN errors are not raised while assert_hostname is false"""
+        with HTTPSConnectionPool(
+            no_san_server_with_different_commmon_name.host,
+            no_san_server_with_different_commmon_name.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=no_san_server_with_different_commmon_name.ca_certs,
+            assert_hostname=False,
+        ) as https_pool:
+            https_pool.request("GET", "/")
+
 
 class TestHTTPS_IPV4SAN:
     def test_can_validate_ip_san(self, ipv4_san_server: ServerConfig) -> None:

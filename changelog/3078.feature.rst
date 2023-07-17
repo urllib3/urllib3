@@ -1,0 +1,1 @@
+Added ``BaseHTTPResponse`` to ``__all__`` in ``__init__.py``

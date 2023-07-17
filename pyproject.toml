@@ -102,8 +102,6 @@ filterwarnings = [
     # https://github.com/pytest-dev/pytest/issues/10977
     '''default:ast\.(Num|NameConstant|Str) is deprecated and will be removed in Python 3\.14; use ast\.Constant instead:DeprecationWarning:_pytest''',
     '''default:Attribute s is deprecated and will be removed in Python 3\.14; use value instead:DeprecationWarning:_pytest''',
-    # https://github.com/dateutil/dateutil/issues/1284
-    '''default:datetime\.utcfromtimestamp\(\) is deprecated and scheduled for removal in a future version\.*:DeprecationWarning:dateutil''',
 ]
 
 [tool.isort]
