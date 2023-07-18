@@ -219,7 +219,7 @@ class HTTPConnection(_HTTPConnection):
                 self, f"Failed to establish a new connection: {e}"
             ) from e
 
-        # Audit hooks are only available in versions >= 3.8
+        # Audit hooks are only available in Python 3.8+
         if _HAS_SYS_AUDIT:
             sys.audit("http.client.connect", self, self.host, self.port)
 

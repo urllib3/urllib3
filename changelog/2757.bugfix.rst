@@ -1,1 +1,1 @@
-Fixed urllib3.connection.HTTPConnection to raise the http.client.connect audit event to have the same behavior as the standard library HTTP client
+Fixed ``urllib3.connection.HTTPConnection`` to raise the ``http.client.connect`` audit event to have the same behavior as the standard library HTTP client
