@@ -1,1 +1,0 @@
-Relied on the standard library for checking hostnames in supported PyPy releases.
