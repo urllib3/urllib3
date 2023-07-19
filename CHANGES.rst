@@ -2,7 +2,7 @@
 ==================
 
 - Added support for union operators to ``HTTPHeaderDict`` (`#2254 <https://github.com/urllib3/urllib3/issues/2254>`__)
-- Added ``BaseHTTPResponse`` to ``__all__`` in ``__init__.py`` (`#3078 <https://github.com/urllib3/urllib3/issues/3078>`__)
+- Added ``BaseHTTPResponse`` to ``urllib3.__all__`` (`#3078 <https://github.com/urllib3/urllib3/issues/3078>`__)
 - Fixed ``urllib3.connection.HTTPConnection`` to raise the ``http.client.connect`` audit event to have the same behavior as the standard library HTTP client (`#2757 <https://github.com/urllib3/urllib3/issues/2757>`__)
 - Relied on the standard library for checking hostnames in supported PyPy releases (`#3087 <https://github.com/urllib3/urllib3/issues/3087>`__)
 
