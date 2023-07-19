@@ -1,3 +1,0 @@
-Added support for union operators to ``HTTPHeaderDict``
-
-This allows a simple way to merge headers provided in a request with the ``PoolManager`` headers, rather than replace them.
