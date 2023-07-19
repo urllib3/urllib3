@@ -26,32 +26,33 @@ HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
 
 
 def _is_bpo_43522_fixed(
-    implementation_name: str, version_info: _TYPE_VERSION_INFO
+    implementation_name: str,
+    version_info: _TYPE_VERSION_INFO,
+    pypy_version_info: _TYPE_VERSION_INFO | None,
 ) -> bool:
-    """Return True for CPython 3.8.9+, 3.9.3+ or 3.10+ where setting
-    SSLContext.hostname_checks_common_name to False works.
-
-    PyPy 7.3.7 doesn't work as it doesn't ship with OpenSSL 1.1.1l+
-    so we're waiting for a version of PyPy that works before
-    allowing this function to return 'True'.
+    """Return True for CPython 3.8.9+, 3.9.3+ or 3.10+ and PyPy 7.3.8+ where
+    setting SSLContext.hostname_checks_common_name to False works.
 
     Outside of CPython and PyPy we don't know which implementations work
     or not so we conservatively use our hostname matching as we know that works
     on all implementations.
 
     https://github.com/urllib3/urllib3/issues/2192#issuecomment-821832963
-    https://foss.heptapod.net/pypy/pypy/-/issues/3539#
+    https://foss.heptapod.net/pypy/pypy/-/issues/3539
     """
-    if implementation_name != "cpython":
+    if implementation_name == "pypy":
+        # https://foss.heptapod.net/pypy/pypy/-/issues/3129
+        return pypy_version_info >= (7, 3, 8) and version_info >= (3, 8)  # type: ignore[operator]
+    elif implementation_name == "cpython":
+        major_minor = version_info[:2]
+        micro = version_info[2]
+        return (
+            (major_minor == (3, 8) and micro >= 9)
+            or (major_minor == (3, 9) and micro >= 3)
+            or major_minor >= (3, 10)
+        )
+    else:  # Defensive:
         return False
-
-    major_minor = version_info[:2]
-    micro = version_info[2]
-    return (
-        (major_minor == (3, 8) and micro >= 9)
-        or (major_minor == (3, 9) and micro >= 3)
-        or major_minor >= (3, 10)
-    )
 
 
 def _is_has_never_check_common_name_reliable(
@@ -59,6 +60,7 @@ def _is_has_never_check_common_name_reliable(
     openssl_version_number: int,
     implementation_name: str,
     version_info: _TYPE_VERSION_INFO,
+    pypy_version_info: _TYPE_VERSION_INFO | None,
 ) -> bool:
     # As of May 2023, all released versions of LibreSSL fail to reject certificates with
     # only common names, see https://github.com/urllib3/urllib3/pull/3024
@@ -71,7 +73,7 @@ def _is_has_never_check_common_name_reliable(
 
     return is_openssl and (
         is_openssl_issue_14579_fixed
-        or _is_bpo_43522_fixed(implementation_name, version_info)
+        or _is_bpo_43522_fixed(implementation_name, version_info, pypy_version_info)
     )
 
 
@@ -117,6 +119,7 @@ try:  # Do we have ssl at all?
         OPENSSL_VERSION_NUMBER,
         sys.implementation.name,
         sys.version_info,
+        sys.pypy_version_info if sys.implementation.name == "pypy" else None,  # type: ignore[attr-defined]
     ):
         HAS_NEVER_CHECK_COMMON_NAME = False
 
@@ -341,7 +344,7 @@ def create_urllib3_context(
 
     try:
         context.hostname_checks_common_name = False
-    except AttributeError:
+    except AttributeError:  # Defensive: for CPython < 3.8.9 and 3.9.3; for PyPy < 7.3.8
         pass
 
     # Enable logging of TLS session keys via defacto standard environment variable
