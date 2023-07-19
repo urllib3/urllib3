@@ -4,6 +4,9 @@
 * [ ]  Tag with X.Y.Z, push tag on urllib3/urllib3 (not on your fork, update `<REMOTE>` accordingly)
   * Notice that the `<VERSION>` shouldn't have a `v` prefix (Use `1.26.6` instead of `v.1.26.6`)
   * ```
+    # Ensure the release commit is the latest in the main branch.
+    git checkout main
+    git pull origin main
     git tag -s -a '<VERSION>' -m 'Release: <VERSION>'
     git push <REMOTE> --tags
     ```
