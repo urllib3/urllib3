@@ -51,6 +51,14 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test-pypy
+          - python-version: "pypy-3.9"
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test-pypy
+          - python-version: "pypy-3.10"
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test-pypy
           - python-version: "3.x"
             os: ubuntu-latest
             experimental: false
