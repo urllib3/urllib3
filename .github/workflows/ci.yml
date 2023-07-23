@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12-dev"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
         os:
           - macos-11
           - windows-latest
@@ -68,7 +68,7 @@ jobs:
             os: ubuntu-20.04  # CPython 3.9.2 is not available for ubuntu-22.04.
             experimental: false
             nox-session: test-3.9
-          - python-version: "3.12-dev"
+          - python-version: "3.12"
             experimental: true
         exclude:
           # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
@@ -78,7 +78,7 @@ jobs:
           - python-version: "3.8"
             os: ubuntu-22.04
           # Testing with non-final CPython on macOS is too slow for CI.
-          - python-version: "3.12-dev"
+          - python-version: "3.12"
             os: macos-11
 
     runs-on: ${{ matrix.os }}
@@ -93,12 +93,14 @@ jobs:
         uses: "actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1"
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
 
       - name: "Install dependencies"
         run: python -m pip install --upgrade pip setuptools nox
 
       - name: "Run tests"
-        run: ./ci/run_tests.sh
+        # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
+        run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION} --error-on-missing-interpreters
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
           NOX_SESSION: ${{ matrix.nox-session }}
