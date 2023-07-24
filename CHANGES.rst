@@ -1,3 +1,21 @@
+2.0.4 (2023-07-19)
+==================
+
+- Added support for union operators to ``HTTPHeaderDict`` (`#2254 <https://github.com/urllib3/urllib3/issues/2254>`__)
+- Added ``BaseHTTPResponse`` to ``urllib3.__all__`` (`#3078 <https://github.com/urllib3/urllib3/issues/3078>`__)
+- Fixed ``urllib3.connection.HTTPConnection`` to raise the ``http.client.connect`` audit event to have the same behavior as the standard library HTTP client (`#2757 <https://github.com/urllib3/urllib3/issues/2757>`__)
+- Relied on the standard library for checking hostnames in supported PyPy releases (`#3087 <https://github.com/urllib3/urllib3/issues/3087>`__)
+
+
+2.0.3 (2023-06-07)
+==================
+
+- Allowed alternative SSL libraries such as LibreSSL, while still issuing a warning as we cannot help users facing issues with implementations other than OpenSSL. (`#3020 <https://github.com/urllib3/urllib3/issues/3020>`__)
+- Deprecated URLs which don't have an explicit scheme (`#2950 <https://github.com/urllib3/urllib3/pull/2950>`_)
+- Fixed response decoding with Zstandard when compressed data is made of several frames. (`#3008 <https://github.com/urllib3/urllib3/issues/3008>`__)
+- Fixed ``assert_hostname=False`` to correctly skip hostname check. (`#3051 <https://github.com/urllib3/urllib3/issues/3051>`__)
+
+
 2.0.2 (2023-05-03)
 ==================
 
