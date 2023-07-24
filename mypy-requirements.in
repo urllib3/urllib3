@@ -1,0 +1,9 @@
+mypy
+idna
+cryptography
+tornado
+pytest
+trustme
+types-backports
+types-requests
+nox

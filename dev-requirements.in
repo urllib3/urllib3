@@ -1,0 +1,13 @@
+coverage
+tornado
+PySocks
+pytest
+pytest-timeout
+trustme
+# We have to install at most cryptography 39.0.2 for PyPy<7.3.10
+# versions of Python 3.7, 3.8, and 3.9.
+cryptography==39.0.2;implementation_name=="pypy" and implementation_version<"7.3.10"
+cryptography;implementation_name!="pypy" or implementation_version>="7.3.10"
+backports.zoneinfo;python_version<"3.9"
+towncrier
+pytest-memray;python_version>="3.8" and python_version<"3.12" and sys_platform!="win32" and implementation_name=="cpython"
