@@ -242,10 +242,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         self.num_connections += 1
         log.debug(
-            "Starting new HTTP connection (%d): %s:%s",
+            "Starting new HTTP connection (%d): %s:%d",
             self.num_connections,
             self.host,
-            self.port or "80",
+            self.port or 80,
         )
 
         conn = self.ConnectionCls(
