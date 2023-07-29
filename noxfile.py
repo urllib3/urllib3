@@ -98,10 +98,6 @@ def downstream_botocore(session: nox.Session) -> None:
     session.cd(tmp_dir)
     git_clone(session, "https://github.com/boto/botocore")
     session.chdir("botocore")
-    for patch in [
-        "0001-Mark-100-Continue-tests-as-failing.patch",
-    ]:
-        session.run("git", "apply", f"{root}/ci/{patch}", external=True)
     session.run("git", "rev-parse", "HEAD", external=True)
     session.run("python", "scripts/ci/install")
 
