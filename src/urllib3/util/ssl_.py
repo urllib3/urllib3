@@ -294,10 +294,13 @@ def create_urllib3_context(
     if ssl_maximum_version is not None:
         context.maximum_version = ssl_maximum_version
 
-    # Unless we're given ciphers defer to either system ciphers in
-    # the case of OpenSSL 1.1.1+ or use our own secure default ciphers.
+    # If given explicit ciphers, respect that. Otherwise, defer to the system default
+    # ciphers as they can be controlled by users. We ask for `DEFAULT` explicitly to
+    # avoid using CPython's default cipher string
     if ciphers:
         context.set_ciphers(ciphers)
+    else:
+        context.set_ciphers("DEFAULT")
 
     # Setting the default here, as we may have no ssl module on import
     cert_reqs = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
