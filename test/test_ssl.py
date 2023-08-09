@@ -136,7 +136,7 @@ class TestSSL:
 
         ssl_.create_urllib3_context()
 
-        context.set_ciphers.assert_not_called()
+        context.set_ciphers.assert_called_once_with("DEFAULT")
 
     @pytest.mark.parametrize(
         "kwargs",
