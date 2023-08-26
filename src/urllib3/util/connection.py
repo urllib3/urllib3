@@ -3,6 +3,8 @@ from __future__ import annotations
 import socket
 import typing
 
+from time import perf_counter
+
 from ..exceptions import LocationParseError
 from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 
@@ -24,6 +26,8 @@ def is_connection_dropped(conn: BaseHTTPConnection) -> bool:  # Platform-specifi
 # library test suite. Added to its signature is only `socket_options`.
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
+import pysnooper
+@pysnooper.snoop(depth=1, normalize=False)
 def create_connection(
     address: tuple[str, int],
     timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
@@ -57,7 +61,37 @@ def create_connection(
     except UnicodeError:
         raise LocationParseError(f"'{host}', label empty or too long") from None
 
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+    from pprint import pprint
+
+    addr_info = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
+
+    pprint(addr_info)
+
+    # Check if we have IPv6 and IPv4 addresses to use happy eyeballs
+    has_ipv4, has_ipv6 = (False, False)
+    for af, _, _, _, sa in addr_info:
+        if af == socket.AF_INET:
+            has_ipv4 = True
+        elif af == socket.AF_INET6:
+            has_ipv6 = True
+    has_ipv6_and_ipv4 = has_ipv6 and has_ipv4
+
+    # Order our address results so we try IPv6 addresses first
+    # and IPv4 addresses second
+    if has_ipv6_and_ipv4:
+        addr_info = sorted(
+            addr_info,
+            key=lambda x: 0
+            if x[0] == socket.AF_INET6
+            else (1 if x[0] == socket.AF_INET else 2)
+        )
+
+    pprint(addr_info)
+    
+    sockets = []
+    start_time = perf_counter()
+
+    for res in addr_info:
         af, socktype, proto, canonname, sa = res
         sock = None
         try:
@@ -70,15 +104,40 @@ def create_connection(
                 sock.settimeout(timeout)
             if source_address:
                 sock.bind(source_address)
-            sock.connect(sa)
+            
+            sock.setblocking(False)
+
+            try:
+                sock.connect(sa)
+            except OSError as exc:
+                if exc.errno != 115:  # EINPROGRESS
+                    raise
+            
+            sockets.append(sock)
+             
             # Break explicitly a reference cycle
             err = None
-            return sock
+            # return sock
 
         except OSError as _:
             err = _
             if sock is not None:
                 sock.close()
+
+    # Provide the connect that returns the first connection
+    while perf_counter() - start_time < 0.2:
+        for sock in sockets:
+            result = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+            # If connection is successful return it
+            if result == 0:
+                sock.setblocking(True)
+                sock.settimeout(0.2)
+                print(sock.getblocking())
+                # There's a timing problem here
+                # Sleeping for a little bit lets the connection finish establishing
+                import time
+                time.sleep(0.2)
+                return sock
 
     if err is not None:
         try:
