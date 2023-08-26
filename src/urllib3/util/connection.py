@@ -125,7 +125,8 @@ def create_connection(
             # If connection is successful return it
             if result == 0:
                 sock.setblocking(True)
-                sock.settimeout(0.2)
+                if timeout is not _DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
                 # There's a timing problem here
                 # Sleeping for a little bit lets the connection finish establishing
                 # import time
