@@ -864,6 +864,10 @@ class TestUtil:
         ):
             create_connection((host, 80))
 
+    class SocketMock():
+        def getsockopt():
+            return 0
+    
     @pytest.mark.parametrize(
         "host",
         [
@@ -879,8 +883,13 @@ class TestUtil:
     def test_create_connection_with_valid_idna_labels(
         self, socket: MagicMock, getaddrinfo: MagicMock, host: str
     ) -> None:
+        # This test gets broken by the update because it depends on the
+        # socket being healthy (i.e. getsockopt)
         getaddrinfo.return_value = [(None, None, None, None, None)]
-        socket.return_value = Mock()
+        #
+        mocky = Mock()
+        mocky.getsockopt.return_value = 0
+        socket.return_value = mocky
         create_connection((host, 80))
 
     @patch("socket.getaddrinfo")
@@ -921,7 +930,9 @@ class TestUtil:
                 fake_scoped_sa6,
             )
         ]
-        socket.return_value = fake_sock = MagicMock()
+        mocky = MagicMock()
+        mocky.getsockopt.return_value = 0
+        socket.return_value = fake_sock = mocky
 
         create_connection(("a::b%iface", 80))
         assert getaddrinfo.call_args[0][0] == "a::b%iface"
