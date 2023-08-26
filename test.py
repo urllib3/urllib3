@@ -10,22 +10,23 @@ import urllib3
 from unittest.mock import MagicMock, Mock, patch
 
 with patch('socket.getaddrinfo') as getaddrinfo:
-    getaddrinfo.return_value = [
-        (
-            socket.AF_INET,
-            socket.SOCK_STREAM,
-            socket.IPPROTO_TCP,
-            "",
-            ("127.0.0.1", 8000)
-        ),
-        (
-            socket.AF_INET6,
-            socket.SOCK_STREAM,
-            socket.IPPROTO_TCP,
-            "",
-            ("::1", 8000, 0, 0)
-        ),
-    ]
+    # getaddrinfo.return_value = [
+    #     (
+    #         socket.AF_INET,
+    #         socket.SOCK_STREAM,
+    #         socket.IPPROTO_TCP,
+    #         "",
+    #         ("127.0.0.1", 8000)
+    #     ),
+    #     (
+    #         socket.AF_INET6,
+    #         socket.SOCK_STREAM,
+    #         socket.IPPROTO_TCP,
+    #         "",
+    #         ("::1", 8000, 0, 0)
+    #     ),
+    # ]
+    getaddrinfo.return_value = [(None, None, None, None, None)]
 
     # addr_info = socket.getaddrinfo("mycoolsite.abc", 8000, socket.AF_UNSPEC, socket.SOCK_STREAM)
     

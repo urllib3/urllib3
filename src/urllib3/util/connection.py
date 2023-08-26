@@ -26,8 +26,8 @@ def is_connection_dropped(conn: BaseHTTPConnection) -> bool:  # Platform-specifi
 # library test suite. Added to its signature is only `socket_options`.
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
-import pysnooper
-@pysnooper.snoop(depth=1, normalize=False)
+# import pysnooper
+# @pysnooper.snoop(depth=1, normalize=False)
 def create_connection(
     address: tuple[str, int],
     timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
@@ -61,11 +61,7 @@ def create_connection(
     except UnicodeError:
         raise LocationParseError(f"'{host}', label empty or too long") from None
 
-    from pprint import pprint
-
     addr_info = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
-
-    pprint(addr_info)
 
     # Check if we have IPv6 and IPv4 addresses to use happy eyeballs
     has_ipv4, has_ipv6 = (False, False)
@@ -85,8 +81,6 @@ def create_connection(
             if x[0] == socket.AF_INET6
             else (1 if x[0] == socket.AF_INET else 2)
         )
-
-    pprint(addr_info)
     
     sockets = []
     start_time = perf_counter()
@@ -109,7 +103,7 @@ def create_connection(
 
             try:
                 sock.connect(sa)
-            except OSError as exc:
+            except BlockingIOError as exc:
                 if exc.errno != 115:  # EINPROGRESS
                     raise
             
@@ -132,11 +126,10 @@ def create_connection(
             if result == 0:
                 sock.setblocking(True)
                 sock.settimeout(0.2)
-                print(sock.getblocking())
                 # There's a timing problem here
                 # Sleeping for a little bit lets the connection finish establishing
-                import time
-                time.sleep(0.2)
+                # import time
+                # time.sleep(0.2)
                 return sock
 
     if err is not None:
