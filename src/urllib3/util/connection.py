@@ -141,12 +141,14 @@ def create_connection(
                 # time.sleep(0.2)
                 # We're returning sockets as healthly when they're not
                 # Checking the peer name is a rough proxy for health
+                # This is a problem as we need to let things timeout before they
+                # get here
                 try:
                     sock.getpeername()
                 except OSError as e:
                     print("Not a healthy socket")
                     raise e
-                # print(f"Closing other sockets")
+                print(f"Closing other sockets")
                 for to_close_sock in sockets:
                     if to_close_sock != sock:
                         print(f"Closing {to_close_sock}")

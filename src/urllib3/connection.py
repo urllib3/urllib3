@@ -200,7 +200,6 @@ class HTTPConnection(_HTTPConnection):
         :return: New socket connection.
         """
         try:
-            # This socket created here isn't closed :\
             sock = connection.create_connection(
                 (self._dns_host, self.port),
                 self.timeout,
