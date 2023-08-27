@@ -147,9 +147,10 @@ def create_connection(
                     print("Not a healthy socket")
                     raise e
                 # print(f"Closing other sockets")
-                # for to_close_sock in sockets.remove(sock):
-                #     print(f"Closing {to_close_sock}")
-                #     to_close_sock.close()
+                for to_close_sock in sockets:
+                    if to_close_sock != sock:
+                        print(f"Closing {to_close_sock}")
+                        to_close_sock.close()
                 print(f"Returning {sock}")
                 return sock
         import time
