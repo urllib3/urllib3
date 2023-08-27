@@ -864,10 +864,6 @@ class TestUtil:
         ):
             create_connection((host, 80))
 
-    class SocketMock():
-        def getsockopt():
-            return 0
-    
     @pytest.mark.parametrize(
         "host",
         [

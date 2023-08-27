@@ -26,8 +26,6 @@ def is_connection_dropped(conn: BaseHTTPConnection) -> bool:  # Platform-specifi
 # library test suite. Added to its signature is only `socket_options`.
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
-# import pysnooper
-# @pysnooper.snoop(depth=1, normalize=False)
 def create_connection(
     address: tuple[str, int],
     timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
@@ -84,7 +82,6 @@ def create_connection(
     
     sockets = []
     start_time = perf_counter()
-    print(f"Initial start time:{start_time}")
 
     for res in addr_info:
         af, socktype, proto, canonname, sa = res
@@ -112,7 +109,6 @@ def create_connection(
              
             # Break explicitly a reference cycle
             err = None
-            # return sock
 
         except OSError as _:
             err = _
@@ -120,25 +116,15 @@ def create_connection(
                 sock.close()
 
     # Provide the connect that returns the first connection
-    counter = 0
     while (perf_counter() - start_time) < 0.2:
-        print(f"counter: {counter} start_time:{start_time} - perf_counter:{perf_counter()}")
         for sock in sockets:
-            print(f"Trying {sock.getsockname()}")
             result = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-            import errno
-            
-            print(f"Socket state: {result} - {'NO-ERROR' if result == 0 else errno.errorcode[result]}")
 
             # If connection is successful return it
             if result == 0:
                 sock.setblocking(True)
                 if timeout is not _DEFAULT_TIMEOUT:
                     sock.settimeout(timeout)
-                # There's a timing problem here
-                # Sleeping for a little bit lets the connection finish establishing
-                # import time
-                # time.sleep(0.2)
                 # We're returning sockets as healthly when they're not
                 # Checking the peer name is a rough proxy for health
                 # This is a problem as we need to let things timeout before they
@@ -146,21 +132,12 @@ def create_connection(
                 try:
                     sock.getpeername()
                 except OSError as e:
-                    print("Not a healthy socket")
                     raise e
-                print(f"Closing other sockets")
                 for to_close_sock in sockets:
                     if to_close_sock != sock:
-                        print(f"Closing {to_close_sock}")
                         to_close_sock.close()
-                print(f"Returning {sock}")
                 return sock
-        import time
-        time.sleep(0.15)
-        counter += 1
     
-    print("Broke out")
-
     if err is not None:
         try:
             raise err
