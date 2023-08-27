@@ -84,6 +84,7 @@ def create_connection(
     
     sockets = []
     start_time = perf_counter()
+    print(f"Initial start time:{start_time}")
 
     for res in addr_info:
         af, socktype, proto, canonname, sa = res
@@ -119,9 +120,16 @@ def create_connection(
                 sock.close()
 
     # Provide the connect that returns the first connection
-    while perf_counter() - start_time < 0.2:
+    counter = 0
+    while (perf_counter() - start_time) < 0.2:
+        print(f"counter: {counter} start_time:{start_time} - perf_counter:{perf_counter()}")
         for sock in sockets:
+            print(f"Trying {sock.getsockname()}")
             result = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+            import errno
+            
+            print(f"Socket state: {result} - {'NO-ERROR' if result == 0 else errno.errorcode[result]}")
+
             # If connection is successful return it
             if result == 0:
                 sock.setblocking(True)
@@ -131,7 +139,24 @@ def create_connection(
                 # Sleeping for a little bit lets the connection finish establishing
                 # import time
                 # time.sleep(0.2)
+                # We're returning sockets as healthly when they're not
+                # Checking the peer name is a rough proxy for health
+                try:
+                    sock.getpeername()
+                except OSError as e:
+                    print("Not a healthy socket")
+                    raise e
+                # print(f"Closing other sockets")
+                # for to_close_sock in sockets.remove(sock):
+                #     print(f"Closing {to_close_sock}")
+                #     to_close_sock.close()
+                print(f"Returning {sock}")
                 return sock
+        import time
+        time.sleep(0.15)
+        counter += 1
+    
+    print("Broke out")
 
     if err is not None:
         try:

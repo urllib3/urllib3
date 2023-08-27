@@ -1066,11 +1066,14 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_request_chunked_is_deprecated(
         self,
     ) -> None:
+        # localhost:33691
         with HTTPConnectionPool(self.host, self.port) as pool:
             conn = pool._get_conn()
 
             with pytest.warns(DeprecationWarning) as w:
                 conn.request_chunked("GET", "/headers")  # type: ignore[attr-defined]
+            # We're getting an extra error
+            # ResourceWarning("unclosed <socket.socket fd=12, family=2, type=1, proto=6, laddr=('127.0.0.1', 37202), raddr=('127.0.0.1', 43045)>")
             assert len(w) == 1 and str(w[0].message) == (
                 "HTTPConnection.request_chunked() is deprecated and will be removed in urllib3 v2.1.0. "
                 "Instead use HTTPConnection.request(..., chunked=True)."
