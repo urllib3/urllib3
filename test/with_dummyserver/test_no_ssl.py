@@ -35,8 +35,10 @@ class TestHTTPSWithoutSSL(HTTPDummyProxyTestCase, TestWithoutSSL):
     def test_simple_proxy(self) -> None:
         https_proxy_url = f"https://{self.proxy_host}:{int(self.https_proxy_port)}"
         with urllib3.ProxyManager(https_proxy_url, cert_reqs="NONE") as pool:
-            with pytest.warns(InsecureProxyWarning):
+            with pytest.warns((InsecureProxyWarning, InsecureRequestWarning)) as record:
                 try:
                     pool.request("GET", "https://urllib3.readthedocs.io")
                 except urllib3.exceptions.SSLError as e:
                     assert "SSL module is not available" in str(e)
+            assert('localhost' in str(record[0].message))
+            assert('urllib3.readthedocs.io' in str(record[1].message))
