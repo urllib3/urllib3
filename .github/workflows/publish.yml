@@ -22,7 +22,7 @@ jobs:
         uses: "actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3"
 
       - name: "Setup Python"
-        uses: "actions/setup-python@57ded4d7d5e986d7296eab16560982c6dd7c923b"
+        uses: "actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1"
         with:
           python-version: "3.x"
 
@@ -82,4 +82,4 @@ jobs:
         gh release upload ${{ github.ref_name }} dist/* --repo ${{ github.repository }}
 
     - name: "Publish dists to PyPI"
-      uses: "pypa/gh-action-pypi-publish@a56da0b891b3dc519c7ee3284aff1fad93cc8598"
+      uses: "pypa/gh-action-pypi-publish@f8c70e705ffc13c3b4d1221169b84f12a75d6ca8" # v1.8.8

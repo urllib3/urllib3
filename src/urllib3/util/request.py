@@ -223,7 +223,7 @@ def body_to_chunks(
             nonlocal body, blocksize
             encode = isinstance(body, io.TextIOBase)
             while True:
-                datablock = body.read(blocksize)  # type: ignore[union-attr]
+                datablock = body.read(blocksize)
                 if not datablock:
                     break
                 if encode:
