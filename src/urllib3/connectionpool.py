@@ -1106,7 +1106,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if not conn.is_verified:
             warnings.warn(
                 (
-                    f"Unverified HTTPS request is being made to host '{conn._tunnel_host if conn._tunnel_host else conn.host}'. "
+                    f"Unverified HTTPS request is being made to host '{conn._tunnel_host if conn._tunnel_host else conn.host}'. "  # type: ignore[attr-defined]
                     "Adding certificate verification is strongly advised. See: "
                     "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
                     "#tls-warnings"
