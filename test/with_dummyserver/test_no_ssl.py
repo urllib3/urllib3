@@ -40,5 +40,13 @@ class TestHTTPSWithoutSSL(HTTPDummyProxyTestCase, TestWithoutSSL):
                     pool.request("GET", "https://urllib3.readthedocs.io")
                 except urllib3.exceptions.SSLError as e:
                     assert "SSL module is not available" in str(e)
-            assert('localhost' in str(record[0].message))
-            assert('urllib3.readthedocs.io' in str(record[1].message))
+            assert "localhost" in str(record[0].message)
+            assert "urllib3.readthedocs.io" in str(record[1].message)
+
+            with pytest.warns((InsecureProxyWarning, InsecureRequestWarning)) as record:
+                try:
+                    pool.request("GET", f"http://{self.http_host}:{self.http_port}")
+                except urllib3.exceptions.SSLError as e:
+                    assert "SSL module is not available" in str(e)
+            assert "localhost" in str(record[0].message)
+            assert self.http_host in str(record[1].message)

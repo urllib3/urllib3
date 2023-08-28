@@ -1092,11 +1092,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if conn.is_closed:
             conn.connect()
 
-        if (
-            conn.proxy
-            and conn.proxy.scheme == "https"
-            and conn.proxy_is_verified is False
-        ):
+        if conn.proxy and conn.proxy.scheme == "https" and not conn.proxy_is_verified:
             warnings.warn(
                 (
                     f"Unverified HTTPS request is being made using proxy host '{conn.proxy.host}'. "
@@ -1110,7 +1106,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if not conn.is_verified:
             warnings.warn(
                 (
-                    f"Unverified HTTPS request is being made to host '{conn._tunnel_host if conn.proxy and conn.proxy.scheme == 'https' else conn.host}'. "
+                    f"Unverified HTTPS request is being made to host '{conn._tunnel_host if conn._tunnel_host else conn.host}'. "
                     "Adding certificate verification is strongly advised. See: "
                     "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
                     "#tls-warnings"
