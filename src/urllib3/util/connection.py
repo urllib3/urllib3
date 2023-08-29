@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import socket
 import typing
-
-from socket import timeout as SocketTimeout
 from time import perf_counter
 
-from ..exceptions import LocationParseError, ConnectTimeoutError
+from ..exceptions import LocationParseError
 from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 
 _TYPE_SOCKET_OPTIONS = typing.Sequence[typing.Tuple[int, int, typing.Union[int, bytes]]]
@@ -65,25 +63,14 @@ def create_connection(
     if len(addr_info) == 0:
         raise OSError("getaddrinfo returns an empty list")
 
-    # Check if we have IPv6 and IPv4 addresses to use happy eyeballs
-    # has_ipv4, has_ipv6 = (False, False)
-    # for af, _, _, _, sa in addr_info:
-    #     if af == socket.AF_INET:
-    #         has_ipv4 = True
-    #     elif af == socket.AF_INET6:
-    #         has_ipv6 = True
-    # has_ipv6_and_ipv4 = has_ipv6 and has_ipv4
+    # Order our address results so we try IPv6 addresses before IPv4
+    addr_info = sorted(
+        addr_info,
+        key=lambda x: 0
+        if x[0] == socket.AF_INET6
+        else (1 if x[0] == socket.AF_INET else 2),
+    )
 
-    # # Order our address results so we try IPv6 addresses first
-    # # and IPv4 addresses second
-    # if has_ipv6_and_ipv4:
-    #     addr_info = sorted(
-    #         addr_info,
-    #         key=lambda x: 0
-    #         if x[0] == socket.AF_INET6
-    #         else (1 if x[0] == socket.AF_INET else 2)
-    #     )
-    
     sockets = []
     start_time = perf_counter()
 
@@ -103,15 +90,15 @@ def create_connection(
 
             if source_address:
                 sock.bind(source_address)
-            
+
             try:
                 sock.connect(sa)
             except BlockingIOError as exc:
                 if exc.errno != 115:  # EINPROGRESS
                     raise
-            
+
             sockets.append(sock)
-             
+
             # Break explicitly a reference cycle
             err = None
 
@@ -143,10 +130,12 @@ def create_connection(
                         if to_close_sock and to_close_sock != sock:
                             to_close_sock.close()
                     return sock
-                except OSError as e:
+                except OSError:
                     err = TimeoutError("Timed out waiting for connection")
                     pass
-    
+            elif result == 111:
+                raise ConnectionRefusedError("Raised by me")
+
     # If we have sockets that we've been waiting on, and no other errors raise a ConnectTimeoutError
     if len(sockets) > 0 and err is None:
         raise TimeoutError("Timed out waiting for connection")
@@ -155,9 +144,9 @@ def create_connection(
     for to_close_sock in sockets:
         if to_close_sock:
             to_close_sock.close()
-    
+
     # If we can't bind we shouldn't be raising a ConnectTimeoutError
-    
+
     if err is not None:
         try:
             raise err
