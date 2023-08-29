@@ -144,12 +144,12 @@ def create_connection(
                             to_close_sock.close()
                     return sock
                 except OSError as e:
-                    err = e
+                    err = TimeoutError("Timed out waiting for connection")
                     pass
     
     # If we have sockets that we've been waiting on, and no other errors raise a ConnectTimeoutError
     if len(sockets) > 0 and err is None:
-        raise SocketTimeout("Timed out waiting for connection")
+        raise TimeoutError("Timed out waiting for connection")
 
     # If we get to here close all dangling sockets
     for to_close_sock in sockets:
