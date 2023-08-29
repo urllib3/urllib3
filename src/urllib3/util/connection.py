@@ -3,9 +3,10 @@ from __future__ import annotations
 import socket
 import typing
 
+from socket import timeout as SocketTimeout
 from time import perf_counter
 
-from ..exceptions import LocationParseError
+from ..exceptions import LocationParseError, ConnectTimeoutError
 from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 
 _TYPE_SOCKET_OPTIONS = typing.Sequence[typing.Tuple[int, int, typing.Union[int, bytes]]]
@@ -61,24 +62,27 @@ def create_connection(
 
     addr_info = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
 
-    # Check if we have IPv6 and IPv4 addresses to use happy eyeballs
-    has_ipv4, has_ipv6 = (False, False)
-    for af, _, _, _, sa in addr_info:
-        if af == socket.AF_INET:
-            has_ipv4 = True
-        elif af == socket.AF_INET6:
-            has_ipv6 = True
-    has_ipv6_and_ipv4 = has_ipv6 and has_ipv4
+    if len(addr_info) == 0:
+        raise OSError("getaddrinfo returns an empty list")
 
-    # Order our address results so we try IPv6 addresses first
-    # and IPv4 addresses second
-    if has_ipv6_and_ipv4:
-        addr_info = sorted(
-            addr_info,
-            key=lambda x: 0
-            if x[0] == socket.AF_INET6
-            else (1 if x[0] == socket.AF_INET else 2)
-        )
+    # Check if we have IPv6 and IPv4 addresses to use happy eyeballs
+    # has_ipv4, has_ipv6 = (False, False)
+    # for af, _, _, _, sa in addr_info:
+    #     if af == socket.AF_INET:
+    #         has_ipv4 = True
+    #     elif af == socket.AF_INET6:
+    #         has_ipv6 = True
+    # has_ipv6_and_ipv4 = has_ipv6 and has_ipv4
+
+    # # Order our address results so we try IPv6 addresses first
+    # # and IPv4 addresses second
+    # if has_ipv6_and_ipv4:
+    #     addr_info = sorted(
+    #         addr_info,
+    #         key=lambda x: 0
+    #         if x[0] == socket.AF_INET6
+    #         else (1 if x[0] == socket.AF_INET else 2)
+    #     )
     
     sockets = []
     start_time = perf_counter()
@@ -92,13 +96,14 @@ def create_connection(
             # If provided, set socket level options before connecting.
             _set_socket_options(sock, socket_options)
 
-            if timeout is not _DEFAULT_TIMEOUT:
-                sock.settimeout(timeout)
+            # Blocking vs non-blocking should be set before binding
+            # Setting non-blocking is equivalent to setting timeout to None
+            sock.settimeout(1)
+            sock.setblocking(False)
+
             if source_address:
                 sock.bind(source_address)
             
-            sock.setblocking(False)
-
             try:
                 sock.connect(sa)
             except BlockingIOError as exc:
@@ -115,28 +120,43 @@ def create_connection(
             if sock is not None:
                 sock.close()
 
-    # Provide the connect that returns the first connection
-    while (perf_counter() - start_time) < 0.2:
+    # Provide the socket that returns the first connection
+    # This section needs a timeout or it hangs forever trying to establish a connection
+    # 0.2s is arbitary currently, need something more formal to use
+    while perf_counter() - start_time < 0.2:
         for sock in sockets:
             result = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
 
             # If connection is successful return it
             if result == 0:
-                sock.setblocking(True)
-                if timeout is not _DEFAULT_TIMEOUT:
-                    sock.settimeout(timeout)
+                # Setting a timeout on the socket makes it blocking again
+                # TODO: Fix setting timeout, currently just sticking in a default
+                sock.settimeout(1)
+
                 # We're returning sockets as healthly when they're not
                 # Checking the peer name is a rough proxy for health
                 # This is a problem as we need to let things timeout before they
                 # get here
                 try:
                     sock.getpeername()
+                    for to_close_sock in sockets:
+                        if to_close_sock and to_close_sock != sock:
+                            to_close_sock.close()
+                    return sock
                 except OSError as e:
-                    raise e
-                for to_close_sock in sockets:
-                    if to_close_sock != sock:
-                        to_close_sock.close()
-                return sock
+                    err = e
+                    pass
+    
+    # If we have sockets that we've been waiting on, and no other errors raise a ConnectTimeoutError
+    if len(sockets) > 0 and err is None:
+        raise SocketTimeout("Timed out waiting for connection")
+
+    # If we get to here close all dangling sockets
+    for to_close_sock in sockets:
+        if to_close_sock:
+            to_close_sock.close()
+    
+    # If we can't bind we shouldn't be raising a ConnectTimeoutError
     
     if err is not None:
         try:
