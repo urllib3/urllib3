@@ -4,6 +4,8 @@ import socket
 import typing
 from time import perf_counter
 
+from socket import timeout as SocketTimeout
+
 from ..exceptions import LocationParseError
 from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 
@@ -118,7 +120,10 @@ def create_connection(
             if result == 0:
                 # Setting a timeout on the socket makes it blocking again
                 # TODO: Fix setting timeout, currently just sticking in a default
-                sock.settimeout(1)
+                if timeout is not _DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                else:
+                    sock.settimeout(socket.getdefaulttimeout())
 
                 # We're returning sockets as healthly when they're not
                 # Checking the peer name is a rough proxy for health
@@ -131,14 +136,14 @@ def create_connection(
                             to_close_sock.close()
                     return sock
                 except OSError:
-                    err = TimeoutError("Timed out waiting for connection")
+                    err = SocketTimeout("Timed out inside of loop")
                     pass
             elif result == 111:
                 raise ConnectionRefusedError("Raised by me")
 
     # If we have sockets that we've been waiting on, and no other errors raise a ConnectTimeoutError
     if len(sockets) > 0 and err is None:
-        raise TimeoutError("Timed out waiting for connection")
+        raise SocketTimeout("Timed out outside of loop")
 
     # If we get to here close all dangling sockets
     for to_close_sock in sockets:

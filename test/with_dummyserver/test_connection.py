@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import socket
 import sys
 import typing
 from http.client import ResponseNotReady
 from unittest import mock
+from unittest.mock import patch
 
 import pytest
 
@@ -21,6 +23,38 @@ def pool() -> typing.Generator[HTTPConnectionPool, None, None]:
 
     server.teardown_class()
 
+def test_create_connection_prefer_ipv6(pool: HTTPConnectionPool) -> None:
+    # Check that when there are IPv4 and IPv6 addresses
+    # for a service that create_connection prefers returning
+    # IPv6 addresses, as per rfc8305 Happy Eyeballs spec
+
+    with patch('socket.getaddrinfo') as mock_read:
+        getaddrinfo_result = [
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("127.0.0.1", pool.port)
+            ),
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("::1", pool.port, 0, 0)
+            )
+        ]
+        mock_read.return_value = getaddrinfo_result
+
+        conn = pool._get_conn()
+
+        method = "GET"
+        path = "/"
+
+        conn.request(method, path)
+
+        assert(conn.sock.getpeername() == getaddrinfo_result[1][4])
 
 def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
