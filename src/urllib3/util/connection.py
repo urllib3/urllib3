@@ -4,6 +4,8 @@ import socket
 import typing
 from time import perf_counter
 
+from socket import timeout as SocketTimeout
+
 from ..exceptions import LocationParseError
 from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 
@@ -85,7 +87,7 @@ def create_connection(
 
             # Blocking vs non-blocking should be set before binding
             # Setting non-blocking is equivalent to setting timeout to None
-            sock.settimeout(1)
+            sock.settimeout(0.3)
             sock.setblocking(False)
 
             if source_address:
@@ -94,7 +96,7 @@ def create_connection(
             try:
                 sock.connect(sa)
             except BlockingIOError as exc:
-                if exc.errno != 115:  # EINPROGRESS
+                if exc.errno != 115 and exc.errno != 10035:  # EINPROGRESS
                     raise
 
             sockets.append(sock)
@@ -106,46 +108,60 @@ def create_connection(
             err = _
             if sock is not None:
                 sock.close()
-
+    
     # Provide the socket that returns the first connection
+    # Only try if we have any socckets
     # This section needs a timeout or it hangs forever trying to establish a connection
     # 0.2s is arbitary currently, need something more formal to use
-    while perf_counter() - start_time < 0.2:
-        for sock in sockets:
+    while perf_counter() - start_time < 0.2 and len(sockets) > 0:
+        for sock in sockets[:]: # Iterate over a copy of sockets because we might change the list
             result = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
 
             # If connection is successful return it
             if result == 0:
-                # Setting a timeout on the socket makes it blocking again
-                # TODO: Fix setting timeout, currently just sticking in a default
-                sock.settimeout(1)
 
                 # We're returning sockets as healthly when they're not
                 # Checking the peer name is a rough proxy for health
                 # This is a problem as we need to let things timeout before they
                 # get here
                 try:
+                    # Using getpeername() as a test doesn't appear to
+                    # work in Windows
                     sock.getpeername()
+                    # sock.recv(16, socket.MSG_PEEK)
                     for to_close_sock in sockets:
                         if to_close_sock and to_close_sock != sock:
                             to_close_sock.close()
+                    # Setting a timeout on the socket makes it blocking again
+                    if timeout is not _DEFAULT_TIMEOUT:
+                        sock.settimeout(timeout)
+                    else:
+                        sock.settimeout(socket.getdefaulttimeout())
                     return sock
-                except OSError:
-                    err = TimeoutError("Timed out waiting for connection")
+                except OSError as e:
+                    # err = SocketTimeout("Timed out inside of loop")
+                    err  = e
+                    sock.close()
+                    sockets.remove(sock)
                     pass
-            elif result == 111:
-                raise ConnectionRefusedError("Raised by me")
+            elif result == 111 or result == 10060 or result == 10061 or result == 10051:
+                # err = ConnectionRefusedError("Raised by me")
+                err = OSError("Raised by me")
+                sock.close()
+                sockets.remove(sock)
+                # Stop trying to connect to this socket
+                # Need logic to remove this socket
+            else:
+                print(f"Interesting error code? {result}")
 
     # If we have sockets that we've been waiting on, and no other errors raise a ConnectTimeoutError
     if len(sockets) > 0 and err is None:
-        raise TimeoutError("Timed out waiting for connection")
+        raise SocketTimeout("Timed out outside of loop")
 
     # If we get to here close all dangling sockets
     for to_close_sock in sockets:
         if to_close_sock:
             to_close_sock.close()
-
-    # If we can't bind we shouldn't be raising a ConnectTimeoutError
 
     if err is not None:
         try:
