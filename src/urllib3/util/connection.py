@@ -87,7 +87,6 @@ def create_connection(
 
             # Blocking vs non-blocking should be set before binding
             # Setting non-blocking is equivalent to setting timeout to None
-            sock.settimeout(0.3)
             sock.setblocking(False)
 
             if source_address:
@@ -114,12 +113,17 @@ def create_connection(
     # This section needs a timeout or it hangs forever trying to establish a connection
     # 0.2s is arbitary currently, need something more formal to use
     while perf_counter() - start_time < 0.2 and len(sockets) > 0:
+        # ready_to_read, ready_to_write, in_error = select.select([], sockets, sockets)
         for sock in sockets[:]: # Iterate over a copy of sockets because we might change the list
             result = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
 
             # If connection is successful return it
             if result == 0:
-
+                if timeout is not _DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                else:
+                    sock.settimeout(socket.getdefaulttimeout())
+                
                 # We're returning sockets as healthly when they're not
                 # Checking the peer name is a rough proxy for health
                 # This is a problem as we need to let things timeout before they
@@ -132,11 +136,6 @@ def create_connection(
                     for to_close_sock in sockets:
                         if to_close_sock and to_close_sock != sock:
                             to_close_sock.close()
-                    # Setting a timeout on the socket makes it blocking again
-                    if timeout is not _DEFAULT_TIMEOUT:
-                        sock.settimeout(timeout)
-                    else:
-                        sock.settimeout(socket.getdefaulttimeout())
                     return sock
                 except OSError as e:
                     # err = SocketTimeout("Timed out inside of loop")
@@ -144,13 +143,16 @@ def create_connection(
                     sock.close()
                     sockets.remove(sock)
                     pass
-            elif result == 111 or result == 10060 or result == 10061 or result == 10051:
+            elif result == 111 or result == 10061 or result == 10051 \
+                or result == 10057:
                 # err = ConnectionRefusedError("Raised by me")
                 err = OSError("Raised by me")
                 sock.close()
                 sockets.remove(sock)
                 # Stop trying to connect to this socket
                 # Need logic to remove this socket
+            elif result == 10060:
+                err = SocketTimeout("Timed out somewhere?")
             else:
                 print(f"Interesting error code? {result}")
 
