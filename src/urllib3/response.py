@@ -879,9 +879,7 @@ class HTTPResponse(BaseHTTPResponse):
         data = self._raw_read(amt)
 
         flush_decoder = False
-        if amt is None:
-            flush_decoder = True
-        elif amt != 0 and not data:
+        if amt is None or (amt != 0 and not data):
             flush_decoder = True
 
         if not data and len(self._decoded_buffer) == 0:
