@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: "actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744" # v3.6.0
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
 
       - name: "Setup Python"
-        uses: "actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1" # v4.7.0
+        uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1 # v4.7.0
         with:
           python-version: "3.x"
           cache: "pip"
@@ -87,10 +87,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Checkout repository"
-        uses: "actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744" # v3.6.0
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
 
       - name: "Setup Python ${{ matrix.python-version }}"
-        uses: "actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1" # v4.7.0
+        uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1 # v4.7.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
@@ -106,7 +106,7 @@ jobs:
           NOX_SESSION: ${{ matrix.nox-session }}
 
       - name: "Upload artifact"
-        uses: "actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce" # v3.1.2
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: coverage-data
           path: ".coverage.*"
@@ -119,10 +119,10 @@ jobs:
     needs: test
     steps:
       - name: "Checkout repository"
-        uses: "actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744" # v3.6.0
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
 
       - name: "Setup Python"
-        uses: "actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1" # v4.7.0
+        uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1 # v4.7.0
         with:
           python-version: "3.x"
 
@@ -130,7 +130,7 @@ jobs:
         run: "python -m pip install --upgrade coverage"
 
       - name: "Download artifact"
-        uses: "actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a" # v3.0.2
+        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
         with:
           name: coverage-data
 
@@ -142,7 +142,7 @@ jobs:
 
       - if: ${{ failure() }}
         name: "Upload report if check failed"
-        uses: "actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce" # v3.1.2
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: coverage-report
           path: htmlcov
