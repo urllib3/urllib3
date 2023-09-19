@@ -209,7 +209,7 @@ urllib3's behavior will be different depending on your proxy and destination:
 * HTTPS proxy + HTTP destination
     A TLS connection will be established to the proxy and later your request
     will be forwarded with the `absolute URI
-    <https://datatracker.ietf.org/doc/html/rfc9110#name-connect>`_.
+    <https://datatracker.ietf.org/doc/html/rfc9112#name-absolute-form>`_.
 
 * HTTPS proxy + HTTPS destination
     A TLS-in-TLS tunnel will be established.  An initial TLS connection will be
