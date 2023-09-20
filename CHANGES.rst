@@ -1,3 +1,10 @@
+2.0.5 (2023-09-20)
+==================
+
+- Allowed pyOpenSSL third-party module without any deprecation warning. (`#3126 <https://github.com/urllib3/urllib3/issues/3126>`__)
+- Fixed default ``blocksize`` of ``HTTPConnection`` classes to match high-level classes. Previously was 8KiB, now 16KiB. (`#3066 <https://github.com/urllib3/urllib3/issues/3066>`__)
+
+
 2.0.4 (2023-07-19)
 ==================
 
