@@ -1,6 +1,12 @@
 Changes
 =======
 
+1.26.17 (2023-10-02)
+--------------------
+
+* Added the ``Cookie`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+
+
 1.26.16 (2023-05-23)
 --------------------
 
