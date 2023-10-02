@@ -55,7 +55,8 @@ def google_brotli(session):
     # https://pypi.org/project/Brotli/ is the Google version of brotli, so
     # install it separately and don't install our brotli extra (which installs
     # brotlipy).
-    session.install("brotli")
+    # https://github.com/google/brotli/issues/1074
+    session.install("brotli==1.0.9" if session.python == "2.7" else "brotli")
     tests_impl(session, extras="socks,secure")
 
 

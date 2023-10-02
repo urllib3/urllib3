@@ -29,14 +29,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["2.7", "3.6", "3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
         os: [macos-11, windows-latest, ubuntu-latest]
         experimental: [false]
         nox-session: ['']
         exclude:
-          # GitHub Actions dropped support for Python 2.7 and 3.7 in Ubuntu 22.04
-          - python-version: "2.7"
-            os: ubuntu-latest
+          # actions/setup-python dropped support for 3.6 in Ubuntu 22.04
           - python-version: "3.6"
             os: ubuntu-latest
           # Python 3.7 does not fully support OpenSSL 3, the default on Ubuntu 22.04
@@ -45,7 +43,7 @@ jobs:
             os: ubuntu-latest
         include:
           - python-version: "2.7"
-            os: ubuntu-20.04
+            os: ubuntu-latest
             experimental: false
             nox-session: ''
           - python-version: "3.6"
@@ -89,9 +87,19 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set Up Python - ${{ matrix.python-version }}
+        if: matrix.python-version != '2.7'
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+
+      # Unfortunately, actions/setup-python does not support CPython 2.7.
+      - name: Set Up Python - 2.7
+        if: matrix.python-version == '2.7'
+        run: |
+          sudo apt update
+          sudo apt install python2.7-dev python-is-python3
+          curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py
+          sudo python2.7 get-pip.py
 
       - name: Set Up Python 3 to run nox
         if: matrix.python-version == '2.7' || matrix.python-version == 'pypy2.7'

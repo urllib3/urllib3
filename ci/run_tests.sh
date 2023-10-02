@@ -3,7 +3,7 @@
 
 if [[ "${NOX_SESSION}" == "app_engine" ]]; then
     export GAE_SDK_PATH=$HOME/.cache/google_appengine
-    python2 -m pip install gcp-devrel-py-tools==0.0.16
+    python2.7 -m pip install gcp-devrel-py-tools==0.0.16
     gcp-devrel-py-tools download-appengine-sdk "$(dirname ${GAE_SDK_PATH})"
 fi
 
