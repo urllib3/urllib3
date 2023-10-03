@@ -141,7 +141,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={"target": "%s/headers" % self.base_url_alt},
-                headers={"Authorization": "foo"},
+                headers={"Authorization": "foo", "Cookie": "foo=bar"},
             )
 
             assert r.status == 200
@@ -149,12 +149,13 @@ class TestPoolManager(HTTPDummyServerTestCase):
             data = json.loads(r.data.decode("utf-8"))
 
             assert "Authorization" not in data
+            assert "Cookie" not in data
 
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={"target": "%s/headers" % self.base_url_alt},
-                headers={"authorization": "foo"},
+                headers={"authorization": "foo", "cookie": "foo=bar"},
             )
 
             assert r.status == 200
@@ -163,6 +164,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert "authorization" not in data
             assert "Authorization" not in data
+            assert "cookie" not in data
+            assert "Cookie" not in data
 
     def test_redirect_cross_host_no_remove_headers(self):
         with PoolManager() as http:
@@ -170,7 +173,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={"target": "%s/headers" % self.base_url_alt},
-                headers={"Authorization": "foo"},
+                headers={"Authorization": "foo", "Cookie": "foo=bar"},
                 retries=Retry(remove_headers_on_redirect=[]),
             )
 
@@ -179,6 +182,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             data = json.loads(r.data.decode("utf-8"))
 
             assert data["Authorization"] == "foo"
+            assert data["Cookie"] == "foo=bar"
 
     def test_redirect_cross_host_set_removed_headers(self):
         with PoolManager() as http:
@@ -186,7 +190,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={"target": "%s/headers" % self.base_url_alt},
-                headers={"X-API-Secret": "foo", "Authorization": "bar"},
+                headers={
+                    "X-API-Secret": "foo",
+                    "Authorization": "bar",
+                    "Cookie": "foo=bar",
+                },
                 retries=Retry(remove_headers_on_redirect=["X-API-Secret"]),
             )
 
@@ -196,12 +204,17 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
+            assert data["Cookie"] == "foo=bar"
 
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={"target": "%s/headers" % self.base_url_alt},
-                headers={"x-api-secret": "foo", "authorization": "bar"},
+                headers={
+                    "x-api-secret": "foo",
+                    "authorization": "bar",
+                    "cookie": "foo=bar",
+                },
                 retries=Retry(remove_headers_on_redirect=["X-API-Secret"]),
             )
 
@@ -212,6 +225,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert "x-api-secret" not in data
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
+            assert data["Cookie"] == "foo=bar"
 
     def test_redirect_without_preload_releases_connection(self):
         with PoolManager(block=True, maxsize=2) as http:
