@@ -198,23 +198,23 @@ urllib3's behavior will be different depending on your proxy and destination:
 
 * HTTP proxy + HTTP destination
    Your request will be forwarded with the `absolute URI
-   <https://tools.ietf.org/html/rfc7230#section-5.3.2>`_.
+   <https://datatracker.ietf.org/doc/html/rfc9112#name-absolute-form>`_.
 
 * HTTP proxy + HTTPS destination
     A TCP tunnel will be established with a `HTTP
-    CONNECT <https://tools.ietf.org/html/rfc7231#section-4.3.6>`_. Afterward a
+    CONNECT <https://datatracker.ietf.org/doc/html/rfc9110#name-connect>`_. Afterward a
     TLS connection will be established with the destination and your request
     will be sent.
 
 * HTTPS proxy + HTTP destination
     A TLS connection will be established to the proxy and later your request
     will be forwarded with the `absolute URI
-    <https://tools.ietf.org/html/rfc7230#section-5.3.2>`_.
+    <https://datatracker.ietf.org/doc/html/rfc9112#name-absolute-form>`_.
 
 * HTTPS proxy + HTTPS destination
     A TLS-in-TLS tunnel will be established.  An initial TLS connection will be
     established to the proxy, then an `HTTP CONNECT
-    <https://tools.ietf.org/html/rfc7231#section-4.3.6>`_ will be sent to
+    <https://datatracker.ietf.org/doc/html/rfc9110#name-connect>`_ will be sent to
     establish a TCP connection to the destination and finally a second TLS
     connection will be established to the destination. You can customize the
     :class:`ssl.SSLContext` used for the proxy TLS connection through the
@@ -222,7 +222,7 @@ urllib3's behavior will be different depending on your proxy and destination:
     class.
 
 For HTTPS proxies we also support forwarding your requests to HTTPS destinations with
-an `absolute URI <https://tools.ietf.org/html/rfc7230#section-5.3.2>`_ if the
+an `absolute URI <https://datatracker.ietf.org/doc/html/rfc9112#name-absolute-form>`_ if the
 ``use_forwarding_for_https`` argument is set to ``True``. We strongly recommend you
 **only use this option with trusted or corporate proxies** as the proxy will have
 full visibility of your requests.
