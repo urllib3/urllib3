@@ -79,9 +79,7 @@ def _is_has_never_check_common_name_reliable(
 
 if typing.TYPE_CHECKING:
     from ssl import VerifyMode
-    from typing import Literal
-
-    from typing_extensions import TypedDict
+    from typing import Literal, TypedDict
 
     from .ssltransport import SSLTransport as SSLTransportType
 
