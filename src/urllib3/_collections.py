@@ -8,7 +8,7 @@ from threading import RLock
 if typing.TYPE_CHECKING:
     # We can only import Protocol if TYPE_CHECKING because it's a development
     # dependency, and is not available at runtime.
-    from typing_extensions import Protocol
+    from typing import Protocol
 
     class HasGettableStringKeys(Protocol):
         def keys(self) -> typing.Iterator[str]:
@@ -239,7 +239,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
 
     def __init__(self, headers: ValidHTTPHeaderSource | None = None, **kwargs: str):
         super().__init__()
-        self._container = {}  # 'dict' is insert-ordered in Python 3.7+
+        self._container = {}  # 'dict' is insert-ordered
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)

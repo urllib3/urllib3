@@ -71,19 +71,16 @@ try:
 except ImportError:
     ssl = None  # type: ignore[assignment]
 
-try:
-    from typing import TypedDict
+from typing import TypedDict
 
-    class _TYPE_SOCKS_OPTIONS(TypedDict):
-        socks_version: int
-        proxy_host: str | None
-        proxy_port: str | None
-        username: str | None
-        password: str | None
-        rdns: bool
 
-except ImportError:  # Python 3.7
-    _TYPE_SOCKS_OPTIONS = typing.Dict[str, typing.Any]  # type: ignore[misc, assignment]
+class _TYPE_SOCKS_OPTIONS(TypedDict):
+    socks_version: int
+    proxy_host: str | None
+    proxy_port: str | None
+    username: str | None
+    password: str | None
+    rdns: bool
 
 
 class SOCKSConnection(HTTPConnection):

@@ -36,12 +36,12 @@ We use some external dependencies, multiple interpreters and code coverage
 analysis while running test suite. Our ``noxfile.py`` handles much of this for
 you::
 
-  $ nox --reuse-existing-virtualenvs --sessions test-3.7 test-3.9
+  $ nox --reuse-existing-virtualenvs --sessions test-3.8 test-3.9
   [ Nox will create virtualenv if needed, install the specified dependencies, and run the commands in order.]
-  nox > Running session test-3.7
+  nox > Running session test-3.8
   .......
   .......
-  nox > Session test-3.7 was successful.
+  nox > Session test-3.8 was successful.
   .......
   .......
   nox > Running session test-3.9
@@ -63,10 +63,11 @@ suite::
   [ Nox will create virtualenv if needed, install the specified dependencies, and run the commands in order.]
   .......
   .......
-  nox > Session test-3.7 was successful.
   nox > Session test-3.8 was successful.
   nox > Session test-3.9 was successful.
   nox > Session test-3.10 was successful.
+  nox > Session test-3.11 was successful.
+  nox > Session test-3.12 was successful.
   nox > Session test-pypy was successful.
 
 Our test suite `runs continuously on GitHub Actions

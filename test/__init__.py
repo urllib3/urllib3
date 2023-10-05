@@ -43,8 +43,7 @@ except ImportError:
 
 if typing.TYPE_CHECKING:
     import ssl
-
-    from typing_extensions import Literal
+    from typing import Literal
 
 
 _RT = typing.TypeVar("_RT")  # return type

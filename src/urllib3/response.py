@@ -58,7 +58,7 @@ from .util.response import is_fp_closed, is_response_to_head
 from .util.retry import Retry
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
     from .connectionpool import HTTPConnectionPool
 

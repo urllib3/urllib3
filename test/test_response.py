@@ -4,7 +4,6 @@ import contextlib
 import http.client as httplib
 import socket
 import ssl
-import sys
 import typing
 import zlib
 from base64 import b64decode
@@ -74,9 +73,6 @@ class TestBytesQueueBuffer:
         assert buffer.get(4) == b"rbaz"
         assert len(buffer) == 0
 
-    @pytest.mark.skipif(
-        sys.version_info < (3, 8), reason="pytest-memray requires Python 3.8+"
-    )
     @pytest.mark.limit_memory("12.5 MB")  # assert that we're not doubling memory usage
     def test_memory_usage(self) -> None:
         # Allocate 10 1MiB chunks
