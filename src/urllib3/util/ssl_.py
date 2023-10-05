@@ -411,8 +411,10 @@ def ssl_wrap_socket(
     tls_in_tls: bool = False,
 ) -> ssl.SSLSocket | SSLTransportType:
     """
-    All arguments except for server_hostname, ssl_context, and ca_cert_dir have
-    the same meaning as they do when using :func:`ssl.wrap_socket`.
+    All arguments except for server_hostname, ssl_context, tls_in_tls, ca_cert_data and
+    ca_cert_dir have the same meaning as they do when using
+    :func:`ssl.create_default_context`, :meth:`ssl.SSLContext.load_cert_chain`,
+    :meth:`ssl.SSLContext.set_ciphers` and :meth:`ssl.SSLContext.wrap_socket`.
 
     :param server_hostname:
         When SNI is supported, the expected hostname of the certificate
