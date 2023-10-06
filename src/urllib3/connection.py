@@ -757,10 +757,9 @@ def _ssl_wrap_socket_and_match_hostname(
     ):
         context.check_hostname = False
 
-    # Try to load OS default certs if none are given.
-    # We need to do the hasattr() check for our custom
-    # pyOpenSSL and SecureTransport SSLContext objects
-    # because neither support load_default_certs().
+    # Try to load OS default certs if none are given. We need to do the hasattr() check
+    # for custom pyOpenSSL SSLContext objects because they don't support
+    # load_default_certs().
     if (
         not ca_certs
         and not ca_cert_dir

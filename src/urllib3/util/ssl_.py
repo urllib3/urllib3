@@ -16,7 +16,6 @@ SSLContext = None
 SSLTransport = None
 HAS_NEVER_CHECK_COMMON_NAME = False
 IS_PYOPENSSL = False
-IS_SECURETRANSPORT = False
 ALPN_PROTOCOLS = ["http/1.1"]
 
 _TYPE_VERSION_INFO = typing.Tuple[int, int, int, str, int]

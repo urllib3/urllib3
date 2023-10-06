@@ -156,31 +156,6 @@ def notZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     )
 
 
-# Hack to make pytest evaluate a condition at test runtime instead of collection time.
-def lazy_condition(condition: typing.Callable[[], bool]) -> bool:
-    class LazyCondition:
-        def __bool__(self) -> bool:
-            return condition()
-
-    return typing.cast(bool, LazyCondition())
-
-
-def onlySecureTransport() -> typing.Callable[[_TestFuncT], _TestFuncT]:
-    """Runs this test when SecureTransport is in use."""
-    return pytest.mark.skipif(
-        lazy_condition(lambda: not ssl_.IS_SECURETRANSPORT),
-        reason="Test only runs with SecureTransport",
-    )
-
-
-def notSecureTransport() -> typing.Callable[[_TestFuncT], _TestFuncT]:
-    """Skips this test when SecureTransport is in use."""
-    return pytest.mark.skipif(
-        lazy_condition(lambda: ssl_.IS_SECURETRANSPORT),
-        reason="Test does not run with SecureTransport",
-    )
-
-
 _requires_network_has_route = None
 
 
@@ -214,15 +189,6 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         not _requires_network_has_route,
         reason="Can't run the test because the network is unreachable",
-    )
-
-
-def requires_ssl_context_keyfile_password() -> (
-    typing.Callable[[_TestFuncT], _TestFuncT]
-):
-    return pytest.mark.skipif(
-        lazy_condition(lambda: ssl_.IS_SECURETRANSPORT),
-        reason="Test requires password parameter for SSLContext.load_cert_chain()",
     )
 
 
