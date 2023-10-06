@@ -3,6 +3,8 @@ tornado==6.3.3
 PySocks==1.7.1
 pytest==7.4.2
 pytest-timeout==2.1.0
+pyOpenSSL==23.2.0
+idna==3.4
 trustme==1.1.0
 cryptography==41.0.4
 backports.zoneinfo==0.2.1;python_version<"3.9"

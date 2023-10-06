@@ -45,13 +45,6 @@ brotli = [
 zstd = [
   "zstandard>=0.18.0",
 ]
-secure = [
-  "pyOpenSSL>=17.1.0",
-  "cryptography>=1.9",
-  "idna>=2.0.0",
-  "certifi",
-  "urllib3-secure-extra",
-]
 socks = [
   "PySocks>=1.5.6,<2.0,!=1.5.7",
 ]
@@ -85,7 +78,6 @@ log_level = "DEBUG"
 filterwarnings = [
     "error",
     '''default:urllib3 v2.0 only supports OpenSSL 1.1.1+.*''',
-    '''default:'urllib3\[secure\]' extra is deprecated and will be removed in urllib3 v2\.1\.0.*:DeprecationWarning''',
     '''default:No IPv6 support. Falling back to IPv4:urllib3.exceptions.HTTPWarning''',
     '''default:No IPv6 support. skipping:urllib3.exceptions.HTTPWarning''',
     '''default:ssl\.TLSVersion\.TLSv1 is deprecated:DeprecationWarning''',

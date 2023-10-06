@@ -8,10 +8,10 @@ This needs the following packages installed:
 
 * `pyOpenSSL`_ (tested with 16.0.0)
 * `cryptography`_ (minimum 1.3.4, from pyopenssl)
-* `idna`_ (minimum 2.0, from cryptography)
+* `idna`_ (minimum 2.0)
 
-However, pyOpenSSL depends on cryptography, which depends on idna, so while we
-use all three directly here we end up having relatively few packages required.
+However, pyOpenSSL depends on cryptography, so while we use all three directly here we
+end up having relatively few packages required.
 
 You can install them with the following command:
 
