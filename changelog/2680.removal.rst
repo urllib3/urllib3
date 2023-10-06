@@ -1,0 +1,1 @@
+Removed support for the urllib3[secure] extra.
