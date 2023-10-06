@@ -822,7 +822,8 @@ class SecureTransportContext:
         return self.set_default_verify_paths()
 
     def set_ciphers(self, ciphers: typing.Any) -> None:
-        raise ValueError("SecureTransport doesn't support custom cipher strings")
+        if ciphers != "DEFAULT":
+            raise ValueError("SecureTransport doesn't support custom cipher strings")
 
     def load_verify_locations(
         self,
