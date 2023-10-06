@@ -5,7 +5,6 @@ import datetime
 import os.path
 import shutil
 import ssl
-import sys
 import tempfile
 import warnings
 from pathlib import Path
@@ -913,7 +912,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 finally:
                     conn.close()
 
-    @pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8+")
     def test_sslkeylogfile(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

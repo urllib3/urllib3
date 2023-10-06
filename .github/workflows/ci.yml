@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         os:
           - macos-11
           - windows-latest
@@ -43,10 +43,6 @@ jobs:
         nox-session: ['']
         include:
           - experimental: false
-          - python-version: "pypy-3.7"
-            os: ubuntu-latest
-            experimental: false
-            nox-session: test-pypy
           - python-version: "pypy-3.8"
             os: ubuntu-latest
             experimental: false
@@ -73,8 +69,6 @@ jobs:
         exclude:
           # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
           # https://github.com/python/cpython/issues/83001
-          - python-version: "3.7"
-            os: ubuntu-22.04
           - python-version: "3.8"
             os: ubuntu-22.04
           # Testing with non-final CPython on macOS is too slow for CI.

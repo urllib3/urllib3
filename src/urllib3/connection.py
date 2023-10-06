@@ -14,7 +14,7 @@ from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
     from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT

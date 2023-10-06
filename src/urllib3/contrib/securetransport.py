@@ -92,7 +92,7 @@ warnings.warn(
 )
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 

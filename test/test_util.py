@@ -42,7 +42,7 @@ from urllib3.util.util import to_bytes, to_str
 from . import clear_warnings
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -1075,8 +1075,7 @@ class TestUtilSSL:
             # Python OK -> reliable
             ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), None, True),
             # PyPy: depends on the version
-            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 6, 9), (7, 3, 7), False),
-            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 7, 13), (7, 3, 9), False),
+            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 9, 9), (7, 3, 7), False),
             ("OpenSSL 1.1.1", 0x101010CF, "pypy", (3, 8, 12), (7, 3, 8), True),
             # OpenSSL OK -> reliable
             ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 2), None, True),
