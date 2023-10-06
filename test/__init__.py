@@ -217,15 +217,6 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     )
 
 
-def requires_ssl_context_keyfile_password() -> (
-    typing.Callable[[_TestFuncT], _TestFuncT]
-):
-    return pytest.mark.skipif(
-        lazy_condition(lambda: ssl_.IS_SECURETRANSPORT),
-        reason="Test requires password parameter for SSLContext.load_cert_chain()",
-    )
-
-
 def resolvesLocalhostFQDN() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     """Test requires successful resolving of 'localhost.'"""
     return pytest.mark.skipif(

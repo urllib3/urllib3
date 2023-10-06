@@ -14,7 +14,6 @@ from test import (
     TARPIT_HOST,
     notSecureTransport,
     requires_network,
-    requires_ssl_context_keyfile_password,
     resolvesLocalhostFQDN,
 )
 from test.conftest import ServerConfig
@@ -189,7 +188,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             with pytest.raises((SSLError, ProtocolError)):
                 https_pool.request("GET", "/certificate", retries=False)
 
-    @requires_ssl_context_keyfile_password()
     def test_client_key_password(self) -> None:
         with HTTPSConnectionPool(
             self.host,
@@ -204,7 +202,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             subject = r.json()
             assert subject["organizationalUnitName"].startswith("Testing cert")
 
-    @requires_ssl_context_keyfile_password()
     def test_client_encrypted_key_requires_password(self) -> None:
         with HTTPSConnectionPool(
             self.host,
