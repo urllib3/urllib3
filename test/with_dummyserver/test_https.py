@@ -12,7 +12,6 @@ from test import (
     LONG_TIMEOUT,
     SHORT_TIMEOUT,
     TARPIT_HOST,
-    notSecureTransport,
     requires_network,
     resolvesLocalhostFQDN,
 )
@@ -262,7 +261,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 assert r.status == 200
                 assert not warn.called, warn.call_args_list
 
-    @notSecureTransport()  # SecureTransport does not support cert directories
     def test_ca_dir_verified(self, tmp_path: Path) -> None:
         # OpenSSL looks up certificates by the hash for their name, see c_rehash
         # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
@@ -549,12 +547,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ) as https_pool:
             https_pool.request("GET", "/")
 
-    @notSecureTransport()
     def test_good_fingerprint_and_hostname_mismatch(self) -> None:
-        # This test doesn't run with SecureTransport because we don't turn off
-        # hostname validation without turning off all validation, which this
-        # test doesn't do (deliberately). We should revisit this if we make
-        # new decisions.
         with HTTPSConnectionPool(
             "127.0.0.1",
             self.port,
@@ -972,13 +965,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ctx = urllib3.util.ssl_.create_urllib3_context()
         assert ctx.minimum_version == ssl.TLSVersion.TLSv1_2
         # urllib3 sets a default maximum version only when it is
-        # injected with PyOpenSSL- or SecureTransport-backed
-        # SSL-support.
+        # injected with PyOpenSSL SSL-support.
         # Otherwise, the default maximum version is set by Python's
         # `ssl.SSLContext`. The value respects OpenSSL configuration and
         # can be different from `ssl.TLSVersion.MAXIMUM_SUPPORTED`.
         # https://github.com/urllib3/urllib3/issues/2477#issuecomment-1151452150
-        if util.IS_PYOPENSSL or util.IS_SECURETRANSPORT:
+        if util.IS_PYOPENSSL:
             expected_maximum_version = ssl.TLSVersion.MAXIMUM_SUPPORTED
         else:
             expected_maximum_version = ssl.SSLContext(
