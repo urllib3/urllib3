@@ -15,7 +15,7 @@ from urllib3.util import ssl_
 from urllib3.util.ssltransport import SSLTransport
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
 # consume_socket can iterate forever, we add timeouts to prevent halting.
 PER_TEST_TIMEOUT = 60

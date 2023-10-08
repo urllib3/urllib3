@@ -334,12 +334,12 @@ class TestRetry:
     def test_retry_default_remove_headers_on_redirect(self) -> None:
         retry = Retry()
 
-        assert list(retry.remove_headers_on_redirect) == ["authorization"]
+        assert retry.remove_headers_on_redirect == {"authorization", "cookie"}
 
     def test_retry_set_remove_headers_on_redirect(self) -> None:
         retry = Retry(remove_headers_on_redirect=["X-API-Secret"])
 
-        assert list(retry.remove_headers_on_redirect) == ["x-api-secret"]
+        assert retry.remove_headers_on_redirect == {"x-api-secret"}
 
     @pytest.mark.parametrize("value", ["-1", "+1", "1.0", "\xb2"])  # \xb2 = ^2
     def test_parse_retry_after_invalid(self, value: str) -> None:

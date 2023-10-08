@@ -18,14 +18,7 @@ import typing
 import zlib
 from collections import OrderedDict
 from pathlib import Path
-from test import (
-    LONG_TIMEOUT,
-    SHORT_TIMEOUT,
-    notSecureTransport,
-    notWindows,
-    requires_ssl_context_keyfile_password,
-    resolvesLocalhostFQDN,
-)
+from test import LONG_TIMEOUT, SHORT_TIMEOUT, notWindows, resolvesLocalhostFQDN
 from threading import Event
 from unittest import mock
 
@@ -329,11 +322,9 @@ class TestClientCerts(SocketDummyServerTestCase):
                 done_receiving.set()
             done_receiving.set()
 
-    @requires_ssl_context_keyfile_password()
     def test_client_cert_with_string_password(self) -> None:
         self.run_client_cert_with_password_test("letmein")
 
-    @requires_ssl_context_keyfile_password()
     def test_client_cert_with_bytes_password(self) -> None:
         self.run_client_cert_with_password_test(b"letmein")
 
@@ -385,7 +376,6 @@ class TestClientCerts(SocketDummyServerTestCase):
 
             assert len(client_certs) == 1
 
-    @requires_ssl_context_keyfile_password()
     def test_load_keyfile_with_invalid_password(self) -> None:
         assert ssl_.SSLContext is not None
         context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
@@ -396,9 +386,6 @@ class TestClientCerts(SocketDummyServerTestCase):
                 password=b"letmei",
             )
 
-    # For SecureTransport, the validation that would raise an error in
-    # this case is deferred.
-    @notSecureTransport()
     def test_load_invalid_cert_file(self) -> None:
         assert ssl_.SSLContext is not None
         context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
@@ -993,9 +980,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         ) as f:
             ssl_sock.close()
             f.close()
-            # SecureTransport is supposed to raise OSError but raises
-            # ssl.SSLError when closed because ssl_sock.context is None
-            with pytest.raises((OSError, ssl.SSLError)):
+            with pytest.raises(OSError):
                 ssl_sock.sendall(b"hello")
             assert ssl_sock.fileno() == -1
 
@@ -1316,7 +1301,6 @@ class TestSSL(SocketDummyServerTestCase):
             ):
                 pool.request("GET", "/", retries=False)
 
-    @notSecureTransport()
     def test_ssl_read_timeout(self) -> None:
         timed_out = Event()
 
@@ -1600,9 +1584,6 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=False, timeout=LONG_TIMEOUT)
         assert server_closed.wait(LONG_TIMEOUT), "The socket was not terminated"
 
-    # SecureTransport can read only small pieces of data at the moment.
-    # https://github.com/urllib3/urllib3/pull/2674
-    @notSecureTransport()
     @pytest.mark.skipif(
         os.environ.get("CI") == "true" and sys.implementation.name == "pypy",
         reason="too slow to run in CI",

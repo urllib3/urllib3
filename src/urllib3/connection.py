@@ -14,7 +14,7 @@ from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
     from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
@@ -757,10 +757,9 @@ def _ssl_wrap_socket_and_match_hostname(
     ):
         context.check_hostname = False
 
-    # Try to load OS default certs if none are given.
-    # We need to do the hasattr() check for our custom
-    # pyOpenSSL and SecureTransport SSLContext objects
-    # because neither support load_default_certs().
+    # Try to load OS default certs if none are given. We need to do the hasattr() check
+    # for custom pyOpenSSL SSLContext objects because they don't support
+    # load_default_certs().
     if (
         not ca_certs
         and not ca_cert_dir

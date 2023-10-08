@@ -1,5 +1,6 @@
 -r ../dev-requirements.txt
-sphinx>3.0.0
+# https://github.com/sphinx-doc/sphinx/issues/11662#issuecomment-1713887182
+sphinx>3.0.0,<7.2.5
 requests
 furo
 sphinx-copybutton

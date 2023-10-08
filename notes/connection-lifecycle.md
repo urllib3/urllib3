@@ -54,7 +54,7 @@ After connecting to the origin, the connection can be checked to see if `is_veri
 ```python
 if not conn.is_verified:
     # There isn't a verified TLS connection to target origin.
-if not conn.is_proxy_verified:
+if not conn.proxy_is_verified:
     # There isn't a verified TLS connection to proxy origin.
 ```
 

@@ -238,6 +238,9 @@ the ``;`` delimited key-value pairs:
     print(resp.json())
     # {"cookies": {"id": "30", "session": "f3efe9db"}}  
 
+Note that the ``Cookie`` header will be stripped if the server redirects to a
+different host.
+
 Cookies provided by the server are stored in the ``Set-Cookie`` header:
 
 .. code-block:: python

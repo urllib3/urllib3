@@ -58,7 +58,7 @@ from .util.response import is_fp_closed, is_response_to_head
 from .util.retry import Retry
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
     from .connectionpool import HTTPConnectionPool
 
@@ -767,13 +767,9 @@ class HTTPResponse(BaseHTTPResponse):
         assert self._fp
         c_int_max = 2**31 - 1
         if (
-            (
-                (amt and amt > c_int_max)
-                or (self.length_remaining and self.length_remaining > c_int_max)
-            )
-            and not util.IS_SECURETRANSPORT
-            and (util.IS_PYOPENSSL or sys.version_info < (3, 10))
-        ):
+            (amt and amt > c_int_max)
+            or (self.length_remaining and self.length_remaining > c_int_max)
+        ) and (util.IS_PYOPENSSL or sys.version_info < (3, 10)):
             buffer = io.BytesIO()
             # Besides `max_chunk_amt` being a maximum chunk size, it
             # affects memory overhead of reading a response by this
@@ -878,11 +874,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         data = self._raw_read(amt)
 
-        flush_decoder = False
-        if amt is None:
-            flush_decoder = True
-        elif amt != 0 and not data:
-            flush_decoder = True
+        flush_decoder = amt is None or (amt != 0 and not data)
 
         if not data and len(self._decoded_buffer) == 0:
             return data

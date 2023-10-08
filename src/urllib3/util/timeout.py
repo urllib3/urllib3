@@ -8,7 +8,7 @@ from socket import getdefaulttimeout
 from ..exceptions import TimeoutStateError
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Final
+    from typing import Final
 
 
 class _TYPE_DEFAULT(Enum):

@@ -9,7 +9,7 @@ import nox
 
 def tests_impl(
     session: nox.Session,
-    extras: str = "socks,secure,brotli,zstd",
+    extras: str = "socks,brotli,zstd",
     byte_string_comparisons: bool = True,
 ) -> None:
     # Install deps and the package itself.
@@ -25,11 +25,7 @@ def tests_impl(
     session.run("python", "-m", "OpenSSL.debug")
 
     memray_supported = True
-    if (
-        sys.implementation.name != "cpython"
-        or sys.version_info < (3, 8)
-        or sys.version_info.releaselevel != "final"
-    ):
+    if sys.implementation.name != "cpython" or sys.version_info.releaselevel != "final":
         memray_supported = False  # pytest-memray requires CPython 3.8+
     elif sys.platform == "win32":
         memray_supported = False
@@ -58,7 +54,7 @@ def tests_impl(
     )
 
 
-@nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy"])
+@nox.session(python=["3.8", "3.9", "3.10", "3.11", "3.12", "pypy"])
 def test(session: nox.Session) -> None:
     tests_impl(session)
 
@@ -69,7 +65,7 @@ def test_brotlipy(session: nox.Session) -> None:
     'brotlicffi' that we still don't blow up.
     """
     session.install("brotlipy")
-    tests_impl(session, extras="socks,secure", byte_string_comparisons=False)
+    tests_impl(session, extras="socks", byte_string_comparisons=False)
 
 
 def git_clone(session: nox.Session, git_url: str) -> None:
@@ -160,7 +156,7 @@ def mypy(session: nox.Session) -> None:
 @nox.session
 def docs(session: nox.Session) -> None:
     session.install("-r", "docs/requirements.txt")
-    session.install(".[socks,secure,brotli,zstd]")
+    session.install(".[socks,brotli,zstd]")
 
     session.chdir("docs")
     if os.path.exists("_build"):
