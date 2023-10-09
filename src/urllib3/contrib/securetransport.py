@@ -64,7 +64,7 @@ import struct
 import threading
 import weakref
 
-import six
+from ..packages import six
 
 from .. import util
 from ..util.ssl_ import PROTOCOL_TLS_CLIENT
