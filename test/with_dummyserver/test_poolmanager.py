@@ -244,6 +244,20 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert r._pool.num_connections == 1
             assert len(http.pools) == 1
 
+    def test_303_redirect_makes_request_lose_body(self) -> None:
+        with PoolManager() as http:
+            response = http.request(
+                "POST",
+                f"{self.base_url}/redirect",
+                fields={
+                    "target": f"{self.base_url}/headers_and_params",
+                    "status": "303 See Other",
+                },
+            )
+        data = response.json()
+        assert data["params"] == {}
+        assert "Content-Type" not in HTTPHeaderDict(data["headers"])
+
     def test_unknown_scheme(self) -> None:
         with PoolManager() as http:
             unknown_scheme = "unknown"
