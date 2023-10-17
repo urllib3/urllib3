@@ -5,6 +5,7 @@ import pytest
 
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
+from urllib3._collections import HTTPHeaderDict
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
@@ -235,6 +236,20 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert r._pool.num_requests == 2
             assert r._pool.num_connections == 1
             assert len(http.pools) == 1
+
+    def test_303_redirect_makes_request_lose_body(self):
+        with PoolManager() as http:
+            response = http.request(
+                "POST",
+                "%s/redirect" % self.base_url,
+                fields={
+                    "target": "%s/headers_and_params" % self.base_url,
+                    "status": "303 See Other",
+                },
+            )
+        data = json.loads(response.data)
+        assert data["params"] == {}
+        assert "Content-Type" not in HTTPHeaderDict(data["headers"])
 
     def test_unknown_scheme(self):
         with PoolManager() as http:
