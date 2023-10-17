@@ -10,4 +10,4 @@ cryptography==39.0.2;implementation_name=="pypy" and implementation_version<"7.3
 cryptography==41.0.4;implementation_name!="pypy" or implementation_version>="7.3.10"
 backports.zoneinfo==0.2.1;python_version<"3.9"
 towncrier==23.6.0
-pytest-memray==1.4.0;python_version>="3.8" and python_version<"3.12" and sys_platform!="win32" and implementation_name=="cpython"
+pytest-memray==1.4.0;python_version>="3.8" and python_version<"3.13" and sys_platform!="win32" and implementation_name=="cpython"
