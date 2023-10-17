@@ -437,7 +437,7 @@ class HTTPSConnection(HTTPConnection):
             and self.ssl_version is None
             and hasattr(self.sock, "version")
             and self.sock.version() in {"TLSv1", "TLSv1.1"}
-        ):
+        ):  # Defensive:
             warnings.warn(
                 "Negotiating TLSv1/TLSv1.1 by default is deprecated "
                 "and will be disabled in urllib3 v2.0.0. Connecting to "
