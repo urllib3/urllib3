@@ -43,7 +43,7 @@ jobs:
             os: ubuntu-latest
         include:
           - python-version: "2.7"
-            os: ubuntu-20.04
+            os: ubuntu-latest
             experimental: false
             nox-session: ''
           - python-version: "3.6"
