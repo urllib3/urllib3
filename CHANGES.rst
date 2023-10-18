@@ -1,6 +1,12 @@
 Changes
 =======
 
+1.26.18 (2023-10-17)
+--------------------
+
+* Made body stripped from HTTP requests changing the request method to GET after HTTP 303 "See Other" redirect responses.
+
+
 1.26.17 (2023-10-02)
 --------------------
 

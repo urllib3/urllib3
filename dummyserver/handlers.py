@@ -186,6 +186,8 @@ class TestingApp(RequestHandler):
         status = request.params.get("status", "303 See Other")
         if len(status) == 3:
             status = "%s Redirect" % status.decode("latin-1")
+        elif isinstance(status, bytes):
+            status = status.decode("latin-1")
 
         headers = [("Location", target)]
         return Response(status=status, headers=headers)
@@ -263,6 +265,11 @@ class TestingApp(RequestHandler):
 
     def headers(self, request):
         return Response(json.dumps(dict(request.headers)))
+
+    def headers_and_params(self, request):
+        return Response(
+            json.dumps({"headers": dict(request.headers), "params": request.params})
+        )
 
     def successful_retry(self, request):
         """Handler which will return an error and then success
