@@ -480,6 +480,17 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert r.status == 200
             assert r.data == b"Dummy server!"
 
+    def test_303_redirect_makes_request_lose_body(self) -> None:
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request(
+                "POST",
+                "/redirect",
+                fields={"target": "/headers_and_params", "status": "303 See Other"},
+            )
+        data = response.json()
+        assert data["params"] == {}
+        assert "Content-Type" not in HTTPHeaderDict(data["headers"])
+
     def test_bad_connect(self) -> None:
         with HTTPConnectionPool("badhost.invalid", self.port) as pool:
             with pytest.raises(MaxRetryError) as e:
