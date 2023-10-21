@@ -175,6 +175,9 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
             return True
         except socket.timeout:
             return True
+        except ConnectionRefusedError:
+            # A firewall is explicitly blocking outbound traffic
+            return False
         except OSError as e:
             if _is_unreachable_err(e):
                 return False
