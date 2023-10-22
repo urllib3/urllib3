@@ -1,4 +1,5 @@
 coverage==7.3.2
+flaky==3.7.0
 tornado==6.3.3
 PySocks==1.7.1
 pytest==7.4.2

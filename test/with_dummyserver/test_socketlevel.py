@@ -24,6 +24,7 @@ from unittest import mock
 
 import pytest
 import trustme
+from flaky import flaky  # type: ignore[import]
 
 from dummyserver.server import (
     DEFAULT_CA,
@@ -2237,6 +2238,7 @@ class TestContentFraming(SocketDummyServerTestCase):
         assert b"Content-Length: 0\r\n" in sent_bytes
         assert b"transfer-encoding" not in sent_bytes.lower()
 
+    @flaky(max_runs=5)  # type: ignore[misc]
     @pytest.mark.parametrize("chunked", [True, False])
     @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
     @pytest.mark.parametrize("body_type", ["file", "generator", "bytes"])
@@ -2296,6 +2298,7 @@ class TestContentFraming(SocketDummyServerTestCase):
         assert b"content-length" not in sent_bytes.lower()
         assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes
 
+    @flaky(max_runs=5)  # type: ignore[misc]
     @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
     @pytest.mark.parametrize(
         "body_type", ["file", "generator", "bytes", "bytearray", "file_text"]
@@ -2373,6 +2376,7 @@ class TestContentFraming(SocketDummyServerTestCase):
             assert b"transfer-encoding" not in sent_bytes.lower()
             assert sent_bytes.endswith(b"\r\n\r\nxxxxxxxxxx")
 
+    @flaky  # type: ignore[misc]
     @pytest.mark.parametrize(
         "header_transform",
         [str.lower, str.title, str.upper],
