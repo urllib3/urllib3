@@ -181,14 +181,26 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
             else:
                 raise
 
+    def _decorator_requires_internet(
+        decorator: typing.Callable[[_TestFuncT], _TestFuncT]
+    ) -> typing.Callable[[_TestFuncT], _TestFuncT]:
+        """Mark a decorator with the "requires_internet" mark"""
+
+        def wrapper(f: _TestFuncT) -> typing.Any:
+            return pytest.mark.requires_network(decorator(f))
+
+        return wrapper
+
     global _requires_network_has_route
 
     if _requires_network_has_route is None:
         _requires_network_has_route = _has_route()
 
-    return pytest.mark.skipif(
-        not _requires_network_has_route,
-        reason="Can't run the test because the network is unreachable",
+    return _decorator_requires_internet(
+        pytest.mark.skipif(
+            not _requires_network_has_route,
+            reason="Can't run the test because the network is unreachable",
+        )
     )
 
 

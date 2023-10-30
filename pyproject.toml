@@ -73,7 +73,10 @@ include = [
 [tool.pytest.ini_options]
 xfail_strict = true
 python_classes = ["Test", "*TestCase"]
-markers = ["limit_memory"]
+markers = [
+    "limit_memory: Limit memory with memray",
+    "requires_network: This test needs access to the Internet",
+]
 log_level = "DEBUG"
 filterwarnings = [
     "error",
