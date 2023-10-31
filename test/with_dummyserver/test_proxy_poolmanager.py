@@ -148,10 +148,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
             with pytest.raises(MaxRetryError) as e:
                 http.request("GET", f"{target_url}/")
-            assert type(e.value.reason) == ProxyError
-            assert (
-                type(e.value.reason.original_error)
-                == urllib3.exceptions.NameResolutionError
+            assert isinstance(e.value.reason, ProxyError)
+            assert isinstance(
+                e.value.reason.original_error, urllib3.exceptions.NameResolutionError
             )
 
     def test_oldapi(self) -> None:
@@ -467,7 +466,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             # We sent the request to the proxy but didn't get any response
             # so we're not sure if that's being caused by the proxy or the
             # target so we put the blame on the target.
-            assert type(e.value.reason) == ReadTimeoutError
+            assert isinstance(e.value.reason, ReadTimeoutError)
 
     @requires_network()
     @pytest.mark.parametrize(
@@ -487,7 +486,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
                 proxy.request("GET", target_url, timeout=timeout)
 
-            assert type(e.value.reason) == ReadTimeoutError
+            assert isinstance(e.value.reason, ReadTimeoutError)
 
     @requires_network()
     @pytest.mark.parametrize(
@@ -514,8 +513,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", target_url)
 
-            assert type(e.value.reason) == ProxyError
-            assert type(e.value.reason.original_error) == ConnectTimeoutError
+            assert isinstance(e.value.reason, ProxyError)
+            assert isinstance(e.value.reason.original_error, ConnectTimeoutError)
 
     @requires_network()
     @pytest.mark.parametrize(
@@ -533,8 +532,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", target_url)
 
-            assert type(e.value.reason) == ProxyError
-            assert type(e.value.reason.original_error) == ConnectTimeoutError
+            assert isinstance(e.value.reason, ProxyError)
+            assert isinstance(e.value.reason.original_error, ConnectTimeoutError)
 
     @requires_network()
     @pytest.mark.parametrize(
@@ -557,8 +556,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         ) as proxy:
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", target_url)
-            assert type(e.value.reason) == ProxyError
-            assert type(e.value.reason.original_error) == SSLError
+            assert isinstance(e.value.reason, ProxyError)
+            assert isinstance(e.value.reason.original_error, SSLError)
 
     @requires_network()
     @pytest.mark.parametrize(
@@ -588,7 +587,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         ) as proxy:
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", self.https_url)
-            assert type(e.value.reason) == SSLError
+            assert isinstance(e.value.reason, SSLError)
 
     def test_scheme_host_case_insensitive(self) -> None:
         """Assert that upper-case schemes and hosts are normalized."""

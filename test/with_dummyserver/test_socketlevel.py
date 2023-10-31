@@ -1260,7 +1260,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
             errored.set()  # Avoid a ConnectionAbortedError on Windows.
 
-            assert type(e.value.reason) == ProxyError
+            assert isinstance(e.value.reason, ProxyError)
             assert "Your proxy appears to only use HTTP and not HTTPS" in str(
                 e.value.reason
             )

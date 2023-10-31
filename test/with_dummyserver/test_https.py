@@ -1099,7 +1099,7 @@ class TestHTTPS_Hostname:
         # IP addresses should fail for commonName.
         else:
             assert err is not None
-            assert type(err.reason) == SSLError
+            assert isinstance(err.reason, SSLError)
             assert isinstance(
                 err.reason.args[0], (ssl.SSLCertVerificationError, CertificateError)
             )
