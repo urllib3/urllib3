@@ -91,11 +91,11 @@ def validate_response(
 
 def validate_peercert(ssl_socket: SSLTransport) -> None:
     binary_cert = ssl_socket.getpeercert(binary_form=True)
-    assert type(binary_cert) == bytes
+    assert isinstance(binary_cert, bytes)
     assert len(binary_cert) > 0
 
     cert = ssl_socket.getpeercert()
-    assert type(cert) == dict
+    assert isinstance(cert, dict)
     assert "serialNumber" in cert
     assert cert["serialNumber"] != ""
 
@@ -222,7 +222,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             sock, self.client_context, server_hostname="localhost"
         ) as ssock:
             cipher = ssock.cipher()
-            assert type(cipher) == tuple
+            assert isinstance(cipher, tuple)
 
             # No chosen protocol through ALPN or NPN.
             assert ssock.selected_alpn_protocol() is None

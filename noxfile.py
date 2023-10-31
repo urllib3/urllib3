@@ -134,7 +134,7 @@ def format(session: nox.Session) -> None:
     lint(session)
 
 
-@nox.session
+@nox.session(python="3.12")
 def lint(session: nox.Session) -> None:
     session.install("pre-commit")
     session.run("pre-commit", "run", "--all-files")
@@ -142,7 +142,7 @@ def lint(session: nox.Session) -> None:
     mypy(session)
 
 
-@nox.session(python="3.8")
+@nox.session(python="3.12")
 def mypy(session: nox.Session) -> None:
     """Run mypy."""
     session.install("-r", "mypy-requirements.txt")
