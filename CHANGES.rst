@@ -1,3 +1,8 @@
+2.0.7 (2023-10-17)
+==================
+
+* Made body stripped from HTTP requests changing the request method to GET after HTTP 303 "See Other" redirect responses.
+
 2.0.6 (2023-10-02)
 ==================
 
@@ -166,6 +171,11 @@ Fixed
 * Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()`` (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__).
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
 * Fixed ``urllib3.contrib.pyopenssl.WrappedSocket`` and ``urllib3.contrib.securetransport.WrappedSocket`` close methods (`#2970 <https://github.com/urllib3/urllib3/issues/2970>`__)
+
+1.26.18 (2023-10-17)
+====================
+
+* Made body stripped from HTTP requests changing the request method to GET after HTTP 303 "See Other" redirect responses.
 
 1.26.17 (2023-10-02)
 ====================
