@@ -79,9 +79,11 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert r.status == 200
 
     def test_http_and_https_kwarg_ca_cert_data_proxy(self) -> None:
-        with open(DEFAULT_CA, 'rb') as pem_file:
-            pem_file_data = pem_file.read().decode('utf-8')
-            with proxy_from_url(self.https_proxy_url, ca_cert_data=pem_file_data) as https:
+        with open(DEFAULT_CA, "rb") as pem_file:
+            pem_file_data = pem_file.read().decode("utf-8")
+            with proxy_from_url(
+                self.https_proxy_url, ca_cert_data=pem_file_data
+            ) as https:
                 r = https.request("GET", f"{self.https_url}/")
                 assert r.status == 200
 
