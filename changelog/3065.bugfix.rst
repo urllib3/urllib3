@@ -1,3 +1,3 @@
 Fixed an issue where it was not possible to pass the cert_data keyword argument in a proxy context when making SSL
-requests. Previously, attempting to pass cert_data in a proxy context would result in an error.
-This issue has been resolved, and users can now pass cert_data when making SSL requests through a proxy context.
+requests. Previously, attempting to pass ca_cert_data in a proxy context would result in an error.
+This issue has been resolved, and users can now pass ca_cert_data when making SSL requests through a proxy context.
