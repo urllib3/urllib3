@@ -135,6 +135,9 @@ def request(
 
     :param method:
         HTTP request method (such as GET, POST, PUT, etc.)
+
+    :param url:
+        The URL to perform the request on.
     """
 
     return _DEFAULT_POOL.request(

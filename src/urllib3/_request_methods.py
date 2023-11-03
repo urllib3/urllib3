@@ -88,6 +88,9 @@ class RequestMethods:
 
         :param method:
             HTTP request method (such as GET, POST, PUT, etc.)
+
+        :param url:
+            The URL to perform the request on.
         """
         method = method.upper()
 
@@ -136,6 +139,9 @@ class RequestMethods:
 
         :param method:
             HTTP request method (such as GET, POST, PUT, etc.)
+
+        :param url:
+            The URL to perform the request on.
         """
         if headers is None:
             headers = self.headers
@@ -195,6 +201,9 @@ class RequestMethods:
 
         :param method:
             HTTP request method (such as GET, POST, PUT, etc.)
+
+        :param url:
+            The URL to perform the request on.
         """
         if headers is None:
             headers = self.headers
