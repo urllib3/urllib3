@@ -229,14 +229,15 @@ class TestResponse:
         assert r.read() == b""
         assert r.read() == b""
 
-    def test_chunked_decoding_gzip(self) -> None:
+    @pytest.mark.parametrize("content_encoding", ["gzip", "x-gzip"])
+    def test_chunked_decoding_gzip(self, content_encoding: str) -> None:
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         data = compress.compress(b"foo")
         data += compress.flush()
 
         fp = BytesIO(data)
         r = HTTPResponse(
-            fp, headers={"content-encoding": "gzip"}, preload_content=False
+            fp, headers={"content-encoding": content_encoding}, preload_content=False
         )
 
         assert r.read(1) == b"f"
