@@ -146,6 +146,10 @@ def request(
     :param fields:
         Data to encode and send in the request body.  Values are processed
         by :func:`urllib.parse.urlencode`.
+
+    :param headers:
+        Dictionary of custom headers to send, such as User-Agent,
+        If-None-Match, etc.
     """
 
     return _DEFAULT_POOL.request(

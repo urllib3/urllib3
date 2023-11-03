@@ -99,6 +99,11 @@ class RequestMethods:
         :param fields:
             Data to encode and send in the request body.  Values are processed
             by :func:`urllib.parse.urlencode`.
+
+        :param headers:
+            Dictionary of custom headers to send, such as User-Agent,
+            If-None-Match, etc. If None, pool headers are used. If provided,
+            these headers completely replace any pool-specific headers.
         """
         method = method.upper()
 
@@ -154,6 +159,11 @@ class RequestMethods:
         :param fields:
             Data to encode and send in the request body.  Values are processed
             by :func:`urllib.parse.urlencode`.
+
+        :param headers:
+            Dictionary of custom headers to send, such as User-Agent,
+            If-None-Match, etc. If None, pool headers are used. If provided,
+            these headers completely replace any pool-specific headers.
         """
         if headers is None:
             headers = self.headers
@@ -220,6 +230,11 @@ class RequestMethods:
         :param fields:
             Data to encode and send in the request body.  Values are processed
             by :func:`urllib.parse.urlencode`.
+
+        :param headers:
+            Dictionary of custom headers to send, such as User-Agent,
+            If-None-Match, etc. If None, pool headers are used. If provided,
+            these headers completely replace any pool-specific headers.
         """
         if headers is None:
             headers = self.headers
