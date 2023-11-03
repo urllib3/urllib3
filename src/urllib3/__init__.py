@@ -150,6 +150,39 @@ def request(
     :param headers:
         Dictionary of custom headers to send, such as User-Agent,
         If-None-Match, etc.
+
+    :param bool preload_content:
+        If True, the response's body will be preloaded into memory.
+
+    :param bool decode_content:
+        If True, will attempt to decode the body based on the
+        'content-encoding' header.
+
+    :param redirect:
+        If True, automatically handle redirects (status codes 301, 302,
+        303, 307, 308). Each redirect counts as a retry. Disabling retries
+        will disable redirect, too.
+
+    :param retries:
+        Configure the number of retries to allow before raising a
+        :class:`~urllib3.exceptions.MaxRetryError` exception.
+
+        Pass ``None`` to retry until you receive a response. Pass a
+        :class:`~urllib3.util.retry.Retry` object for fine-grained control
+        over different types of retries.
+        Pass an integer number to retry connection errors that many times,
+        but no other types of errors. Pass zero to never retry.
+
+        If ``False``, then retries are disabled and any exception is raised
+        immediately. Also, instead of raising a MaxRetryError on redirects,
+        the redirect response will be returned.
+
+    :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int.
+
+    :param timeout:
+        If specified, overrides the default timeout for this one
+        request. It may be a float (in seconds) or an instance of
+        :class:`urllib3.util.Timeout`.
     """
 
     return _DEFAULT_POOL.request(
