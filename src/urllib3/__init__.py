@@ -142,6 +142,10 @@ def request(
     :param body:
         Data to send in the request body, either :class:`str`, :class:`bytes`,
         an iterable of :class:`str`/:class:`bytes`, or a file-like object.
+
+    :param fields:
+        Data to encode and send in the request body.  Values are processed
+        by :func:`urllib.parse.urlencode`.
     """
 
     return _DEFAULT_POOL.request(
