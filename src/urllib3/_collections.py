@@ -353,8 +353,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
                 self.add(key, val)
         elif isinstance(other, typing.Iterable):
             other = typing.cast(typing.Iterable[typing.Tuple[str, str]], other)
-            for key, value in other:
-                self.add(key, value)
+            for item in other:
+                self.add(item[0], item[1])
         elif hasattr(other, "keys") and hasattr(other, "__getitem__"):
             # THIS IS NOT A TYPESAFE BRANCH
             # In this branch, the object has a `keys` attr but is not a Mapping or any of
