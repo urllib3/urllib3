@@ -183,6 +183,11 @@ def request(
         If specified, overrides the default timeout for this one
         request. It may be a float (in seconds) or an instance of
         :class:`urllib3.util.Timeout`.
+
+    :param json:
+        Data to encode and send as JSON with UTF-encoded in the request body.
+        The ``"Content-Type"`` header will be set to ``"application/json"``
+        unless specified otherwise.
     """
 
     return _DEFAULT_POOL.request(

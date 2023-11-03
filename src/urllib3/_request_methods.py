@@ -104,6 +104,11 @@ class RequestMethods:
             Dictionary of custom headers to send, such as User-Agent,
             If-None-Match, etc. If None, pool headers are used. If provided,
             these headers completely replace any pool-specific headers.
+
+        :param json:
+            Data to encode and send as JSON with UTF-encoded in the request body.
+            The ``"Content-Type"`` header will be set to ``"application/json"``
+            unless specified otherwise.
         """
         method = method.upper()
 
