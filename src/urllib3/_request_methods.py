@@ -162,8 +162,7 @@ class RequestMethods:
             The URL to perform the request on.
 
         :param fields:
-            Data to encode and send in the request body.  Values are processed
-            by :func:`urllib.parse.urlencode`.
+            Data to encode and send in the request body.
 
         :param headers:
             Dictionary of custom headers to send, such as User-Agent,
@@ -233,13 +232,20 @@ class RequestMethods:
             The URL to perform the request on.
 
         :param fields:
-            Data to encode and send in the request body.  Values are processed
-            by :func:`urllib.parse.urlencode`.
+            Data to encode and send in the request body.
 
         :param headers:
             Dictionary of custom headers to send, such as User-Agent,
             If-None-Match, etc. If None, pool headers are used. If provided,
             these headers completely replace any pool-specific headers.
+
+        :param encode_multipart:
+            If True, encode the ``fields`` using the multipart/form-data MIME
+            format.
+
+        :param multipart_boundary:
+            If not specified, then a random boundary will be generated using
+            :func:`urllib3.filepost.choose_boundary`.
         """
         if headers is None:
             headers = self.headers

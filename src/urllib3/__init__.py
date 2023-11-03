@@ -144,8 +144,7 @@ def request(
         an iterable of :class:`str`/:class:`bytes`, or a file-like object.
 
     :param fields:
-        Data to encode and send in the request body.  Values are processed
-        by :func:`urllib.parse.urlencode`.
+        Data to encode and send in the request body.
 
     :param headers:
         Dictionary of custom headers to send, such as User-Agent,
