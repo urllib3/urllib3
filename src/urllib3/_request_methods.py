@@ -91,6 +91,10 @@ class RequestMethods:
 
         :param url:
             The URL to perform the request on.
+
+        :param body:
+            Data to send in the request body, either :class:`str`, :class:`bytes`,
+            an iterable of :class:`str`/:class:`bytes`, or a file-like object.
         """
         method = method.upper()
 
