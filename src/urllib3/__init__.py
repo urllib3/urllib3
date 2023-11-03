@@ -132,6 +132,9 @@ def request(
     Therefore, its side effects could be shared across dependencies relying on it.
     To avoid side effects create a new ``PoolManager`` instance and use it instead.
     The method does not accept low-level ``**urlopen_kw`` keyword arguments.
+
+    :param method:
+        HTTP request method (such as GET, POST, PUT, etc.)
     """
 
     return _DEFAULT_POOL.request(

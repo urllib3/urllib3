@@ -85,6 +85,9 @@ class RequestMethods:
         option to drop down to more specific methods when necessary, such as
         :meth:`request_encode_url`, :meth:`request_encode_body`,
         or even the lowest level :meth:`urlopen`.
+
+        :param method:
+            HTTP request method (such as GET, POST, PUT, etc.)
         """
         method = method.upper()
 
@@ -130,6 +133,9 @@ class RequestMethods:
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the url. This is useful for request methods like GET, HEAD, DELETE, etc.
+
+        :param method:
+            HTTP request method (such as GET, POST, PUT, etc.)
         """
         if headers is None:
             headers = self.headers
@@ -186,6 +192,9 @@ class RequestMethods:
         be overwritten because it depends on the dynamic random boundary string
         which is used to compose the body of the request. The random boundary
         string can be explicitly set with the ``multipart_boundary`` parameter.
+
+        :param method:
+            HTTP request method (such as GET, POST, PUT, etc.)
         """
         if headers is None:
             headers = self.headers
