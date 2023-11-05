@@ -76,6 +76,7 @@ python_classes = ["Test", "*TestCase"]
 markers = [
     "limit_memory: Limit memory with memray",
     "requires_network: This test needs access to the Internet",
+    "integration: Slow integrations tests not run by default",
 ]
 log_level = "DEBUG"
 filterwarnings = [

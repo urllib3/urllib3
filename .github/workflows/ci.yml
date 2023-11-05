@@ -43,6 +43,10 @@ jobs:
         nox-session: ['']
         include:
           - experimental: false
+          - python-version: "3.12"
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test_integration
           - python-version: "pypy-3.8"
             os: ubuntu-latest
             experimental: false

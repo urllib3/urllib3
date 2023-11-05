@@ -20,6 +20,32 @@ from urllib3.util import ssl_
 from .tz_stub import stub_timezone_ctx
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--integration",
+        action="store_true",
+        default=False,
+        help="run integration tests only",
+    )
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    integration_mode = bool(config.getoption("--integration"))
+    skip_integration = pytest.mark.skip(
+        reason="skipping, need --integration option to run"
+    )
+    skip_normal = pytest.mark.skip(
+        reason="skipping non integration tests in --integration mode"
+    )
+    for item in items:
+        if "integration" in item.keywords and not integration_mode:
+            item.add_marker(skip_integration)
+        elif integration_mode and "integration" not in item.keywords:
+            item.add_marker(skip_normal)
+
+
 class ServerConfig(typing.NamedTuple):
     scheme: str
     host: str
