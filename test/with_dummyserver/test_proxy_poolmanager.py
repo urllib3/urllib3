@@ -9,7 +9,7 @@ import shutil
 import socket
 import ssl
 import tempfile
-from test import LONG_TIMEOUT, SHORT_TIMEOUT, withPyOpenSSL
+from test import LONG_TIMEOUT, SHORT_TIMEOUT, resolvesLocalhostFQDN, withPyOpenSSL
 from test.conftest import ServerConfig
 
 import pytest
@@ -47,6 +47,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         cls.http_url_alt = f"http://{cls.http_host_alt}:{int(cls.http_port)}"
         cls.https_url = f"https://{cls.https_host}:{int(cls.https_port)}"
         cls.https_url_alt = f"https://{cls.https_host_alt}:{int(cls.https_port)}"
+        cls.https_url_fqdn = f"https://{cls.https_host}.:{int(cls.https_port)}"
         cls.proxy_url = f"http://{cls.proxy_host}:{int(cls.proxy_port)}"
         cls.https_proxy_url = f"https://{cls.proxy_host}:{int(cls.https_proxy_port)}"
 
@@ -172,6 +173,12 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert r.status == 200
 
             r = http.request("GET", f"{self.https_url}/")
+            assert r.status == 200
+
+    @resolvesLocalhostFQDN()
+    def test_proxy_https_fqdn(self) -> None:
+        with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
+            r = http.request("GET", f"{self.https_url_fqdn}/")
             assert r.status == 200
 
     def test_proxy_verified(self) -> None:
