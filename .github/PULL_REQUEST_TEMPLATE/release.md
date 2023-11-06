@@ -1,4 +1,4 @@
-* [ ]  See if all tests, including integration, pass
+* [ ]  See if all tests, including downstream, pass
 * [ ]  Get the release pull request approved by a [CODEOWNER](https://github.com/urllib3/urllib3/blob/main/.github/CODEOWNERS)
 * [ ]  Squash merge the release pull request with message "`Release <VERSION>`"
 * [ ]  Tag with X.Y.Z, push tag on urllib3/urllib3 (not on your fork, update `<REMOTE>` accordingly)
