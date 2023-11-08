@@ -1,6 +1,16 @@
 2.1.0 (2023-11-08)
 ==================
 
+Read the `v2 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`__ for help upgrading to the latest version of urllib3.
+
+Removals
+--------
+
+- Removed support for the deprecated urllib3[secure] extra. (`#2680 <https://github.com/urllib3/urllib3/issues/2680>`__)
+- Removed support for the deprecated SecureTransport TLS implementation. (`#2681 <https://github.com/urllib3/urllib3/issues/2681>`__)
+- Removed support for the end-of-life Python 3.7. (`#3143 <https://github.com/urllib3/urllib3/issues/3143>`__)
+
+
 Bugfixes
 --------
 
@@ -8,14 +18,6 @@ Bugfixes
   requests. Previously, attempting to pass ca_cert_data in a proxy context would result in an error.
   This issue has been resolved, and users can now pass ca_cert_data when making SSL requests through a proxy context. (`#3065 <https://github.com/urllib3/urllib3/issues/3065>`__)
 - Fixed decoding Gzip-encoded responses which specified ``x-gzip`` content-encoding. (`#3174 <https://github.com/urllib3/urllib3/issues/3174>`__)
-
-
-Deprecations and Removals
--------------------------
-
-- Removed support for the urllib3[secure] extra. (`#2680 <https://github.com/urllib3/urllib3/issues/2680>`__)
-- Removed support for the SecureTransport TLS implementation. (`#2681 <https://github.com/urllib3/urllib3/issues/2681>`__)
-- Removed support for Python 3.7. (`#3143 <https://github.com/urllib3/urllib3/issues/3143>`__)
 
 
 2.0.7 (2023-10-17)
