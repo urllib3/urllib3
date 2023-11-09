@@ -1,4 +1,4 @@
-2.1.0 (2023-11-08)
+2.1.0 (2023-11-13)
 ==================
 
 Read the `v2 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`__ for help upgrading to the latest version of urllib3.
