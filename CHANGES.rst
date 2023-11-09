@@ -14,7 +14,7 @@ Removals
 Bugfixes
 --------
 
-- Allowed loading CA certificates from memory for proxies. (`#3065 https://github.com/urllib3/urllib3/issues/3065>`__)
+- Allowed loading CA certificates from memory for proxies. (`#3065 <https://github.com/urllib3/urllib3/issues/3065>`__)
 - Fixed decoding Gzip-encoded responses which specified ``x-gzip`` content-encoding. (`#3174 <https://github.com/urllib3/urllib3/issues/3174>`__)
 
 
