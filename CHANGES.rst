@@ -14,9 +14,7 @@ Removals
 Bugfixes
 --------
 
-- Fixed an issue where it was not possible to pass the ca_cert_data keyword argument in a proxy context when making SSL
-  requests. Previously, attempting to pass ca_cert_data in a proxy context would result in an error.
-  This issue has been resolved, and users can now pass ca_cert_data when making SSL requests through a proxy context. (`#3065 <https://github.com/urllib3/urllib3/issues/3065>`__)
+- Allowed loading CA certificates from memory for proxies. (`#3065 https://github.com/urllib3/urllib3/issues/3065>`__)
 - Fixed decoding Gzip-encoded responses which specified ``x-gzip`` content-encoding. (`#3174 <https://github.com/urllib3/urllib3/issues/3174>`__)
 
 
