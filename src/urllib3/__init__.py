@@ -147,3 +147,7 @@ def request(
         timeout=timeout,
         json=json,
     )
+
+import sys
+if sys.platform == "emscripten":
+    from .contrib.emscripten import *
