@@ -1260,7 +1260,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
             errored.set()  # Avoid a ConnectionAbortedError on Windows.
 
-            assert type(e.value.reason) == ProxyError
+            assert type(e.value.reason) is ProxyError
             assert "Your proxy appears to only use HTTP and not HTTPS" in str(
                 e.value.reason
             )
@@ -1389,7 +1389,7 @@ class TestSSL(SocketDummyServerTestCase):
 
         with pytest.raises(MaxRetryError) as cm:
             request()
-        assert isinstance(cm.value.reason, SSLError)
+        assert type(cm.value.reason) is SSLError
         # Should not hang, see https://github.com/urllib3/urllib3/issues/529
         with pytest.raises(MaxRetryError):
             request()
@@ -1883,7 +1883,7 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
             for record in logs:
                 if (
                     "Failed to parse headers" in record.msg
-                    and isinstance(record.args, tuple)
+                    and type(record.args) is tuple
                     and _url_from_pool(pool, "/") == record.args[0]
                 ):
                     if (
