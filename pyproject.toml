@@ -15,6 +15,7 @@ authors = [
 maintainers = [
   {name = "Seth Michael Larson", email="sethmichaellarson@gmail.com"},
   {name = "Quentin Pradet", email="quentin@pradet.me"},
+  {name = "Illia Volochii", email = "illia.volochii@gmail.com"},
 ]
 classifiers = [
   "Environment :: Web Environment",
