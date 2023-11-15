@@ -7,8 +7,8 @@ from unittest import mock
 
 import pytest
 
-from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
+from dummyserver.tornadoserver import HAS_IPV6
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown

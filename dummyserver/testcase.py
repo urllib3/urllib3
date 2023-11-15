@@ -12,12 +12,12 @@ from tornado import httpserver, ioloop, web
 
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
-from dummyserver.server import (
+from dummyserver.tornadoserver import (
     DEFAULT_CERTS,
     HAS_IPV6,
     SocketServerThread,
-    run_loop_in_thread,
     run_tornado_app,
+    run_tornado_loop_in_thread,
 )
 from urllib3.connection import HTTPConnection
 from urllib3.util.ssltransport import SSLTransport
@@ -172,7 +172,7 @@ class HTTPDummyServerTestCase:
     @classmethod
     def _start_server(cls) -> None:
         with contextlib.ExitStack() as stack:
-            io_loop = stack.enter_context(run_loop_in_thread())
+            io_loop = stack.enter_context(run_tornado_loop_in_thread())
 
             async def run_app() -> None:
                 app = web.Application([(r".*", TestingApp)])
@@ -240,7 +240,7 @@ class HTTPDummyProxyTestCase:
     @classmethod
     def setup_class(cls) -> None:
         with contextlib.ExitStack() as stack:
-            io_loop = stack.enter_context(run_loop_in_thread())
+            io_loop = stack.enter_context(run_tornado_loop_in_thread())
 
             async def run_app() -> None:
                 app = web.Application([(r".*", TestingApp)])
