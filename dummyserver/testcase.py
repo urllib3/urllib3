@@ -297,7 +297,7 @@ class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 
 class HypercornDummyServerTestCase:
     host = "localhost"
-    port: typing.ClassVar[str]
+    port: typing.ClassVar[int]
     base_url: typing.ClassVar[str]
 
     _stack: typing.ClassVar[contextlib.ExitStack]
@@ -309,7 +309,7 @@ class HypercornDummyServerTestCase:
             config.bind = [f"{cls.host}:0"]
             stack.enter_context(run_hypercorn_in_thread(config, hypercorn_app))
             cls._stack = stack.pop_all()
-            cls.port = parse_url(config.bind[0]).port
+            cls.port = typing.cast(int, parse_url(config.bind[0]).port)
 
     @classmethod
     def teardown_class(cls) -> None:
