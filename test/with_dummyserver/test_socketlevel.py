@@ -11,7 +11,6 @@ import select
 import shutil
 import socket
 import ssl
-import sys
 import tempfile
 import time
 import typing
@@ -1584,10 +1583,7 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=False, timeout=LONG_TIMEOUT)
         assert server_closed.wait(LONG_TIMEOUT), "The socket was not terminated"
 
-    @pytest.mark.skipif(
-        os.environ.get("CI") == "true" and sys.implementation.name == "pypy",
-        reason="too slow to run in CI",
-    )
+    @pytest.mark.integration
     @pytest.mark.parametrize(
         "preload_content,read_amt", [(True, None), (False, None), (False, 2**31)]
     )

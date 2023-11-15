@@ -11,6 +11,7 @@ def tests_impl(
     session: nox.Session,
     extras: str = "socks,brotli,zstd",
     byte_string_comparisons: bool = True,
+    integration: bool = False,
 ) -> None:
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
@@ -44,6 +45,7 @@ def tests_impl(
         *("--memray", "--hide-memray-summary") if memray_supported else (),
         "-v",
         "-ra",
+        *(("--integration",) if integration else ()),
         f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
         "--tb=native",
         "--durations=10",
@@ -59,7 +61,13 @@ def test(session: nox.Session) -> None:
     tests_impl(session)
 
 
-@nox.session(python=["3"])
+@nox.session(python="3")
+def test_integration(session: nox.Session) -> None:
+    """Run integration tests"""
+    tests_impl(session, integration=True)
+
+
+@nox.session(python="3")
 def test_brotlipy(session: nox.Session) -> None:
     """Check that if 'brotlipy' is installed instead of 'brotli' or
     'brotlicffi' that we still don't blow up.
