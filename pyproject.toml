@@ -15,6 +15,7 @@ authors = [
 maintainers = [
   {name = "Seth Michael Larson", email="sethmichaellarson@gmail.com"},
   {name = "Quentin Pradet", email="quentin@pradet.me"},
+  {name = "Illia Volochii", email = "illia.volochii@gmail.com"},
 ]
 classifiers = [
   "Environment :: Web Environment",
@@ -81,7 +82,7 @@ markers = [
 log_level = "DEBUG"
 filterwarnings = [
     "error",
-    '''default:urllib3 v2.0 only supports OpenSSL 1.1.1+.*''',
+    '''default:urllib3 v2 only supports OpenSSL 1.1.1+.*''',
     '''default:No IPv6 support. Falling back to IPv4:urllib3.exceptions.HTTPWarning''',
     '''default:No IPv6 support. skipping:urllib3.exceptions.HTTPWarning''',
     '''default:ssl\.TLSVersion\.TLSv1 is deprecated:DeprecationWarning''',
