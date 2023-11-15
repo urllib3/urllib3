@@ -13,7 +13,7 @@ from tornado import web
 
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
-from dummyserver.server import HAS_IPV6, run_loop_in_thread, run_tornado_app
+from dummyserver.server import HAS_IPV6, run_tornado_app, run_tornado_loop_in_thread
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from urllib3.util import ssl_
 
@@ -79,7 +79,7 @@ def run_server_in_thread(
     ca.cert_pem.write_to_path(ca_cert_path)
     server_certs = _write_cert_to_dir(server_cert, tmpdir)
 
-    with run_loop_in_thread() as io_loop:
+    with run_tornado_loop_in_thread() as io_loop:
 
         async def run_app() -> int:
             app = web.Application([(r".*", TestingApp)])
@@ -107,7 +107,7 @@ def run_server_and_proxy_in_thread(
     server_certs = _write_cert_to_dir(server_cert, tmpdir)
     proxy_certs = _write_cert_to_dir(proxy_cert, tmpdir, "proxy")
 
-    with run_loop_in_thread() as io_loop:
+    with run_tornado_loop_in_thread() as io_loop:
 
         async def run_app() -> tuple[ServerConfig, ServerConfig]:
             app = web.Application([(r".*", TestingApp)])

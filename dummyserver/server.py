@@ -262,7 +262,7 @@ def _run_and_close_tornado(
 
 
 @contextlib.contextmanager
-def run_loop_in_thread() -> Generator[tornado.ioloop.IOLoop, None, None]:
+def run_tornado_loop_in_thread() -> Generator[tornado.ioloop.IOLoop, None, None]:
     loop_started: concurrent.futures.Future[
         tuple[tornado.ioloop.IOLoop, asyncio.Event]
     ] = concurrent.futures.Future()
