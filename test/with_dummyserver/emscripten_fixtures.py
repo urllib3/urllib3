@@ -46,23 +46,25 @@ class _FromServerRunner:
             """
             let worker = new Worker('{}');
             let p = new Promise((res, rej) => {{
-                worker.onerror = e => res(e);
+                worker.onmessageerror = e => rej(e);
+                worker.onerror = e => rej(e);
                 worker.onmessage = e => {{
                     if (e.data.results) {{
                        res(e.data.results);
                     }} else {{
-                       res(e.data.error);
+                       rej(e.data.error);
                     }}
                 }};
                 worker.postMessage({{ python: {!r} }});
             }});
-            return await p
+            return await p;
             """.format(
                 f"https://{self.host}:{self.port}/pyodide/webworker_dev.js",
                 code,
             ),
             pyodide_checks=False,
         )
+
 
 # run pyodide on our test server instead of on the default
 # pytest-pyodide one - this makes it so that
@@ -71,8 +73,8 @@ class _FromServerRunner:
 def run_from_server(selenium, testserver_http):
     addr = f"https://{testserver_http.http_host}:{testserver_http.https_port}/pyodide/test.html"
     selenium.goto(addr)
-#    import time
-#    time.sleep(100)
+    #    import time
+    #    time.sleep(100)
     selenium.javascript_setup()
     selenium.load_pyodide()
     selenium.initialize_pyodide()
@@ -99,9 +101,12 @@ class PyodideTestingApp(TestingApp):
         self.set_header("Cross-Origin-Embedder-Policy", "require-corp")
         self.add_header("Feature-Policy", "sync-xhr *;")
 
-    def bigfile(self,req):
+    def bigfile(self, req):
         print("Bigfile requested")
-        return Response(b"WOOO YAY BOOYAKAH")
+        # great big text file, should force streaming
+        # if supported
+        bigdata = 1048576 * b"WOOO YAY BOOYAKAH"
+        return Response(bigdata)
 
     def pyodide(self, req):
         path = req.path[:]
@@ -111,15 +116,30 @@ class PyodideTestingApp(TestingApp):
         file_path = Path(PyodideTestingApp.pyodide_dist_dir, *path[2:])
         if file_path.exists():
             mime_type, encoding = mimetypes.guess_type(file_path)
-            print(file_path,mime_type)
+            print(file_path, mime_type)
             if not mime_type:
                 mime_type = "text/plain"
-            self.set_header("Content-Type",mime_type)
+            self.set_header("Content-Type", mime_type)
             return Response(
-                body=file_path.read_bytes(), headers=[("Access-Control-Allow-Origin", "*")]
+                body=file_path.read_bytes(),
+                headers=[("Access-Control-Allow-Origin", "*")],
             )
         else:
             return Response(status=404)
+
+    def worker_template(self, req):
+        return Response(
+            """
+                        <html>
+                        <head>
+                        <script type="text/javascript">
+                            window.pyworker=new Worker("/pyodide/webworker_dev.js");
+                        </script>
+                        </head>
+                        <body>worker loader</body></html>""",
+            headers=[("Content-type", "text/html")],
+        )
+        return
 
     def wheel(self, req):
         # serve our wheel

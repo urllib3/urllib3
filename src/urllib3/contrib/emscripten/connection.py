@@ -76,7 +76,9 @@ class EmscriptenHTTPConnection(HTTPConnection):
         if headers:
             for k, v in headers.items():
                 request.set_header(k, v)
-        self._response = send_streaming_request(request)
+        self._response = None
+        if not preload_content:
+            self._response = send_streaming_request(request)
         if self._response == None:
             self._response = send_request(request)
 

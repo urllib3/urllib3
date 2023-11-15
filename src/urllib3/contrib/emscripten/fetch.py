@@ -21,6 +21,7 @@ import io
 import json
 import js
 from pyodide.ffi import to_js
+from pyodide.code import run_js
 from .request import EmscriptenRequest
 from .response import EmscriptenResponse
 
@@ -37,6 +38,23 @@ SUCCESS_EOF = -2
 ERROR_TIMEOUT = -3
 ERROR_EXCEPTION = -4
 
+
+class _RequestError(Exception):
+    def __init__(self, message=None, *, request=None, response=None):
+        self.request = request
+        self.response = response
+        self.message = message
+        super().__init__(self.message)
+
+
+class _StreamingError(_RequestError):
+    pass
+
+
+class _StreamingTimeout(_StreamingError):
+    pass
+
+
 _STREAMING_WORKER_CODE = """
 let SUCCESS_HEADER = -1
 let SUCCESS_EOF = -2
@@ -45,6 +63,7 @@ let ERROR_EXCEPTION = -4
 
 let connections = {};
 let nextConnectionID = 1;
+
 self.addEventListener("message", async function (event) {
     if(event.data.close)
     {
@@ -91,6 +110,7 @@ self.addEventListener("message", async function (event) {
             curLen = byteBuffer.length;
         }
         byteBuffer.set(value.subarray(curOffset, curOffset + curLen), 0)
+
         Atomics.store(intBuffer, 0, curLen);// store current length in bytes
         Atomics.notify(intBuffer, 0);
         curOffset+=curLen;
@@ -136,6 +156,7 @@ self.addEventListener("message", async function (event) {
         }
     }
 });
+self.postMessage({inited:true})
 """
 
 
@@ -152,15 +173,16 @@ class _ReadStream(io.RawIOBase):
         self.connection_id = connection_id
         self.worker = worker
         self.timeout = int(1000 * timeout) if timeout > 0 else None
-        self.closed = False
+        self.is_live = True
 
     def __del__(self):
         self.close()
 
     def close(self):
-        if not self.closed:
+        if self.is_live:
             self.worker.postMessage(_obj_from_dict({"close": self.connection_id}))
-            self.closed = True
+            self.is_live = False
+        super().close()
 
     def readable(self) -> bool:
         return True
@@ -179,16 +201,12 @@ class _ReadStream(io.RawIOBase):
             js.Atomics.store(self.int_buffer, 0, 0)
             self.worker.postMessage(_obj_from_dict({"getMore": self.connection_id}))
             if js.Atomics.wait(self.int_buffer, 0, 0, self.timeout) == "timed-out":
-                from ._core import _StreamingTimeout
-
                 raise _StreamingTimeout
             data_len = self.int_buffer[0]
             if data_len > 0:
                 self.read_len = data_len
                 self.read_pos = 0
             elif data_len == ERROR_EXCEPTION:
-                from ._core import _StreamingError
-
                 raise _StreamingError
             else:
                 # EOF, free the buffers and return zero
@@ -199,9 +217,10 @@ class _ReadStream(io.RawIOBase):
                 return 0
         # copy from int32array to python bytes
         ret_length = min(self.read_len, len(byte_obj))
-        self.byte_buffer.subarray(self.read_pos, self.read_pos + ret_length).assign_to(
-            byte_obj[0:ret_length]
-        )
+        subarray = self.byte_buffer.subarray(
+            self.read_pos, self.read_pos + ret_length
+        ).to_py()
+        byte_obj[0:ret_length] = subarray
         self.read_len -= ret_length
         self.read_pos += ret_length
         return ret_length
@@ -210,13 +229,26 @@ class _ReadStream(io.RawIOBase):
 class _StreamingFetcher:
     def __init__(self):
         # make web-worker and data buffer on startup
-        dataBlob = js.globalThis.Blob.new(
+        self.streaming_ready = False
+
+        dataBlob = js.Blob.new(
             [_STREAMING_WORKER_CODE], _obj_from_dict({"type": "application/javascript"})
         )
-        print("Make worker")
+
+        def promise_resolver(res, rej):
+            def onMsg(e):
+                self.streaming_ready = True
+                res(e)
+
+            def onErr(e):
+                rej(e)
+
+            self._worker.onmessage = onMsg
+            self._worker.onerror = onErr
+
         dataURL = js.URL.createObjectURL(dataBlob)
-        self._worker = js.Worker.new(dataURL)
-        print("Initialized worker")
+        self._worker = js.globalThis.Worker.new(dataURL)
+        self._worker_ready_promise = js.globalThis.Promise.new(promise_resolver)
 
     def send(self, request):
         headers = {
@@ -234,15 +266,15 @@ class _StreamingFetcher:
         js.Atomics.store(int_buffer, 0, 0)
         js.Atomics.notify(int_buffer, 0)
         absolute_url = js.URL.new(request.url, js.location).href
-        js.console.log(
-            _obj_from_dict(
-                {
-                    "buffer": shared_buffer,
-                    "url": absolute_url,
-                    "fetchParams": fetch_data,
-                }
-            )
-        )
+        #        js.console.log(
+        #            _obj_from_dict(
+        #                {
+        #                    "buffer": shared_buffer,
+        #                    "url": absolute_url,
+        #                    "fetchParams": fetch_data,
+        #                }
+        #            )
+        #        )
         self._worker.postMessage(
             _obj_from_dict(
                 {
@@ -255,8 +287,6 @@ class _StreamingFetcher:
         # wait for the worker to send something
         js.Atomics.wait(int_buffer, 0, 0, timeout)
         if int_buffer[0] == 0:
-            from ._core import _StreamingTimeout
-
             raise _StreamingTimeout(
                 "Timeout connecting to streaming request",
                 request=request,
@@ -292,8 +322,6 @@ class _StreamingFetcher:
             # decode the error string
             decoder = js.TextDecoder.new()
             json_str = decoder.decode(byte_buffer.slice(0, string_len))
-            from ._core import _StreamingError
-
             raise _StreamingError(
                 f"Exception thrown in fetch: {json_str}", request=request, response=None
             )
@@ -303,8 +331,8 @@ class _StreamingFetcher:
 def is_in_browser_main_thread() -> bool:
     return hasattr(js, "window") and hasattr(js, "self") and js.self == js.window
 
+
 def is_cross_origin_isolated():
-    print("COI:",js.crossOriginIsolated)
     return hasattr(js, "crossOriginIsolated") and js.crossOriginIsolated
 
 
@@ -316,16 +344,21 @@ def is_in_node():
         and js.process.release.name == "node"
     )
 
-def is_worker_available():
-    return hasattr(js,"Worker") and hasattr(js,"Blob")
 
-if (is_worker_available() and ((is_cross_origin_isolated() and not is_in_browser_main_thread()) or is_in_node())):    
+def is_worker_available():
+    return hasattr(js, "Worker") and hasattr(js, "Blob")
+
+
+if is_worker_available() and (
+    (is_cross_origin_isolated() and not is_in_browser_main_thread()) or is_in_node()
+):
     _fetcher = _StreamingFetcher()
 else:
     _fetcher = None
 
+
 def send_streaming_request(request: EmscriptenRequest) -> EmscriptenResponse:
-    if _fetcher:
+    if _fetcher and streaming_ready():
         return _fetcher.send(request)
     else:
         _show_streaming_warning()
@@ -346,12 +379,16 @@ def _show_streaming_warning():
             message += "  Python is running in main browser thread\n"
         if not is_worker_available():
             message += " Worker or Blob classes are not available in this environment."
+        if streaming_ready() == False:
+            message += """ Streaming fetch worker isn't ready. If you want to be sure that streamig fetch
+is working, you need to call: 'await urllib3.contrib.emscripten.fetc.wait_for_streaming_ready()`"""
         from js import console
 
         console.warn(message)
+        print(message)
 
 
-def send_request(request:EmscriptenRequest)->EmscriptenResponse:
+def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
     xhr = js.XMLHttpRequest.new()
     xhr.timeout = int(request.timeout * 1000)
 
@@ -374,3 +411,18 @@ def send_request(request:EmscriptenRequest)->EmscriptenResponse:
     else:
         body = xhr.response.encode("ISO-8859-15")
     return EmscriptenResponse(status_code=xhr.status, headers=headers, body=body)
+
+
+def streaming_ready():
+    if _fetcher:
+        return _fetcher.streaming_ready
+    else:
+        return None  # no fetcher, return None to signify that
+
+
+async def wait_for_streaming_ready():
+    if _fetcher:
+        await _fetcher._worker_ready_promise
+        return True
+    else:
+        return False

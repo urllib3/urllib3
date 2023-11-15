@@ -1,12 +1,13 @@
-from dataclasses import dataclass,field
+from dataclasses import dataclass, field
 from typing import Dict
+
 
 @dataclass
 class EmscriptenRequest:
     method: str
     url: str
-    params: dict[str, str]|None = None
-    body: bytes|None = None
+    params: dict[str, str] | None = None
+    body: bytes | None = None
     headers: dict[str, str] = field(default_factory=dict)
     timeout: int = 0
 
@@ -19,5 +20,3 @@ class EmscriptenRequest:
     def set_json(self, body: dict):
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.set_body(json.dumps(body).encode("utf-8"))
-
-

@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from io import IOBase,BytesIO
+from io import IOBase, BytesIO
 from itertools import takewhile
 import typing
 
 from ...connection import HTTPConnection
 from ...response import HTTPResponse
 from ...util.retry import Retry
+
 
 @dataclass
 class EmscriptenResponse:
@@ -15,7 +16,9 @@ class EmscriptenResponse:
 
 
 class EmscriptenHttpResponseWrapper(HTTPResponse):
-    def __init__(self, internal_response: EmscriptenResponse, url: str = None, connection=None):
+    def __init__(
+        self, internal_response: EmscriptenResponse, url: str = None, connection=None
+    ):
         self._response = internal_response
         self._url = url
         self._connection = connection
@@ -25,7 +28,7 @@ class EmscriptenHttpResponseWrapper(HTTPResponse):
             request_url=url,
             version=0,
             reason="",
-            decode_content=True
+            decode_content=True,
         )
 
     @property
@@ -57,9 +60,9 @@ class EmscriptenHttpResponseWrapper(HTTPResponse):
         decode_content: bool | None = None,
         cache_content: bool = False,
     ) -> bytes:
-        if not isinstance(self._response.body,IOBase):
+        if not isinstance(self._response.body, IOBase):
             # wrap body in IOStream
-            self._response.body=BytesIO(self._response.body)
+            self._response.body = BytesIO(self._response.body)
         return self._response.body.read(amt)
 
     def read_chunked(
@@ -67,7 +70,7 @@ class EmscriptenHttpResponseWrapper(HTTPResponse):
         amt: int | None = None,
         decode_content: bool | None = None,
     ) -> typing.Iterator[bytes]:
-        return self.read(amt,decode_content)
+        return self.read(amt, decode_content)
 
     def release_conn(self) -> None:
         if not self._pool or not self._connection:
@@ -80,6 +83,5 @@ class EmscriptenHttpResponseWrapper(HTTPResponse):
         self.close()
 
     def close(self) -> None:
-        if isinstance(self._response.body,IOBase):
+        if isinstance(self._response.body, IOBase):
             self._response.body.close()
-
