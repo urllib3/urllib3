@@ -2,7 +2,7 @@ import pytest
 # only run these tests if pytest_pyodide is installed
 # so we don't break non-emscripten pytest running
 pytest_pyodide=pytest.importorskip("pytest_pyodide")
-# hack to make our ssl certificates work in chrome
+# make our ssl certificates work in chrome
 pytest_pyodide.runner.CHROME_FLAGS.append("ignore-certificate-errors")
 
 from pytest_pyodide import run_in_pyodide
@@ -210,7 +210,7 @@ data
 def test_streaming_notready_warning(selenium, testserver_http,run_from_server):
     # test streaming download but don't wait for 
     # worker to be ready - should fallback to non-streaming
-    # and log a warning
+    # and log a warning   
     bigfile_url=url = f"http://{testserver_http.http_host}:{testserver_http.http_port}/bigfile"
     worker_code = f"""import micropip
 await micropip.install('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/urllib3-2.0.7-py3-none-any.whl',deps=False)
