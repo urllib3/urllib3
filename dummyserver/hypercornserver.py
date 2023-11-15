@@ -28,7 +28,7 @@ async def _start_server(
     shutdown_event: threading.Event,
 ) -> None:
     async with trio.open_nursery() as nursery:
-        await nursery.start(
+        config.bind = await nursery.start(
             functools.partial(
                 hypercorn.trio.serve,
                 app,
@@ -70,7 +70,7 @@ def main() -> int:
     from .handlers import hypercorn_app
 
     config = hypercorn.Config()
-    config.bind = ["localhost:8080"]
+    config.bind = ["localhost:0"]
     ready_event = threading.Event()
     shutdown_event = threading.Event()
     trio.run(_start_server, config, hypercorn_app, ready_event, shutdown_event)

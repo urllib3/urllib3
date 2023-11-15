@@ -23,6 +23,7 @@ from dummyserver.tornadoserver import (
 )
 from urllib3.connection import HTTPConnection
 from urllib3.util.ssltransport import SSLTransport
+from urllib3.util.url import parse_url
 
 
 def consume_socket(
@@ -295,19 +296,20 @@ class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 
 
 class HypercornDummyServerTestCase:
-    host: str = "localhost"
-    port: str = "8080"
+    host = "localhost"
+    port: typing.ClassVar[str]
     base_url: typing.ClassVar[str]
 
-    _stack: contextlib.ExitStack
+    _stack: typing.ClassVar[contextlib.ExitStack]
 
     @classmethod
     def setup_class(cls) -> None:
         with contextlib.ExitStack() as stack:
             config = hypercorn.Config()
-            config.bind = [f"{cls.host}:{cls.port}"]
+            config.bind = [f"{cls.host}:0"]
             stack.enter_context(run_hypercorn_in_thread(config, hypercorn_app))
             cls._stack = stack.pop_all()
+            cls.port = parse_url(config.bind[0]).port
 
     @classmethod
     def teardown_class(cls) -> None:
