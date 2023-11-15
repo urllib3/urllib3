@@ -43,10 +43,22 @@ jobs:
         nox-session: ['']
         include:
           - experimental: false
+          # integration
+          # 3.8 and 3.9 have a known issue with large SSL requests that we work around:
+          # https://github.com/urllib3/urllib3/pull/3181#issuecomment-1794830698
+          - python-version: "3.8"
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test_integration
+          - python-version: "3.9"
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test_integration
           - python-version: "3.12"
             os: ubuntu-latest
             experimental: false
             nox-session: test_integration
+          # pypy
           - python-version: "pypy-3.8"
             os: ubuntu-latest
             experimental: false
@@ -60,6 +72,7 @@ jobs:
             experimental: false
             nox-session: test-pypy
           - python-version: "3.x"
+          # brotli
             os: ubuntu-latest
             experimental: false
             nox-session: test_brotlipy
