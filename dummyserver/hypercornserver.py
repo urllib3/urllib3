@@ -5,6 +5,7 @@ import contextlib
 import functools
 import sys
 import threading
+from typing import Generator
 
 import hypercorn
 import hypercorn.trio
@@ -39,7 +40,9 @@ async def _start_server(
 
 
 @contextlib.contextmanager
-def run_hypercorn_in_thread(config: hypercorn.Config, app):
+def run_hypercorn_in_thread(
+    config: hypercorn.Config, app: QuartTrio
+) -> Generator[None, None, None]:
     ready_event = threading.Event()
     shutdown_event = threading.Event()
 
@@ -48,7 +51,7 @@ def run_hypercorn_in_thread(config: hypercorn.Config, app):
     ) as executor:
         future = executor.submit(
             trio.run,
-            _start_server,
+            _start_server,  # type: ignore[arg-type]
             config,
             app,
             ready_event,
@@ -71,6 +74,7 @@ def main() -> int:
     ready_event = threading.Event()
     shutdown_event = threading.Event()
     trio.run(_start_server, config, hypercorn_app, ready_event, shutdown_event)
+    return 0
 
 
 if __name__ == "__main__":

@@ -297,6 +297,9 @@ class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 class HypercornDummyServerTestCase:
     host: str = "localhost"
     port: str = "8080"
+    base_url: typing.ClassVar[str]
+
+    _stack: contextlib.ExitStack
 
     @classmethod
     def setup_class(cls) -> None:

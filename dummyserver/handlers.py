@@ -369,5 +369,5 @@ hypercorn_app = QuartTrio(__name__)
 
 
 @hypercorn_app.route("/")
-async def hello():
+async def hello() -> str:
     return "Dummy Hypercorn server!"
