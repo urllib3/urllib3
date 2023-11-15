@@ -13,8 +13,12 @@ from tornado import web
 
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
-from dummyserver.server import HAS_IPV6, run_tornado_app, run_tornado_loop_in_thread
 from dummyserver.testcase import HTTPSDummyServerTestCase
+from dummyserver.tornadoserver import (
+    HAS_IPV6,
+    run_tornado_app,
+    run_tornado_loop_in_thread,
+)
 from urllib3.util import ssl_
 
 from .tz_stub import stub_timezone_ctx

@@ -296,7 +296,7 @@ def run_tornado_loop_in_thread() -> Generator[tornado.ioloop.IOLoop, None, None]
 
 
 def main() -> int:
-    # For debugging dummyserver itself - python -m dummyserver.server
+    # For debugging dummyserver itself - PYTHONPATH=src python -m dummyserver.tornadoserver
     from .handlers import TestingApp
 
     host = "127.0.0.1"

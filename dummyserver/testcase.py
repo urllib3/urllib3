@@ -12,7 +12,7 @@ from tornado import httpserver, ioloop, web
 
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
-from dummyserver.server import (
+from dummyserver.tornadoserver import (
     DEFAULT_CERTS,
     HAS_IPV6,
     SocketServerThread,
