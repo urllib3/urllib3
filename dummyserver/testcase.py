@@ -7,10 +7,12 @@ import ssl
 import threading
 import typing
 
+import hypercorn
 import pytest
 from tornado import httpserver, ioloop, web
 
-from dummyserver.handlers import TestingApp
+from dummyserver.handlers import TestingApp, hypercorn_app
+from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.proxy import ProxyHandler
 from dummyserver.tornadoserver import (
     DEFAULT_CERTS,
@@ -290,6 +292,23 @@ class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 
     proxy_host = "::1"
     proxy_host_alt = "127.0.0.1"
+
+
+class HypercornDummyServerTestCase:
+    host: str = "localhost"
+    port: str = "8080"
+
+    @classmethod
+    def setup_class(cls) -> None:
+        with contextlib.ExitStack() as stack:
+            config = hypercorn.Config()
+            config.bind = [f"{cls.host}:{cls.port}"]
+            stack.enter_context(run_hypercorn_in_thread(config, hypercorn_app))
+            cls._stack = stack.pop_all()
+
+    @classmethod
+    def teardown_class(cls) -> None:
+        cls._stack.close()
 
 
 class ConnectionMarker:
