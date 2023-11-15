@@ -58,6 +58,8 @@ def run_hypercorn_in_thread(
             shutdown_event,
         )
         ready_event.wait(5)
+        if not ready_event.is_set():
+            raise Exception("most likely failed to start server")
 
         yield
 
