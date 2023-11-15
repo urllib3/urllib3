@@ -48,6 +48,10 @@ zstd = [
 socks = [
   "PySocks>=1.5.6,<2.0,!=1.5.7",
 ]
+emscripten_test = [
+  "pytest-pyodide>=0.54.0",
+  "pyodide-build>=0.24.0"
+]
 
 [project.urls]
 "Changelog" = "https://github.com/urllib3/urllib3/blob/main/CHANGES.rst"
