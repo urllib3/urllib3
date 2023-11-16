@@ -53,6 +53,7 @@ def tests_impl(
         "--strict-markers",
         *(session.posargs or ("test/",)),
         *pytest_extra_args,
+        *pytest_extra_args,
         env={"PYTHONWARNINGS": "always::DeprecationWarning"},
     )
 
