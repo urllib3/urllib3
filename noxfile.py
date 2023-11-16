@@ -4,6 +4,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
+
 import nox
 
 
@@ -11,7 +12,7 @@ def tests_impl(
     session: nox.Session,
     extras: str = "socks,brotli,zstd",
     byte_string_comparisons: bool = True,
-    pytest_extra_args: list[str] = []
+    pytest_extra_args: list[str] = [],
 ) -> None:
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
@@ -157,22 +158,46 @@ def emscripten(session: nox.Session) -> None:
         # use the dist directory from that
         dist_dir = Path(os.environ["PYODIDE_ROOT"])
     else:
-
         # we don't have a build tree, get one
         # that matches the version of pyodide build
-        import pyodide_build
-        pyodide_version=pyodide_build.__version__
-        pyodide_artifacts_path = (Path(session.cache_dir) / f"pyodide-{pyodide_version}")
+        import pyodide_build  # type: ignore[import]
+
+        pyodide_version = pyodide_build.__version__
+        pyodide_artifacts_path = Path(session.cache_dir) / f"pyodide-{pyodide_version}"
         if not pyodide_artifacts_path.exists():
             print("Fetching pyodide build artifacts")
-            session.run("wget",f"https://github.com/pyodide/pyodide/releases/download/{pyodide_version}/pyodide-{pyodide_version}.tar.bz2","-O",f"{pyodide_artifacts_path}.tar.bz2")
+            session.run(
+                "wget",
+                f"https://github.com/pyodide/pyodide/releases/download/{pyodide_version}/pyodide-{pyodide_version}.tar.bz2",
+                "-O",
+                f"{pyodide_artifacts_path}.tar.bz2",
+            )
             pyodide_artifacts_path.mkdir(parents=True)
-            session.run("tar","-xjf",f"{pyodide_artifacts_path}.tar.bz2","-C",pyodide_artifacts_path,"--strip-components","1")
+            session.run(
+                "tar",
+                "-xjf",
+                f"{pyodide_artifacts_path}.tar.bz2",
+                "-C",
+                str(pyodide_artifacts_path),
+                "--strip-components",
+                "1",
+            )
 
-        dist_dir=pyodide_artifacts_path
-    assert dist_dir != None
+        dist_dir = pyodide_artifacts_path
+    assert dist_dir is not None
     assert dist_dir.exists()
-    tests_impl(session,"emscripten-test",pytest_extra_args=["--rt","chrome-no-host","--dist-dir",dist_dir,"test"])
+    tests_impl(
+        session,
+        "emscripten-test",
+        pytest_extra_args=[
+            "--rt",
+            "chrome-no-host",
+            "--dist-dir",
+            str(dist_dir),
+            "test",
+        ],
+    )
+
 
 @nox.session(python="3.12")
 def mypy(session: nox.Session) -> None:

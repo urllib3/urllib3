@@ -1,28 +1,28 @@
+from __future__ import annotations
+
 import asyncio
 import contextlib
-import os
-
-from urllib.parse import urlsplit
-import textwrap
 import mimetypes
+import os
+import textwrap
+from pathlib import Path
+from urllib.parse import urlsplit
+
 import pytest
 from tornado import web
-from dummyserver.server import (
-    run_loop_in_thread,
-    run_tornado_app,
-)
 
-from pathlib import Path
-from dummyserver.handlers import TestingApp
-from dummyserver.handlers import Response
+from tornado.httputil import HTTPServerRequest
+from dummyserver.handlers import Response, TestingApp
+from dummyserver.server import run_loop_in_thread, run_tornado_app
 from dummyserver.testcase import HTTPDummyProxyTestCase
 
+from typing import Generator,Any
 
 @pytest.fixture(scope="module")
-def testserver_http(request):
+def testserver_http(request:pytest.FixtureRequest)->Generator[PyodideServerInfo,None,None]:
     dist_dir = Path(os.getcwd(), request.config.getoption("--dist-dir"))
     server = PyodideDummyServerTestCase
-    server.setup_class(dist_dir)
+    server.setup_class(str(dist_dir))
     print(
         f"Server:{server.http_host}:{server.http_port},https({server.https_port}) [{dist_dir}]"
     )
@@ -31,13 +31,13 @@ def testserver_http(request):
     server.teardown_class()
 
 
-class _FromServerRunner:
-    def __init__(self, host, port, selenium):
+class ServerRunnerInfo:
+    def __init__(self, host:str, port:int, selenium:Any)->None:
         self.host = host
         self.port = port
         self.selenium = selenium
 
-    def run_webworker(self, code):
+    def run_webworker(self, code:str)->Any:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
@@ -70,7 +70,7 @@ class _FromServerRunner:
 # pytest-pyodide one - this makes it so that
 # we are at the same origin as web requests to server_host
 @pytest.fixture()
-def run_from_server(selenium, testserver_http):
+def run_from_server(selenium:Any, testserver_http:PyodideServerInfo)->Generator[ServerRunnerInfo,None,None]:
     addr = f"https://{testserver_http.http_host}:{testserver_http.https_port}/pyodide/test.html"
     selenium.goto(addr)
     #    import time
@@ -86,7 +86,7 @@ def run_from_server(selenium, testserver_http):
 await pyodide.loadPackage('/wheel/dist.whl')
 """
     )
-    yield _FromServerRunner(
+    yield ServerRunnerInfo(
         testserver_http.http_host, testserver_http.https_port, selenium
     )
 
@@ -101,19 +101,19 @@ class PyodideTestingApp(TestingApp):
         self.set_header("Cross-Origin-Embedder-Policy", "require-corp")
         self.add_header("Feature-Policy", "sync-xhr *;")
 
-    def bigfile(self, req):
+    def bigfile(self, req:HTTPServerRequest)->Response:
         print("Bigfile requested")
         # great big text file, should force streaming
         # if supported
         bigdata = 1048576 * b"WOOO YAY BOOYAKAH"
         return Response(bigdata)
 
-    def pyodide(self, req):
+    def pyodide(self, req:HTTPServerRequest)->Response:
         path = req.path[:]
         if not path.startswith("/"):
             path = urlsplit(path).path
-        path = path.split("/")
-        file_path = Path(PyodideTestingApp.pyodide_dist_dir, *path[2:])
+        path_split = path.split("/")
+        file_path = Path(PyodideTestingApp.pyodide_dist_dir, *path_split[2:])
         if file_path.exists():
             mime_type, encoding = mimetypes.guess_type(file_path)
             print(file_path, mime_type)
@@ -125,25 +125,11 @@ class PyodideTestingApp(TestingApp):
                 headers=[("Access-Control-Allow-Origin", "*")],
             )
         else:
-            return Response(status=404)
+            return Response(status="404 NOT FOUND")
 
-    def worker_template(self, req):
-        return Response(
-            """
-                        <html>
-                        <head>
-                        <script type="text/javascript">
-                            window.pyworker=new Worker("/pyodide/webworker_dev.js");
-                        </script>
-                        </head>
-                        <body>worker loader</body></html>""",
-            headers=[("Content-type", "text/html")],
-        )
-        return
-
-    def wheel(self, req):
+    def wheel(self, _req:HTTPServerRequest)->Response:
         # serve our wheel
-        wheel_folder = Path(__file__).parent.parent.parent / "dist"
+        wheel_folder = Path(__file__).parent.parent.parent.parent / "dist"
         print(wheel_folder)
         wheels = list(wheel_folder.glob("*.whl"))
         print(wheels)
@@ -155,11 +141,13 @@ class PyodideTestingApp(TestingApp):
                 ],
             )
             return resp
+        else:
+            return Response(status="404 NOT FOUND")
 
 
 class PyodideDummyServerTestCase(HTTPDummyProxyTestCase):
     @classmethod
-    def setup_class(cls, pyodide_dist_dir) -> None:
+    def setup_class(cls, pyodide_dist_dir:str) -> None: # type:ignore[override]
         PyodideTestingApp.pyodide_dist_dir = pyodide_dist_dir
         with contextlib.ExitStack() as stack:
             io_loop = stack.enter_context(run_loop_in_thread())
@@ -177,3 +165,5 @@ class PyodideDummyServerTestCase(HTTPDummyProxyTestCase):
 
             asyncio.run_coroutine_threadsafe(run_app(), io_loop.asyncio_loop).result()  # type: ignore[attr-defined]
             cls._stack = stack.pop_all()
+
+PyodideServerInfo=type[PyodideDummyServerTestCase]

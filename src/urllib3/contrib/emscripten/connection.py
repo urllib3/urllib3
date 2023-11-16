@@ -1,21 +1,23 @@
-from ..._base_connection import _TYPE_BODY, _TYPE_SOCKET_OPTIONS
+from __future__ import annotations
+
+import os
+import typing
+from http.client import ResponseNotReady
+
+from ..._base_connection import _TYPE_BODY
 from ...connection import HTTPConnection, ProxyConfig, port_by_scheme
+from ...response import BaseHTTPResponse
+from ...util.connection import _TYPE_SOCKET_OPTIONS
 from ...util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from ...util.url import Url
-
-from .fetch import send_streaming_request, send_request
-
+from .fetch import send_request, send_streaming_request
 from .request import EmscriptenRequest
 from .response import EmscriptenHttpResponseWrapper
-from ...response import BaseHTTPResponse
-
-import typing
 
 
 class EmscriptenHTTPConnection(HTTPConnection):
     host: str
     port: int
-    timeout: None | (float)
     blocksize: int
     source_address: tuple[str, int] | None
     socket_options: _TYPE_SOCKET_OPTIONS | None
@@ -29,12 +31,12 @@ class EmscriptenHTTPConnection(HTTPConnection):
     def __init__(
         self,
         host: str,
-        port: int | None = None,
+        port: int = 0,
         *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 8192,
-        socket_options: _TYPE_SOCKET_OPTIONS | None = ...,
+        socket_options: _TYPE_SOCKET_OPTIONS | None = None,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
     ) -> None:
@@ -42,12 +44,12 @@ class EmscriptenHTTPConnection(HTTPConnection):
         # control over that stuff
         self.host = host
         self.port = port
-        self.timeout = timeout
+        self.timeout = timeout if isinstance(timeout, float) else 0.0
 
     def set_tunnel(
         self,
         host: str,
-        port: int | None = None,
+        port: int | None = 0,
         headers: typing.Mapping[str, str] | None = None,
         scheme: str = "http",
     ) -> None:
@@ -56,7 +58,7 @@ class EmscriptenHTTPConnection(HTTPConnection):
     def connect(self) -> None:
         pass
 
-    def request(
+    def request(  # type: ignore[override]
         self,
         method: str,
         url: str,
@@ -79,14 +81,17 @@ class EmscriptenHTTPConnection(HTTPConnection):
         self._response = None
         if not preload_content:
             self._response = send_streaming_request(request)
-        if self._response == None:
+        if self._response is None:
             self._response = send_request(request)
 
-    def getresponse(self) -> BaseHTTPResponse:
-        return EmscriptenHttpResponseWrapper(self._response)
+    def getresponse(self) -> BaseHTTPResponse:  # type: ignore[override]
+        if self._response is not None:
+            return EmscriptenHttpResponseWrapper(self._response)
+        else:
+            raise ResponseNotReady()
 
     def close(self) -> None:
-        ...
+        pass
 
     @property
     def is_closed(self) -> bool:
@@ -94,10 +99,12 @@ class EmscriptenHTTPConnection(HTTPConnection):
         If this property is True then both ``is_connected`` and ``has_connected_to_proxy``
         properties must be False.
         """
+        return False
 
     @property
     def is_connected(self) -> bool:
         """Whether the connection is actively connected to any origin (proxy or target)"""
+        return True
 
     @property
     def has_connected_to_proxy(self) -> bool:
@@ -105,6 +112,7 @@ class EmscriptenHTTPConnection(HTTPConnection):
         This returns False if no proxy is in use. Used to determine whether
         errors are coming from the proxy layer or from tunnelling to the target origin.
         """
+        return False
 
 
 class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
@@ -122,7 +130,7 @@ class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
     def __init__(
         self,
         host: str,
-        port: int | None = None,
+        port: int = 0,
         *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 # Set default logging handler to avoid "No handler found" warnings.
 import logging
+import sys
 import typing
 import warnings
 from logging import NullHandler
@@ -148,6 +149,8 @@ def request(
         json=json,
     )
 
-import sys
+
 if sys.platform == "emscripten":
-    from .contrib.emscripten import *
+    from .contrib.emscripten import _override_connections_for_emscripten  # noqa: 401
+
+    _override_connections_for_emscripten()

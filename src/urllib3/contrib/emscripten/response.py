@@ -1,7 +1,8 @@
-from dataclasses import dataclass
-from io import IOBase, BytesIO
-from itertools import takewhile
+from __future__ import annotations
+
 import typing
+from dataclasses import dataclass
+from io import BytesIO, IOBase
 
 from ...connection import HTTPConnection
 from ...response import HTTPResponse
@@ -17,7 +18,10 @@ class EmscriptenResponse:
 
 class EmscriptenHttpResponseWrapper(HTTPResponse):
     def __init__(
-        self, internal_response: EmscriptenResponse, url: str = None, connection=None
+        self,
+        internal_response: EmscriptenResponse,
+        url: str | None = None,
+        connection: HTTPConnection | None = None,
     ):
         self._response = internal_response
         self._url = url
@@ -63,14 +67,19 @@ class EmscriptenHttpResponseWrapper(HTTPResponse):
         if not isinstance(self._response.body, IOBase):
             # wrap body in IOStream
             self._response.body = BytesIO(self._response.body)
-        return self._response.body.read(amt)
+
+        return typing.cast(bytes, self._response.body.read(amt))
 
     def read_chunked(
         self,
         amt: int | None = None,
         decode_content: bool | None = None,
-    ) -> typing.Iterator[bytes]:
-        return self.read(amt, decode_content)
+    ) -> typing.Generator[bytes, None, None]:
+        while True:
+            bytes = self.read(amt, decode_content)
+            if not bytes:
+                break
+            yield bytes
 
     def release_conn(self) -> None:
         if not self._pool or not self._connection:

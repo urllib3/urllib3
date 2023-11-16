@@ -1,31 +1,40 @@
 """
-Support for streaming http requests in emscripten. 
+Support for streaming http requests in emscripten.
 
-A couple of caveats - 
+A few caveats -
 
 Firstly, you can't do streaming http in the main UI thread, because atomics.wait isn't allowed.
 Streaming only works if you're running pyodide in a web worker.
 
 Secondly, this uses an extra web worker and SharedArrayBuffer to do the asynchronous fetch
-operation, so it requires that you have crossOriginIsolation enabled, by serving over https 
+operation, so it requires that you have crossOriginIsolation enabled, by serving over https
 (or from localhost) with the two headers below set:
 
     Cross-Origin-Opener-Policy: same-origin
     Cross-Origin-Embedder-Policy: require-corp
 
-You can tell if cross origin isolation is successfully enabled by looking at the global crossOriginIsolated variable in 
+You can tell if cross origin isolation is successfully enabled by looking at the global crossOriginIsolated variable in
 javascript console. If it isn't, streaming requests will fallback to XMLHttpRequest, i.e. getting the whole
 request into a buffer and then returning it. it shows a warning in the javascript console in this case.
+
+Finally, the webworker which does the streaming fetch is created on initial import, but will only be started once
+control is returned to javascript. Call `await wait_for_streaming_ready()` to wait for streaming fetch.
 """
+from __future__ import annotations
+
 import io
 import json
-import js
-from pyodide.ffi import to_js
-from pyodide.code import run_js
+from email.parser import Parser
+from typing import TYPE_CHECKING, Any
+
+import js  # type: ignore[import]
+from pyodide.ffi import JsArray, JsProxy, to_js  # type: ignore[import]
+
+if TYPE_CHECKING:
+    from typing_extensions import Buffer
+
 from .request import EmscriptenRequest
 from .response import EmscriptenResponse
-
-from email.parser import Parser
 
 """
 There are some headers that trigger unintended CORS preflight requests.
@@ -40,7 +49,13 @@ ERROR_EXCEPTION = -4
 
 
 class _RequestError(Exception):
-    def __init__(self, message=None, *, request=None, response=None):
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        request: EmscriptenRequest | None = None,
+        response: EmscriptenResponse | None = None,
+    ):
         self.request = request
         self.response = response
         self.message = message
@@ -79,14 +94,14 @@ self.addEventListener("message", async function (event) {
             try
             {
                 let readResponse = await reader.read();
-                
+
                 if (readResponse.done) {
                     // read everything - clear connection and return
                     delete connections[connectionID];
                     Atomics.store(intBuffer, 0, SUCCESS_EOF);
                     Atomics.notify(intBuffer, 0);
                     // finished reading successfully
-                    // return from event handler 
+                    // return from event handler
                     return;
                 }
                 curOffset = 0;
@@ -100,11 +115,11 @@ self.addEventListener("message", async function (event) {
                 byteBuffer.set(errorBytes);
                 intBuffer[1] = written;
                 Atomics.store(intBuffer, 0, ERROR_EXCEPTION);
-                Atomics.notify(intBuffer, 0);    
+                Atomics.notify(intBuffer, 0);
             }
         }
 
-        // send as much buffer as we can 
+        // send as much buffer as we can
         let curLen = value.length - curOffset;
         if (curLen > byteBuffer.length) {
             curLen = byteBuffer.length;
@@ -160,12 +175,19 @@ self.postMessage({inited:true})
 """
 
 
-def _obj_from_dict(dict_val: dict) -> any:
+def _obj_from_dict(dict_val: dict[str, Any]) -> JsProxy:
     return to_js(dict_val, dict_converter=js.Object.fromEntries)
 
 
 class _ReadStream(io.RawIOBase):
-    def __init__(self, int_buffer, byte_buffer, timeout, worker, connection_id):
+    def __init__(
+        self,
+        int_buffer: JsArray,
+        byte_buffer: JsArray,
+        timeout: float,
+        worker: JsProxy,
+        connection_id: int,
+    ):
         self.int_buffer = int_buffer
         self.byte_buffer = byte_buffer
         self.read_pos = 0
@@ -175,10 +197,10 @@ class _ReadStream(io.RawIOBase):
         self.timeout = int(1000 * timeout) if timeout > 0 else None
         self.is_live = True
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         if self.is_live:
             self.worker.postMessage(_obj_from_dict({"close": self.connection_id}))
             self.is_live = False
@@ -193,7 +215,7 @@ class _ReadStream(io.RawIOBase):
     def seekable(self) -> bool:
         return False
 
-    def readinto(self, byte_obj) -> bool:
+    def readinto(self, byte_obj: Buffer) -> int:
         if not self.int_buffer:
             return 0
         if self.read_len == 0:
@@ -216,18 +238,18 @@ class _ReadStream(io.RawIOBase):
                 self.byte_buffer = None
                 return 0
         # copy from int32array to python bytes
-        ret_length = min(self.read_len, len(byte_obj))
+        ret_length = min(self.read_len, len(memoryview(byte_obj)))
         subarray = self.byte_buffer.subarray(
             self.read_pos, self.read_pos + ret_length
         ).to_py()
-        byte_obj[0:ret_length] = subarray
+        memoryview(byte_obj)[0:ret_length] = subarray
         self.read_len -= ret_length
         self.read_pos += ret_length
         return ret_length
 
 
 class _StreamingFetcher:
-    def __init__(self):
+    def __init__(self) -> None:
         # make web-worker and data buffer on startup
         self.streaming_ready = False
 
@@ -235,12 +257,12 @@ class _StreamingFetcher:
             [_STREAMING_WORKER_CODE], _obj_from_dict({"type": "application/javascript"})
         )
 
-        def promise_resolver(res, rej):
-            def onMsg(e):
+        def promise_resolver(res: JsProxy, rej: JsProxy) -> None:
+            def onMsg(e: JsProxy) -> None:
                 self.streaming_ready = True
                 res(e)
 
-            def onErr(e):
+            def onErr(e: JsProxy) -> None:
                 rej(e)
 
             self._worker.onmessage = onMsg
@@ -250,7 +272,7 @@ class _StreamingFetcher:
         self._worker = js.globalThis.Worker.new(dataURL)
         self._worker_ready_promise = js.globalThis.Promise.new(promise_resolver)
 
-    def send(self, request):
+    def send(self, request: EmscriptenRequest) -> EmscriptenResponse:
         headers = {
             k: v for k, v in request.headers.items() if k not in HEADERS_TO_IGNORE
         }
@@ -266,15 +288,6 @@ class _StreamingFetcher:
         js.Atomics.store(int_buffer, 0, 0)
         js.Atomics.notify(int_buffer, 0)
         absolute_url = js.URL.new(request.url, js.location).href
-        #        js.console.log(
-        #            _obj_from_dict(
-        #                {
-        #                    "buffer": shared_buffer,
-        #                    "url": absolute_url,
-        #                    "fetchParams": fetch_data,
-        #                }
-        #            )
-        #        )
         self._worker.postMessage(
             _obj_from_dict(
                 {
@@ -317,13 +330,19 @@ class _StreamingFetcher:
                     buffer_size=1048576,
                 ),
             )
-        if int_buffer[0] == ERROR_EXCEPTION:
+        elif int_buffer[0] == ERROR_EXCEPTION:
             string_len = int_buffer[1]
             # decode the error string
             decoder = js.TextDecoder.new()
             json_str = decoder.decode(byte_buffer.slice(0, string_len))
             raise _StreamingError(
                 f"Exception thrown in fetch: {json_str}", request=request, response=None
+            )
+        else:
+            raise _StreamingError(
+                f"Unknown status from worker in fetch: {int_buffer[0]}",
+                request=request,
+                response=None,
             )
 
 
@@ -332,11 +351,11 @@ def is_in_browser_main_thread() -> bool:
     return hasattr(js, "window") and hasattr(js, "self") and js.self == js.window
 
 
-def is_cross_origin_isolated():
+def is_cross_origin_isolated() -> bool:
     return hasattr(js, "crossOriginIsolated") and js.crossOriginIsolated
 
 
-def is_in_node():
+def is_in_node() -> bool:
     return (
         hasattr(js, "process")
         and hasattr(js.process, "release")
@@ -345,9 +364,11 @@ def is_in_node():
     )
 
 
-def is_worker_available():
+def is_worker_available() -> bool:
     return hasattr(js, "Worker") and hasattr(js, "Blob")
 
+
+_fetcher: _StreamingFetcher | None = None
 
 if is_worker_available() and (
     (is_cross_origin_isolated() and not is_in_browser_main_thread()) or is_in_node()
@@ -357,7 +378,7 @@ else:
     _fetcher = None
 
 
-def send_streaming_request(request: EmscriptenRequest) -> EmscriptenResponse:
+def send_streaming_request(request: EmscriptenRequest) -> EmscriptenResponse | None:
     if _fetcher and streaming_ready():
         return _fetcher.send(request)
     else:
@@ -368,7 +389,7 @@ def send_streaming_request(request: EmscriptenRequest) -> EmscriptenResponse:
 _SHOWN_WARNING = False
 
 
-def _show_streaming_warning():
+def _show_streaming_warning() -> None:
     global _SHOWN_WARNING
     if not _SHOWN_WARNING:
         _SHOWN_WARNING = True
@@ -379,7 +400,7 @@ def _show_streaming_warning():
             message += "  Python is running in main browser thread\n"
         if not is_worker_available():
             message += " Worker or Blob classes are not available in this environment."
-        if streaming_ready() == False:
+        if streaming_ready() is False:
             message += """ Streaming fetch worker isn't ready. If you want to be sure that streamig fetch
 is working, you need to call: 'await urllib3.contrib.emscripten.fetc.wait_for_streaming_ready()`"""
         from js import console
@@ -413,14 +434,14 @@ def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
     return EmscriptenResponse(status_code=xhr.status, headers=headers, body=body)
 
 
-def streaming_ready():
+def streaming_ready() -> bool | None:
     if _fetcher:
         return _fetcher.streaming_ready
     else:
         return None  # no fetcher, return None to signify that
 
 
-async def wait_for_streaming_ready():
+async def wait_for_streaming_ready() -> bool:
     if _fetcher:
         await _fetcher._worker_ready_promise
         return True
