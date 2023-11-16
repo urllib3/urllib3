@@ -1,1 +1,0 @@
-Fixed decoding Gzip-encoded responses which specified ``x-gzip`` content-encoding.

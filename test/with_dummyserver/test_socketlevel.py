@@ -11,7 +11,6 @@ import select
 import shutil
 import socket
 import ssl
-import sys
 import tempfile
 import time
 import typing
@@ -25,13 +24,13 @@ from unittest import mock
 import pytest
 import trustme
 
-from dummyserver.server import (
+from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
+from dummyserver.tornadoserver import (
     DEFAULT_CA,
     DEFAULT_CERTS,
     encrypt_key_pem,
     get_unreachable_address,
 )
-from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
@@ -1584,10 +1583,7 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=False, timeout=LONG_TIMEOUT)
         assert server_closed.wait(LONG_TIMEOUT), "The socket was not terminated"
 
-    @pytest.mark.skipif(
-        os.environ.get("CI") == "true" and sys.implementation.name == "pypy",
-        reason="too slow to run in CI",
-    )
+    @pytest.mark.integration
     @pytest.mark.parametrize(
         "preload_content,read_amt", [(True, None), (False, None), (False, 2**31)]
     )

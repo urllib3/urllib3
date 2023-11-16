@@ -1,1 +1,0 @@
-Removed support for the SecureTransport TLS implementation.

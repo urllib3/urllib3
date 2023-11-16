@@ -11,7 +11,10 @@ import nox
 def tests_impl(
     session: nox.Session,
     extras: str = "socks,brotli,zstd",
-    byte_string_comparisons: bool = True,
+    # hypercorn dependency h2 compares bytes and strings
+    # https://github.com/python-hyper/h2/issues/1236
+    byte_string_comparisons: bool = False,
+    integration: bool = False,
     pytest_extra_args: list[str] = [],
 ) -> None:
     # Install deps and the package itself.
@@ -46,13 +49,13 @@ def tests_impl(
         *("--memray", "--hide-memray-summary") if memray_supported else (),
         "-v",
         "-ra",
+        *(("--integration",) if integration else ()),
         f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
         "--tb=native",
         "--durations=10",
         "--strict-config",
         "--strict-markers",
         *(session.posargs or ("test/",)),
-        *pytest_extra_args,
         *pytest_extra_args,
         env={"PYTHONWARNINGS": "always::DeprecationWarning"},
     )
@@ -63,7 +66,13 @@ def test(session: nox.Session) -> None:
     tests_impl(session)
 
 
-@nox.session(python=["3"])
+@nox.session(python="3")
+def test_integration(session: nox.Session) -> None:
+    """Run integration tests"""
+    tests_impl(session, integration=True)
+
+
+@nox.session(python="3")
 def test_brotlipy(session: nox.Session) -> None:
     """Check that if 'brotlipy' is installed instead of 'brotli' or
     'brotlicffi' that we still don't blow up.
