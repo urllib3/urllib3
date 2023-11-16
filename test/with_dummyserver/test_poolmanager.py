@@ -8,7 +8,6 @@ from unittest import mock
 import pytest
 
 from dummyserver.testcase import (
-    HTTPDummyServerTestCase,
     HypercornDummyServerTestCase,
     IPv6HTTPDummyServerTestCase,
 )
@@ -20,20 +19,7 @@ from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
 
-class TestHypercornPoolManager(HypercornDummyServerTestCase):
-    @classmethod
-    def setup_class(cls) -> None:
-        super().setup_class()
-        cls.base_url = f"http://{cls.host}:{cls.port}"
-
-    def test_index(self) -> None:
-        with PoolManager() as http:
-            r = http.request("GET", self.base_url + "/")
-            assert r.status == 200
-            assert r.data == b"Dummy Hypercorn server!"
-
-
-class TestPoolManager(HTTPDummyServerTestCase):
+class TestPoolManager(HypercornDummyServerTestCase):
     @classmethod
     def setup_class(cls) -> None:
         super().setup_class()
@@ -466,7 +452,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 encode_multipart=True,
             )
             returned_headers = r.json()["headers"]
-            assert returned_headers[4:] == [
+            assert returned_headers[5:] == [
                 ["Multi", "1"],
                 ["Multi", "2"],
                 ["Content-Type", "multipart/form-data; boundary=b"],
@@ -484,7 +470,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 encode_multipart=True,
             )
             returned_headers = r.json()["headers"]
-            assert returned_headers[4:] == [
+            assert returned_headers[5:] == [
                 ["Multi", "1"],
                 ["Multi", "2"],
                 # Uses the set value, not the one that would be generated.
@@ -514,10 +500,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
     @pytest.mark.parametrize(
         ["target", "expected_target"],
         [
+            # annoyingly quart.request.full_path adds a stray `?`
+            ("/echo_uri", b"/echo_uri?"),
             ("/echo_uri?q=1#fragment", b"/echo_uri?q=1"),
             ("/echo_uri?#", b"/echo_uri?"),
-            ("/echo_uri#?", b"/echo_uri"),
-            ("/echo_uri#?#", b"/echo_uri"),
+            ("/echo_uri#!", b"/echo_uri?"),
+            ("/echo_uri#!#", b"/echo_uri?"),
             ("/echo_uri??#", b"/echo_uri??"),
             ("/echo_uri?%3f#", b"/echo_uri?%3F"),
             ("/echo_uri?%3F#", b"/echo_uri?%3F"),
