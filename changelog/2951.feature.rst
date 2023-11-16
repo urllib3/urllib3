@@ -1,0 +1,1 @@
+Added support for Emscripten, including streaming support in cross-origin isolated browser environments where threading is enabled.
