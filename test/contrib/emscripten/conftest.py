@@ -6,20 +6,22 @@ import mimetypes
 import os
 import textwrap
 from pathlib import Path
+from typing import Any, Generator
 from urllib.parse import urlsplit
 
 import pytest
 from tornado import web
-
 from tornado.httputil import HTTPServerRequest
-from dummyserver.handlers import Response, TestingApp
-from dummyserver.server import run_loop_in_thread, run_tornado_app
-from dummyserver.testcase import HTTPDummyProxyTestCase
 
-from typing import Generator,Any
+from dummyserver.handlers import Response, TestingApp
+from dummyserver.testcase import HTTPDummyProxyTestCase
+from dummyserver.tornadoserver import run_tornado_app, run_tornado_loop_in_thread
+
 
 @pytest.fixture(scope="module")
-def testserver_http(request:pytest.FixtureRequest)->Generator[PyodideServerInfo,None,None]:
+def testserver_http(
+    request: pytest.FixtureRequest,
+) -> Generator[PyodideServerInfo, None, None]:
     dist_dir = Path(os.getcwd(), request.config.getoption("--dist-dir"))
     server = PyodideDummyServerTestCase
     server.setup_class(str(dist_dir))
@@ -32,12 +34,12 @@ def testserver_http(request:pytest.FixtureRequest)->Generator[PyodideServerInfo,
 
 
 class ServerRunnerInfo:
-    def __init__(self, host:str, port:int, selenium:Any)->None:
+    def __init__(self, host: str, port: int, selenium: Any) -> None:
         self.host = host
         self.port = port
         self.selenium = selenium
 
-    def run_webworker(self, code:str)->Any:
+    def run_webworker(self, code: str) -> Any:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
@@ -70,7 +72,9 @@ class ServerRunnerInfo:
 # pytest-pyodide one - this makes it so that
 # we are at the same origin as web requests to server_host
 @pytest.fixture()
-def run_from_server(selenium:Any, testserver_http:PyodideServerInfo)->Generator[ServerRunnerInfo,None,None]:
+def run_from_server(
+    selenium: Any, testserver_http: PyodideServerInfo
+) -> Generator[ServerRunnerInfo, None, None]:
     addr = f"https://{testserver_http.http_host}:{testserver_http.https_port}/pyodide/test.html"
     selenium.goto(addr)
     #    import time
@@ -101,14 +105,14 @@ class PyodideTestingApp(TestingApp):
         self.set_header("Cross-Origin-Embedder-Policy", "require-corp")
         self.add_header("Feature-Policy", "sync-xhr *;")
 
-    def bigfile(self, req:HTTPServerRequest)->Response:
+    def bigfile(self, req: HTTPServerRequest) -> Response:
         print("Bigfile requested")
         # great big text file, should force streaming
         # if supported
         bigdata = 1048576 * b"WOOO YAY BOOYAKAH"
         return Response(bigdata)
 
-    def pyodide(self, req:HTTPServerRequest)->Response:
+    def pyodide(self, req: HTTPServerRequest) -> Response:
         path = req.path[:]
         if not path.startswith("/"):
             path = urlsplit(path).path
@@ -127,7 +131,7 @@ class PyodideTestingApp(TestingApp):
         else:
             return Response(status="404 NOT FOUND")
 
-    def wheel(self, _req:HTTPServerRequest)->Response:
+    def wheel(self, _req: HTTPServerRequest) -> Response:
         # serve our wheel
         wheel_folder = Path(__file__).parent.parent.parent.parent / "dist"
         print(wheel_folder)
@@ -147,10 +151,10 @@ class PyodideTestingApp(TestingApp):
 
 class PyodideDummyServerTestCase(HTTPDummyProxyTestCase):
     @classmethod
-    def setup_class(cls, pyodide_dist_dir:str) -> None: # type:ignore[override]
+    def setup_class(cls, pyodide_dist_dir: str) -> None:  # type:ignore[override]
         PyodideTestingApp.pyodide_dist_dir = pyodide_dist_dir
         with contextlib.ExitStack() as stack:
-            io_loop = stack.enter_context(run_loop_in_thread())
+            io_loop = stack.enter_context(run_tornado_loop_in_thread())
 
             async def run_app() -> None:
                 app = web.Application([(r".*", PyodideTestingApp)])
@@ -166,4 +170,5 @@ class PyodideDummyServerTestCase(HTTPDummyProxyTestCase):
             asyncio.run_coroutine_threadsafe(run_app(), io_loop.asyncio_loop).result()  # type: ignore[attr-defined]
             cls._stack = stack.pop_all()
 
-PyodideServerInfo=type[PyodideDummyServerTestCase]
+
+PyodideServerInfo = type[PyodideDummyServerTestCase]

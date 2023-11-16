@@ -1,27 +1,30 @@
 from __future__ import annotations
 
+import typing
+
 import pytest
+
+from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
 
 # only run these tests if pytest_pyodide is installed
 # so we don't break non-emscripten pytest running
 pytest_pyodide = pytest.importorskip("pytest_pyodide")
+
+from pytest_pyodide import run_in_pyodide  # type: ignore[import] # noqa: E402
+from pytest_pyodide.decorator import (  # type: ignore[import] # noqa: E402
+    copy_files_to_pyodide,
+)
+
+from .conftest import PyodideServerInfo, ServerRunnerInfo  # noqa: E402
+
 # make our ssl certificates work in chrome
 pytest_pyodide.runner.CHROME_FLAGS.append("ignore-certificate-errors")
 
-from pytest_pyodide import run_in_pyodide  # type: ignore[import]
-from pytest_pyodide.decorator import copy_files_to_pyodide  # type: ignore[import]
 
-import typing
-
-from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
-
-from .conftest import PyodideDummyServerTestCase, PyodideServerInfo, ServerRunnerInfo
-
-
-@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True) # type: ignore[misc]
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
 def test_index(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
-    @run_in_pyodide # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None: # type: ignore[no-untyped-def]
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPConnection
         from urllib3.response import HTTPResponse
 
@@ -39,10 +42,10 @@ def test_index(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None
     pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
 
 
-@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True) # type: ignore[misc]
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
 def test_index_https(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
-    @run_in_pyodide # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None: # type: ignore[no-untyped-def]
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPSConnection
         from urllib3.response import HTTPResponse
 
@@ -60,12 +63,12 @@ def test_index_https(selenium: typing.Any, testserver_http: PyodideServerInfo) -
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
 
 
-@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True) # type: ignore[misc]
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
 def test_non_streaming_no_fallback_warning(
     selenium: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    @run_in_pyodide # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None: # type: ignore[no-untyped-def]
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPSConnection
         from urllib3.response import HTTPResponse
@@ -80,17 +83,17 @@ def test_non_streaming_no_fallback_warning(
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
         # no console warnings because we didn't ask it to stream the response
-        assert urllib3.contrib.emscripten.fetch._SHOWN_WARNING == False
+        assert not urllib3.contrib.emscripten.fetch._SHOWN_WARNING
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
 
 
-@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True) # type: ignore[misc]
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
 def test_streaming_fallback_warning(
     selenium: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    @run_in_pyodide # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None: # type: ignore[no-untyped-def]
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPSConnection
         from urllib3.response import HTTPResponse
@@ -105,17 +108,18 @@ def test_streaming_fallback_warning(
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
         # check that it has warned about falling back to non-streaming fetch
-        assert urllib3.contrib.emscripten.fetch._SHOWN_WARNING == True
+        assert urllib3.contrib.emscripten.fetch._SHOWN_WARNING
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
 
 
-
 def test_upload(
-    selenium: typing.Any, testserver_http: PyodideServerInfo, run_from_server:ServerRunnerInfo
+    selenium: typing.Any,
+    testserver_http: PyodideServerInfo,
+    run_from_server: ServerRunnerInfo,
 ) -> None:
-    @run_in_pyodide # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None: # type: ignore[no-untyped-def]
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3 import HTTPConnectionPool
 
         data = "I'm in ur multipart form-data, hazing a cheezburgr"
@@ -131,13 +135,16 @@ def test_upload(
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
 
+
 def test_specific_method(
-    selenium: typing.Any, testserver_http: PyodideServerInfo, run_from_server:ServerRunnerInfo
+    selenium: typing.Any,
+    testserver_http: PyodideServerInfo,
+    run_from_server: ServerRunnerInfo,
 ) -> None:
     print("Running from server")
 
-    @run_in_pyodide # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None: # type: ignore[no-untyped-def]
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3 import HTTPConnectionPool
         from urllib3.response import HTTPResponse
 
@@ -157,9 +164,11 @@ def test_specific_method(
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
 
 
-@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True) # type: ignore[misc]
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
 def test_streaming_download(
-    selenium: typing.Any, testserver_http: PyodideServerInfo, run_from_server:ServerRunnerInfo
+    selenium: typing.Any,
+    testserver_http: PyodideServerInfo,
+    run_from_server: ServerRunnerInfo,
 ) -> None:
     # test streaming download, which must be in a webworker
     # as you can't do it on main thread
@@ -167,8 +176,8 @@ def test_streaming_download(
     # this should return the 17mb big file, and
     # should not log typing.Any warning about falling back
     bigfile_url = (
-        url
-    ) = f"http://{testserver_http.http_host}:{testserver_http.http_port}/bigfile"
+        f"http://{testserver_http.http_host}:{testserver_http.http_port}/bigfile"
+    )
     worker_code = f"""import micropip
 await micropip.install('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/urllib3-2.0.7-py3-none-typing.Any.whl',deps=False)
 import urllib3.contrib.emscripten.fetch
@@ -191,16 +200,18 @@ data
     assert len(result) == 17825792
 
 
-@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True) # type: ignore[misc]
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
 def test_streaming_notready_warning(
-    selenium: typing.Any, testserver_http: PyodideServerInfo, run_from_server:ServerRunnerInfo
+    selenium: typing.Any,
+    testserver_http: PyodideServerInfo,
+    run_from_server: ServerRunnerInfo,
 ) -> None:
     # test streaming download but don't wait for
     # worker to be ready - should fallback to non-streaming
     # and log a warning
     bigfile_url = (
-        url
-    ) = f"http://{testserver_http.http_host}:{testserver_http.http_port}/bigfile"
+        f"http://{testserver_http.http_host}:{testserver_http.http_port}/bigfile"
+    )
     worker_code = f"""import micropip
 await micropip.install('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/urllib3-2.0.7-py3-none-typing.Any.whl',deps=False)
 import urllib3.contrib.emscripten.fetch
