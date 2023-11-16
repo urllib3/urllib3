@@ -7,13 +7,30 @@ from unittest import mock
 
 import pytest
 
-from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
+from dummyserver.testcase import (
+    HTTPDummyServerTestCase,
+    HypercornDummyServerTestCase,
+    IPv6HTTPDummyServerTestCase,
+)
 from dummyserver.tornadoserver import HAS_IPV6
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
+
+
+class TestHypercornPoolManager(HypercornDummyServerTestCase):
+    @classmethod
+    def setup_class(cls) -> None:
+        super().setup_class()
+        cls.base_url = f"http://{cls.host}:{cls.port}"
+
+    def test_index(self) -> None:
+        with PoolManager() as http:
+            r = http.request("GET", self.base_url + "/")
+            assert r.status == 200
+            assert r.data == b"Dummy Hypercorn server!"
 
 
 class TestPoolManager(HTTPDummyServerTestCase):

@@ -13,6 +13,7 @@ from http.client import responses
 from io import BytesIO
 from urllib.parse import urlsplit
 
+from quart_trio import QuartTrio
 from tornado import httputil
 from tornado.web import RequestHandler
 
@@ -362,3 +363,11 @@ class TestingApp(RequestHandler):
 
     def shutdown(self, request: httputil.HTTPServerRequest) -> typing.NoReturn:
         sys.exit()
+
+
+hypercorn_app = QuartTrio(__name__)
+
+
+@hypercorn_app.route("/")
+async def hello() -> str:
+    return "Dummy Hypercorn server!"

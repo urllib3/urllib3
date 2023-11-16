@@ -10,7 +10,9 @@ import nox
 def tests_impl(
     session: nox.Session,
     extras: str = "socks,brotli,zstd",
-    byte_string_comparisons: bool = True,
+    # hypercorn dependency h2 compares bytes and strings
+    # https://github.com/python-hyper/h2/issues/1236
+    byte_string_comparisons: bool = False,
     integration: bool = False,
 ) -> None:
     # Install deps and the package itself.
