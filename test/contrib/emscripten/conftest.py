@@ -105,6 +105,12 @@ class PyodideTestingApp(TestingApp):
         self.set_header("Cross-Origin-Embedder-Policy", "require-corp")
         self.add_header("Feature-Policy", "sync-xhr *;")
 
+    def slow(self, _req: HTTPServerRequest) -> Response:
+        import time
+
+        time.sleep(10)
+        return Response("TEN SECONDS LATER")
+
     def bigfile(self, req: HTTPServerRequest) -> Response:
         print("Bigfile requested")
         # great big text file, should force streaming

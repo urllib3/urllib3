@@ -42,6 +42,139 @@ def test_index(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None
     pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
 
 
+# wrong protocol / protocol error etc. should raise an exception of urllib3.exceptions.ResponseError
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
+def test_wrong_protocol(
+    selenium: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    @run_in_pyodide(packages=("pytest",))  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import pytest
+
+        import urllib3.exceptions
+        from urllib3.connection import HTTPConnection
+
+        conn = HTTPConnection(host, port)
+        method = "GET"
+        path = "/"
+        url = f"http://{host}:{port}{path}"
+        try:
+            conn.request(method, url)
+            conn.getresponse()
+            pytest.fail("Should have thrown ResponseError here")
+        except BaseException as ex:
+            assert isinstance(ex, urllib3.exceptions.ResponseError)
+
+    pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
+
+
+# no connection - should raise
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
+def test_no_response(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
+    @run_in_pyodide(packages=("pytest",))  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import pytest
+
+        import urllib3.exceptions
+        from urllib3.connection import HTTPConnection
+
+        conn = HTTPConnection(host, port)
+        method = "GET"
+        path = "/"
+        url = f"http://{host}:{port}{path}"
+        try:
+            conn.request(method, url)
+            _ = conn.getresponse()
+            pytest.fail("No response, should throw exception.")
+        except BaseException as ex:
+            assert isinstance(ex, urllib3.exceptions.ResponseError)
+
+    import socket
+
+    sock = socket.socket()
+    sock.bind(("", 0))
+    free_port = sock.getsockname()[1]
+    sock.close()
+
+    pyodide_test(selenium, testserver_http.http_host, free_port)
+
+
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
+def test_404(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        from urllib3.connection import HTTPConnection
+        from urllib3.response import HTTPResponse
+
+        conn = HTTPConnection(host, port)
+        method = "GET"
+        path = "/status?status=404 NOT FOUND"
+        url = f"http://{host}:{port}{path}"
+        conn.request(method, url)
+        response = conn.getresponse()
+        assert isinstance(response, HTTPResponse)
+        assert response.status == 404
+        1
+
+    pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
+
+
+# setting timeout should show a warning to js console
+# if we're on the ui thread, because XMLHttpRequest doesn't
+# support timeout in async mode if globalThis == Window
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
+def test_timeout_warning(
+    selenium: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    @run_in_pyodide()  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import urllib3.contrib.emscripten.fetch
+        from urllib3.connection import HTTPConnection
+
+        conn = HTTPConnection(host, port, timeout=1.0)
+        method = "GET"
+        path = "/"
+        url = f"http://{host}:{port}{path}"
+        conn.request(method, url)
+        conn.getresponse()
+        assert urllib3.contrib.emscripten.fetch._SHOWN_TIMEOUT_WARNING
+        1
+
+    pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
+
+
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
+def test_timeout_in_worker(
+    selenium: typing.Any,
+    testserver_http: PyodideServerInfo,
+    run_from_server: ServerRunnerInfo,
+) -> None:
+    worker_code = f"""
+        import micropip
+        await micropip.install('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/urllib3-2.0.7-py3-none-typing.Any.whl',deps=False)
+        import urllib3.contrib.emscripten.fetch
+        await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
+        from urllib3.exceptions import TimeoutError
+        from urllib3.connection import HTTPConnection
+        conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port},timeout=1.0)
+        method = "GET"
+        url = "http://{testserver_http.http_host}:{testserver_http.http_port}/slow"
+        result=-1
+        try:
+            conn.request(method, url)
+            _response = conn.getresponse()
+            result=-3
+        except TimeoutError as e:
+            result=1 # we've got the correct exception
+        except BaseException as e:
+            result=-2
+        result
+"""
+    result = run_from_server.run_webworker(worker_code)
+    # result == 1 = success, -2 = wrong exception, -3 = no exception thrown
+    assert result == 1
+
+
 @copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
 def test_index_https(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
     @run_in_pyodide  # type: ignore[misc]
@@ -83,7 +216,7 @@ def test_non_streaming_no_fallback_warning(
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
         # no console warnings because we didn't ask it to stream the response
-        assert not urllib3.contrib.emscripten.fetch._SHOWN_WARNING
+        assert not urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
 
@@ -108,7 +241,7 @@ def test_streaming_fallback_warning(
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
         # check that it has warned about falling back to non-streaming fetch
-        assert urllib3.contrib.emscripten.fetch._SHOWN_WARNING
+        assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
 
@@ -192,7 +325,7 @@ url = "{bigfile_url}"
 conn.request(method, url,preload_content=False)
 response = conn.getresponse()
 assert isinstance(response, HTTPResponse)
-assert urllib3.contrib.emscripten.fetch._SHOWN_WARNING==False
+assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==False
 data=response.data.decode('utf-8')
 data
 """
@@ -225,7 +358,7 @@ conn.request(method, url,preload_content=False)
 response = conn.getresponse()
 assert isinstance(response, HTTPResponse)
 data=response.data.decode('utf-8')
-assert urllib3.contrib.emscripten.fetch._SHOWN_WARNING==True
+assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==True
 data
 """
     result = run_from_server.run_webworker(worker_code)

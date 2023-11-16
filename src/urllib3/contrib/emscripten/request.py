@@ -14,7 +14,7 @@ class EmscriptenRequest:
     params: dict[str, str] | None = None
     body: _TYPE_BODY | None = None
     headers: dict[str, str] = field(default_factory=dict)
-    timeout: int = 0
+    timeout: float = 0
 
     def set_header(self, name: str, value: str) -> None:
         self.headers[name.capitalize()] = value

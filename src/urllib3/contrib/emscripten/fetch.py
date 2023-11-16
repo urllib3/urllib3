@@ -28,7 +28,7 @@ from email.parser import Parser
 from typing import TYPE_CHECKING, Any
 
 import js  # type: ignore[import]
-from pyodide.ffi import JsArray, JsProxy, to_js  # type: ignore[import]
+from pyodide.ffi import JsArray, JsException, JsProxy, to_js  # type: ignore[import]
 
 if TYPE_CHECKING:
     from typing_extensions import Buffer
@@ -66,7 +66,7 @@ class _StreamingError(_RequestError):
     pass
 
 
-class _StreamingTimeout(_StreamingError):
+class _TimeoutError(_RequestError):
     pass
 
 
@@ -223,7 +223,7 @@ class _ReadStream(io.RawIOBase):
             js.Atomics.store(self.int_buffer, 0, 0)
             self.worker.postMessage(_obj_from_dict({"getMore": self.connection_id}))
             if js.Atomics.wait(self.int_buffer, 0, 0, self.timeout) == "timed-out":
-                raise _StreamingTimeout
+                raise _TimeoutError
             data_len = self.int_buffer[0]
             if data_len > 0:
                 self.read_len = data_len
@@ -300,7 +300,7 @@ class _StreamingFetcher:
         # wait for the worker to send something
         js.Atomics.wait(int_buffer, 0, 0, timeout)
         if int_buffer[0] == 0:
-            raise _StreamingTimeout(
+            raise _TimeoutError(
                 "Timeout connecting to streaming request",
                 request=request,
                 response=None,
@@ -386,13 +386,24 @@ def send_streaming_request(request: EmscriptenRequest) -> EmscriptenResponse | N
         return None
 
 
-_SHOWN_WARNING = False
+_SHOWN_TIMEOUT_WARNING = False
+
+
+def _show_timeout_warning() -> None:
+    global _SHOWN_TIMEOUT_WARNING
+    if not _SHOWN_TIMEOUT_WARNING:
+        _SHOWN_TIMEOUT_WARNING = True
+        message = "Warning: Timeout is not available on main browser thread"
+        js.console.warn(message)
+
+
+_SHOWN_STREAMING_WARNING = False
 
 
 def _show_streaming_warning() -> None:
-    global _SHOWN_WARNING
-    if not _SHOWN_WARNING:
-        _SHOWN_WARNING = True
+    global _SHOWN_STREAMING_WARNING
+    if not _SHOWN_STREAMING_WARNING:
+        _SHOWN_STREAMING_WARNING = True
         message = "Can't stream HTTP requests because: \n"
         if not is_cross_origin_isolated():
             message += "  Page is not cross-origin isolated\n"
@@ -406,32 +417,45 @@ is working, you need to call: 'await urllib3.contrib.emscripten.fetc.wait_for_st
         from js import console
 
         console.warn(message)
-        print(message)
 
 
 def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
-    xhr = js.XMLHttpRequest.new()
-    xhr.timeout = int(request.timeout * 1000)
+    try:
+        xhr = js.XMLHttpRequest.new()
 
-    if not is_in_browser_main_thread():
-        xhr.responseType = "arraybuffer"
-    else:
-        xhr.overrideMimeType("text/plain; charset=ISO-8859-15")
+        if not is_in_browser_main_thread():
+            xhr.responseType = "arraybuffer"
+            if request.timeout:
+                xhr.timeout = int(request.timeout * 1000)
+        else:
+            xhr.overrideMimeType("text/plain; charset=ISO-8859-15")
+            if request.timeout:
+                # timeout isn't available on the main thread - show a warning in console
+                # if it is set
+                _show_timeout_warning()
 
-    xhr.open(request.method, request.url, False)
-    for name, value in request.headers.items():
-        if name.lower() not in HEADERS_TO_IGNORE:
-            xhr.setRequestHeader(name, value)
+        xhr.open(request.method, request.url, False)
+        for name, value in request.headers.items():
+            if name.lower() not in HEADERS_TO_IGNORE:
+                xhr.setRequestHeader(name, value)
 
-    xhr.send(to_js(request.body))
+        xhr.send(to_js(request.body))
 
-    headers = dict(Parser().parsestr(xhr.getAllResponseHeaders()))
+        headers = dict(Parser().parsestr(xhr.getAllResponseHeaders()))
 
-    if not is_in_browser_main_thread():
-        body = xhr.response.to_py().tobytes()
-    else:
-        body = xhr.response.encode("ISO-8859-15")
-    return EmscriptenResponse(status_code=xhr.status, headers=headers, body=body)
+        if not is_in_browser_main_thread():
+            body = xhr.response.to_py().tobytes()
+        else:
+            body = xhr.response.encode("ISO-8859-15")
+        return EmscriptenResponse(status_code=xhr.status, headers=headers, body=body)
+    except JsException as err:
+        if err.name == "TimeoutError":
+            raise _TimeoutError(err.message, request=request)
+        elif err.name == "NetworkError":
+            raise _RequestError(err.message, request=request)
+        else:
+            # general http error
+            raise _RequestError(err.message, request=request)
 
 
 def streaming_ready() -> bool | None:

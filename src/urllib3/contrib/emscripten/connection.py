@@ -6,11 +6,12 @@ from http.client import ResponseNotReady
 
 from ..._base_connection import _TYPE_BODY
 from ...connection import HTTPConnection, ProxyConfig, port_by_scheme
+from ...exceptions import ResponseError, TimeoutError
 from ...response import BaseHTTPResponse
 from ...util.connection import _TYPE_SOCKET_OPTIONS
 from ...util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from ...util.url import Url
-from .fetch import send_request, send_streaming_request
+from .fetch import _RequestError, _TimeoutError, send_request, send_streaming_request
 from .request import EmscriptenRequest
 from .response import EmscriptenHttpResponseWrapper
 
@@ -73,16 +74,23 @@ class EmscriptenHTTPConnection(HTTPConnection):
         decode_content: bool = True,
         enforce_content_length: bool = True,
     ) -> None:
-        request = EmscriptenRequest(url=url, method=method)
+        request = EmscriptenRequest(
+            url=url, method=method, timeout=self.timeout if self.timeout else 0
+        )
         request.set_body(body)
         if headers:
             for k, v in headers.items():
                 request.set_header(k, v)
         self._response = None
-        if not preload_content:
-            self._response = send_streaming_request(request)
-        if self._response is None:
-            self._response = send_request(request)
+        try:
+            if not preload_content:
+                self._response = send_streaming_request(request)
+            if self._response is None:
+                self._response = send_request(request)
+        except _TimeoutError as e:
+            raise TimeoutError(e.message)
+        except _RequestError as e:
+            raise ResponseError(e.message)
 
     def getresponse(self) -> BaseHTTPResponse:  # type: ignore[override]
         if self._response is not None:
