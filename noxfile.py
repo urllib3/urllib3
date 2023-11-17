@@ -7,7 +7,6 @@ from pathlib import Path
 
 import nox
 
-import json
 
 def tests_impl(
     session: nox.Session,
@@ -159,10 +158,10 @@ def lint(session: nox.Session) -> None:
 # TODO: node support is not tested yet - it should work if you require('xmlhttprequest') before
 # loading pyodide, but there is currently no nice way to do this with pytest-pyodide
 # because you can't override the test runner properties -
-# https://github.com/pyodide/pytest-pyodide/issues/118 
+# https://github.com/pyodide/pytest-pyodide/issues/118
 @nox.session(python="3.11")
-@nox.parametrize('runner', ['chrome'])
-def emscripten(session: nox.Session,runner: str) -> None:
+@nox.parametrize("runner", ["chrome"])
+def emscripten(session: nox.Session, runner: str) -> None:
     """Test on Emscripten with Pyodide & Chrome"""
     session.install("build")
     # build wheel into dist folder
@@ -202,12 +201,12 @@ def emscripten(session: nox.Session,runner: str) -> None:
         dist_dir = pyodide_artifacts_path
     assert dist_dir is not None
     assert dist_dir.exists()
-    if runner=='chrome':
+    if runner == "chrome":
         # install chrome webdriver and add it to path
-        import webdriver_manager.chrome
-        from webdriver_manager.chrome import ChromeDriverManager
+        from webdriver_manager.chrome import ChromeDriverManager  # type: ignore[import]
+
         driver = ChromeDriverManager().install()
-        session.env["PATH"]=f"{Path(driver).parent}:{session.env['PATH']}"
+        session.env["PATH"] = f"{Path(driver).parent}:{session.env['PATH']}"
 
         tests_impl(
             session,

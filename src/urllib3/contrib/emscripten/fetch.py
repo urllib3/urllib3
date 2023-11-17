@@ -368,10 +368,12 @@ def is_in_node() -> bool:
 def is_worker_available() -> bool:
     return hasattr(js, "Worker") and hasattr(js, "Blob")
 
+
 _fetcher: _StreamingFetcher | None = None
 
 if is_worker_available() and (
-    (is_cross_origin_isolated() and not is_in_browser_main_thread()) and (not is_in_node())
+    (is_cross_origin_isolated() and not is_in_browser_main_thread())
+    and (not is_in_node())
 ):
     _fetcher = _StreamingFetcher()
 else:
