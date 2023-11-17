@@ -51,8 +51,8 @@ class ServerRunnerInfo:
             code = textwrap.dedent(code)
 
         return self.selenium.run_js(
-            """
-            let worker = new Worker('{}');
+            f"""
+            let worker = new Worker('https://{self.host}:{self.port}/pyodide/webworker_dev.js');
             let p = new Promise((res, rej) => {{
                 worker.onmessageerror = e => rej(e);
                 worker.onerror = e => rej(e);
@@ -63,13 +63,10 @@ class ServerRunnerInfo:
                        rej(e.data.error);
                     }}
                 }};
-                worker.postMessage({{ python: {!r} }});
+                worker.postMessage({{ python: {repr(code)} }});
             }});
             return await p;
-            """.format(
-                f"https://{self.host}:{self.port}/pyodide/webworker_dev.js",
-                code,
-            ),
+            """,
             pyodide_checks=False,
         )
 

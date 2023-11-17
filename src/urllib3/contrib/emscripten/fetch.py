@@ -25,6 +25,7 @@ from __future__ import annotations
 import io
 import json
 from email.parser import Parser
+from importlib.resources import files
 from typing import TYPE_CHECKING, Any
 
 import js  # type: ignore[import]
@@ -42,10 +43,17 @@ See also https://github.com/koenvo/pyodide-http/issues/22
 """
 HEADERS_TO_IGNORE = ("user-agent",)
 
+NO_RESULT = 0
 SUCCESS_HEADER = -1
 SUCCESS_EOF = -2
 ERROR_TIMEOUT = -3
 ERROR_EXCEPTION = -4
+
+_STREAMING_WORKER_CODE = (
+    files(__package__)
+    .joinpath("emscripten_fetch_worker.js")
+    .read_text(encoding="utf-8")
+)
 
 
 class _RequestError(Exception):
@@ -68,111 +76,6 @@ class _StreamingError(_RequestError):
 
 class _TimeoutError(_RequestError):
     pass
-
-
-_STREAMING_WORKER_CODE = """
-let SUCCESS_HEADER = -1
-let SUCCESS_EOF = -2
-let ERROR_TIMEOUT = -3
-let ERROR_EXCEPTION = -4
-
-let connections = {};
-let nextConnectionID = 1;
-
-self.addEventListener("message", async function (event) {
-    if(event.data.close)
-    {
-        let connectionID=event.data.close;
-        delete connections[connectionID];
-        return;
-    }else if (event.data.getMore) {
-        let connectionID = event.data.getMore;
-        let { curOffset, value, reader,intBuffer,byteBuffer } = connections[connectionID];
-        // if we still have some in buffer, then just send it back straight away
-        if (!value || curOffset >= value.length) {
-            // read another buffer if required
-            try
-            {
-                let readResponse = await reader.read();
-
-                if (readResponse.done) {
-                    // read everything - clear connection and return
-                    delete connections[connectionID];
-                    Atomics.store(intBuffer, 0, SUCCESS_EOF);
-                    Atomics.notify(intBuffer, 0);
-                    // finished reading successfully
-                    // return from event handler
-                    return;
-                }
-                curOffset = 0;
-                connections[connectionID].value = readResponse.value;
-                value=readResponse.value;
-            }catch(error)
-            {
-                console.log("Request exception:", error);
-                let errorBytes = encoder.encode(error.message);
-                let written = errorBytes.length;
-                byteBuffer.set(errorBytes);
-                intBuffer[1] = written;
-                Atomics.store(intBuffer, 0, ERROR_EXCEPTION);
-                Atomics.notify(intBuffer, 0);
-            }
-        }
-
-        // send as much buffer as we can
-        let curLen = value.length - curOffset;
-        if (curLen > byteBuffer.length) {
-            curLen = byteBuffer.length;
-        }
-        byteBuffer.set(value.subarray(curOffset, curOffset + curLen), 0)
-
-        Atomics.store(intBuffer, 0, curLen);// store current length in bytes
-        Atomics.notify(intBuffer, 0);
-        curOffset+=curLen;
-        connections[connectionID].curOffset = curOffset;
-
-        return;
-    } else {
-        // start fetch
-        let connectionID = nextConnectionID;
-        nextConnectionID += 1;
-        const encoder = new TextEncoder();
-        const intBuffer = new Int32Array(event.data.buffer);
-        const byteBuffer = new Uint8Array(event.data.buffer, 8)
-        try {
-            const response = await fetch(event.data.url, event.data.fetchParams);
-            // return the headers first via textencoder
-            var headers = [];
-            for (const pair of response.headers.entries()) {
-                headers.push([pair[0], pair[1]]);
-            }
-            headerObj = { headers: headers, status: response.status, connectionID };
-            const headerText = JSON.stringify(headerObj);
-            let headerBytes = encoder.encode(headerText);
-            let written = headerBytes.length;
-            byteBuffer.set(headerBytes);
-            intBuffer[1] = written;
-            // make a connection
-            connections[connectionID] = { reader:response.body.getReader(),intBuffer:intBuffer,byteBuffer:byteBuffer,value:undefined,curOffset:0 };
-            // set header ready
-            Atomics.store(intBuffer, 0, SUCCESS_HEADER);
-            Atomics.notify(intBuffer, 0);
-            // all fetching after this goes through a new postmessage call with getMore
-            // this allows for parallel requests
-        }
-        catch (error) {
-            console.log("Request exception:", error);
-            let errorBytes = encoder.encode(error.message);
-            let written = errorBytes.length;
-            byteBuffer.set(errorBytes);
-            intBuffer[1] = written;
-            Atomics.store(intBuffer, 0, ERROR_EXCEPTION);
-            Atomics.notify(intBuffer, 0);
-        }
-    }
-});
-self.postMessage({inited:true})
-"""
 
 
 def _obj_from_dict(dict_val: dict[str, Any]) -> JsProxy:
@@ -257,13 +160,13 @@ class _StreamingFetcher:
             [_STREAMING_WORKER_CODE], _obj_from_dict({"type": "application/javascript"})
         )
 
-        def promise_resolver(res: JsProxy, rej: JsProxy) -> None:
+        def promise_resolver(resolve_fn: JsProxy, reject_fn: JsProxy) -> None:
             def onMsg(e: JsProxy) -> None:
                 self.streaming_ready = True
-                res(e)
+                resolve_fn(e)
 
             def onErr(e: JsProxy) -> None:
-                rej(e)
+                reject_fn(e)
 
             self._worker.onmessage = onMsg
             self._worker.onerror = onErr
@@ -299,13 +202,13 @@ class _StreamingFetcher:
         )
         # wait for the worker to send something
         js.Atomics.wait(int_buffer, 0, 0, timeout)
-        if int_buffer[0] == 0:
+        if int_buffer[0] == NO_RESULT:
             raise _TimeoutError(
                 "Timeout connecting to streaming request",
                 request=request,
                 response=None,
             )
-        if int_buffer[0] == SUCCESS_HEADER:
+        elif int_buffer[0] == SUCCESS_HEADER:
             # got response
             # header length is in second int of intBuffer
             string_len = int_buffer[1]

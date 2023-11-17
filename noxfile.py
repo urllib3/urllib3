@@ -164,7 +164,7 @@ def lint(session: nox.Session) -> None:
 @nox.parametrize("runner", ["chrome"])
 def emscripten(session: nox.Session, runner: str) -> None:
     """Test on Emscripten with Pyodide & Chrome"""
-    session.install("build", "pyodide-build", "webdriver_manager")
+    session.install("-r", "emscripten-requirements.txt")
     # build wheel into dist folder
     session.run("python", "-m", "build")
     # make sure we have a dist dir for pyodide
@@ -224,7 +224,6 @@ def emscripten(session: nox.Session, runner: str) -> None:
 
         tests_impl(
             session,
-            "emscripten-test",
             pytest_extra_args=[
                 "--rt",
                 "chrome-no-host",
@@ -233,6 +232,8 @@ def emscripten(session: nox.Session, runner: str) -> None:
                 "test",
             ],
         )
+    else:
+        raise ValueError(f"Unknown runnner: {runner}")
 
 
 @nox.session(python="3.12")

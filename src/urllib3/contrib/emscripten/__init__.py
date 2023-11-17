@@ -6,7 +6,7 @@ from ...connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connection import EmscriptenHTTPConnection, EmscriptenHTTPSConnection
 
 
-def _override_connections_for_emscripten() -> None:
+def inject_into_urllib3() -> None:
     # override connection classes to use emscripten specific classes
     # n.b. mypy complains about the overriding of classes below
     # if it isn't ignored

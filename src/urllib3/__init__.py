@@ -206,6 +206,6 @@ def request(
 
 
 if sys.platform == "emscripten":
-    from .contrib.emscripten import _override_connections_for_emscripten  # noqa: 401
+    from .contrib.emscripten import inject_into_urllib3  # noqa: 401
 
-    _override_connections_for_emscripten()
+    inject_into_urllib3()
