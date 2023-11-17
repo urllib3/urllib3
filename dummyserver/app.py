@@ -6,6 +6,8 @@ import zlib
 from io import BytesIO
 
 from quart import make_response, request
+
+# TODO switch to Response if https://github.com/pallets/quart/issues/288 is fixed
 from quart.typing import ResponseTypes
 from quart_trio import QuartTrio
 
