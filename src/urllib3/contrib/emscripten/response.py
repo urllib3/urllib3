@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json as _json
 import typing
 from dataclasses import dataclass
 from io import BytesIO, IOBase
@@ -7,6 +8,7 @@ from io import BytesIO, IOBase
 from ...connection import HTTPConnection
 from ...response import HTTPResponse
 from ...util.retry import Retry
+from .request import EmscriptenRequest
 
 
 @dataclass
@@ -14,6 +16,7 @@ class EmscriptenResponse:
     status_code: int
     headers: dict[str, str]
     body: IOBase | bytes
+    request: EmscriptenRequest
 
 
 class EmscriptenHttpResponseWrapper(HTTPResponse):
@@ -23,6 +26,7 @@ class EmscriptenHttpResponseWrapper(HTTPResponse):
         url: str | None = None,
         connection: HTTPConnection | None = None,
     ):
+        self._body = None
         self._response = internal_response
         self._url = url
         self._connection = connection
@@ -61,14 +65,21 @@ class EmscriptenHttpResponseWrapper(HTTPResponse):
     def read(
         self,
         amt: int | None = None,
-        decode_content: bool | None = None,
+        decode_content: bool | None = None,  # ignored because browser decodes always
         cache_content: bool = False,
     ) -> bytes:
         if not isinstance(self._response.body, IOBase):
             # wrap body in IOStream
             self._response.body = BytesIO(self._response.body)
-
-        return typing.cast(bytes, self._response.body.read(amt))
+        if amt is not None:
+            # don't cache partial content
+            cache_content = False
+            return typing.cast(bytes, self._response.body.read(amt))
+        else:
+            data = self._response.body.read(None)
+            if cache_content:
+                self._body = data
+            return typing.cast(bytes, data)
 
     def read_chunked(
         self,
@@ -90,6 +101,26 @@ class EmscriptenHttpResponseWrapper(HTTPResponse):
 
     def drain_conn(self) -> None:
         self.close()
+
+    @property
+    def data(self) -> bytes:
+        if self._body:
+            return self._body  # type: ignore[return-value]
+        else:
+            return self.read(cache_content=True)
+
+    def json(self) -> typing.Any:
+        """
+        Parses the body of the HTTP response as JSON.
+
+        To use a custom JSON decoder pass the result of :attr:`HTTPResponse.data` to the decoder.
+
+        This method can raise either `UnicodeDecodeError` or `json.JSONDecodeError`.
+
+        Read more :ref:`here <json>`.
+        """
+        data = self.data.decode("utf-8")
+        return _json.loads(data)
 
     def close(self) -> None:
         if isinstance(self._response.body, IOBase):

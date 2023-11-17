@@ -317,6 +317,7 @@ class _StreamingFetcher:
             # get it as an object
             response_obj = json.loads(json_str)
             return EmscriptenResponse(
+                request=request,
                 status_code=response_obj["status"],
                 headers=response_obj["headers"],
                 body=io.BufferedReader(
@@ -447,7 +448,9 @@ def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
             body = xhr.response.to_py().tobytes()
         else:
             body = xhr.response.encode("ISO-8859-15")
-        return EmscriptenResponse(status_code=xhr.status, headers=headers, body=body)
+        return EmscriptenResponse(
+            status_code=xhr.status, headers=headers, body=body, request=request
+        )
     except JsException as err:
         if err.name == "TimeoutError":
             raise _TimeoutError(err.message, request=request)

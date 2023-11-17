@@ -37,7 +37,6 @@ def test_index(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None
         assert isinstance(response, HTTPResponse)
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
-        1
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
 
@@ -114,7 +113,6 @@ def test_404(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
         response = conn.getresponse()
         assert isinstance(response, HTTPResponse)
         assert response.status == 404
-        1
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
 
@@ -138,7 +136,6 @@ def test_timeout_warning(
         conn.request(method, url)
         conn.getresponse()
         assert urllib3.contrib.emscripten.fetch._SHOWN_TIMEOUT_WARNING
-        1
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
 
@@ -191,7 +188,6 @@ def test_index_https(selenium: typing.Any, testserver_http: PyodideServerInfo) -
         assert isinstance(response, HTTPResponse)
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
-        1
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
 
@@ -246,52 +242,24 @@ def test_streaming_fallback_warning(
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
 
 
-def test_upload(
-    selenium: typing.Any,
-    testserver_http: PyodideServerInfo,
-    run_from_server: ServerRunnerInfo,
-) -> None:
-    @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
-        from urllib3 import HTTPConnectionPool
-
-        data = "I'm in ur multipart form-data, hazing a cheezburgr"
-        fields: dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
-            "upload_param": "filefield",
-            "upload_filename": "lolcat.txt",
-            "filefield": ("lolcat.txt", data),
-        }
-        fields["upload_size"] = len(data)  # type: ignore
-        with HTTPConnectionPool(host, port) as pool:
-            r = pool.request("POST", "/upload", fields=fields)
-            assert r.status == 200, r.data
-
-    pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
-
-
 def test_specific_method(
     selenium: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
 ) -> None:
-    print("Running from server")
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
-        from urllib3 import HTTPConnectionPool
-        from urllib3.response import HTTPResponse
+        from urllib3 import HTTPSConnectionPool
 
-        with HTTPConnectionPool(host, port) as pool:
+        with HTTPSConnectionPool(host, port) as pool:
             method = "POST"
             path = "/specific_method?method=POST"
             response = pool.request(method, path)
-            assert isinstance(response, HTTPResponse)
             assert response.status == 200
 
             method = "PUT"
             path = "/specific_method?method=POST"
             response = pool.request(method, path)
-            assert isinstance(response, HTTPResponse)
             assert response.status == 400
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
@@ -363,3 +331,51 @@ data
 """
     result = run_from_server.run_webworker(worker_code)
     assert len(result) == 17825792
+
+
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
+def test_post_receive_json(
+    selenium: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import json
+
+        from urllib3.connection import HTTPConnection
+        from urllib3.response import HTTPResponse
+
+        json_data = {
+            "Bears": "like",
+            "to": {"eat": "buns", "with": ["marmalade", "and custard"]},
+        }
+        conn = HTTPConnection(host, port)
+        method = "POST"
+        path = "/echo_json"
+        url = f"http://{host}:{port}{path}"
+        conn.request(method, url, body=json.dumps(json_data).encode("utf-8"))
+        response = conn.getresponse()
+        assert isinstance(response, HTTPResponse)
+        data = response.json()
+        assert data == json_data
+
+    pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
+
+
+@copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
+def test_upload(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        from urllib3 import HTTPConnectionPool
+
+        data = "I'm in ur multipart form-data, hazing a cheezburgr"
+        fields: dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
+            "upload_param": "filefield",
+            "upload_filename": "lolcat.txt",
+            "filefield": ("lolcat.txt", data),
+        }
+        fields["upload_size"] = len(data)  # type: ignore
+        with HTTPConnectionPool(host, port) as pool:
+            r = pool.request("POST", "/upload", fields=fields)
+            assert r.status == 200
+
+    pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)

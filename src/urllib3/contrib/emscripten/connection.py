@@ -46,6 +46,7 @@ class EmscriptenHTTPConnection(HTTPConnection):
         self.host = host
         self.port = port
         self.timeout = timeout if isinstance(timeout, float) else 0.0
+        self.scheme = "http"
 
     def set_tunnel(
         self,
@@ -74,8 +75,14 @@ class EmscriptenHTTPConnection(HTTPConnection):
         decode_content: bool = True,
         enforce_content_length: bool = True,
     ) -> None:
+        if url.startswith("/"):
+            # no scheme / host / port included, make a full url
+            url = f"{self.scheme}://{self.host}:{self.port}" + url
         request = EmscriptenRequest(
-            url=url, method=method, timeout=self.timeout if self.timeout else 0
+            url=url,
+            method=method,
+            timeout=self.timeout if self.timeout else 0,
+            decode_content=decode_content,
         )
         request.set_body(body)
         if headers:
@@ -94,7 +101,11 @@ class EmscriptenHTTPConnection(HTTPConnection):
 
     def getresponse(self) -> BaseHTTPResponse:  # type: ignore[override]
         if self._response is not None:
-            return EmscriptenHttpResponseWrapper(self._response)
+            return EmscriptenHttpResponseWrapper(
+                internal_response=self._response,
+                url=self._response.request.url,
+                connection=self,
+            )
         else:
             raise ResponseNotReady()
 
@@ -172,6 +183,7 @@ class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
             proxy=proxy,
             proxy_config=proxy_config,
         )
+        self.scheme = "https"
 
         self.key_file = key_file
         self.cert_file = cert_file

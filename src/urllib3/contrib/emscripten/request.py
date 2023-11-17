@@ -15,6 +15,7 @@ class EmscriptenRequest:
     body: _TYPE_BODY | None = None
     headers: dict[str, str] = field(default_factory=dict)
     timeout: float = 0
+    decode_content: bool = True
 
     def set_header(self, name: str, value: str) -> None:
         self.headers[name.capitalize()] = value
