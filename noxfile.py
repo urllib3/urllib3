@@ -175,9 +175,8 @@ def emscripten(session: nox.Session, runner: str) -> None:
     else:
         # we don't have a build tree, get one
         # that matches the version of pyodide build
-        import pyodide_build  # type: ignore[import]
+        pyodide_version=session.run("python","-c","import pyodide_build;print(pyodide_build.__version__)",silent=True).strip()
 
-        pyodide_version = pyodide_build.__version__
         pyodide_artifacts_path = Path(session.cache_dir) / f"pyodide-{pyodide_version}"
         if not pyodide_artifacts_path.exists():
             print("Fetching pyodide build artifacts")
