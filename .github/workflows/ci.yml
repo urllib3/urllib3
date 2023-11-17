@@ -110,8 +110,7 @@ jobs:
 
       - name: "Install chrome"
         uses: browser-actions/setup-chrome@v1
-        if: ${{ matrix.nox-session == "emscripten" }}
-
+        if: matrix.nox-session == "emscripten"
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
         run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION} --error-on-missing-interpreters
