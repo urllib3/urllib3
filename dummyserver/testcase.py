@@ -11,7 +11,8 @@ import hypercorn
 import pytest
 from tornado import httpserver, ioloop, web
 
-from dummyserver.handlers import TestingApp, hypercorn_app
+from dummyserver.app import hypercorn_app
+from dummyserver.handlers import TestingApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.proxy import ProxyHandler
 from dummyserver.tornadoserver import (
@@ -297,8 +298,10 @@ class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 
 class HypercornDummyServerTestCase:
     host = "localhost"
+    host_alt = "127.0.0.1"
     port: typing.ClassVar[int]
     base_url: typing.ClassVar[str]
+    base_url_alt: typing.ClassVar[str]
 
     _stack: typing.ClassVar[contextlib.ExitStack]
 

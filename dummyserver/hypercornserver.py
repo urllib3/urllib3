@@ -69,7 +69,7 @@ def run_hypercorn_in_thread(
 
 def main() -> int:
     # For debugging dummyserver itself - PYTHONPATH=src python -m dummyserver.hypercornserver
-    from .handlers import hypercorn_app
+    from .app import hypercorn_app
 
     config = hypercorn.Config()
     config.bind = ["localhost:0"]
