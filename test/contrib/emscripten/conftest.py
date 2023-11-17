@@ -5,9 +5,8 @@ import contextlib
 import mimetypes
 import os
 import textwrap
-import typing
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any, Generator, Type
 from urllib.parse import urlsplit
 
 import pytest
@@ -184,4 +183,4 @@ class PyodideDummyServerTestCase(HTTPDummyProxyTestCase):
             cls._stack = stack.pop_all()
 
 
-PyodideServerInfo = PyodideDummyServerTestCase
+PyodideServerInfo = Type[PyodideDummyServerTestCase]

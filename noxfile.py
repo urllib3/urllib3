@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+import typing
 from pathlib import Path
 
 import nox
@@ -163,7 +164,7 @@ def lint(session: nox.Session) -> None:
 @nox.parametrize("runner", ["chrome"])
 def emscripten(session: nox.Session, runner: str) -> None:
     """Test on Emscripten with Pyodide & Chrome"""
-    session.install("build", "pyodide-build")
+    session.install("build", "pyodide-build", "webdriver_manager")
     # build wheel into dist folder
     session.run("python", "-m", "build")
     # make sure we have a dist dir for pyodide
@@ -175,7 +176,15 @@ def emscripten(session: nox.Session, runner: str) -> None:
     else:
         # we don't have a build tree, get one
         # that matches the version of pyodide build
-        pyodide_version=session.run("python","-c","import pyodide_build;print(pyodide_build.__version__)",silent=True).strip()
+        pyodide_version = typing.cast(
+            str,
+            session.run(
+                "python",
+                "-c",
+                "import pyodide_build;print(pyodide_build.__version__)",
+                silent=True,
+            ),
+        ).strip()
 
         pyodide_artifacts_path = Path(session.cache_dir) / f"pyodide-{pyodide_version}"
         if not pyodide_artifacts_path.exists():
@@ -202,9 +211,15 @@ def emscripten(session: nox.Session, runner: str) -> None:
     assert dist_dir.exists()
     if runner == "chrome":
         # install chrome webdriver and add it to path
-        from webdriver_manager.chrome import ChromeDriverManager  # type: ignore[import]
-
-        driver = ChromeDriverManager().install()
+        driver = typing.cast(
+            str,
+            session.run(
+                "python",
+                "-c",
+                "from webdriver_manager.chrome import ChromeDriverManager;print(ChromeDriverManager().install())",
+                silent=True,
+            ),
+        ).strip()
         session.env["PATH"] = f"{Path(driver).parent}:{session.env['PATH']}"
 
         tests_impl(
