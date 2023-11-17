@@ -301,6 +301,7 @@ class HypercornDummyServerTestCase:
     host_alt = "127.0.0.1"
     port: typing.ClassVar[int]
     base_url: typing.ClassVar[str]
+    base_url_alt: typing.ClassVar[str]
 
     _stack: typing.ClassVar[contextlib.ExitStack]
 
