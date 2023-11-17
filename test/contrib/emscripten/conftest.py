@@ -5,6 +5,7 @@ import contextlib
 import mimetypes
 import os
 import textwrap
+import typing
 from pathlib import Path
 from typing import Any, Generator
 from urllib.parse import urlsplit
@@ -16,6 +17,12 @@ from tornado.httputil import HTTPServerRequest
 from dummyserver.handlers import Response, TestingApp
 from dummyserver.testcase import HTTPDummyProxyTestCase
 from dummyserver.tornadoserver import run_tornado_app, run_tornado_loop_in_thread
+
+# only run this stuff if pytest_pyodide is installed
+# pytest_pyodide = pytest.importorskip("pytest_pyodide")
+
+# if sys.version_info<(3,11):
+#    pytest.skip()
 
 
 @pytest.fixture(scope="module")
@@ -177,4 +184,4 @@ class PyodideDummyServerTestCase(HTTPDummyProxyTestCase):
             cls._stack = stack.pop_all()
 
 
-PyodideServerInfo = type[PyodideDummyServerTestCase]
+PyodideServerInfo = PyodideDummyServerTestCase
