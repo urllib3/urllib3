@@ -43,7 +43,6 @@ See also https://github.com/koenvo/pyodide-http/issues/22
 """
 HEADERS_TO_IGNORE = ("user-agent",)
 
-NO_RESULT = 0
 SUCCESS_HEADER = -1
 SUCCESS_EOF = -2
 ERROR_TIMEOUT = -3
@@ -123,9 +122,12 @@ class _ReadStream(io.RawIOBase):
             return 0
         if self.read_len == 0:
             # wait for the worker to send something
-            js.Atomics.store(self.int_buffer, 0, 0)
+            js.Atomics.store(self.int_buffer, 0, ERROR_TIMEOUT)
             self.worker.postMessage(_obj_from_dict({"getMore": self.connection_id}))
-            if js.Atomics.wait(self.int_buffer, 0, 0, self.timeout) == "timed-out":
+            if (
+                js.Atomics.wait(self.int_buffer, 0, ERROR_TIMEOUT, self.timeout)
+                == "timed-out"
+            ):
                 raise _TimeoutError
             data_len = self.int_buffer[0]
             if data_len > 0:
@@ -188,7 +190,7 @@ class _StreamingFetcher:
         int_buffer = js.Int32Array.new(shared_buffer)
         byte_buffer = js.Uint8Array.new(shared_buffer, 8)
 
-        js.Atomics.store(int_buffer, 0, 0)
+        js.Atomics.store(int_buffer, 0, ERROR_TIMEOUT)
         js.Atomics.notify(int_buffer, 0)
         absolute_url = js.URL.new(request.url, js.location).href
         self._worker.postMessage(
@@ -201,8 +203,8 @@ class _StreamingFetcher:
             )
         )
         # wait for the worker to send something
-        js.Atomics.wait(int_buffer, 0, 0, timeout)
-        if int_buffer[0] == NO_RESULT:
+        js.Atomics.wait(int_buffer, 0, ERROR_TIMEOUT, timeout)
+        if int_buffer[0] == ERROR_TIMEOUT:
             raise _TimeoutError(
                 "Timeout connecting to streaming request",
                 request=request,

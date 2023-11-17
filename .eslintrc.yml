@@ -2,3 +2,6 @@ env:
   es2020 : true
   worker: true
 rules: {}
+extends: 
+-  eslint:recommended
+
