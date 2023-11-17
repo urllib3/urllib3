@@ -2247,11 +2247,13 @@ class TestContentFraming(SocketDummyServerTestCase):
             sock.settimeout(0)
 
             start = time.time()
-            while time.time() - start < (LONG_TIMEOUT / 2):
+            while time.time() - start < LONG_TIMEOUT:
                 try:
                     buffer += sock.recv(65536)
                 except OSError:
                     continue
+                if buffer.endswith(b"\r\n0\r\n\r\n"):
+                    break
 
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"
