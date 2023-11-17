@@ -7,6 +7,7 @@ from pathlib import Path
 
 import nox
 
+import json
 
 def tests_impl(
     session: nox.Session,
@@ -155,9 +156,12 @@ def lint(session: nox.Session) -> None:
     mypy(session)
 
 
+# TODO: node support - should work if you require('xmlhttprequest') before
+# loading pyodide
 @nox.session(python="3.11")
-def emscripten(session: nox.Session) -> None:
-    """install emscripten extras"""
+@nox.parametrize('runner', ['chrome'])
+def emscripten(session: nox.Session,runner: str) -> None:
+    """Test on Emscripten with Pyodide & Chrome"""
     session.install("build")
     # build wheel into dist folder
     session.run("python", "-m", "build")
@@ -196,17 +200,24 @@ def emscripten(session: nox.Session) -> None:
         dist_dir = pyodide_artifacts_path
     assert dist_dir is not None
     assert dist_dir.exists()
-    tests_impl(
-        session,
-        "emscripten-test",
-        pytest_extra_args=[
-            "--rt",
-            "chrome-no-host",
-            "--dist-dir",
-            str(dist_dir),
-            "test",
-        ],
-    )
+    if runner=='chrome':
+        # install chrome webdriver and add it to path
+        import webdriver_manager.chrome
+        from webdriver_manager.chrome import ChromeDriverManager
+        driver = ChromeDriverManager().install()
+        session.env["PATH"]=f"{Path(driver).parent}:{session.env['PATH']}"
+
+        tests_impl(
+            session,
+            "emscripten-test",
+            pytest_extra_args=[
+                "--rt",
+                "chrome-no-host",
+                "--dist-dir",
+                str(dist_dir),
+                "test",
+            ],
+        )
 
 
 @nox.session(python="3.12")

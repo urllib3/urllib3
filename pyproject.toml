@@ -51,7 +51,8 @@ socks = [
 ]
 emscripten_test = [
   "pytest-pyodide>=0.54.0",
-  "pyodide-build>=0.24.0"
+  "pyodide-build>=0.24.0",
+  "webdriver-manager>=4.0.0"
 ]
 
 [project.urls]
