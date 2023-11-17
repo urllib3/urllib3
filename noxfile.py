@@ -163,7 +163,7 @@ def lint(session: nox.Session) -> None:
 @nox.parametrize("runner", ["chrome"])
 def emscripten(session: nox.Session, runner: str) -> None:
     """Test on Emscripten with Pyodide & Chrome"""
-    session.install("build","pyodide_build")
+    session.install("build","pyodide-build")
     # build wheel into dist folder
     session.run("python", "-m", "build")
     # make sure we have a dist dir for pyodide
