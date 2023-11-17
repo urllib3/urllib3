@@ -7,6 +7,8 @@ import pytest
 
 from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
 
+from ...port_helpers import find_unused_port
+
 if sys.version_info < (3, 11):
     # pyodide only works on 3.11+
     pytest.skip(allow_module_level=True)
@@ -34,10 +36,7 @@ def test_index(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None
         from urllib3.response import HTTPResponse
 
         conn = HTTPConnection(host, port)
-        method = "GET"
-        path = "/"
-        url = f"http://{host}:{port}{path}"
-        conn.request(method, url)
+        conn.request("GET", f"http://{host}:{port}/")
         response = conn.getresponse()
         assert isinstance(response, HTTPResponse)
         data = response.data
@@ -59,11 +58,8 @@ def test_wrong_protocol(
         from urllib3.connection import HTTPConnection
 
         conn = HTTPConnection(host, port)
-        method = "GET"
-        path = "/"
-        url = f"http://{host}:{port}{path}"
         try:
-            conn.request(method, url)
+            conn.request("GET", f"http://{host}:{port}/")
             conn.getresponse()
             pytest.fail("Should have thrown ResponseError here")
         except BaseException as ex:
@@ -83,24 +79,14 @@ def test_no_response(selenium: typing.Any, testserver_http: PyodideServerInfo) -
         from urllib3.connection import HTTPConnection
 
         conn = HTTPConnection(host, port)
-        method = "GET"
-        path = "/"
-        url = f"http://{host}:{port}{path}"
         try:
-            conn.request(method, url)
+            conn.request("GET", f"http://{host}:{port}/")
             _ = conn.getresponse()
             pytest.fail("No response, should throw exception.")
         except BaseException as ex:
             assert isinstance(ex, urllib3.exceptions.ResponseError)
 
-    import socket
-
-    sock = socket.socket()
-    sock.bind(("", 0))
-    free_port = sock.getsockname()[1]
-    sock.close()
-
-    pyodide_test(selenium, testserver_http.http_host, free_port)
+    pyodide_test(selenium, testserver_http.http_host, find_unused_port())
 
 
 @copy_files_to_pyodide(file_list=[("dist/*.whl", "/tmp")], install_wheels=True)  # type: ignore[misc]
@@ -111,10 +97,7 @@ def test_404(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
         from urllib3.response import HTTPResponse
 
         conn = HTTPConnection(host, port)
-        method = "GET"
-        path = "/status?status=404 NOT FOUND"
-        url = f"http://{host}:{port}{path}"
-        conn.request(method, url)
+        conn.request("GET", f"http://{host}:{port}/status?status=404 NOT FOUND")
         response = conn.getresponse()
         assert isinstance(response, HTTPResponse)
         assert response.status == 404
@@ -135,10 +118,7 @@ def test_timeout_warning(
         from urllib3.connection import HTTPConnection
 
         conn = HTTPConnection(host, port, timeout=1.0)
-        method = "GET"
-        path = "/"
-        url = f"http://{host}:{port}{path}"
-        conn.request(method, url)
+        conn.request("GET", f"http://{host}:{port}/")
         conn.getresponse()
         assert urllib3.contrib.emscripten.fetch._SHOWN_TIMEOUT_WARNING
 
@@ -159,11 +139,9 @@ def test_timeout_in_worker(
         from urllib3.exceptions import TimeoutError
         from urllib3.connection import HTTPConnection
         conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port},timeout=1.0)
-        method = "GET"
-        url = "http://{testserver_http.http_host}:{testserver_http.http_port}/slow"
         result=-1
         try:
-            conn.request(method, url)
+            conn.request("GET","http://{testserver_http.http_host}:{testserver_http.http_port}/slow")
             _response = conn.getresponse()
             result=-3
         except TimeoutError as e:
@@ -185,10 +163,7 @@ def test_index_https(selenium: typing.Any, testserver_http: PyodideServerInfo) -
         from urllib3.response import HTTPResponse
 
         conn = HTTPSConnection(host, port)
-        method = "GET"
-        path = "/"
-        url = f"https://{host}:{port}{path}"
-        conn.request(method, url)
+        conn.request("GET", f"https://{host}:{port}/")
         response = conn.getresponse()
         assert isinstance(response, HTTPResponse)
         data = response.data
@@ -208,10 +183,7 @@ def test_non_streaming_no_fallback_warning(
         from urllib3.response import HTTPResponse
 
         conn = HTTPSConnection(host, port)
-        method = "GET"
-        path = "/"
-        url = f"https://{host}:{port}{path}"
-        conn.request(method, url, preload_content=True)
+        conn.request("GET", f"https://{host}:{port}/", preload_content=True)
         response = conn.getresponse()
         assert isinstance(response, HTTPResponse)
         data = response.data
@@ -233,10 +205,7 @@ def test_streaming_fallback_warning(
         from urllib3.response import HTTPResponse
 
         conn = HTTPSConnection(host, port)
-        method = "GET"
-        path = "/"
-        url = f"https://{host}:{port}{path}"
-        conn.request(method, url, preload_content=False)
+        conn.request("GET", f"https://{host}:{port}/", preload_content=False)
         response = conn.getresponse()
         assert isinstance(response, HTTPResponse)
         data = response.data
@@ -257,14 +226,11 @@ def test_specific_method(
         from urllib3 import HTTPSConnectionPool
 
         with HTTPSConnectionPool(host, port) as pool:
-            method = "POST"
             path = "/specific_method?method=POST"
-            response = pool.request(method, path)
+            response = pool.request("POST", path)
             assert response.status == 200
 
-            method = "PUT"
-            path = "/specific_method?method=POST"
-            response = pool.request(method, path)
+            response = pool.request("PUT", path)
             assert response.status == 400
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
@@ -293,9 +259,7 @@ from urllib3.connection import HTTPConnection
 import js
 
 conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
-method = "GET"
-url = "{bigfile_url}"
-conn.request(method, url,preload_content=False)
+conn.request("GET", "{bigfile_url}",preload_content=False)
 response = conn.getresponse()
 assert isinstance(response, HTTPResponse)
 assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==False
@@ -325,9 +289,7 @@ from urllib3.response import HTTPResponse
 from urllib3.connection import HTTPConnection
 
 conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
-method = "GET"
-url = "{bigfile_url}"
-conn.request(method, url,preload_content=False)
+conn.request("GET", "{bigfile_url}",preload_content=False)
 response = conn.getresponse()
 assert isinstance(response, HTTPResponse)
 data=response.data.decode('utf-8')
@@ -354,10 +316,11 @@ def test_post_receive_json(
             "to": {"eat": "buns", "with": ["marmalade", "and custard"]},
         }
         conn = HTTPConnection(host, port)
-        method = "POST"
-        path = "/echo_json"
-        url = f"http://{host}:{port}{path}"
-        conn.request(method, url, body=json.dumps(json_data).encode("utf-8"))
+        conn.request(
+            "POST",
+            f"http://{host}:{port}/echo_json",
+            body=json.dumps(json_data).encode("utf-8"),
+        )
         response = conn.getresponse()
         assert isinstance(response, HTTPResponse)
         data = response.json()
