@@ -161,9 +161,9 @@ def lint(session: nox.Session) -> None:
 # because you can't override the test runner properties -
 # https://github.com/pyodide/pytest-pyodide/issues/118
 @nox.session(python="3.11")
-@nox.parametrize("runner", ["chrome"])
+@nox.parametrize("runner", ["firefox", "chrome"])
 def emscripten(session: nox.Session, runner: str) -> None:
-    """Test on Emscripten with Pyodide & Chrome"""
+    """Test on Emscripten with Pyodide & Chrome / Firefox"""
     session.install("-r", "emscripten-requirements.txt")
     # build wheel into dist folder
     session.run("python", "-m", "build")
@@ -172,7 +172,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
     if "PYODIDE_ROOT" in os.environ:
         # we have a pyodide build tree checked out
         # use the dist directory from that
-        dist_dir = Path(os.environ["PYODIDE_ROOT"])
+        dist_dir = Path(os.environ["PYODIDE_ROOT"]) / "dist"
     else:
         # we don't have a build tree, get one
         # that matches the version of pyodide build
@@ -227,6 +227,28 @@ def emscripten(session: nox.Session, runner: str) -> None:
             pytest_extra_args=[
                 "--rt",
                 "chrome-no-host",
+                "--dist-dir",
+                str(dist_dir),
+                "test",
+            ],
+        )
+    elif runner == "firefox":
+        driver = typing.cast(
+            str,
+            session.run(
+                "python",
+                "-c",
+                "from webdriver_manager.firefox import GeckoDriverManager;print(GeckoDriverManager().install())",
+                silent=True,
+            ),
+        ).strip()
+        session.env["PATH"] = f"{Path(driver).parent}:{session.env['PATH']}"
+
+        tests_impl(
+            session,
+            pytest_extra_args=[
+                "--rt",
+                "firefox-no-host",
                 "--dist-dir",
                 str(dist_dir),
                 "test",
