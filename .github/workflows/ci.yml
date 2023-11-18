@@ -108,8 +108,8 @@ jobs:
       - name: "Install dependencies"
         run: python -m pip install --upgrade pip setuptools nox
 
-      - name: "Install chrome"
-        uses: browser-actions/setup-chrome@v1
+      - name: "Install Chrome"
+        uses: browser-actions/setup-chrome@11cef13cde73820422f9263a707fb8029808e191
         if: ${{ matrix.nox-session == 'emscripten' }}
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
