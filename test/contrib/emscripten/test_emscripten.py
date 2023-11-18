@@ -125,12 +125,27 @@ def test_timeout_warning(
 ) -> None:
     @run_in_pyodide()  # type: ignore[misc]
     def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import js  # type: ignore[import]
+
         import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPConnection
+
+        old_log = js.console.warn
+        log_msgs = []
+
+        def capture_log(*args):  # type: ignore[no-untyped-def]
+            log_msgs.append(str(args))
+            old_log(*args)
+
+        js.console.warn = capture_log
 
         conn = HTTPConnection(host, port, timeout=1.0)
         conn.request("GET", f"http://{host}:{port}/")
         conn.getresponse()
+        js.console.warn = old_log
+        # should have shown timeout warning exactly once by now
+        print(log_msgs)
+        assert len([x for x in log_msgs if x.find("Warning: Timeout") != -1]) == 1
         assert urllib3.contrib.emscripten.fetch._SHOWN_TIMEOUT_WARNING
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
@@ -189,17 +204,33 @@ def test_non_streaming_no_fallback_warning(
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import js
+
         import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPSConnection
         from urllib3.response import HTTPResponse
 
+        log_msgs = []
+        old_log = js.console.warn
+
+        def capture_log(*args):  # type: ignore[no-untyped-def]
+            log_msgs.append(str(args))
+            old_log(*args)
+
+        js.console.warn = capture_log
         conn = HTTPSConnection(host, port)
         conn.request("GET", f"https://{host}:{port}/", preload_content=True)
         response = conn.getresponse()
+        js.console.warn = old_log
         assert isinstance(response, HTTPResponse)
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
         # no console warnings because we didn't ask it to stream the response
+        # check no log messages
+        assert (
+            len([x for x in log_msgs if x.find("Can't stream HTTP requests") != -1])
+            == 0
+        )
         assert not urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
@@ -211,25 +242,43 @@ def test_streaming_fallback_warning(
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import js
+
         import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPSConnection
         from urllib3.response import HTTPResponse
 
+        log_msgs = []
+        old_log = js.console.warn
+
+        def capture_log(*args):  # type: ignore[no-untyped-def]
+            log_msgs.append(str(args))
+            old_log(*args)
+
+        js.console.warn = capture_log
+
         conn = HTTPSConnection(host, port)
         conn.request("GET", f"https://{host}:{port}/", preload_content=False)
         response = conn.getresponse()
+        js.console.warn = old_log
         assert isinstance(response, HTTPResponse)
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
-        # check that it has warned about falling back to non-streaming fetch
+        # check that it has warned about falling back to non-streaming fetch exactly once
+        assert (
+            len([x for x in log_msgs if x.find("Can't stream HTTP requests") != -1])
+            == 1
+        )
         assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
 
 
+@install_urllib3_wheel()
 def test_specific_method(
     selenium: typing.Any,
     testserver_http: PyodideServerInfo,
+    run_from_server: ServerRunnerInfo,
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
@@ -297,15 +346,25 @@ def test_streaming_notready_warning(
     worker_code = f"""
         import pyodide_js as pjs
         await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
+        import js
         import urllib3
         from urllib3.response import HTTPResponse
         from urllib3.connection import HTTPConnection
 
+        log_msgs=[]
+        old_log=js.console.warn
+        def capture_log(*args):
+            log_msgs.append(str(args))
+            old_log(*args)
+        js.console.warn=capture_log
+
         conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
         conn.request("GET", "{bigfile_url}",preload_content=False)
+        js.console.warn=old_log
         response = conn.getresponse()
         assert isinstance(response, HTTPResponse)
         data=response.data.decode('utf-8')
+        assert len([x for x in log_msgs if x.find("Can't stream HTTP requests")!=-1])==1
         assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==True
         data
         """

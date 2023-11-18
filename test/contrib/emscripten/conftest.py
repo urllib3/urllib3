@@ -114,7 +114,6 @@ class PyodideTestingApp(TestingApp):
         return Response("TEN SECONDS LATER")
 
     def bigfile(self, req: HTTPServerRequest) -> Response:
-        print("Bigfile requested")
         # great big text file, should force streaming
         # if supported
         bigdata = 1048576 * b"WOOO YAY BOOYAKAH"
@@ -128,7 +127,6 @@ class PyodideTestingApp(TestingApp):
         file_path = Path(PyodideTestingApp.pyodide_dist_dir, *path_split[2:])
         if file_path.exists():
             mime_type, encoding = mimetypes.guess_type(file_path)
-            print(file_path, mime_type)
             if not mime_type:
                 mime_type = "text/plain"
             self.set_header("Content-Type", mime_type)
@@ -142,9 +140,7 @@ class PyodideTestingApp(TestingApp):
     def wheel(self, _req: HTTPServerRequest) -> Response:
         # serve our wheel
         wheel_folder = Path(__file__).parent.parent.parent.parent / "dist"
-        print(wheel_folder)
         wheels = list(wheel_folder.glob("*.whl"))
-        print(wheels)
         if len(wheels) > 0:
             resp = Response(
                 body=wheels[0].read_bytes(),
