@@ -7,11 +7,14 @@ import ssl
 import typing
 from pathlib import Path
 
+import hypercorn
 import pytest
 import trustme
 from tornado import web
 
+from dummyserver.app import hypercorn_app
 from dummyserver.handlers import TestingApp
+from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.proxy import ProxyHandler
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.tornadoserver import (
@@ -20,6 +23,7 @@ from dummyserver.tornadoserver import (
     run_tornado_loop_in_thread,
 )
 from urllib3.util import ssl_
+from urllib3.util.url import parse_url
 
 from .tz_stub import stub_timezone_ctx
 
@@ -83,17 +87,13 @@ def run_server_in_thread(
     ca.cert_pem.write_to_path(ca_cert_path)
     server_certs = _write_cert_to_dir(server_cert, tmpdir)
 
-    with run_tornado_loop_in_thread() as io_loop:
-
-        async def run_app() -> int:
-            app = web.Application([(r".*", TestingApp)])
-            server, port = run_tornado_app(app, server_certs, scheme, host)
-            return port
-
-        port = asyncio.run_coroutine_threadsafe(
-            run_app(), io_loop.asyncio_loop  # type: ignore[attr-defined]
-        ).result()
-        yield ServerConfig("https", host, port, ca_cert_path)
+    config = hypercorn.Config()
+    config.certfile = server_certs["certfile"]
+    config.keyfile = server_certs["keyfile"]
+    config.bind = [f"{host}:0"]
+    with run_hypercorn_in_thread(config, hypercorn_app):
+        port = typing.cast(int, parse_url(config.bind[0]).port)
+        yield ServerConfig(scheme, host, port, ca_cert_path)
 
 
 @contextlib.contextmanager
