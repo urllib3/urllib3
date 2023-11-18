@@ -280,6 +280,19 @@ class BytesQueueBuffer:
 
         return ret.getvalue()
 
+    def get_all(self) -> bytes:
+        buffer = self.buffer
+        if not buffer:
+            assert self._size == 0
+            return b""
+        if len(buffer) == 1:
+            result = buffer.pop()
+        else:
+            result = b"".join(buffer)
+            buffer.clear()
+        self._size = 0
+        return result
+
 
 class BaseHTTPResponse(io.IOBase):
     CONTENT_DECODERS = ["gzip", "x-gzip", "deflate"]
@@ -390,6 +403,13 @@ class BaseHTTPResponse(io.IOBase):
         amt: int | None = None,
         decode_content: bool | None = None,
         cache_content: bool = False,
+    ) -> bytes:
+        raise NotImplementedError()
+
+    def read1(
+        self,
+        amt: int | None = None,
+        decode_content: bool | None = None,
     ) -> bytes:
         raise NotImplementedError()
 
@@ -752,7 +772,12 @@ class HTTPResponse(BaseHTTPResponse):
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
 
-    def _fp_read(self, amt: int | None = None) -> bytes:
+    def _fp_read(
+        self,
+        amt: int | None = None,
+        *,
+        read1: bool = False,
+    ) -> bytes:
         """
         Read a response with the thought that reading the number of bytes
         larger than can fit in a 32-bit int at a time via SSL in some
@@ -770,8 +795,14 @@ class HTTPResponse(BaseHTTPResponse):
         c_int_max = 2**31 - 1
         if (
             (amt and amt > c_int_max)
-            or (self.length_remaining and self.length_remaining > c_int_max)
+            or (
+                amt is None
+                and self.length_remaining
+                and self.length_remaining > c_int_max
+            )
         ) and (util.IS_PYOPENSSL or sys.version_info < (3, 10)):
+            if read1:
+                return self._fp.read1(c_int_max)
             buffer = io.BytesIO()
             # Besides `max_chunk_amt` being a maximum chunk size, it
             # affects memory overhead of reading a response by this
@@ -792,6 +823,8 @@ class HTTPResponse(BaseHTTPResponse):
                 buffer.write(data)
                 del data  # to reduce peak memory usage by `max_chunk_amt`.
             return buffer.getvalue()
+        elif read1:
+            return self._fp.read1(amt) if amt is not None else self._fp.read1()
         else:
             # StringIO doesn't like amt=None
             return self._fp.read(amt) if amt is not None else self._fp.read()
@@ -799,6 +832,8 @@ class HTTPResponse(BaseHTTPResponse):
     def _raw_read(
         self,
         amt: int | None = None,
+        *,
+        read1: bool = False,
     ) -> bytes:
         """
         Reads `amt` of bytes from the socket.
@@ -809,7 +844,7 @@ class HTTPResponse(BaseHTTPResponse):
         fp_closed = getattr(self._fp, "closed", False)
 
         with self._error_catcher():
-            data = self._fp_read(amt) if not fp_closed else b""
+            data = self._fp_read(amt, read1=read1) if not fp_closed else b""
             if amt is not None and amt != 0 and not data:
                 # Platform-specific: Buggy versions of Python.
                 # Close the connection when no data is returned
@@ -908,6 +943,57 @@ class HTTPResponse(BaseHTTPResponse):
             data = self._decoded_buffer.get(amt)
 
         return data
+
+    def read1(
+        self,
+        amt: int | None = None,
+        decode_content: bool | None = None,
+    ) -> bytes:
+        """
+        Similar to ``http.client.HTTPResponse.read1`` and documented
+        in :meth:`io.BufferedReader.read1`, but with an additional parameter:
+        ``decode_content``.
+
+        :param amt:
+            How much of the content to read.
+
+        :param decode_content:
+            If True, will attempt to decode the body based on the
+            'content-encoding' header.
+        """
+        if decode_content is None:
+            decode_content = self.decode_content
+        # try and respond without going to the network
+        if self._has_decoded_content:
+            if not decode_content:
+                raise RuntimeError(
+                    "Calling read1(decode_content=False) is not supported after "
+                    "read1(decode_content=True) was called."
+                )
+            if len(self._decoded_buffer) > 0:
+                if amt is None:
+                    return self._decoded_buffer.get_all()
+                return self._decoded_buffer.get(amt)
+        if amt == 0:
+            return b""
+
+        # FIXME, this method's type doesn't say returning None is possible
+        data = self._raw_read(amt, read1=True)
+        if not decode_content or data is None:
+            return data
+
+        self._init_decoder()
+        while True:
+            flush_decoder = not data
+            decoded_data = self._decode(data, decode_content, flush_decoder)
+            self._decoded_buffer.put(decoded_data)
+            if decoded_data or flush_decoder:
+                break
+            data = self._raw_read(8192, read1=True)
+
+        if amt is None:
+            return self._decoded_buffer.get_all()
+        return self._decoded_buffer.get(amt)
 
     def stream(
         self, amt: int | None = 2**16, decode_content: bool | None = None
