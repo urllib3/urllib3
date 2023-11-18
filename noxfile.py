@@ -158,8 +158,8 @@ def lint(session: nox.Session) -> None:
 
 # TODO: node support is not tested yet - it should work if you require('xmlhttprequest') before
 # loading pyodide, but there is currently no nice way to do this with pytest-pyodide
-# because you can't override the test runner properties -
-# https://github.com/pyodide/pytest-pyodide/issues/118
+# because you can't override the test runner properties easily - see
+# https://github.com/pyodide/pytest-pyodide/issues/118 for more
 @nox.session(python="3.11")
 @nox.parametrize("runner", ["firefox", "chrome"])
 def emscripten(session: nox.Session, runner: str) -> None:

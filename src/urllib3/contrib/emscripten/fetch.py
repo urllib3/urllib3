@@ -19,6 +19,9 @@ request into a buffer and then returning it. it shows a warning in the javascrip
 
 Finally, the webworker which does the streaming fetch is created on initial import, but will only be started once
 control is returned to javascript. Call `await wait_for_streaming_ready()` to wait for streaming fetch.
+
+NB: in this code, there are a lot of javascript objects. They are named js_*
+to make it clear what type of object they are.
 """
 from __future__ import annotations
 
@@ -158,24 +161,24 @@ class _StreamingFetcher:
         # make web-worker and data buffer on startup
         self.streaming_ready = False
 
-        dataBlob = js.Blob.new(
+        js_data_blob = js.Blob.new(
             [_STREAMING_WORKER_CODE], _obj_from_dict({"type": "application/javascript"})
         )
 
-        def promise_resolver(resolve_fn: JsProxy, reject_fn: JsProxy) -> None:
+        def promise_resolver(js_resolve_fn: JsProxy, js_reject_fn: JsProxy) -> None:
             def onMsg(e: JsProxy) -> None:
                 self.streaming_ready = True
-                resolve_fn(e)
+                js_resolve_fn(e)
 
             def onErr(e: JsProxy) -> None:
-                reject_fn(e)
+                js_reject_fn(e)
 
-            self._worker.onmessage = onMsg
-            self._worker.onerror = onErr
+            self.js_worker.onmessage = onMsg
+            self.js_worker.onerror = onErr
 
-        dataURL = js.URL.createObjectURL(dataBlob)
-        self._worker = js.globalThis.Worker.new(dataURL)
-        self._worker_ready_promise = js.globalThis.Promise.new(promise_resolver)
+        js_data_url = js.URL.createObjectURL(js_data_blob)
+        self.js_worker = js.globalThis.Worker.new(js_data_url)
+        self.js_worker_ready_promise = js.globalThis.Promise.new(promise_resolver)
 
     def send(self, request: EmscriptenRequest) -> EmscriptenResponse:
         headers = {
@@ -186,39 +189,39 @@ class _StreamingFetcher:
         fetch_data = {"headers": headers, "body": to_js(body), "method": request.method}
         # start the request off in the worker
         timeout = int(1000 * request.timeout) if request.timeout > 0 else None
-        shared_buffer = js.SharedArrayBuffer.new(1048576)
-        int_buffer = js.Int32Array.new(shared_buffer)
-        byte_buffer = js.Uint8Array.new(shared_buffer, 8)
+        js_shared_buffer = js.SharedArrayBuffer.new(1048576)
+        js_int_buffer = js.Int32Array.new(js_shared_buffer)
+        js_byte_buffer = js.Uint8Array.new(js_shared_buffer, 8)
 
-        js.Atomics.store(int_buffer, 0, ERROR_TIMEOUT)
-        js.Atomics.notify(int_buffer, 0)
-        absolute_url = js.URL.new(request.url, js.location).href
-        self._worker.postMessage(
+        js.Atomics.store(js_int_buffer, 0, ERROR_TIMEOUT)
+        js.Atomics.notify(js_int_buffer, 0)
+        js_absolute_url = js.URL.new(request.url, js.location).href
+        self.js_worker.postMessage(
             _obj_from_dict(
                 {
-                    "buffer": shared_buffer,
-                    "url": absolute_url,
+                    "buffer": js_shared_buffer,
+                    "url": js_absolute_url,
                     "fetchParams": fetch_data,
                 }
             )
         )
         # wait for the worker to send something
-        js.Atomics.wait(int_buffer, 0, ERROR_TIMEOUT, timeout)
-        if int_buffer[0] == ERROR_TIMEOUT:
+        js.Atomics.wait(js_int_buffer, 0, ERROR_TIMEOUT, timeout)
+        if js_int_buffer[0] == ERROR_TIMEOUT:
             raise _TimeoutError(
                 "Timeout connecting to streaming request",
                 request=request,
                 response=None,
             )
-        elif int_buffer[0] == SUCCESS_HEADER:
+        elif js_int_buffer[0] == SUCCESS_HEADER:
             # got response
             # header length is in second int of intBuffer
-            string_len = int_buffer[1]
+            string_len = js_int_buffer[1]
             # decode the rest to a JSON string
-            decoder = js.TextDecoder.new()
+            js_decoder = js.TextDecoder.new()
             # this does a copy (the slice) because decode can't work on shared array
             # for some silly reason
-            json_str = decoder.decode(byte_buffer.slice(0, string_len))
+            json_str = js_decoder.decode(js_byte_buffer.slice(0, string_len))
             # get it as an object
             response_obj = json.loads(json_str)
             return EmscriptenResponse(
@@ -227,26 +230,26 @@ class _StreamingFetcher:
                 headers=response_obj["headers"],
                 body=io.BufferedReader(
                     _ReadStream(
-                        int_buffer,
-                        byte_buffer,
+                        js_int_buffer,
+                        js_byte_buffer,
                         request.timeout,
-                        self._worker,
+                        self.js_worker,
                         response_obj["connectionID"],
                     ),
                     buffer_size=1048576,
                 ),
             )
-        elif int_buffer[0] == ERROR_EXCEPTION:
-            string_len = int_buffer[1]
+        elif js_int_buffer[0] == ERROR_EXCEPTION:
+            string_len = js_int_buffer[1]
             # decode the error string
-            decoder = js.TextDecoder.new()
-            json_str = decoder.decode(byte_buffer.slice(0, string_len))
+            js_decoder = js.TextDecoder.new()
+            json_str = js_decoder.decode(js_byte_buffer.slice(0, string_len))
             raise _StreamingError(
                 f"Exception thrown in fetch: {json_str}", request=request, response=None
             )
         else:
             raise _StreamingError(
-                f"Unknown status from worker in fetch: {int_buffer[0]}",
+                f"Unknown status from worker in fetch: {js_int_buffer[0]}",
                 request=request,
                 response=None,
             )
@@ -328,34 +331,34 @@ is working, you need to call: 'await urllib3.contrib.emscripten.fetc.wait_for_st
 
 def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
     try:
-        xhr = js.XMLHttpRequest.new()
+        js_xhr = js.XMLHttpRequest.new()
 
         if not is_in_browser_main_thread():
-            xhr.responseType = "arraybuffer"
+            js_xhr.responseType = "arraybuffer"
             if request.timeout:
-                xhr.timeout = int(request.timeout * 1000)
+                js_xhr.timeout = int(request.timeout * 1000)
         else:
-            xhr.overrideMimeType("text/plain; charset=ISO-8859-15")
+            js_xhr.overrideMimeType("text/plain; charset=ISO-8859-15")
             if request.timeout:
                 # timeout isn't available on the main thread - show a warning in console
                 # if it is set
                 _show_timeout_warning()
 
-        xhr.open(request.method, request.url, False)
+        js_xhr.open(request.method, request.url, False)
         for name, value in request.headers.items():
             if name.lower() not in HEADERS_TO_IGNORE:
-                xhr.setRequestHeader(name, value)
+                js_xhr.setRequestHeader(name, value)
 
-        xhr.send(to_js(request.body))
+        js_xhr.send(to_js(request.body))
 
-        headers = dict(Parser().parsestr(xhr.getAllResponseHeaders()))
+        headers = dict(Parser().parsestr(js_xhr.getAllResponseHeaders()))
 
         if not is_in_browser_main_thread():
-            body = xhr.response.to_py().tobytes()
+            body = js_xhr.response.to_py().tobytes()
         else:
-            body = xhr.response.encode("ISO-8859-15")
+            body = js_xhr.response.encode("ISO-8859-15")
         return EmscriptenResponse(
-            status_code=xhr.status, headers=headers, body=body, request=request
+            status_code=js_xhr.status, headers=headers, body=body, request=request
         )
     except JsException as err:
         if err.name == "TimeoutError":
@@ -376,7 +379,7 @@ def streaming_ready() -> bool | None:
 
 async def wait_for_streaming_ready() -> bool:
     if _fetcher:
-        await _fetcher._worker_ready_promise
+        await _fetcher.js_worker_ready_promise
         return True
     else:
         return False
