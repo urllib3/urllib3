@@ -230,7 +230,6 @@ def test_streaming_fallback_warning(
 def test_specific_method(
     selenium: typing.Any,
     testserver_http: PyodideServerInfo,
-    run_from_server: ServerRunnerInfo,
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]

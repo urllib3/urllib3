@@ -5,8 +5,9 @@ import contextlib
 import mimetypes
 import os
 import textwrap
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Generator, Type
+from typing import Any, Generator
 from urllib.parse import urlsplit
 
 import pytest
@@ -28,7 +29,11 @@ def testserver_http(
     print(
         f"Server:{server.http_host}:{server.http_port},https({server.https_port}) [{dist_dir}]"
     )
-    yield server
+    yield PyodideServerInfo(
+        http_host=server.http_host,
+        http_port=server.http_port,
+        https_port=server.https_port,
+    )
     print("Server teardown")
     server.teardown_class()
 
@@ -174,4 +179,8 @@ class PyodideDummyServerTestCase(HTTPDummyProxyTestCase):
             cls._stack = stack.pop_all()
 
 
-PyodideServerInfo = Type[PyodideDummyServerTestCase]
+@dataclass
+class PyodideServerInfo:
+    http_port: int
+    https_port: int
+    http_host: str
