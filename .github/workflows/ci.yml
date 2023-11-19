@@ -109,10 +109,10 @@ jobs:
         run: python -m pip install --upgrade pip setuptools nox
 
       - name: "Install Chrome"
-        uses: browser-actions/setup-chrome@11cef13cde73820422f9263a707fb8029808e191
+        uses: browser-actions/setup-chrome@11cef13cde73820422f9263a707fb8029808e191 # v1.3.0
         if: ${{ matrix.nox-session == 'emscripten' }}
       - name: "Install Firefox"
-        uses: browser-actions/setup-firefox@29a706787c6fb2196f091563261e1273bf379ead
+        uses: browser-actions/setup-firefox@29a706787c6fb2196f091563261e1273bf379ead # v1.4.0
         if: ${{ matrix.nox-session == 'emscripten' }}
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
