@@ -24,4 +24,4 @@ class TestHypercornDummyServerTestCase(HypercornDummyServerTestCase):
         # for us. Hypercorn supports this thankfully, but we should try with
         # HTTPS as well once that's available.
         assert b"< HTTP/2 200" in output
-        assert output.endswith(b"Dummy Hypercorn server!")
+        assert output.endswith(b"Dummy server!")
