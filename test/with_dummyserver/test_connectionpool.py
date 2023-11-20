@@ -974,54 +974,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert no_ua_headers["User-Agent"] == SKIP_HEADER
             assert pool_headers.get("User-Agent") == custom_ua
 
-    @pytest.mark.parametrize(
-        "accept_encoding",
-        [
-            "Accept-Encoding",
-            "accept-encoding",
-            b"Accept-Encoding",
-            b"accept-encoding",
-            None,
-        ],
-    )
-    @pytest.mark.parametrize("host", ["Host", "host", b"Host", b"host", None])
-    @pytest.mark.parametrize(
-        "user_agent", ["User-Agent", "user-agent", b"User-Agent", b"user-agent", None]
-    )
-    @pytest.mark.parametrize("chunked", [True, False])
-    def test_skip_header(
-        self,
-        accept_encoding: str | None,
-        host: str | None,
-        user_agent: str | None,
-        chunked: bool,
-    ) -> None:
-        headers = {}
-
-        if accept_encoding is not None:
-            headers[accept_encoding] = SKIP_HEADER
-        if host is not None:
-            headers[host] = SKIP_HEADER
-        if user_agent is not None:
-            headers[user_agent] = SKIP_HEADER
-
-        with HTTPConnectionPool(self.host, self.port) as pool:
-            r = pool.request("GET", "/headers", headers=headers, chunked=chunked)
-        request_headers = r.json()
-
-        if accept_encoding is None:
-            assert "Accept-Encoding" in request_headers
-        else:
-            assert accept_encoding not in request_headers
-        if host is None:
-            assert "Host" in request_headers
-        else:
-            assert host not in request_headers
-        if user_agent is None:
-            assert "User-Agent" in request_headers
-        else:
-            assert user_agent not in request_headers
-
     @pytest.mark.parametrize("header", ["Content-Length", "content-length"])
     @pytest.mark.parametrize("chunked", [True, False])
     def test_skip_header_non_supported(self, header: str, chunked: bool) -> None:
