@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from test import notWindows
 
 from dummyserver.testcase import HypercornDummyServerTestCase
 
@@ -11,6 +12,7 @@ class TestHypercornDummyServerTestCase(HypercornDummyServerTestCase):
         super().setup_class()
         cls.base_url = f"http://{cls.host}:{cls.port}"
 
+    @notWindows()  # GitHub Actions Windows doesn't have HTTP/2 support.
     def test_hypercorn_server_http2(self) -> None:
         # This is a meta test to make sure our Hypercorn test server is actually using HTTP/2
         # before urllib3 is capable of speaking HTTP/2. Thanks, Daniel! <3
