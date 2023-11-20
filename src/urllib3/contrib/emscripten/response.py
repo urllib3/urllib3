@@ -41,6 +41,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
             reason="",
             decode_content=True,
         )
+        self.length_remaining=self._init_length()
 
     @property
     def url(self) -> str | None:
@@ -65,6 +66,60 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
             self.url = retries.history[-1].redirect_location
         self._retries = retries
 
+    def _init_length(self, request_method: str | None) -> int | None:
+        length: int | None
+        content_length: str | None = self.headers.get("content-length")
+
+        if content_length is not None:
+            if self.chunked:
+                # This Response will fail with an IncompleteRead if it can't be
+                # received as chunked. This method falls back to attempt reading
+                # the response before raising an exception.
+                log.warning(
+                    "Received response with both Content-Length and "
+                    "Transfer-Encoding set. This is expressly forbidden "
+                    "by RFC 7230 sec 3.3.2. Ignoring Content-Length and "
+                    "attempting to process response as Transfer-Encoding: "
+                    "chunked."
+                )
+                return None
+
+            try:
+                # RFC 7230 section 3.3.2 specifies multiple content lengths can
+                # be sent in a single Content-Length header
+                # (e.g. Content-Length: 42, 42). This line ensures the values
+                # are all valid ints and that as long as the `set` length is 1,
+                # all values are the same. Otherwise, the header is invalid.
+                lengths = {int(val) for val in content_length.split(",")}
+                if len(lengths) > 1:
+                    raise InvalidHeader(
+                        "Content-Length contained multiple "
+                        "unmatching values (%s)" % content_length
+                    )
+                length = lengths.pop()
+            except ValueError:
+                length = None
+            else:
+                if length < 0:
+                    length = None
+
+        else:  # if content_length is None
+            length = None
+
+        # Convert status to int for comparison
+        # In some cases, httplib returns a status of "_UNKNOWN"
+        try:
+            status = int(self.status)
+        except ValueError:
+            status = 0
+
+        # Check for responses that shouldn't include a body
+        if status in (204, 304) or 100 <= status < 200 or request_method == "HEAD":
+            length = 0
+
+        return length
+
+
     def read(
         self,
         amt: int | None = None,
@@ -72,16 +127,22 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
         cache_content: bool = False,
     ) -> bytes:
         if not isinstance(self._response.body, IOBase):
+            self.length_remaining=len(self._response.body)
             # wrap body in IOStream
             self._response.body = BytesIO(self._response.body)
         if amt is not None:
             # don't cache partial content
             cache_content = False
-            return typing.cast(bytes, self._response.body.read(amt))
+            data=self._response.body.read(amt)
+            if self.length_remaining>0:
+                self.length_remaining= max(self.length_remaining-len(data),0)
+            return typing.cast(bytes, read_data)
         else:
             data = self._response.body.read(None)
             if cache_content:
                 self._body = data
+            if self.length_remaining>0:
+                self.length_remaining= max(self.length_remaining-len(data),0)
             return typing.cast(bytes, data)
 
     def read_chunked(
