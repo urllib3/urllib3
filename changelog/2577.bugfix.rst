@@ -1,0 +1,6 @@
+The ``proxy_ssl_context`` argument for ``urllib3.ProxyManager`` will be used
+for the connection to the proxy when the connection is forwarded, either because
+``use_forwarding_for_https`` is set to ``True`` or because the target is a HTTP destination.
+Previously, ``proxy_ssl_context`` was not used in these situations. If ``ssl_context``
+was passed as a keyword argument, it had been used if ``proxy_ssl_context`` were not set,
+but setting ``ssl_context`` will now raise an error.
