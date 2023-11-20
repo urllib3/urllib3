@@ -543,6 +543,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         response._connection = response_conn  # type: ignore[attr-defined]
         response._pool = self  # type: ignore[attr-defined]
 
+        # emscripten connection doesn't have _http_vsn_str
+        http_version = getattr(conn, "_http_vsn_str", "HTTP/?")
         log.debug(
             '%s://%s:%s "%s %s %s" %s %s',
             self.scheme,
@@ -551,7 +553,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             method,
             url,
             # HTTP version
-            conn._http_vsn_str,  # type: ignore[attr-defined]
+            http_version,
             response.status,
             response.length_remaining,  # type: ignore[attr-defined]
         )

@@ -5,10 +5,12 @@ import typing
 from dataclasses import dataclass
 from io import BytesIO, IOBase
 
-from ...connection import HTTPConnection
-from ...response import HTTPResponse
+from ...response import BaseHTTPResponse
 from ...util.retry import Retry
 from .request import EmscriptenRequest
+
+if typing.TYPE_CHECKING:
+    from ..._base_connection import BaseHTTPConnection, BaseHTTPSConnection
 
 
 @dataclass
@@ -19,13 +21,14 @@ class EmscriptenResponse:
     request: EmscriptenRequest
 
 
-class EmscriptenHttpResponseWrapper(HTTPResponse):
+class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
     def __init__(
         self,
         internal_response: EmscriptenResponse,
         url: str | None = None,
-        connection: HTTPConnection | None = None,
+        connection: BaseHTTPConnection | BaseHTTPSConnection | None = None,
     ):
+        self._pool = None  # set by pool class
         self._body = None
         self._response = internal_response
         self._url = url
@@ -48,7 +51,7 @@ class EmscriptenHttpResponseWrapper(HTTPResponse):
         self._url = url
 
     @property
-    def connection(self) -> HTTPConnection | None:
+    def connection(self) -> BaseHTTPConnection | BaseHTTPSConnection | None:
         return self._connection
 
     @property
@@ -105,7 +108,7 @@ class EmscriptenHttpResponseWrapper(HTTPResponse):
     @property
     def data(self) -> bytes:
         if self._body:
-            return self._body  # type: ignore[return-value]
+            return self._body
         else:
             return self.read(cache_content=True)
 

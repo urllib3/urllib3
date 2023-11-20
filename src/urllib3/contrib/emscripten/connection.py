@@ -15,8 +15,27 @@ from .fetch import _RequestError, _TimeoutError, send_request, send_streaming_re
 from .request import EmscriptenRequest
 from .response import EmscriptenHttpResponseWrapper
 
+try:  # Compiled with SSL?
+    import ssl
 
-class EmscriptenHTTPConnection(HTTPConnection):
+    BaseSSLError = ssl.SSLError
+except (ImportError, AttributeError):
+    ssl = None  # type: ignore[assignment]
+
+    class BaseSSLError(BaseException):  # type: ignore[no-redef]
+        pass
+
+
+if typing.TYPE_CHECKING:
+    from ..._base_connection import BaseHTTPConnection, BaseHTTPSConnection
+
+
+class EmscriptenHTTPConnection:
+    default_port: typing.ClassVar[int] = port_by_scheme["http"]
+    default_socket_options: typing.ClassVar[_TYPE_SOCKET_OPTIONS]
+
+    timeout: None | (float)
+
     host: str
     port: int
     blocksize: int
@@ -26,8 +45,8 @@ class EmscriptenHTTPConnection(HTTPConnection):
     proxy: Url | None
     proxy_config: ProxyConfig | None
 
-    is_verified: bool
-    proxy_is_verified: bool | None
+    is_verified: bool = False
+    proxy_is_verified: bool | None = None
 
     def __init__(
         self,
@@ -60,7 +79,7 @@ class EmscriptenHTTPConnection(HTTPConnection):
     def connect(self) -> None:
         pass
 
-    def request(  # type: ignore[override]
+    def request(
         self,
         method: str,
         url: str,
@@ -99,7 +118,7 @@ class EmscriptenHTTPConnection(HTTPConnection):
         except _RequestError as e:
             raise ResponseError(e.message)
 
-    def getresponse(self) -> BaseHTTPResponse:  # type: ignore[override]
+    def getresponse(self) -> BaseHTTPResponse:
         if self._response is not None:
             return EmscriptenHttpResponseWrapper(
                 internal_response=self._response,
@@ -135,15 +154,20 @@ class EmscriptenHTTPConnection(HTTPConnection):
 
 
 class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
-    default_port = port_by_scheme["https"]  # type: ignore[misc]
-
+    default_port = port_by_scheme["https"]
+    # all this is basically ignored, as browser handles https
     cert_reqs: int | str | None = None
     ca_certs: str | None = None
     ca_cert_dir: str | None = None
     ca_cert_data: None | str | bytes = None
+    cert_file: str | None
+    key_file: str | None
+    key_password: str | None
+    ssl_context: ssl.SSLContext | None
     ssl_version: int | str | None = None
     ssl_minimum_version: int | None = None
     ssl_maximum_version: int | None = None
+    assert_hostname: None | str | typing.Literal[False]
     assert_fingerprint: str | None = None
 
     def __init__(
@@ -214,3 +238,9 @@ class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
         ca_cert_data: None | str | bytes = None,
     ) -> None:
         pass
+
+
+# verify that this class implements BaseHTTP(s) connection correctly
+if typing.TYPE_CHECKING:
+    _supports_http_protocol: BaseHTTPConnection = EmscriptenHTTPConnection("", 0)
+    _supports_https_protocol: BaseHTTPSConnection = EmscriptenHTTPSConnection("", 0)

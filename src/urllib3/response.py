@@ -14,6 +14,9 @@ from http.client import HTTPMessage as _HttplibHTTPMessage
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
 
+if typing.TYPE_CHECKING:
+    from ._base_connection import BaseHTTPConnection
+
 try:
     try:
         import brotlicffi as brotli  # type: ignore[import]
@@ -366,7 +369,7 @@ class BaseHTTPResponse(io.IOBase):
         raise NotImplementedError()
 
     @property
-    def connection(self) -> HTTPConnection | None:
+    def connection(self) -> BaseHTTPConnection | None:
         raise NotImplementedError()
 
     @property
