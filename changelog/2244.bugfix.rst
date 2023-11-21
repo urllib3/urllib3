@@ -1,0 +1,2 @@
+Fixed issue where requests against urls with trailing dots were failing due to SSL errors
+when using proxy.
