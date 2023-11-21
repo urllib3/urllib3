@@ -7,20 +7,24 @@ import ssl
 import threading
 import typing
 
+import hypercorn
 import pytest
 from tornado import httpserver, ioloop, web
 
+from dummyserver.app import hypercorn_app
 from dummyserver.handlers import TestingApp
+from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.proxy import ProxyHandler
-from dummyserver.server import (
+from dummyserver.tornadoserver import (
     DEFAULT_CERTS,
     HAS_IPV6,
     SocketServerThread,
-    run_loop_in_thread,
     run_tornado_app,
+    run_tornado_loop_in_thread,
 )
 from urllib3.connection import HTTPConnection
 from urllib3.util.ssltransport import SSLTransport
+from urllib3.util.url import parse_url
 
 
 def consume_socket(
@@ -172,7 +176,7 @@ class HTTPDummyServerTestCase:
     @classmethod
     def _start_server(cls) -> None:
         with contextlib.ExitStack() as stack:
-            io_loop = stack.enter_context(run_loop_in_thread())
+            io_loop = stack.enter_context(run_tornado_loop_in_thread())
 
             async def run_app() -> None:
                 app = web.Application([(r".*", TestingApp)])
@@ -240,7 +244,7 @@ class HTTPDummyProxyTestCase:
     @classmethod
     def setup_class(cls) -> None:
         with contextlib.ExitStack() as stack:
-            io_loop = stack.enter_context(run_loop_in_thread())
+            io_loop = stack.enter_context(run_tornado_loop_in_thread())
 
             async def run_app() -> None:
                 app = web.Application([(r".*", TestingApp)])
@@ -290,6 +294,29 @@ class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 
     proxy_host = "::1"
     proxy_host_alt = "127.0.0.1"
+
+
+class HypercornDummyServerTestCase:
+    host = "localhost"
+    host_alt = "127.0.0.1"
+    port: typing.ClassVar[int]
+    base_url: typing.ClassVar[str]
+    base_url_alt: typing.ClassVar[str]
+
+    _stack: typing.ClassVar[contextlib.ExitStack]
+
+    @classmethod
+    def setup_class(cls) -> None:
+        with contextlib.ExitStack() as stack:
+            config = hypercorn.Config()
+            config.bind = [f"{cls.host}:0"]
+            stack.enter_context(run_hypercorn_in_thread(config, hypercorn_app))
+            cls._stack = stack.pop_all()
+            cls.port = typing.cast(int, parse_url(config.bind[0]).port)
+
+    @classmethod
+    def teardown_class(cls) -> None:
+        cls._stack.close()
 
 
 class ConnectionMarker:

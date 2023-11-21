@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import socket
+import sys
 import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
@@ -13,7 +14,7 @@ from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
     from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
@@ -76,6 +77,8 @@ RECENT_DATE = datetime.date(2022, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
+_HAS_SYS_AUDIT = hasattr(sys, "audit")
+
 
 class HTTPConnection(_HTTPConnection):
     """
@@ -134,7 +137,7 @@ class HTTPConnection(_HTTPConnection):
         *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
-        blocksize: int = 8192,
+        blocksize: int = 16384,
         socket_options: None
         | (connection._TYPE_SOCKET_OPTIONS) = default_socket_options,
         proxy: Url | None = None,
@@ -215,6 +218,10 @@ class HTTPConnection(_HTTPConnection):
             raise NewConnectionError(
                 self, f"Failed to establish a new connection: {e}"
             ) from e
+
+        # Audit hooks are only available in Python 3.8+
+        if _HAS_SYS_AUDIT:
+            sys.audit("http.client.connect", self, self.host, self.port)
 
         return sock
 
@@ -505,7 +512,7 @@ class HTTPSConnection(HTTPConnection):
         *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
-        blocksize: int = 8192,
+        blocksize: int = 16384,
         socket_options: None
         | (connection._TYPE_SOCKET_OPTIONS) = HTTPConnection.default_socket_options,
         proxy: Url | None = None,
@@ -741,6 +748,8 @@ def _ssl_wrap_socket_and_match_hostname(
         # `ssl` can't verify fingerprints or alternate hostnames
         assert_fingerprint
         or assert_hostname
+        # assert_hostname can be set to False to disable hostname checking
+        or assert_hostname is False
         # We still support OpenSSL 1.0.2, which prevents us from verifying
         # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
         or ssl_.IS_PYOPENSSL
@@ -748,10 +757,9 @@ def _ssl_wrap_socket_and_match_hostname(
     ):
         context.check_hostname = False
 
-    # Try to load OS default certs if none are given.
-    # We need to do the hasattr() check for our custom
-    # pyOpenSSL and SecureTransport SSLContext objects
-    # because neither support load_default_certs().
+    # Try to load OS default certs if none are given. We need to do the hasattr() check
+    # for custom pyOpenSSL SSLContext objects because they don't support
+    # load_default_certs().
     if (
         not ca_certs
         and not ca_cert_dir

@@ -58,7 +58,7 @@ from .util.response import is_fp_closed, is_response_to_head
 from .util.retry import Retry
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
     from .connectionpool import HTTPConnectionPool
 
@@ -169,10 +169,15 @@ if zstd is not None:
         def decompress(self, data: bytes) -> bytes:
             if not data:
                 return b""
-            return self._obj.decompress(data)  # type: ignore[no-any-return]
+            data_parts = [self._obj.decompress(data)]
+            while self._obj.eof and self._obj.unused_data:
+                unused_data = self._obj.unused_data
+                self._obj = zstd.ZstdDecompressor().decompressobj()
+                data_parts.append(self._obj.decompress(unused_data))
+            return b"".join(data_parts)
 
         def flush(self) -> bytes:
-            ret = self._obj.flush()
+            ret = self._obj.flush()  # note: this is a no-op
             if not self._obj.eof:
                 raise DecodeError("Zstandard data is incomplete")
             return ret  # type: ignore[no-any-return]
@@ -203,7 +208,9 @@ def _get_decoder(mode: str) -> ContentDecoder:
     if "," in mode:
         return MultiDecoder(mode)
 
-    if mode == "gzip":
+    # According to RFC 9110 section 8.4.1.3, recipients should
+    # consider x-gzip equivalent to gzip
+    if mode in ("gzip", "x-gzip"):
         return GzipDecoder()
 
     if brotli is not None and mode == "br":
@@ -275,7 +282,7 @@ class BytesQueueBuffer:
 
 
 class BaseHTTPResponse(io.IOBase):
-    CONTENT_DECODERS = ["gzip", "deflate"]
+    CONTENT_DECODERS = ["gzip", "x-gzip", "deflate"]
     if brotli is not None:
         CONTENT_DECODERS += ["br"]
     if zstd is not None:
@@ -762,13 +769,9 @@ class HTTPResponse(BaseHTTPResponse):
         assert self._fp
         c_int_max = 2**31 - 1
         if (
-            (
-                (amt and amt > c_int_max)
-                or (self.length_remaining and self.length_remaining > c_int_max)
-            )
-            and not util.IS_SECURETRANSPORT
-            and (util.IS_PYOPENSSL or sys.version_info < (3, 10))
-        ):
+            (amt and amt > c_int_max)
+            or (self.length_remaining and self.length_remaining > c_int_max)
+        ) and (util.IS_PYOPENSSL or sys.version_info < (3, 10)):
             buffer = io.BytesIO()
             # Besides `max_chunk_amt` being a maximum chunk size, it
             # affects memory overhead of reading a response by this
@@ -873,11 +876,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         data = self._raw_read(amt)
 
-        flush_decoder = False
-        if amt is None:
-            flush_decoder = True
-        elif amt != 0 and not data:
-            flush_decoder = True
+        flush_decoder = amt is None or (amt != 0 and not data)
 
         if not data and len(self._decoded_buffer) == 0:
             return data

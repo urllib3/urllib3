@@ -143,7 +143,7 @@ class Retry:
         (most errors are resolved immediately by a second try without a
         delay). urllib3 will sleep for::
 
-            {backoff factor} * (2 ** ({number of total retries} - 1))
+            {backoff factor} * (2 ** ({number of previous retries}))
 
         seconds. If `backoff_jitter` is non-zero, this sleep is extended by::
 
@@ -187,7 +187,7 @@ class Retry:
     RETRY_AFTER_STATUS_CODES = frozenset([413, 429, 503])
 
     #: Default headers to be used for ``remove_headers_on_redirect``
-    DEFAULT_REMOVE_HEADERS_ON_REDIRECT = frozenset(["Authorization"])
+    DEFAULT_REMOVE_HEADERS_ON_REDIRECT = frozenset(["Cookie", "Authorization"])
 
     #: Default maximum backoff time.
     DEFAULT_BACKOFF_MAX = 120

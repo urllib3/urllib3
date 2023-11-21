@@ -10,7 +10,7 @@ import tornado.ioloop
 import tornado.web
 
 from dummyserver.proxy import ProxyHandler
-from dummyserver.server import DEFAULT_CERTS, ssl_options_to_context
+from dummyserver.tornadoserver import DEFAULT_CERTS, ssl_options_to_context
 
 
 def run_proxy(port: int, certs: dict[str, typing.Any] = DEFAULT_CERTS) -> None:

@@ -9,8 +9,11 @@ import nox
 
 def tests_impl(
     session: nox.Session,
-    extras: str = "socks,secure,brotli,zstd",
-    byte_string_comparisons: bool = True,
+    extras: str = "socks,brotli,zstd",
+    # hypercorn dependency h2 compares bytes and strings
+    # https://github.com/python-hyper/h2/issues/1236
+    byte_string_comparisons: bool = False,
+    integration: bool = False,
 ) -> None:
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
@@ -25,11 +28,7 @@ def tests_impl(
     session.run("python", "-m", "OpenSSL.debug")
 
     memray_supported = True
-    if (
-        sys.implementation.name != "cpython"
-        or sys.version_info < (3, 8)
-        or sys.version_info.releaselevel != "final"
-    ):
+    if sys.implementation.name != "cpython" or sys.version_info.releaselevel != "final":
         memray_supported = False  # pytest-memray requires CPython 3.8+
     elif sys.platform == "win32":
         memray_supported = False
@@ -48,6 +47,7 @@ def tests_impl(
         *("--memray", "--hide-memray-summary") if memray_supported else (),
         "-v",
         "-ra",
+        *(("--integration",) if integration else ()),
         f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
         "--tb=native",
         "--durations=10",
@@ -58,18 +58,24 @@ def tests_impl(
     )
 
 
-@nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy"])
+@nox.session(python=["3.8", "3.9", "3.10", "3.11", "3.12", "pypy"])
 def test(session: nox.Session) -> None:
     tests_impl(session)
 
 
-@nox.session(python=["3"])
+@nox.session(python="3")
+def test_integration(session: nox.Session) -> None:
+    """Run integration tests"""
+    tests_impl(session, integration=True)
+
+
+@nox.session(python="3")
 def test_brotlipy(session: nox.Session) -> None:
     """Check that if 'brotlipy' is installed instead of 'brotli' or
     'brotlicffi' that we still don't blow up.
     """
     session.install("brotlipy")
-    tests_impl(session, extras="socks,secure", byte_string_comparisons=False)
+    tests_impl(session, extras="socks", byte_string_comparisons=False)
 
 
 def git_clone(session: nox.Session, git_url: str) -> None:
@@ -98,10 +104,6 @@ def downstream_botocore(session: nox.Session) -> None:
     session.cd(tmp_dir)
     git_clone(session, "https://github.com/boto/botocore")
     session.chdir("botocore")
-    for patch in [
-        "0001-Mark-100-Continue-tests-as-failing.patch",
-    ]:
-        session.run("git", "apply", f"{root}/ci/{patch}", external=True)
     session.run("git", "rev-parse", "HEAD", external=True)
     session.run("python", "scripts/ci/install")
 
@@ -125,6 +127,9 @@ def downstream_requests(session: nox.Session) -> None:
     session.install(".[socks]", silent=False)
     session.install("-r", "requirements-dev.txt", silent=False)
 
+    # Workaround until https://github.com/psf/httpbin/pull/29 gets released
+    session.install("flask<3", "werkzeug<3", silent=False)
+
     session.cd(root)
     session.install(".", silent=False)
     session.cd(f"{tmp_dir}/requests")
@@ -139,7 +144,7 @@ def format(session: nox.Session) -> None:
     lint(session)
 
 
-@nox.session
+@nox.session(python="3.12")
 def lint(session: nox.Session) -> None:
     session.install("pre-commit")
     session.run("pre-commit", "run", "--all-files")
@@ -147,7 +152,7 @@ def lint(session: nox.Session) -> None:
     mypy(session)
 
 
-@nox.session(python="3.8")
+@nox.session(python="3.12")
 def mypy(session: nox.Session) -> None:
     """Run mypy."""
     session.install("-r", "mypy-requirements.txt")
@@ -164,7 +169,7 @@ def mypy(session: nox.Session) -> None:
 @nox.session
 def docs(session: nox.Session) -> None:
     session.install("-r", "docs/requirements.txt")
-    session.install(".[socks,secure,brotli,zstd]")
+    session.install(".[socks,brotli,zstd]")
 
     session.chdir("docs")
     if os.path.exists("_build"):

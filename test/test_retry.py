@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import datetime
 from test import DUMMY_POOL
 from unittest import mock
 
-import freezegun  # type: ignore[import]
 import pytest
 
 from urllib3.exceptions import (
@@ -334,12 +334,12 @@ class TestRetry:
     def test_retry_default_remove_headers_on_redirect(self) -> None:
         retry = Retry()
 
-        assert list(retry.remove_headers_on_redirect) == ["authorization"]
+        assert retry.remove_headers_on_redirect == {"authorization", "cookie"}
 
     def test_retry_set_remove_headers_on_redirect(self) -> None:
         retry = Retry(remove_headers_on_redirect=["X-API-Secret"])
 
-        assert list(retry.remove_headers_on_redirect) == ["x-api-secret"]
+        assert retry.remove_headers_on_redirect == {"x-api-secret"}
 
     @pytest.mark.parametrize("value", ["-1", "+1", "1.0", "\xb2"])  # \xb2 = ^2
     def test_parse_retry_after_invalid(self, value: str) -> None:
@@ -400,9 +400,12 @@ class TestRetry:
     ) -> None:
         retry = Retry(respect_retry_after_header=respect_retry_after_header)
 
-        with freezegun.freeze_time("2019-06-03 11:00:00", tz_offset=0), mock.patch(
-            "time.sleep"
-        ) as sleep_mock:
+        with mock.patch(
+            "time.time",
+            return_value=datetime.datetime(
+                2019, 6, 3, 11, tzinfo=datetime.timezone.utc
+            ).timestamp(),
+        ), mock.patch("time.sleep") as sleep_mock:
             # for the default behavior, it must be in RETRY_AFTER_STATUS_CODES
             response = HTTPResponse(
                 status=503, headers={"Retry-After": retry_after_header}

@@ -1,9 +1,12 @@
-* [ ]  See if all tests, including integration, pass
+* [ ]  See if all tests, including downstream, pass
 * [ ]  Get the release pull request approved by a [CODEOWNER](https://github.com/urllib3/urllib3/blob/main/.github/CODEOWNERS)
 * [ ]  Squash merge the release pull request with message "`Release <VERSION>`"
 * [ ]  Tag with X.Y.Z, push tag on urllib3/urllib3 (not on your fork, update `<REMOTE>` accordingly)
   * Notice that the `<VERSION>` shouldn't have a `v` prefix (Use `1.26.6` instead of `v.1.26.6`)
   * ```
+    # Ensure the release commit is the latest in the main branch.
+    git checkout main
+    git pull origin main
     git tag -s -a '<VERSION>' -m 'Release: <VERSION>'
     git push <REMOTE> --tags
     ```

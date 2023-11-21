@@ -12,8 +12,8 @@ from urllib.parse import urlencode
 
 import pytest
 
-from dummyserver.server import HAS_IPV6_AND_DNS, NoIPv6Warning
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
+from dummyserver.tornadoserver import HAS_IPV6_AND_DNS, NoIPv6Warning
 from urllib3 import HTTPConnectionPool, encode_multipart_formdata
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent
@@ -363,7 +363,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool(self.host, port) as pool:
             with pytest.raises(MaxRetryError) as e:
                 pool.request("GET", "/", retries=Retry(connect=3))
-            assert type(e.value.reason) == NewConnectionError
+            assert type(e.value.reason) is NewConnectionError
 
     def test_timeout_success(self) -> None:
         timeout = Timeout(connect=3, read=5, total=None)
@@ -465,6 +465,12 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             finally:
                 conn.close()
 
+    def test_redirect_relative_url_no_deprecation(self) -> None:
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", DeprecationWarning)
+                pool.request("GET", "/redirect", fields={"target": "/"})
+
     def test_redirect(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/redirect", fields={"target": "/"}, redirect=False)
@@ -474,11 +480,22 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert r.status == 200
             assert r.data == b"Dummy server!"
 
+    def test_303_redirect_makes_request_lose_body(self) -> None:
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request(
+                "POST",
+                "/redirect",
+                fields={"target": "/headers_and_params", "status": "303 See Other"},
+            )
+        data = response.json()
+        assert data["params"] == {}
+        assert "Content-Type" not in HTTPHeaderDict(data["headers"])
+
     def test_bad_connect(self) -> None:
         with HTTPConnectionPool("badhost.invalid", self.port) as pool:
             with pytest.raises(MaxRetryError) as e:
                 pool.request("GET", "/", retries=5)
-            assert type(e.value.reason) == NameResolutionError
+            assert type(e.value.reason) is NameResolutionError
 
     def test_keepalive(self) -> None:
         with HTTPConnectionPool(self.host, self.port, block=True, maxsize=1) as pool:
@@ -1047,7 +1064,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 pool._put_conn(conn)
 
             assert pool.headers == {"key": "val"}
-            assert isinstance(pool.headers, header_type)
+            assert type(pool.headers) is header_type
 
         with HTTPConnectionPool(self.host, self.port) as pool:
             if pool_request:

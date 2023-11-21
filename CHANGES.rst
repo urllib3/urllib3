@@ -1,3 +1,58 @@
+2.1.0 (2023-11-13)
+==================
+
+Read the `v2 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`__ for help upgrading to the latest version of urllib3.
+
+Removals
+--------
+
+- Removed support for the deprecated urllib3[secure] extra. (`#2680 <https://github.com/urllib3/urllib3/issues/2680>`__)
+- Removed support for the deprecated SecureTransport TLS implementation. (`#2681 <https://github.com/urllib3/urllib3/issues/2681>`__)
+- Removed support for the end-of-life Python 3.7. (`#3143 <https://github.com/urllib3/urllib3/issues/3143>`__)
+
+
+Bugfixes
+--------
+
+- Allowed loading CA certificates from memory for proxies. (`#3065 <https://github.com/urllib3/urllib3/issues/3065>`__)
+- Fixed decoding Gzip-encoded responses which specified ``x-gzip`` content-encoding. (`#3174 <https://github.com/urllib3/urllib3/issues/3174>`__)
+
+
+2.0.7 (2023-10-17)
+==================
+
+* Made body stripped from HTTP requests changing the request method to GET after HTTP 303 "See Other" redirect responses.
+
+2.0.6 (2023-10-02)
+==================
+
+* Added the ``Cookie`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+
+2.0.5 (2023-09-20)
+==================
+
+- Allowed pyOpenSSL third-party module without any deprecation warning. (`#3126 <https://github.com/urllib3/urllib3/issues/3126>`__)
+- Fixed default ``blocksize`` of ``HTTPConnection`` classes to match high-level classes. Previously was 8KiB, now 16KiB. (`#3066 <https://github.com/urllib3/urllib3/issues/3066>`__)
+
+
+2.0.4 (2023-07-19)
+==================
+
+- Added support for union operators to ``HTTPHeaderDict`` (`#2254 <https://github.com/urllib3/urllib3/issues/2254>`__)
+- Added ``BaseHTTPResponse`` to ``urllib3.__all__`` (`#3078 <https://github.com/urllib3/urllib3/issues/3078>`__)
+- Fixed ``urllib3.connection.HTTPConnection`` to raise the ``http.client.connect`` audit event to have the same behavior as the standard library HTTP client (`#2757 <https://github.com/urllib3/urllib3/issues/2757>`__)
+- Relied on the standard library for checking hostnames in supported PyPy releases (`#3087 <https://github.com/urllib3/urllib3/issues/3087>`__)
+
+
+2.0.3 (2023-06-07)
+==================
+
+- Allowed alternative SSL libraries such as LibreSSL, while still issuing a warning as we cannot help users facing issues with implementations other than OpenSSL. (`#3020 <https://github.com/urllib3/urllib3/issues/3020>`__)
+- Deprecated URLs which don't have an explicit scheme (`#2950 <https://github.com/urllib3/urllib3/pull/2950>`_)
+- Fixed response decoding with Zstandard when compressed data is made of several frames. (`#3008 <https://github.com/urllib3/urllib3/issues/3008>`__)
+- Fixed ``assert_hostname=False`` to correctly skip hostname check. (`#3051 <https://github.com/urllib3/urllib3/issues/3051>`__)
+
+
 2.0.2 (2023-05-03)
 ==================
 
@@ -136,6 +191,22 @@ Fixed
 * Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()`` (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__).
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
 * Fixed ``urllib3.contrib.pyopenssl.WrappedSocket`` and ``urllib3.contrib.securetransport.WrappedSocket`` close methods (`#2970 <https://github.com/urllib3/urllib3/issues/2970>`__)
+
+1.26.18 (2023-10-17)
+====================
+
+* Made body stripped from HTTP requests changing the request method to GET after HTTP 303 "See Other" redirect responses.
+
+1.26.17 (2023-10-02)
+====================
+
+* Added the ``Cookie`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``. (`#3139 <https://github.com/urllib3/urllib3/pull/3139>`_)
+
+1.26.16 (2023-05-23)
+====================
+
+* Fixed thread-safety issue where accessing a ``PoolManager`` with many distinct origins
+  would cause connection pools to be closed while requests are in progress (`#2954 <https://github.com/urllib3/urllib3/pull/2954>`_)
 
 1.26.15 (2023-03-10)
 ====================

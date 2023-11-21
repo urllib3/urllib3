@@ -8,7 +8,9 @@ from threading import RLock
 if typing.TYPE_CHECKING:
     # We can only import Protocol if TYPE_CHECKING because it's a development
     # dependency, and is not available at runtime.
-    from typing_extensions import Protocol
+    from typing import Protocol
+
+    from typing_extensions import Self
 
     class HasGettableStringKeys(Protocol):
         def keys(self) -> typing.Iterator[str]:
@@ -239,7 +241,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
 
     def __init__(self, headers: ValidHTTPHeaderSource | None = None, **kwargs: str):
         super().__init__()
-        self._container = {}  # 'dict' is insert-ordered in Python 3.7+
+        self._container = {}  # 'dict' is insert-ordered
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
@@ -391,6 +393,24 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             # meets our external interface requirement of `Union[List[str], _DT]`.
             return vals[1:]
 
+    def _prepare_for_method_change(self) -> Self:
+        """
+        Remove content-specific header fields before changing the request
+        method to GET or HEAD according to RFC 9110, Section 15.4.
+        """
+        content_specific_headers = [
+            "Content-Encoding",
+            "Content-Language",
+            "Content-Location",
+            "Content-Type",
+            "Content-Length",
+            "Digest",
+            "Last-Modified",
+        ]
+        for header in content_specific_headers:
+            self.discard(header)
+        return self
+
     # Backwards compatibility for httplib
     getheaders = getlist
     getallmatchingheaders = getlist
@@ -432,3 +452,32 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         if header_name in self:
             return potential_value in self._container[header_name.lower()][1:]
         return False
+
+    def __ior__(self, other: object) -> HTTPHeaderDict:
+        # Supports extending a header dict in-place using operator |=
+        # combining items with add instead of __setitem__
+        maybe_constructable = ensure_can_construct_http_header_dict(other)
+        if maybe_constructable is None:
+            return NotImplemented
+        self.extend(maybe_constructable)
+        return self
+
+    def __or__(self, other: object) -> HTTPHeaderDict:
+        # Supports merging header dicts using operator |
+        # combining items with add instead of __setitem__
+        maybe_constructable = ensure_can_construct_http_header_dict(other)
+        if maybe_constructable is None:
+            return NotImplemented
+        result = self.copy()
+        result.extend(maybe_constructable)
+        return result
+
+    def __ror__(self, other: object) -> HTTPHeaderDict:
+        # Supports merging header dicts using operator | when other is on left side
+        # combining items with add instead of __setitem__
+        maybe_constructable = ensure_can_construct_http_header_dict(other)
+        if maybe_constructable is None:
+            return NotImplemented
+        result = type(self)(maybe_constructable)
+        result.extend(self)
+        return result

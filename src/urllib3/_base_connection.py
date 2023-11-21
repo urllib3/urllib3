@@ -28,8 +28,7 @@ class _ResponseOptions(typing.NamedTuple):
 
 if typing.TYPE_CHECKING:
     import ssl
-
-    from typing_extensions import Literal, Protocol
+    from typing import Literal, Protocol
 
     from .response import BaseHTTPResponse
 
@@ -151,7 +150,7 @@ if typing.TYPE_CHECKING:
             *,
             timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
             source_address: tuple[str, int] | None = None,
-            blocksize: int = 8192,
+            blocksize: int = 16384,
             socket_options: _TYPE_SOCKET_OPTIONS | None = ...,
             proxy: Url | None = None,
             proxy_config: ProxyConfig | None = None,

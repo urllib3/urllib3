@@ -4,7 +4,6 @@ import contextlib
 import http.client as httplib
 import socket
 import ssl
-import sys
 import typing
 import zlib
 from base64 import b64decode
@@ -74,9 +73,6 @@ class TestBytesQueueBuffer:
         assert buffer.get(4) == b"rbaz"
         assert len(buffer) == 0
 
-    @pytest.mark.skipif(
-        sys.version_info < (3, 8), reason="pytest-memray requires Python 3.8+"
-    )
     @pytest.mark.limit_memory("12.5 MB")  # assert that we're not doubling memory usage
     def test_memory_usage(self) -> None:
         # Allocate 10 1MiB chunks
@@ -233,14 +229,15 @@ class TestResponse:
         assert r.read() == b""
         assert r.read() == b""
 
-    def test_chunked_decoding_gzip(self) -> None:
+    @pytest.mark.parametrize("content_encoding", ["gzip", "x-gzip"])
+    def test_chunked_decoding_gzip(self, content_encoding: str) -> None:
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         data = compress.compress(b"foo")
         data += compress.flush()
 
         fp = BytesIO(data)
         r = HTTPResponse(
-            fp, headers={"content-encoding": "gzip"}, preload_content=False
+            fp, headers={"content-encoding": content_encoding}, preload_content=False
         )
 
         assert r.read(1) == b"f"
@@ -331,6 +328,25 @@ class TestResponse:
         fp = BytesIO(data)
         r = HTTPResponse(fp, headers={"content-encoding": "zstd"})
         assert r.data == b"foo"
+
+    @onlyZstd()
+    def test_decode_multiframe_zstd(self) -> None:
+        data = (
+            # Zstandard frame
+            zstd.compress(b"foo")
+            # skippable frame (must be ignored)
+            + bytes.fromhex(
+                "50 2A 4D 18"  # Magic_Number (little-endian)
+                "07 00 00 00"  # Frame_Size (little-endian)
+                "00 00 00 00 00 00 00"  # User_Data
+            )
+            # Zstandard frame
+            + zstd.compress(b"bar")
+        )
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={"content-encoding": "zstd"})
+        assert r.data == b"foobar"
 
     @onlyZstd()
     def test_chunked_decoding_zstd(self) -> None:

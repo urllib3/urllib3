@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import sys
 import typing
 from http.client import ResponseNotReady
+from unittest import mock
 
 import pytest
 
@@ -32,6 +34,19 @@ def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
 
     assert isinstance(response, HTTPResponse)
     pool._put_conn(conn)
+
+
+@pytest.mark.skipif(not hasattr(sys, "audit"), reason="requires python 3.8+")
+@mock.patch("urllib3.connection.sys.audit")
+def test_audit_event(audit_mock: mock.Mock, pool: HTTPConnectionPool) -> None:
+    conn = pool._get_conn()
+    conn.request("GET", "/")
+    audit_mock.assert_any_call("http.client.connect", conn, conn.host, conn.port)
+    # Ensure the event is raised only once.
+    connect_events = [
+        call for call in audit_mock.mock_calls if call.args[0] == "http.client.connect"
+    ]
+    assert len(connect_events) == 1
 
 
 def test_does_not_release_conn(pool: HTTPConnectionPool) -> None:

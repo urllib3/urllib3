@@ -42,7 +42,7 @@ from urllib3.util.util import to_bytes, to_str
 from . import clear_warnings
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -1068,31 +1068,39 @@ class TestUtilSSL:
         warn.assert_not_called()
 
     @pytest.mark.parametrize(
-        "openssl_version_number, implementation_name, version_info, reliable",
+        "openssl_version, openssl_version_number, implementation_name, version_info, pypy_version_info, reliable",
         [
             # OpenSSL and Python OK -> reliable
-            (0x101010CF, "cpython", (3, 9, 3), True),
+            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 3), None, True),
             # Python OK -> reliable
-            (0x10101000, "cpython", (3, 9, 3), True),
-            (0x10101000, "pypy", (3, 6, 9), False),
+            ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), None, True),
+            # PyPy: depends on the version
+            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 9, 9), (7, 3, 7), False),
+            ("OpenSSL 1.1.1", 0x101010CF, "pypy", (3, 8, 12), (7, 3, 8), True),
             # OpenSSL OK -> reliable
-            (0x101010CF, "cpython", (3, 9, 2), True),
-            # unreliable
-            (0x10101000, "cpython", (3, 9, 2), False),
+            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 2), None, True),
+            # not OpenSSSL -> unreliable
+            ("LibreSSL 2.8.3", 0x101010CF, "cpython", (3, 10, 0), None, False),
+            # old OpenSSL and old Python, unreliable
+            ("OpenSSL 1.1.0", 0x10101000, "cpython", (3, 9, 2), None, False),
         ],
     )
     def test_is_has_never_check_common_name_reliable(
         self,
+        openssl_version: str,
         openssl_version_number: int,
         implementation_name: str,
         version_info: _TYPE_VERSION_INFO,
+        pypy_version_info: _TYPE_VERSION_INFO | None,
         reliable: bool,
     ) -> None:
         assert (
             _is_has_never_check_common_name_reliable(
+                openssl_version,
                 openssl_version_number,
                 implementation_name,
                 version_info,
+                pypy_version_info,
             )
             == reliable
         )
