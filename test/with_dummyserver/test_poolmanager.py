@@ -621,8 +621,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
         )
         assert r.status == 200
         assert r.json() == body
-        content_type = None if headers is None else headers.get("content-Type")
-        content_type = "application/json" if content_type is None else content_type
+        content_type = HTTPHeaderDict(old_headers).get("Content-Type", "application/json")
         assert content_type in r.headers["Content-Type"].replace(" ", "").split(",")
 
         # Ensure the header argument itself is not modified in-place.
