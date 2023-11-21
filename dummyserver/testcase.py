@@ -225,6 +225,7 @@ class HTTPDummyProxyTestCase:
     https_port: typing.ClassVar[int]
     https_url: typing.ClassVar[str]
     https_url_alt: typing.ClassVar[str]
+    https_url_fqdn: typing.ClassVar[str]
 
     proxy_host: typing.ClassVar[str] = "localhost"
     proxy_host_alt: typing.ClassVar[str] = "127.0.0.1"
