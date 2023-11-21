@@ -7,8 +7,11 @@ from unittest import mock
 
 import pytest
 
-from dummyserver.server import HAS_IPV6
-from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
+from dummyserver.testcase import (
+    HypercornDummyServerTestCase,
+    IPv6HTTPDummyServerTestCase,
+)
+from dummyserver.tornadoserver import HAS_IPV6
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
@@ -16,7 +19,7 @@ from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
 
-class TestPoolManager(HTTPDummyServerTestCase):
+class TestPoolManager(HypercornDummyServerTestCase):
     @classmethod
     def setup_class(cls) -> None:
         super().setup_class()
@@ -449,7 +452,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 encode_multipart=True,
             )
             returned_headers = r.json()["headers"]
-            assert returned_headers[4:] == [
+            assert returned_headers[5:] == [
                 ["Multi", "1"],
                 ["Multi", "2"],
                 ["Content-Type", "multipart/form-data; boundary=b"],
@@ -467,7 +470,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 encode_multipart=True,
             )
             returned_headers = r.json()["headers"]
-            assert returned_headers[4:] == [
+            assert returned_headers[5:] == [
                 ["Multi", "1"],
                 ["Multi", "2"],
                 # Uses the set value, not the one that would be generated.
@@ -497,10 +500,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
     @pytest.mark.parametrize(
         ["target", "expected_target"],
         [
+            # annoyingly quart.request.full_path adds a stray `?`
+            ("/echo_uri", b"/echo_uri?"),
             ("/echo_uri?q=1#fragment", b"/echo_uri?q=1"),
             ("/echo_uri?#", b"/echo_uri?"),
-            ("/echo_uri#?", b"/echo_uri"),
-            ("/echo_uri#?#", b"/echo_uri"),
+            ("/echo_uri#!", b"/echo_uri?"),
+            ("/echo_uri#!#", b"/echo_uri?"),
             ("/echo_uri??#", b"/echo_uri??"),
             ("/echo_uri?%3f#", b"/echo_uri?%3F"),
             ("/echo_uri?%3F#", b"/echo_uri?%3F"),

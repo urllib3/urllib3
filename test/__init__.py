@@ -10,6 +10,7 @@ import sys
 import typing
 import warnings
 from collections.abc import Sequence
+from functools import wraps
 from importlib.abc import Loader, MetaPathFinder
 from importlib.machinery import ModuleSpec
 from types import ModuleType, TracebackType
@@ -28,8 +29,6 @@ try:
     import zstandard as zstd  # type: ignore[import]
 except ImportError:
     zstd = None
-
-import functools
 
 from urllib3 import util
 from urllib3.connectionpool import ConnectionPool
@@ -74,7 +73,7 @@ INVALID_SOURCE_ADDRESSES = [(("192.0.2.255", 0), False), (("2001:db8::1", 0), Tr
 # 3. To test our timeout logic by using two different values, eg. by using different
 #    values at the pool level and at the request level.
 SHORT_TIMEOUT = 0.001
-LONG_TIMEOUT = 0.01
+LONG_TIMEOUT = 0.1
 if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") == "true":
     LONG_TIMEOUT = 0.5
 
@@ -181,6 +180,20 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
             else:
                 raise
 
+    def _skip_if_no_route(f: _TestFuncT) -> _TestFuncT:
+        """Skip test exuction if network is unreachable"""
+
+        @wraps(f)
+        def wrapper(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+            global _requires_network_has_route
+            if _requires_network_has_route is None:
+                _requires_network_has_route = _has_route()
+            if not _requires_network_has_route:
+                pytest.skip("Can't run the test because the network is unreachable")
+            return f(*args, **kwargs)
+
+        return typing.cast(_TestFuncT, wrapper)
+
     def _decorator_requires_internet(
         decorator: typing.Callable[[_TestFuncT], _TestFuncT]
     ) -> typing.Callable[[_TestFuncT], _TestFuncT]:
@@ -191,17 +204,7 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
 
         return wrapper
 
-    global _requires_network_has_route
-
-    if _requires_network_has_route is None:
-        _requires_network_has_route = _has_route()
-
-    return _decorator_requires_internet(
-        pytest.mark.skipif(
-            not _requires_network_has_route,
-            reason="Can't run the test because the network is unreachable",
-        )
-    )
+    return _decorator_requires_internet(_skip_if_no_route)
 
 
 def resolvesLocalhostFQDN() -> typing.Callable[[_TestFuncT], _TestFuncT]:
@@ -213,7 +216,7 @@ def resolvesLocalhostFQDN() -> typing.Callable[[_TestFuncT], _TestFuncT]:
 
 
 def withPyOpenSSL(test: typing.Callable[..., _RT]) -> typing.Callable[..., _RT]:
-    @functools.wraps(test)
+    @wraps(test)
     def wrapper(*args: typing.Any, **kwargs: typing.Any) -> _RT:
         if not pyopenssl:
             pytest.skip("pyopenssl not available, skipping test.")
