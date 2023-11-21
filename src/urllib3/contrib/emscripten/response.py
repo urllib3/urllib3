@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import json as _json
+import logging
 import typing
 from dataclasses import dataclass
 from io import BytesIO, IOBase
 
+from ...exceptions import InvalidHeader
 from ...response import BaseHTTPResponse
 from ...util.retry import Retry
 from .request import EmscriptenRequest
 
 if typing.TYPE_CHECKING:
     from ..._base_connection import BaseHTTPConnection, BaseHTTPSConnection
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -41,7 +45,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
             reason="",
             decode_content=True,
         )
-        self.length_remaining=self._init_length()
+        self.length_remaining = self._init_length(self._response.request.method)
 
     @property
     def url(self) -> str | None:
@@ -119,7 +123,6 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
 
         return length
 
-
     def read(
         self,
         amt: int | None = None,
@@ -127,22 +130,22 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
         cache_content: bool = False,
     ) -> bytes:
         if not isinstance(self._response.body, IOBase):
-            self.length_remaining=len(self._response.body)
+            self.length_remaining = len(self._response.body)
             # wrap body in IOStream
             self._response.body = BytesIO(self._response.body)
         if amt is not None:
             # don't cache partial content
             cache_content = False
-            data=self._response.body.read(amt)
-            if self.length_remaining>0:
-                self.length_remaining= max(self.length_remaining-len(data),0)
-            return typing.cast(bytes, read_data)
+            data = self._response.body.read(amt)
+            if self.length_remaining:
+                self.length_remaining = max(self.length_remaining - len(data), 0)
+            return typing.cast(bytes, data)
         else:
             data = self._response.body.read(None)
             if cache_content:
                 self._body = data
-            if self.length_remaining>0:
-                self.length_remaining= max(self.length_remaining-len(data),0)
+            if self.length_remaining:
+                self.length_remaining = max(self.length_remaining - len(data), 0)
             return typing.cast(bytes, data)
 
     def read_chunked(

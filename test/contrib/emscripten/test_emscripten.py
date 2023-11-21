@@ -44,12 +44,12 @@ def test_index(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPConnection
-        from urllib3.response import HTTPResponse
+        from urllib3.response import BaseHTTPResponse
 
         conn = HTTPConnection(host, port)
         conn.request("GET", f"http://{host}:{port}/")
         response = conn.getresponse()
-        assert isinstance(response, HTTPResponse)
+        assert isinstance(response, BaseHTTPResponse)
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
 
@@ -105,12 +105,12 @@ def test_404(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPConnection
-        from urllib3.response import HTTPResponse
+        from urllib3.response import BaseHTTPResponse
 
         conn = HTTPConnection(host, port)
         conn.request("GET", f"http://{host}:{port}/status?status=404 NOT FOUND")
         response = conn.getresponse()
-        assert isinstance(response, HTTPResponse)
+        assert isinstance(response, BaseHTTPResponse)
         assert response.status == 404
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
@@ -186,12 +186,12 @@ def test_index_https(selenium: typing.Any, testserver_http: PyodideServerInfo) -
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPSConnection
-        from urllib3.response import HTTPResponse
+        from urllib3.response import BaseHTTPResponse
 
         conn = HTTPSConnection(host, port)
         conn.request("GET", f"https://{host}:{port}/")
         response = conn.getresponse()
-        assert isinstance(response, HTTPResponse)
+        assert isinstance(response, BaseHTTPResponse)
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
 
@@ -208,7 +208,7 @@ def test_non_streaming_no_fallback_warning(
 
         import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPSConnection
-        from urllib3.response import HTTPResponse
+        from urllib3.response import BaseHTTPResponse
 
         log_msgs = []
         old_log = js.console.warn
@@ -222,7 +222,7 @@ def test_non_streaming_no_fallback_warning(
         conn.request("GET", f"https://{host}:{port}/", preload_content=True)
         response = conn.getresponse()
         js.console.warn = old_log
-        assert isinstance(response, HTTPResponse)
+        assert isinstance(response, BaseHTTPResponse)
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
         # no console warnings because we didn't ask it to stream the response
@@ -246,7 +246,7 @@ def test_streaming_fallback_warning(
 
         import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPSConnection
-        from urllib3.response import HTTPResponse
+        from urllib3.response import BaseHTTPResponse
 
         log_msgs = []
         old_log = js.console.warn
@@ -261,7 +261,7 @@ def test_streaming_fallback_warning(
         conn.request("GET", f"https://{host}:{port}/", preload_content=False)
         response = conn.getresponse()
         js.console.warn = old_log
-        assert isinstance(response, HTTPResponse)
+        assert isinstance(response, BaseHTTPResponse)
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
         # check that it has warned about falling back to non-streaming fetch exactly once
@@ -315,14 +315,14 @@ def test_streaming_download(
 
             import urllib3.contrib.emscripten.fetch
             await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
-            from urllib3.response import HTTPResponse
+            from urllib3.response import BaseHTTPResponse
             from urllib3.connection import HTTPConnection
             import js
 
             conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
             conn.request("GET", "{bigfile_url}",preload_content=False)
             response = conn.getresponse()
-            assert isinstance(response, HTTPResponse)
+            assert isinstance(response, BaseHTTPResponse)
             assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==False
             data=response.data.decode('utf-8')
             data
@@ -348,7 +348,7 @@ def test_streaming_notready_warning(
         await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
         import js
         import urllib3
-        from urllib3.response import HTTPResponse
+        from urllib3.response import BaseHTTPResponse
         from urllib3.connection import HTTPConnection
 
         log_msgs=[]
@@ -362,7 +362,7 @@ def test_streaming_notready_warning(
         conn.request("GET", "{bigfile_url}",preload_content=False)
         js.console.warn=old_log
         response = conn.getresponse()
-        assert isinstance(response, HTTPResponse)
+        assert isinstance(response, BaseHTTPResponse)
         data=response.data.decode('utf-8')
         assert len([x for x in log_msgs if x.find("Can't stream HTTP requests")!=-1])==1
         assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==True
@@ -381,7 +381,7 @@ def test_post_receive_json(
         import json
 
         from urllib3.connection import HTTPConnection
-        from urllib3.response import HTTPResponse
+        from urllib3.response import BaseHTTPResponse
 
         json_data = {
             "Bears": "like",
@@ -394,7 +394,7 @@ def test_post_receive_json(
             body=json.dumps(json_data).encode("utf-8"),
         )
         response = conn.getresponse()
-        assert isinstance(response, HTTPResponse)
+        assert isinstance(response, BaseHTTPResponse)
         data = response.json()
         assert data == json_data
 
