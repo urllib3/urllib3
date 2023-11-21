@@ -626,7 +626,9 @@ class TestPoolManager(HypercornDummyServerTestCase):
         )
         assert r.status == 200
         assert r.json() == body
-        content_type = HTTPHeaderDict(old_headers).get("Content-Type", "application/json")
+        content_type = HTTPHeaderDict(old_headers).get(
+            "Content-Type", "application/json"
+        )
         assert content_type in r.headers["Content-Type"].replace(" ", "").split(",")
 
         # Ensure the header argument itself is not modified in-place.
