@@ -619,18 +619,20 @@ class TestPoolManager(HypercornDummyServerTestCase):
         ],
     )
     def test_request_with_json(self, headers: HTTPHeaderDict) -> None:
+        old_headers = None if headers is None else headers.copy()
         body = {"attribute": "value"}
         r = request(
             method="POST", url=f"{self.base_url}/echo_json", headers=headers, json=body
         )
         assert r.status == 200
         assert r.json() == body
-        if headers is not None and "application/json" not in headers.values():
-            assert "text/plain" in r.headers["Content-Type"].replace(" ", "").split(",")
-        else:
-            assert "application/json" in r.headers["Content-Type"].replace(
-                " ", ""
-            ).split(",")
+        content_type = HTTPHeaderDict(old_headers).get(
+            "Content-Type", "application/json"
+        )
+        assert content_type in r.headers["Content-Type"].replace(" ", "").split(",")
+
+        # Ensure the header argument itself is not modified in-place.
+        assert headers == old_headers
 
     def test_top_level_request_with_json_with_httpheaderdict(self) -> None:
         body = {"attribute": "value"}
