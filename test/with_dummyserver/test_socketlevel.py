@@ -1806,16 +1806,18 @@ class TestHeaders(SocketDummyServerTestCase):
         body: None | bytes | io.BytesIO
         if body_type is None:
             body = None
+            expected = b"\r\n\r\n"
         elif body_type == "bytes":
             body = b"my-body"
+            expected = b"\r\n\r\nmy-body"
         elif body_type == "bytes-io":
             body = io.BytesIO(b"bytes-io-body")
             body.seek(0, 0)
+            expected = b"bytes-io-body\r\n0\r\n\r\n"
         else:
             raise ValueError("Unknonw body type")
 
         buffer: bytes = b""
-        expected = b"A: 1\r\nA: 4\r\nC: 3, 5\r\nC: 6\r\nB: 2\r\nB: 3"
 
         def socket_handler(listener: socket.socket) -> None:
             nonlocal buffer
@@ -1852,7 +1854,7 @@ class TestHeaders(SocketDummyServerTestCase):
                 headers=headers,
             )
             assert r.status == 200
-            assert expected in buffer
+            assert b"A: 1\r\nA: 4\r\nC: 3, 5\r\nC: 6\r\nB: 2\r\nB: 3" in buffer
 
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
