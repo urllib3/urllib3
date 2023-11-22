@@ -40,9 +40,9 @@ def install_urllib3_wheel() -> (
 
 
 @install_urllib3_wheel()
-def test_index(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
+def test_index(selenium_coverage: typing.Any, testserver_http: PyodideServerInfo) -> None:
     @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPConnection
         from urllib3.response import BaseHTTPResponse
 
@@ -53,16 +53,16 @@ def test_index(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
 
-    pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
+    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.http_port)
 
 
 # wrong protocol / protocol error etc. should raise an exception of urllib3.exceptions.ResponseError
 @install_urllib3_wheel()
 def test_wrong_protocol(
-    selenium: typing.Any, testserver_http: PyodideServerInfo
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
     @run_in_pyodide(packages=("pytest",))  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import pytest
 
         import urllib3.exceptions
@@ -76,14 +76,14 @@ def test_wrong_protocol(
         except BaseException as ex:
             assert isinstance(ex, urllib3.exceptions.ResponseError)
 
-    pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
+    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.https_port)
 
 
 # no connection - should raise
 @install_urllib3_wheel()
-def test_no_response(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
+def test_no_response(selenium_coverage: typing.Any, testserver_http: PyodideServerInfo) -> None:
     @run_in_pyodide(packages=("pytest",))  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import pytest
 
         import urllib3.exceptions
@@ -97,13 +97,13 @@ def test_no_response(selenium: typing.Any, testserver_http: PyodideServerInfo) -
         except BaseException as ex:
             assert isinstance(ex, urllib3.exceptions.ResponseError)
 
-    pyodide_test(selenium, testserver_http.http_host, find_unused_port())
+    pyodide_test(selenium_coverage, testserver_http.http_host, find_unused_port())
 
 
 @install_urllib3_wheel()
-def test_404(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
+def test_404(selenium_coverage: typing.Any, testserver_http: PyodideServerInfo) -> None:
     @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPConnection
         from urllib3.response import BaseHTTPResponse
 
@@ -113,7 +113,7 @@ def test_404(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
         assert isinstance(response, BaseHTTPResponse)
         assert response.status == 404
 
-    pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
+    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.http_port)
 
 
 # setting timeout should show a warning to js console
@@ -121,10 +121,10 @@ def test_404(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
 # support timeout in async mode if globalThis == Window
 @install_urllib3_wheel()
 def test_timeout_warning(
-    selenium: typing.Any, testserver_http: PyodideServerInfo
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
     @run_in_pyodide()  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import js  # type: ignore[import]
 
         import urllib3.contrib.emscripten.fetch
@@ -144,16 +144,15 @@ def test_timeout_warning(
         conn.getresponse()
         js.console.warn = old_log
         # should have shown timeout warning exactly once by now
-        print(log_msgs)
         assert len([x for x in log_msgs if x.find("Warning: Timeout") != -1]) == 1
         assert urllib3.contrib.emscripten.fetch._SHOWN_TIMEOUT_WARNING
 
-    pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
+    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.http_port)
 
 
 @install_urllib3_wheel()
 def test_timeout_in_worker(
-    selenium: typing.Any,
+    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
 ) -> None:
@@ -182,9 +181,9 @@ def test_timeout_in_worker(
 
 
 @install_urllib3_wheel()
-def test_index_https(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
+def test_index_https(selenium_coverage: typing.Any, testserver_http: PyodideServerInfo) -> None:
     @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPSConnection
         from urllib3.response import BaseHTTPResponse
 
@@ -195,15 +194,15 @@ def test_index_https(selenium: typing.Any, testserver_http: PyodideServerInfo) -
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
 
-    pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
+    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.https_port)
 
 
 @install_urllib3_wheel()
 def test_non_streaming_no_fallback_warning(
-    selenium: typing.Any, testserver_http: PyodideServerInfo
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import js
 
         import urllib3.contrib.emscripten.fetch
@@ -233,15 +232,15 @@ def test_non_streaming_no_fallback_warning(
         )
         assert not urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING
 
-    pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
+    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.https_port)
 
 
 @install_urllib3_wheel()
 def test_streaming_fallback_warning(
-    selenium: typing.Any, testserver_http: PyodideServerInfo
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import js
 
         import urllib3.contrib.emscripten.fetch
@@ -271,17 +270,17 @@ def test_streaming_fallback_warning(
         )
         assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING
 
-    pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
+    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.https_port)
 
 
 @install_urllib3_wheel()
 def test_specific_method(
-    selenium: typing.Any,
+    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3 import HTTPSConnectionPool
 
         with HTTPSConnectionPool(host, port) as pool:
@@ -292,12 +291,12 @@ def test_specific_method(
             response = pool.request("PUT", path)
             assert response.status == 400
 
-    pyodide_test(selenium, testserver_http.http_host, testserver_http.https_port)
+    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.https_port)
 
 
 @install_urllib3_wheel()
 def test_streaming_download(
-    selenium: typing.Any,
+    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
 ) -> None:
@@ -325,15 +324,15 @@ def test_streaming_download(
             assert isinstance(response, BaseHTTPResponse)
             assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==False
             data=response.data.decode('utf-8')
-            data
+            assert len(data) == 17825792
 """
-    result = run_from_server.run_webworker(worker_code)
-    assert len(result) == 17825792
+    run_from_server.run_webworker(worker_code)
+    
 
 
 @install_urllib3_wheel()
 def test_streaming_notready_warning(
-    selenium: typing.Any,
+    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
 ) -> None:
@@ -366,18 +365,18 @@ def test_streaming_notready_warning(
         data=response.data.decode('utf-8')
         assert len([x for x in log_msgs if x.find("Can't stream HTTP requests")!=-1])==1
         assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==True
-        data
+        assert len(data) == 17825792    
         """
-    result = run_from_server.run_webworker(worker_code)
-    assert len(result) == 17825792
+    run_from_server.run_webworker(worker_code)
+    
 
 
 @install_urllib3_wheel()
 def test_post_receive_json(
-    selenium: typing.Any, testserver_http: PyodideServerInfo
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import json
 
         from urllib3.connection import HTTPConnection
@@ -398,13 +397,13 @@ def test_post_receive_json(
         data = response.json()
         assert data == json_data
 
-    pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
+    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.http_port)
 
 
 @install_urllib3_wheel()
-def test_upload(selenium: typing.Any, testserver_http: PyodideServerInfo) -> None:
+def test_upload(selenium_coverage: typing.Any, testserver_http: PyodideServerInfo) -> None:
     @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3 import HTTPConnectionPool
 
         data = "I'm in ur multipart form-data, hazing a cheezburgr"
@@ -418,15 +417,15 @@ def test_upload(selenium: typing.Any, testserver_http: PyodideServerInfo) -> Non
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200
 
-    pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
+    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.http_port)
 
 
 @install_urllib3_wheel()
 def test_requests_with_micropip(
-    selenium: typing.Any, testserver_http: PyodideServerInfo
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
     # this can't be @run_in_pyodide because of the async code
-    selenium.run_async(
+    selenium_coverage.run_async(
         f"""
         import micropip
         await micropip.install("requests")

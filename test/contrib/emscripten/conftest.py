@@ -5,6 +5,7 @@ import contextlib
 import mimetypes
 import os
 import textwrap
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generator
@@ -38,6 +39,45 @@ def testserver_http(
     server.teardown_class()
 
 
+@pytest.fixture()
+def selenium_coverage(selenium: typing.Any) -> Generator[typing.Any, None, None]:
+    def _install_coverage(self):
+        self.run_js(
+            """
+            await pyodide.loadPackage("coverage")
+            await pyodide.runPythonAsync(`import coverage
+_coverage= coverage.Coverage(source_pkgs=['urllib3'])
+_coverage.start()
+        `
+        )"""
+        )
+
+    setattr(
+        selenium,
+        "_install_coverage",
+        _install_coverage.__get__(selenium, selenium.__class__),
+    )
+    selenium._install_coverage()
+    yield selenium
+    # on teardown, save _coverage output
+    coverage_out = selenium.run_js(
+        """
+return await pyodide.runPythonAsync(`
+_coverage.stop()
+_coverage.save()
+datafile=open(".coverage","rb")
+datafile.read()
+`)
+    """
+    )
+    if isinstance(coverage_out, bytearray):
+        coverage_out_binary = coverage_out
+    elif isinstance(coverage_out, list):
+        coverage_out_binary = bytes(coverage_out)
+    with open(f".coverage.emscripten.{time.time()}", "wb") as outfile:
+        outfile.write(coverage_out_binary)
+
+
 class ServerRunnerInfo:
     def __init__(self, host: str, port: int, selenium: Any) -> None:
         self.host = host
@@ -48,8 +88,27 @@ class ServerRunnerInfo:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
+            # add coverage collection to this code
+            code = (
+                textwrap.dedent(
+                    """
+            import coverage
+            _coverage= coverage.Coverage(source_pkgs=['urllib3'])
+            _coverage.start()
+            """
+                )
+                + code
+            )
+            code += textwrap.dedent(
+                """
+            _coverage.stop()
+            _coverage.save()
+            datafile=open(".coverage","rb")
+            str(list(datafile.read()))
+            """
+            )
 
-        return self.selenium.run_js(
+        coverage_out = self.selenium.run_js(
             f"""
             let worker = new Worker('https://{self.host}:{self.port}/pyodide/webworker_dev.js');
             let p = new Promise((res, rej) => {{
@@ -68,6 +127,16 @@ class ServerRunnerInfo:
             """,
             pyodide_checks=False,
         )
+        print(type(coverage_out))
+        print(coverage_out[0:10])
+        if isinstance(coverage_out,str):
+            coverage_out = eval(coverage_out)
+        if isinstance(coverage_out, bytearray):
+            coverage_out_binary = coverage_out
+        elif isinstance(coverage_out, list):
+            coverage_out_binary = bytes(coverage_out)
+        with open(f".coverage.emscripten.{time.time()}", "wb") as outfile:
+            outfile.write(coverage_out_binary)
 
 
 # run pyodide on our test server instead of on the default
@@ -75,23 +144,24 @@ class ServerRunnerInfo:
 # we are at the same origin as web requests to server_host
 @pytest.fixture()
 def run_from_server(
-    selenium: Any, testserver_http: PyodideServerInfo
+    selenium_coverage: Any, testserver_http: PyodideServerInfo
 ) -> Generator[ServerRunnerInfo, None, None]:
     addr = f"https://{testserver_http.http_host}:{testserver_http.https_port}/pyodide/test.html"
-    selenium.goto(addr)
-    selenium.javascript_setup()
-    selenium.load_pyodide()
-    selenium.initialize_pyodide()
-    selenium.save_state()
-    selenium.restore_state()
+    selenium_coverage.goto(addr)
+    selenium_coverage.javascript_setup()
+    selenium_coverage.load_pyodide()
+    selenium_coverage.initialize_pyodide()
+    selenium_coverage.save_state()
+    selenium_coverage.restore_state()
     # install the wheel, which is served at /wheel/*
-    selenium.run_js(
+    selenium_coverage.run_js(
         """
 await pyodide.loadPackage('/wheel/dist.whl')
 """
     )
+    selenium_coverage._install_coverage()
     yield ServerRunnerInfo(
-        testserver_http.http_host, testserver_http.https_port, selenium
+        testserver_http.http_host, testserver_http.https_port, selenium_coverage
     )
 
 
