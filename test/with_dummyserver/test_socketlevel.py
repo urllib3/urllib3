@@ -1823,7 +1823,7 @@ class TestHeaders(SocketDummyServerTestCase):
             sock.settimeout(0)
 
             while expected not in buffer:
-                with contextlib.suppress(BlockingIOError):
+                with contextlib.suppress(OSError):
                     buffer += sock.recv(65536)
 
             sock.sendall(
@@ -2245,7 +2245,7 @@ class TestContentFraming(SocketDummyServerTestCase):
             sock.settimeout(0)
 
             while expected_bytes not in buffer:
-                with contextlib.suppress(BlockingIOError):
+                with contextlib.suppress(OSError):
                     buffer += sock.recv(65536)
 
             sock.sendall(
@@ -2329,7 +2329,7 @@ class TestContentFraming(SocketDummyServerTestCase):
             sock.settimeout(0)
 
             while expected_bytes not in buffer:
-                with contextlib.suppress(BlockingIOError):
+                with contextlib.suppress(OSError):
                     buffer += sock.recv(65536)
 
             sock.sendall(
@@ -2393,7 +2393,7 @@ class TestContentFraming(SocketDummyServerTestCase):
             sock.settimeout(0)
 
             while expected not in buffer:
-                with contextlib.suppress(BlockingIOError):
+                with contextlib.suppress(OSError):
                     buffer += sock.recv(65536)
 
             sock.sendall(
