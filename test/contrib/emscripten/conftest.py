@@ -79,8 +79,6 @@ def run_from_server(
 ) -> Generator[ServerRunnerInfo, None, None]:
     addr = f"https://{testserver_http.http_host}:{testserver_http.https_port}/pyodide/test.html"
     selenium.goto(addr)
-    #    import time
-    #    time.sleep(100)
     selenium.javascript_setup()
     selenium.load_pyodide()
     selenium.initialize_pyodide()
@@ -106,6 +104,7 @@ class PyodideTestingApp(TestingApp):
         self.set_header("Cross-Origin-Opener-Policy", "same-origin")
         self.set_header("Cross-Origin-Embedder-Policy", "require-corp")
         self.add_header("Feature-Policy", "sync-xhr *;")
+        self.add_header("Access-Control-Allow-Headers", "*")
 
     def slow(self, _req: HTTPServerRequest) -> Response:
         import time

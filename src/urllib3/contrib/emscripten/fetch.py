@@ -101,11 +101,16 @@ class _ReadStream(io.RawIOBase):
         self.worker = worker
         self.timeout = int(1000 * timeout) if timeout > 0 else None
         self.is_live = True
+        self._is_closed = False
 
     def __del__(self) -> None:
         self.close()
 
+    def is_closed(self):
+        return self._is_closed
+        
     def close(self) -> None:
+        self._is_closed = True
         if self.is_live:
             self.worker.postMessage(_obj_from_dict({"close": self.connection_id}))
             self.is_live = False

@@ -419,3 +419,21 @@ def test_upload(selenium: typing.Any, testserver_http: PyodideServerInfo) -> Non
             assert r.status == 200
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
+
+@install_urllib3_wheel()
+def test_requests_with_micropip(selenium,testserver_http) -> None:
+    # this can't be @run_in_pyodide because of the async code
+    response=selenium.run_async(f"""
+        import micropip
+        await micropip.install("requests")
+        import requests
+        import json
+        r = requests.get("http://{testserver_http.http_host}:{testserver_http.http_port}/")
+        assert(r.status_code == 200)
+        assert(r.text == "Dummy server!")
+        json_data={{"woo":"yay"}}
+        # try posting some json with requests
+        r = requests.post("http://{testserver_http.http_host}:{testserver_http.http_port}/echo_json",json=json_data)
+        import js
+        assert(r.json() == json_data)
+    """)
