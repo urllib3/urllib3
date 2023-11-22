@@ -106,9 +106,9 @@ class _ReadStream(io.RawIOBase):
     def __del__(self) -> None:
         self.close()
 
-    def is_closed(self):
+    def is_closed(self) -> bool:
         return self._is_closed
-        
+
     def close(self) -> None:
         self._is_closed = True
         if self.is_live:

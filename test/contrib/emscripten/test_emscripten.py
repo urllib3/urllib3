@@ -420,10 +420,14 @@ def test_upload(selenium: typing.Any, testserver_http: PyodideServerInfo) -> Non
 
     pyodide_test(selenium, testserver_http.http_host, testserver_http.http_port)
 
+
 @install_urllib3_wheel()
-def test_requests_with_micropip(selenium,testserver_http) -> None:
+def test_requests_with_micropip(
+    selenium: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
     # this can't be @run_in_pyodide because of the async code
-    response=selenium.run_async(f"""
+    selenium.run_async(
+        f"""
         import micropip
         await micropip.install("requests")
         import requests
@@ -436,4 +440,5 @@ def test_requests_with_micropip(selenium,testserver_http) -> None:
         r = requests.post("http://{testserver_http.http_host}:{testserver_http.http_port}/echo_json",json=json_data)
         import js
         assert(r.json() == json_data)
-    """)
+    """
+    )

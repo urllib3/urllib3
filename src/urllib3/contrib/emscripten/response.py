@@ -88,17 +88,13 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
-        if self.chunked and self.supports_chunked_reads():
-            yield from self.read_chunked(amt, decode_content=decode_content)
-        else:
-            while True:
-                data = self.read(amt=amt, decode_content=decode_content)
+        while True:
+            data = self.read(amt=amt, decode_content=decode_content)
 
-                if data:
-                    yield data
-                else:
-                    break
-
+            if data:
+                yield data
+            else:
+                break
 
     def _init_length(self, request_method: str | None) -> int | None:
         length: int | None
