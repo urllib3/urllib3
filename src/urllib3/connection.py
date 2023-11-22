@@ -639,6 +639,9 @@ class HTTPSConnection(HTTPConnection):
                 SystemTimeWarning,
             )
 
+        # Remove trailing '.' from fqdn hostnames to allow certificate validation
+        server_hostname_rm_dot = server_hostname.rstrip(".")
+
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock=sock,
             cert_reqs=self.cert_reqs,
@@ -651,7 +654,7 @@ class HTTPSConnection(HTTPConnection):
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
-            server_hostname=server_hostname,
+            server_hostname=server_hostname_rm_dot,
             ssl_context=self.ssl_context,
             tls_in_tls=tls_in_tls,
             assert_hostname=self.assert_hostname,
