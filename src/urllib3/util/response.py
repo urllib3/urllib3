@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import http.client as httplib
-from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
+from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect, NoBoundaryInMultipartDefect
 
 from ..exceptions import HeaderParsingError
 
@@ -80,7 +80,7 @@ def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
         defect
         for defect in headers.defects
         if not isinstance(
-            defect, (StartBoundaryNotFoundDefect, MultipartInvariantViolationDefect)
+            defect, (StartBoundaryNotFoundDefect, MultipartInvariantViolationDefect, NoBoundaryInMultipartDefect)
         )
     ]
 
