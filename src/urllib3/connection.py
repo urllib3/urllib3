@@ -160,11 +160,6 @@ class HTTPConnection(_HTTPConnection):
         self._tunnel_port: int | None = None
         self._tunnel_scheme: str | None = None
 
-    # https://github.com/python/mypy/issues/4125
-    # Mypy treats this as LSP violation, which is considered a bug.
-    # If `host` is made a property it violates LSP, because a writeable attribute is overridden with a read-only one.
-    # However, there is also a `host` setter so LSP is not violated.
-    # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
     @property
     def host(self) -> str:
         """

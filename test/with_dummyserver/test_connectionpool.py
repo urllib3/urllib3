@@ -235,7 +235,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             "upload_filename": "lolcat.txt",
             "filefield": ("lolcat.txt", data),
         }
-        fields["upload_size"] = len(data)  # type: ignore
+        fields["upload_size"] = len(data)  # type: ignore[assignment]
 
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
@@ -274,7 +274,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             "upload_filename": filename,
             fieldname: (filename, data),
         }
-        fields["upload_size"] = size  # type: ignore
+        fields["upload_size"] = size  # type: ignore[assignment]
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200, r.data
