@@ -1583,12 +1583,47 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=False, timeout=LONG_TIMEOUT)
         assert server_closed.wait(LONG_TIMEOUT), "The socket was not terminated"
 
+    def _run_preload(self, pool: HTTPSConnectionPool, content_length: int) -> None:
+        response = pool.request("GET", "/")
+        assert len(response.data) == content_length
+
+    def _run_read_None(self, pool: HTTPSConnectionPool, content_length: int) -> None:
+        response = pool.request("GET", "/", preload_content=False)
+        assert len(response.read(None)) == content_length
+        assert response.read(None) == b""
+
+    def _run_read_amt(self, pool: HTTPSConnectionPool, content_length: int) -> None:
+        response = pool.request("GET", "/", preload_content=False)
+        assert len(response.read(content_length)) == content_length
+        assert response.read(5) == b""
+
+    def _run_read1_None(self, pool: HTTPSConnectionPool, content_length: int) -> None:
+        response = pool.request("GET", "/", preload_content=False)
+        remaining = content_length
+        while True:
+            chunk = response.read1(None)
+            if not chunk:
+                break
+            remaining -= len(chunk)
+        assert remaining == 0
+
+    def _run_read1_amt(self, pool: HTTPSConnectionPool, content_length: int) -> None:
+        response = pool.request("GET", "/", preload_content=False)
+        remaining = content_length
+        while True:
+            chunk = response.read1(content_length)
+            if not chunk:
+                break
+            remaining -= len(chunk)
+        assert remaining == 0
+
     @pytest.mark.integration
     @pytest.mark.parametrize(
-        "preload_content,read_amt", [(True, None), (False, None), (False, 2**31)]
+        "method",
+        [_run_preload, _run_read_None, _run_read_amt, _run_read1_None, _run_read1_amt],
     )
     def test_requesting_large_resources_via_ssl(
-        self, preload_content: bool, read_amt: int | None
+        self, method: typing.Callable[[typing.Any, HTTPSConnectionPool, int], None]
     ) -> None:
         """
         Ensure that it is possible to read 2 GiB or more via an SSL
@@ -1630,9 +1665,7 @@ class TestSSL(SocketDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA, retries=False
         ) as pool:
-            response = pool.request("GET", "/", preload_content=preload_content)
-            data = response.data if preload_content else response.read(read_amt)
-            assert len(data) == content_length
+            method(self, pool, content_length)
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
