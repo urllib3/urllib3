@@ -40,8 +40,8 @@ def testserver_http(
 
 
 @pytest.fixture()
-def selenium_coverage(selenium: typing.Any) -> Generator[typing.Any, None, None]:
-    def _install_coverage(self):
+def selenium_coverage(selenium: Any) -> Generator[Any, None, None]:
+    def _install_coverage(self: Any) -> None:
         self.run_js(
             """
             await pyodide.loadPackage("coverage")
@@ -73,7 +73,7 @@ datafile.read()
     if isinstance(coverage_out, bytearray):
         coverage_out_binary = coverage_out
     elif isinstance(coverage_out, list):
-        coverage_out_binary = bytes(coverage_out)
+        coverage_out_binary = bytearray(coverage_out)
     with open(f".coverage.emscripten.{time.time()}", "wb") as outfile:
         outfile.write(coverage_out_binary)
 
@@ -129,12 +129,12 @@ class ServerRunnerInfo:
         )
         print(type(coverage_out))
         print(coverage_out[0:10])
-        if isinstance(coverage_out,str):
+        if isinstance(coverage_out, str):
             coverage_out = eval(coverage_out)
         if isinstance(coverage_out, bytearray):
             coverage_out_binary = coverage_out
         elif isinstance(coverage_out, list):
-            coverage_out_binary = bytes(coverage_out)
+            coverage_out_binary = bytearray(coverage_out)
         with open(f".coverage.emscripten.{time.time()}", "wb") as outfile:
             outfile.write(coverage_out_binary)
 

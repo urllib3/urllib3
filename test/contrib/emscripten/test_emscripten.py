@@ -40,7 +40,9 @@ def install_urllib3_wheel() -> (
 
 
 @install_urllib3_wheel()
-def test_index(selenium_coverage: typing.Any, testserver_http: PyodideServerInfo) -> None:
+def test_index(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPConnection
@@ -53,7 +55,9 @@ def test_index(selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
 
-    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.http_port)
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
 
 
 # wrong protocol / protocol error etc. should raise an exception of urllib3.exceptions.ResponseError
@@ -76,12 +80,16 @@ def test_wrong_protocol(
         except BaseException as ex:
             assert isinstance(ex, urllib3.exceptions.ResponseError)
 
-    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.https_port)
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.https_port
+    )
 
 
 # no connection - should raise
 @install_urllib3_wheel()
-def test_no_response(selenium_coverage: typing.Any, testserver_http: PyodideServerInfo) -> None:
+def test_no_response(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
     @run_in_pyodide(packages=("pytest",))  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import pytest
@@ -113,7 +121,9 @@ def test_404(selenium_coverage: typing.Any, testserver_http: PyodideServerInfo) 
         assert isinstance(response, BaseHTTPResponse)
         assert response.status == 404
 
-    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.http_port)
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
 
 
 # setting timeout should show a warning to js console
@@ -147,7 +157,9 @@ def test_timeout_warning(
         assert len([x for x in log_msgs if x.find("Warning: Timeout") != -1]) == 1
         assert urllib3.contrib.emscripten.fetch._SHOWN_TIMEOUT_WARNING
 
-    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.http_port)
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
 
 
 @install_urllib3_wheel()
@@ -181,7 +193,9 @@ def test_timeout_in_worker(
 
 
 @install_urllib3_wheel()
-def test_index_https(selenium_coverage: typing.Any, testserver_http: PyodideServerInfo) -> None:
+def test_index_https(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPSConnection
@@ -194,7 +208,9 @@ def test_index_https(selenium_coverage: typing.Any, testserver_http: PyodideServ
         data = response.data
         assert data.decode("utf-8") == "Dummy server!"
 
-    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.https_port)
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.https_port
+    )
 
 
 @install_urllib3_wheel()
@@ -232,7 +248,9 @@ def test_non_streaming_no_fallback_warning(
         )
         assert not urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING
 
-    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.https_port)
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.https_port
+    )
 
 
 @install_urllib3_wheel()
@@ -270,7 +288,9 @@ def test_streaming_fallback_warning(
         )
         assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING
 
-    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.https_port)
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.https_port
+    )
 
 
 @install_urllib3_wheel()
@@ -291,7 +311,9 @@ def test_specific_method(
             response = pool.request("PUT", path)
             assert response.status == 400
 
-    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.https_port)
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.https_port
+    )
 
 
 @install_urllib3_wheel()
@@ -327,7 +349,6 @@ def test_streaming_download(
             assert len(data) == 17825792
 """
     run_from_server.run_webworker(worker_code)
-    
 
 
 @install_urllib3_wheel()
@@ -365,10 +386,9 @@ def test_streaming_notready_warning(
         data=response.data.decode('utf-8')
         assert len([x for x in log_msgs if x.find("Can't stream HTTP requests")!=-1])==1
         assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==True
-        assert len(data) == 17825792    
+        assert len(data) == 17825792
         """
     run_from_server.run_webworker(worker_code)
-    
 
 
 @install_urllib3_wheel()
@@ -397,11 +417,15 @@ def test_post_receive_json(
         data = response.json()
         assert data == json_data
 
-    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.http_port)
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
 
 
 @install_urllib3_wheel()
-def test_upload(selenium_coverage: typing.Any, testserver_http: PyodideServerInfo) -> None:
+def test_upload(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3 import HTTPConnectionPool
@@ -417,7 +441,9 @@ def test_upload(selenium_coverage: typing.Any, testserver_http: PyodideServerInf
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200
 
-    pyodide_test(selenium_coverage, testserver_http.http_host, testserver_http.http_port)
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
 
 
 @install_urllib3_wheel()
