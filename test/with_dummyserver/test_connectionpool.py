@@ -12,8 +12,12 @@ from urllib.parse import urlencode
 
 import pytest
 
-from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
-from dummyserver.tornadoserver import HAS_IPV6_AND_DNS, NoIPv6Warning
+from dummyserver.testcase import (
+    HTTPDummyServerTestCase,
+    HypercornDummyServerTestCase,
+    SocketDummyServerTestCase,
+)
+from dummyserver.tornadoserver import NoIPv6Warning
 from urllib3 import HTTPConnectionPool, encode_multipart_formdata
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent
@@ -198,7 +202,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
                 conn.connect()
 
 
-class TestConnectionPool(HTTPDummyServerTestCase):
+class TestConnectionPool(HypercornDummyServerTestCase):
     def test_get(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/specific_method", fields={"method": "GET"})
@@ -780,7 +784,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_source_address(self) -> None:
         for addr, is_ipv6 in VALID_SOURCE_ADDRESSES:
-            if is_ipv6 and not HAS_IPV6_AND_DNS:
+            if is_ipv6:
+                # TODO enable if HAS_IPV6_AND_DNS when this is fixed:
+                # https://github.com/pgjones/hypercorn/issues/160
                 warnings.warn("No IPv6 support: skipping.", NoIPv6Warning)
                 continue
             with HTTPConnectionPool(
@@ -890,7 +896,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         """ConnectionPool preserves dot segments in the URI"""
         with HTTPConnectionPool(self.host, self.port) as pool:
             response = pool.request("GET", "/echo_uri/seg0/../seg2")
-            assert response.data == b"/echo_uri/seg0/../seg2"
+            assert response.data == b"/echo_uri/seg0/../seg2?"
 
     def test_default_user_agent_header(self) -> None:
         """ConnectionPool has a default user agent"""
@@ -1013,6 +1019,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             else:
                 conn = pool._get_conn()
                 conn.request("GET", "/headers", chunked=chunked)
+                conn.getresponse().close()
+                conn.close()
 
             assert pool.headers == {"key": "val"}
             assert type(pool.headers) is header_type
@@ -1023,6 +1031,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             else:
                 conn = pool._get_conn()
                 conn.request("GET", "/headers", headers=headers, chunked=chunked)
+                conn.getresponse().close()
+                conn.close()
 
             assert headers == {"key": "val"}
 
@@ -1042,6 +1052,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             resp = conn.getresponse()
             assert resp.status == 200
             assert resp.json()["Transfer-Encoding"] == "chunked"
+            conn.close()
 
     def test_bytes_header(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
