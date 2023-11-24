@@ -5,7 +5,7 @@ import logging
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass
-from http.client import HTTPException as HTTPException  # noqa: F401
+from http.client import HTTPException as HTTPException
 from io import BytesIO, IOBase
 
 from ...exceptions import InvalidHeader, TimeoutError
@@ -250,9 +250,9 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
             # unnecessarily.
             clean_exit = True
         except _TimeoutError as e:
-            raise TimeoutError(e.message)
+            raise TimeoutError(str(e))
         except _RequestError as e:
-            raise HTTPException(e.message)
+            raise HTTPException(str(e))
         finally:
             # If we didn't terminate cleanly, we need to throw away our
             # connection.

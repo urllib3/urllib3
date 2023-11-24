@@ -201,6 +201,11 @@ class PyodideTestingApp(TestingApp):
         bigdata = 1048576 * b"WOOO YAY BOOYAKAH"
         return Response(bigdata)
 
+    def mediumfile(self, req: HTTPServerRequest) -> Response:
+        # quite big file
+        bigdata = 1024 * b"WOOO YAY BOOYAKAH"
+        return Response(bigdata)
+
     def pyodide(self, req: HTTPServerRequest) -> Response:
         path = req.path[:]
         if not path.startswith("/"):

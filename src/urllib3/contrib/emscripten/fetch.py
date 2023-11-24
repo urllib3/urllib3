@@ -133,7 +133,7 @@ class _ReadStream(io.RawIOBase):
     def readable(self) -> bool:
         return True
 
-    def writeable(self) -> bool:
+    def writable(self) -> bool:
         return False
 
     def seekable(self) -> bool:
@@ -200,7 +200,7 @@ class _StreamingFetcher:
                 self.streaming_ready = True
                 js_resolve_fn(e)
 
-            def onErr(e: JsProxy) -> None:
+            def onErr(e: JsProxy) -> None:  # pragma: no cover
                 js_reject_fn(e)
 
             self.js_worker.onmessage = onMsg
@@ -348,9 +348,11 @@ def _show_streaming_warning() -> None:
         if is_in_browser_main_thread():
             message += "  Python is running in main browser thread\n"
         if not is_worker_available():
-            message += " Worker or Blob classes are not available in this environment."
+            # this would fire if we tested in node without
+            # correct packages loaded
+            message += " Worker or Blob classes are not available in this environment."  # pragma: no cover
         if streaming_ready() is False:
-            message += """ Streaming fetch worker isn't ready. If you want to be sure that streamig fetch
+            message += """ Streaming fetch worker isn't ready. If you want to be sure that streaming fetch
 is working, you need to call: 'await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()`"""
         from js import console
 

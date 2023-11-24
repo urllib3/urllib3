@@ -500,10 +500,10 @@ def test_streaming_close(
             assert(isinstance(body_internal,RawIOBase))
             assert(body_internal.writable() is False)
             assert(body_internal.seekable() is False)
-
+            assert(body_internal.readable() is True)
             response.drain_conn()
             x=response.read()
-            assert(x==None)
+            assert(not x)
             response.close()
             conn.close()
             # try and make destructor be covered
@@ -582,9 +582,7 @@ def test_streaming_notready_warning(
     # test streaming download but don't wait for
     # worker to be ready - should fallback to non-streaming
     # and log a warning
-    bigfile_url = (
-        f"http://{testserver_http.http_host}:{testserver_http.http_port}/bigfile"
-    )
+    file_url = f"http://{testserver_http.http_host}:{testserver_http.http_port}/"
     worker_code = f"""
         import pyodide_js as pjs
         await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
@@ -601,7 +599,7 @@ def test_streaming_notready_warning(
         js.console.warn=capture_log
 
         conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
-        conn.request("GET", "{bigfile_url}",preload_content=False)
+        conn.request("GET", "{file_url}",preload_content=False)
         js.console.warn=old_log
         response = conn.getresponse()
         assert isinstance(response, BaseHTTPResponse)
@@ -658,7 +656,7 @@ def test_upload(
             "upload_filename": "lolcat.txt",
             "filefield": ("lolcat.txt", data),
         }
-        fields["upload_size"] = len(data)  # type: ignore
+        fields["upload_size"] = str(len(data))
         with HTTPConnectionPool(host, port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200
@@ -786,17 +784,29 @@ def test_break_worker_streaming(
             # make posted messages set an exception
             body_internal = response._response.body
             def set_exception(*args):
-                body_internal.int_buffer[1]=5
-                body_internal.int_buffer[2]=ord("W")
-                body_internal.int_buffer[3]=ord("O")
-                body_internal.int_buffer[4]=ord("O")
-                body_internal.int_buffer[5]=ord("!")
-                body_internal.int_buffer[6]=0
+                body_internal.worker.postMessage = old_pm
+                body_internal.int_buffer[1]=4
+                body_internal.byte_buffer[0]=ord("W")
+                body_internal.byte_buffer[1]=ord("O")
+                body_internal.byte_buffer[2]=ord("O")
+                body_internal.byte_buffer[3]=ord("!")
+                body_internal.byte_buffer[4]=0
                 js.Atomics.store(body_internal.int_buffer, 0, -4)
                 js.Atomics.notify(body_internal.int_buffer,0)
             body_internal.worker.postMessage = set_exception
             data=response.read()
-        body_internal.worker.postMessage = old_pm
+        # monkeypatch so it returns an unknown value for the magic number on initial fetch call
+        with pytest.raises(http.client.HTTPException):
+            # make posted messages set an exception
+            worker=urllib3.contrib.emscripten.fetch._fetcher.js_worker
+            def set_exception(self,*args):
+                array=js.Int32Array.new(args[0].buffer)
+                array[0]=-1234
+            worker.postMessage=set_exception.__get__(worker,worker.__class__)
+            conn.request("GET","/",preload_content=False)
+            response = conn.getresponse()
+            data=response.read()
+        urllib3.contrib.emscripten.fetch._fetcher.js_worker.postMessage=old_pm
         # 3) Stopping the worker receiving any messages which should cause a timeout error
         #    in the receive stream
         with pytest.raises(TimeoutError):
@@ -890,11 +900,11 @@ def test_read_chunked(
         from urllib3.connection import HTTPConnection
 
         conn = HTTPConnection(host, port)
-        conn.request("GET", f"http://{host}:{port}/bigfile", preload_content=False)
+        conn.request("GET", f"http://{host}:{port}/mediumfile", preload_content=False)
         response = conn.getresponse()
         count = 0
         for x in response.read_chunked(64):
-            count += 0
+            count += 1
             assert len(x) == 64
             if count > 10:
                 break
