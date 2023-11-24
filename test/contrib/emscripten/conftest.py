@@ -69,17 +69,23 @@ _coverage.start()
     selenium._install_coverage()
     yield selenium
     # on teardown, save _coverage output
-    coverage_out = selenium.run_js(
-        """
+    coverage_out_binary = bytes(
+        selenium.run_js(
+            """
 return await pyodide.runPythonAsync(`
 _coverage.stop()
 _coverage.save()
-datafile=open(".coverage","rb")
-datafile.read()
+_coverage_datafile = open(".coverage","rb")
+_coverage_outdata = _coverage_datafile.read()
+# avoid polluting main namespace too much
+import js as _coverage_js
+# convert to js Array (as default conversion is TypedArray which does
+# bad things in firefox)
+_coverage_js.Array.from_(_coverage_outdata)
 `)
     """
+        )
     )
-    coverage_out_binary = bytes(coverage_out)
     with open(f"{_get_coverage_filename('.coverage.emscripten.')}", "wb") as outfile:
         outfile.write(coverage_out_binary)
 
@@ -109,13 +115,19 @@ class ServerRunnerInfo:
                 """
             _coverage.stop()
             _coverage.save()
-            datafile=open(".coverage","rb")
-            str(list(datafile.read()))
+            _coverage_datafile = open(".coverage","rb")
+            _coverage_outdata = _coverage_datafile.read()
+            # avoid polluting main namespace too much
+            import js as _coverage_js
+            # convert to js Array (as default conversion is TypedArray which does
+            # bad things in firefox)
+            _coverage_js.Array.from_(_coverage_outdata)
             """
             )
 
-        coverage_out = self.selenium.run_js(
-            f"""
+        coverage_out_binary = bytes(
+            self.selenium.run_js(
+                f"""
             let worker = new Worker('https://{self.host}:{self.port}/pyodide/webworker_dev.js');
             let p = new Promise((res, rej) => {{
                 worker.onmessageerror = e => rej(e);
@@ -131,10 +143,9 @@ class ServerRunnerInfo:
             }});
             return await p;
             """,
-            pyodide_checks=False,
+                pyodide_checks=False,
+            )
         )
-        coverage_out = eval(coverage_out)
-        coverage_out_binary = bytes(coverage_out)
         with open(
             f"{_get_coverage_filename('.coverage.emscripten.worker.')}", "wb"
         ) as outfile:
