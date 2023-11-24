@@ -1077,7 +1077,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             assert request_headers["User-Agent"] == "Schönefeld/1.18.0"
 
 
-class TestRetry(HTTPDummyServerTestCase):
+class TestRetry(HypercornDummyServerTestCase):
     def test_max_retry(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             with pytest.raises(MaxRetryError):

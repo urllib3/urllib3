@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 import contextlib
 import gzip
 import zlib
@@ -13,6 +14,8 @@ from quart.typing import ResponseTypes
 from quart_trio import QuartTrio
 
 hypercorn_app = QuartTrio(__name__)
+
+RETRY_TEST_NAMES = collections.Counter()
 
 
 @hypercorn_app.route("/")
@@ -146,6 +149,21 @@ async def multi_headers() -> ResponseTypes:
     return await make_response({"headers": list(request.headers)})
 
 
+@hypercorn_app.route("/multi_redirect")
+async def multi_redirect() -> ResponseTypes:
+    "Performs a redirect chain based on ``redirect_codes``"
+    params = request.args
+    codes = params.get("redirect_codes", "200")
+    head, tail = codes.split(",", 1) if "," in codes else (codes, None)
+    assert head is not None
+    status = head
+    if not tail:
+        return await make_response("Done redirecting", status)
+
+    headers = [("Location", f"/multi_redirect?redirect_codes={tail}")]
+    return await make_response("", status, headers)
+
+
 @hypercorn_app.route("/encodingrequest")
 async def encodingrequest() -> ResponseTypes:
     "Check for UA accepting gzip/deflate encoding"
@@ -194,3 +212,21 @@ async def status() -> ResponseTypes:
 async def source_address() -> ResponseTypes:
     """Return the requester's IP address."""
     return await make_response(request.remote_addr)
+
+
+@hypercorn_app.route("/successful_retry")
+async def successful_retry() -> ResponseTypes:
+    """First return an error and then success
+
+    It's not currently very flexible as the number of retries is hard-coded.
+    """
+    test_name = request.headers.get("test-name", None)
+    if not test_name:
+        return await make_response("test-name header not set", 400)
+
+    RETRY_TEST_NAMES[test_name] += 1
+
+    if RETRY_TEST_NAMES[test_name] >= 2:
+        return await make_response("Retry successful!", 200)
+    else:
+        return await make_response("need to keep retrying!", 418)
