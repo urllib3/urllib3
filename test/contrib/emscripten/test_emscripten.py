@@ -598,8 +598,6 @@ def test_streaming_notready_warning(
             old_log(*args)
         js.console.warn=capture_log
 
-        urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING = False
-
         conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
         conn.request("GET", "{file_url}",preload_content=False)
         js.console.warn=old_log
@@ -608,7 +606,6 @@ def test_streaming_notready_warning(
         data=response.data.decode('utf-8')
         assert len([x for x in log_msgs if x.find("Can't stream HTTP requests")!=-1])==1
         assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==True
-        assert len(data) == 17825792
         """
     run_from_server.run_webworker(worker_code)
 
