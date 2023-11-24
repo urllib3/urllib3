@@ -8,13 +8,13 @@ from __future__ import annotations
 import pytest
 
 import urllib3
-from dummyserver.testcase import HTTPDummyServerTestCase, HTTPSDummyServerTestCase
+from dummyserver.testcase import HTTPSDummyServerTestCase, HypercornDummyServerTestCase
 from urllib3.exceptions import InsecureRequestWarning
 
 from ..test_no_ssl import TestWithoutSSL
 
 
-class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
+class TestHTTPWithoutSSL(HypercornDummyServerTestCase, TestWithoutSSL):
     def test_simple(self) -> None:
         with urllib3.HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/")
