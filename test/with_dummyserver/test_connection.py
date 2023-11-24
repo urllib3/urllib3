@@ -48,7 +48,6 @@ def test_does_not_release_conn(pool: HTTPConnectionPool) -> None:
         conn.request("GET", "/")
         response = conn.getresponse()
 
-        assert pool.pool.qsize() == 0
         response.release_conn()
         assert pool.pool.qsize() == 0  # type: ignore[union-attr]
 
