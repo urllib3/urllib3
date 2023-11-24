@@ -201,7 +201,8 @@ class _StreamingFetcher:
                 js_resolve_fn(e)
 
             def onErr(e: JsProxy) -> None:
-                js_reject_fn(e) # Defensive: never happens in ci
+                js_reject_fn(e)  # Defensive: never happens in ci
+
             self.js_worker.onmessage = onMsg
             self.js_worker.onerror = onErr
 
@@ -347,8 +348,8 @@ def _show_streaming_warning() -> None:
         if is_in_browser_main_thread():
             message += "  Python is running in main browser thread\n"
         if not is_worker_available():
-            message += " Worker or Blob classes are not available in this environment." # Defensive: this is always False in browsers that we test in
-       if streaming_ready() is False:
+            message += " Worker or Blob classes are not available in this environment."  # Defensive: this is always False in browsers that we test in
+        if streaming_ready() is False:
             message += """ Streaming fetch worker isn't ready. If you want to be sure that streaming fetch
 is working, you need to call: 'await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()`"""
         from js import console
