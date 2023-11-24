@@ -5,9 +5,10 @@ import logging
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass
+from http.client import HTTPException as HTTPException  # noqa: F401
 from io import BytesIO, IOBase
 
-from ...exceptions import InvalidHeader, ResponseError, TimeoutError
+from ...exceptions import InvalidHeader, TimeoutError
 from ...response import BaseHTTPResponse
 from ...util.retry import Retry
 from .request import EmscriptenRequest
@@ -69,8 +70,6 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
     @retries.setter
     def retries(self, retries: Retry | None) -> None:
         # Override the request_url if retries has a redirect location.
-        if retries is not None and retries.history:
-            self.url = retries.history[-1].redirect_location
         self._retries = retries
 
     def stream(
@@ -169,7 +168,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
                     self._response.body.close()
                 return typing.cast(bytes, data)
             else:  # read all we can (and cache it)
-                data = self._response.body.read(None)
+                data = self._response.body.read()
                 if cache_content:
                     self._body = data
                 if self.length_remaining is not None:
@@ -253,7 +252,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
         except _TimeoutError as e:
             raise TimeoutError(e.message)
         except _RequestError as e:
-            raise ResponseError(e.message)
+            raise HTTPException(e.message)
         finally:
             # If we didn't terminate cleanly, we need to throw away our
             # connection.

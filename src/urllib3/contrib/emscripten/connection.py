@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import os
 import typing
+
+# use http.client.HTTPException for consistency with non-emscripten
+from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
 
 from ..._base_connection import _TYPE_BODY
 from ...connection import HTTPConnection, ProxyConfig, port_by_scheme
-from ...exceptions import ResponseError, TimeoutError
+from ...exceptions import TimeoutError
 from ...response import BaseHTTPResponse
 from ...util.connection import _TYPE_SOCKET_OPTIONS
 from ...util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
@@ -115,7 +118,7 @@ class EmscriptenHTTPConnection:
         except _TimeoutError as e:
             raise TimeoutError(e.message)
         except _RequestError as e:
-            raise ResponseError(e.message)
+            raise HTTPException(e.message)
 
     def getresponse(self) -> BaseHTTPResponse:
         if self._response is not None:

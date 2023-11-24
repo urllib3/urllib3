@@ -135,20 +135,21 @@ def test_pool_requests(
     )
 
 
-# wrong protocol / protocol error etc. should raise an exception of urllib3.exceptions.ResponseError
+# wrong protocol / protocol error etc. should raise an exception of http.client.HTTPException
 @install_urllib3_wheel()
 def test_wrong_protocol(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import http.client
+
         import pytest
 
-        import urllib3.exceptions
         from urllib3.connection import HTTPConnection
 
         conn = HTTPConnection(host, port)
-        with pytest.raises(urllib3.exceptions.ResponseError):
+        with pytest.raises(http.client.HTTPException):
             conn.request("GET", f"http://{host}:{port}/")
 
     pyodide_test(
@@ -156,20 +157,21 @@ def test_wrong_protocol(
     )
 
 
-# wrong protocol / protocol error etc. should raise an exception of urllib3.exceptions.ResponseError
+# wrong protocol / protocol error etc. should raise an exception of http.client.HTTPException
 @install_urllib3_wheel()
 def test_bad_method(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
     @run_in_pyodide(packages=("pytest",))  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import http.client
+
         import pytest
 
-        import urllib3.exceptions
         from urllib3.connection import HTTPConnection
 
         conn = HTTPConnection(host, port)
-        with pytest.raises(urllib3.exceptions.ResponseError):
+        with pytest.raises(http.client.HTTPException):
             conn.request("TRACE", f"http://{host}:{port}/")
 
     pyodide_test(
@@ -184,18 +186,16 @@ def test_no_response(
 ) -> None:
     @run_in_pyodide(packages=("pytest",))  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import http.client
+
         import pytest
 
-        import urllib3.exceptions
         from urllib3.connection import HTTPConnection
 
         conn = HTTPConnection(host, port)
-        try:
+        with pytest.raises(http.client.HTTPException):
             conn.request("GET", f"http://{host}:{port}/")
             _ = conn.getresponse()
-            pytest.fail("No response, should throw exception.")
-        except BaseException as ex:
-            assert isinstance(ex, urllib3.exceptions.ResponseError)
 
     pyodide_test(selenium_coverage, testserver_http.http_host, find_unused_port())
 
@@ -458,7 +458,6 @@ def test_streaming_download(
             await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
             from urllib3.response import BaseHTTPResponse
             from urllib3.connection import HTTPConnection
-            import js
 
             conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
             conn.request("GET", "{bigfile_url}",preload_content=False)
@@ -497,7 +496,7 @@ def test_streaming_close(
             conn.request("GET", "{url}",preload_content=False)
             response = conn.getresponse()
             # check body is a RawIOBase stream and isn't seekable, writeable
-            body_internal = response._response.body.raw
+            body_internal = response._response.body
             assert(isinstance(body_internal,RawIOBase))
             assert(body_internal.writable() is False)
             assert(body_internal.seekable() is False)
@@ -531,15 +530,14 @@ def test_streaming_bad_url(
             import pytest
             import pyodide_js as pjs
             await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
-
+            import http.client
             import urllib3.contrib.emscripten.fetch
             await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
             from urllib3.response import BaseHTTPResponse
             from urllib3.connection import HTTPConnection
-            from urllib3.exceptions import ResponseError
 
             conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
-            with pytest.raises(ResponseError):
+            with pytest.raises(http.client.HTTPException):
                 conn.request("GET", "{bad_url}",preload_content=False)
 """
     run_from_server.run_webworker(worker_code)
@@ -558,6 +556,7 @@ def test_streaming_bad_method(
     # as you can't do it on main thread
     worker_code = f"""
             import pytest
+            import http.client
             import pyodide_js as pjs
             await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
 
@@ -565,10 +564,9 @@ def test_streaming_bad_method(
             await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
             from urllib3.response import BaseHTTPResponse
             from urllib3.connection import HTTPConnection
-            from urllib3.exceptions import ResponseError
 
             conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
-            with pytest.raises(ResponseError):
+            with pytest.raises(http.client.HTTPException):
                 # TRACE method should throw SecurityError in Javascript
                 conn.request("TRACE", "{bad_url}",preload_content=False)
 """
@@ -763,29 +761,30 @@ def test_break_worker_streaming(
         import pytest
         import urllib3.contrib.emscripten.fetch
         import js
+        import http.client
 
         await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
-        from urllib3.exceptions import TimeoutError,ResponseError
+        from urllib3.exceptions import TimeoutError
         from urllib3.connection import HTTPConnection
         conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port},timeout=1.0)
         # make the fetch worker return a bad response by:
         # 1) Clearing the int buffer
         #    in the receive stream
-        with pytest.raises(ResponseError):
+        with pytest.raises(http.client.HTTPException):
             conn.request("GET","/",preload_content=False)
             response = conn.getresponse()
-            body_internal = response._response.body.raw
+            body_internal = response._response.body
             assert(body_internal.int_buffer!=None)
             body_internal.int_buffer=None
             data=response.read()
         # 2) Monkeypatch postMessage so that it just sets an
         #    exception status
         old_pm= body_internal.worker.postMessage
-        with pytest.raises(ResponseError):
+        with pytest.raises(http.client.HTTPException):
             conn.request("GET","/",preload_content=False)
             response = conn.getresponse()
             # make posted messages set an exception
-            body_internal = response._response.body.raw
+            body_internal = response._response.body
             def set_exception(*args):
                 body_internal.int_buffer[1]=5
                 body_internal.int_buffer[2]=ord("W")
@@ -804,7 +803,7 @@ def test_break_worker_streaming(
             conn.request("GET","/",preload_content=False)
             response = conn.getresponse()
             # make posted messages not be send
-            body_internal = response._response.body.raw
+            body_internal = response._response.body
             def ignore_message(*args):
                 pass
             old_pm= body_internal.worker.postMessage
@@ -903,3 +902,39 @@ def test_read_chunked(
     pyodide_test(
         selenium_coverage, testserver_http.http_host, testserver_http.http_port
     )
+
+
+@install_urllib3_wheel()
+def test_retries(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import pytest
+
+        import urllib3
+
+        pool = urllib3.HTTPConnectionPool(
+            host,
+            port,
+            maxsize=1,
+            block=True,
+            retries=urllib3.util.Retry(connect=5, read=5, redirect=5),
+        )
+
+        # monkeypatch connection class to count calls
+        old_request = urllib3.connection.HTTPConnection.request
+        count = 0
+
+        def count_calls(self, *args, **argv):  # type: ignore[no-untyped-def]
+            nonlocal count
+            count += 1
+            return old_request(self, *args, **argv)
+
+        urllib3.connection.HTTPConnection.request = count_calls  # type: ignore[method-assign]
+        with pytest.raises(urllib3.exceptions.MaxRetryError):
+            pool.urlopen("GET", "/")
+        # this should fail, but should have tried 6 times total
+        assert count == 6
+
+    pyodide_test(selenium_coverage, testserver_http.http_host, find_unused_port())
