@@ -902,11 +902,10 @@ def test_read_chunked(
         conn.request("GET", f"http://{host}:{port}/mediumfile", preload_content=False)
         response = conn.getresponse()
         count = 0
-        for x in response.read_chunked(64):
+        for x in response.read_chunked(512):
             count += 1
-            assert len(x) == 64
-            if count > 10:
-                break
+            if count < 10:
+                assert len(x) == 512
 
     pyodide_test(
         selenium_coverage, testserver_http.http_host, testserver_http.http_port
