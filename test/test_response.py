@@ -1021,6 +1021,31 @@ class TestResponse:
         with pytest.raises(StopIteration):
             next(stream)
 
+    def test_mock_stream_via_read1(self) -> None:
+        class MockHTTPRequest:
+            def __init__(self, chunkiter: typing.Iterator[bytes]) -> None:
+                self.chunkiter = chunkiter
+                self.closed = False
+
+            def read(self, amt: int) -> bytes:
+                "not called, presence indicates to HTTPResponse that this is a stream"
+                assert False
+
+            def read1(self, amt: int | None = None) -> bytes:
+                assert not self.closed
+                try:
+                    return next(self.chunkiter)
+                except StopIteration:
+                    # http.client automatically closes at stream end
+                    self.closed = True
+                    return b""
+
+        chunks = b"foo longer bar".split()
+        fp = MockHTTPRequest(iter(chunks))
+        resp = HTTPResponse(fp, preload_content=False)  # type: ignore[arg-type]
+        assert list(resp.stream(None)) == chunks
+        assert fp.closed
+
     def test_mock_transfer_encoding_chunked(self) -> None:
         stream = [b"fo", b"o", b"bar"]
         fp = MockChunkedEncodingResponse(stream)

@@ -1020,7 +1020,10 @@ class HTTPResponse(BaseHTTPResponse):
             yield from self.read_chunked(amt, decode_content=decode_content)
         else:
             while not is_fp_closed(self._fp) or len(self._decoded_buffer) > 0:
-                data = self.read(amt=amt, decode_content=decode_content)
+                if amt is None:
+                    data = self.read1(amt=amt, decode_content=decode_content)
+                else:
+                    data = self.read(amt=amt, decode_content=decode_content)
 
                 if data:
                     yield data
