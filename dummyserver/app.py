@@ -15,7 +15,7 @@ from quart_trio import QuartTrio
 
 hypercorn_app = QuartTrio(__name__)
 
-RETRY_TEST_NAMES = collections.Counter()
+RETRY_TEST_NAMES: collections.Counter[str] = collections.Counter()
 
 
 @hypercorn_app.route("/")
