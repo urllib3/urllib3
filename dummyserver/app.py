@@ -4,6 +4,7 @@ import contextlib
 import gzip
 import zlib
 from io import BytesIO
+from typing import Iterator
 
 from quart import make_response, request
 
@@ -17,6 +18,80 @@ hypercorn_app = QuartTrio(__name__)
 @hypercorn_app.route("/")
 async def index() -> ResponseTypes:
     return await make_response("Dummy server!")
+
+
+@hypercorn_app.route("/specific_method", methods=["GET", "POST", "PUT"])
+async def specific_method() -> ResponseTypes:
+    "Confirm that the request matches the desired method type"
+    method_param = (await request.values).get("method")
+
+    if request.method != method_param:
+        return await make_response(
+            f"Wrong method: {method_param} != {request.method}", 400
+        )
+    return await make_response()
+
+
+@hypercorn_app.route("/upload", methods=["POST"])
+async def upload() -> ResponseTypes:
+    "Confirm that the uploaded file conforms to specification"
+    params = await request.form
+    param = params.get("upload_param")
+    filename_param = params.get("upload_filename")
+    size = int(params.get("upload_size", "0"))
+    files_ = (await request.files).getlist(param)
+    assert files_ is not None
+
+    if len(files_) != 1:
+        return await make_response(
+            f"Expected 1 file for '{param}', not {len(files_)}", 400
+        )
+
+    file_ = files_[0]
+    # data is short enough to read synchronously without blocking the event loop
+    with contextlib.closing(file_.stream) as stream:
+        data = stream.read()
+
+    if int(size) != len(data):
+        return await make_response(f"Wrong size: {int(size)} != {len(data)}", 400)
+
+    if filename_param != file_.filename:
+        return await make_response(
+            f"Wrong filename: {filename_param} != {file_.filename}", 400
+        )
+
+    return await make_response()
+
+
+@hypercorn_app.route("/chunked")
+async def chunked() -> ResponseTypes:
+    def generate() -> Iterator[str]:
+        for _ in range(4):
+            yield "123"
+
+    return await make_response(generate())
+
+
+@hypercorn_app.route("/chunked_gzip")
+async def chunked_gzip() -> ResponseTypes:
+    def generate() -> Iterator[bytes]:
+        compressor = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+
+        for uncompressed in [b"123"] * 4:
+            yield compressor.compress(uncompressed)
+        yield compressor.flush()
+
+    return await make_response(generate(), 200, [("Content-Encoding", "gzip")])
+
+
+@hypercorn_app.route("/keepalive")
+async def keepalive() -> ResponseTypes:
+    if request.args.get("close", b"0") == b"1":
+        headers = [("Connection", "close")]
+        return await make_response("Closing", 200, headers)
+
+    headers = [("Connection", "keep-alive")]
+    return await make_response("Keeping alive", 200, headers)
 
 
 @hypercorn_app.route("/echo", methods=["GET", "POST"])
@@ -35,11 +110,20 @@ async def echo_json() -> ResponseTypes:
     return await make_response(data, 200, request.headers)
 
 
-@hypercorn_app.route("/echo_uri")
-async def echo_uri() -> ResponseTypes:
+@hypercorn_app.route("/echo_uri/<path:rest>")
+@hypercorn_app.route("/echo_uri", defaults={"rest": ""})
+async def echo_uri(rest: str) -> ResponseTypes:
     "Echo back the requested URI"
     assert request.full_path is not None
     return await make_response(request.full_path)
+
+
+@hypercorn_app.route("/echo_params")
+async def echo_params() -> ResponseTypes:
+    "Echo back the query parameters"
+    await request.get_data()
+    echod = sorted((k, v) for k, v in request.args.items())
+    return await make_response(repr(echod))
 
 
 @hypercorn_app.route("/headers", methods=["GET", "POST"])
@@ -104,3 +188,9 @@ async def status() -> ResponseTypes:
     status = values.get("status", "200 OK")
     status_code = status.split(" ")[0]
     return await make_response("", status_code)
+
+
+@hypercorn_app.route("/source_address")
+async def source_address() -> ResponseTypes:
+    """Return the requester's IP address."""
+    return await make_response(request.remote_addr)
