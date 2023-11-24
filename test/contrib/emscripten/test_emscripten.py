@@ -598,6 +598,8 @@ def test_streaming_notready_warning(
             old_log(*args)
         js.console.warn=capture_log
 
+        urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING = False
+
         conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
         conn.request("GET", "{file_url}",preload_content=False)
         js.console.warn=old_log
