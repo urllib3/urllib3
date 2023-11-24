@@ -4,8 +4,8 @@ import asyncio
 import contextlib
 import mimetypes
 import os
+import random
 import textwrap
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generator
@@ -18,6 +18,15 @@ from tornado.httputil import HTTPServerRequest
 from dummyserver.handlers import Response, TestingApp
 from dummyserver.testcase import HTTPDummyProxyTestCase
 from dummyserver.tornadoserver import run_tornado_app, run_tornado_loop_in_thread
+
+_coverage_count = 0
+
+
+def _get_coverage_filename(prefix: str) -> str:
+    global _coverage_count
+    _coverage_count += 1
+    rand_part = "".join([random.choice("1234567890") for x in range(20)])
+    return prefix + rand_part + f".{_coverage_count}"
 
 
 @pytest.fixture(scope="module")
@@ -70,11 +79,8 @@ datafile.read()
 `)
     """
     )
-    if isinstance(coverage_out, bytearray):
-        coverage_out_binary = coverage_out
-    elif isinstance(coverage_out, list):
-        coverage_out_binary = bytearray(coverage_out)
-    with open(f".coverage.emscripten.{time.time()}", "wb") as outfile:
+    coverage_out_binary = bytes(coverage_out)
+    with open(f"{_get_coverage_filename('.coverage.emscripten.')}", "wb") as outfile:
         outfile.write(coverage_out_binary)
 
 
@@ -127,15 +133,11 @@ class ServerRunnerInfo:
             """,
             pyodide_checks=False,
         )
-        print(type(coverage_out))
-        print(coverage_out[0:10])
-        if isinstance(coverage_out, str):
-            coverage_out = eval(coverage_out)
-        if isinstance(coverage_out, bytearray):
-            coverage_out_binary = coverage_out
-        elif isinstance(coverage_out, list):
-            coverage_out_binary = bytearray(coverage_out)
-        with open(f".coverage.emscripten.{time.time()}", "wb") as outfile:
+        coverage_out = eval(coverage_out)
+        coverage_out_binary = bytes(coverage_out)
+        with open(
+            f"{_get_coverage_filename('.coverage.emscripten.worker.')}", "wb"
+        ) as outfile:
             outfile.write(coverage_out_binary)
 
 

@@ -92,6 +92,7 @@ class _ReadStream(io.RawIOBase):
         timeout: float,
         worker: JsProxy,
         connection_id: int,
+        request: EmscriptenRequest,
     ):
         self.int_buffer = int_buffer
         self.byte_buffer = byte_buffer
@@ -102,19 +103,32 @@ class _ReadStream(io.RawIOBase):
         self.timeout = int(1000 * timeout) if timeout > 0 else None
         self.is_live = True
         self._is_closed = False
+        self.request: EmscriptenRequest | None = request
 
     def __del__(self) -> None:
         self.close()
 
+    # this is compatible with _base_connection
     def is_closed(self) -> bool:
         return self._is_closed
 
+    # for compatibility with RawIOBase
+    @property
+    def closed(self) -> bool:
+        return self.is_closed()
+
     def close(self) -> None:
-        self._is_closed = True
-        if self.is_live:
-            self.worker.postMessage(_obj_from_dict({"close": self.connection_id}))
-            self.is_live = False
-        super().close()
+        if not self.is_closed():
+            self.read_len = 0
+            self.read_pos = 0
+            self.int_buffer = None
+            self.byte_buffer = None
+            self._is_closed = True
+            self.request = None
+            if self.is_live:
+                self.worker.postMessage(_obj_from_dict({"close": self.connection_id}))
+                self.is_live = False
+            super().close()
 
     def readable(self) -> bool:
         return True
@@ -127,7 +141,11 @@ class _ReadStream(io.RawIOBase):
 
     def readinto(self, byte_obj: Buffer) -> int:
         if not self.int_buffer:
-            return 0
+            raise _StreamingError(
+                "No buffer for stream in _ReadStream.readinto",
+                request=self.request,
+                response=None,
+            )
         if self.read_len == 0:
             # wait for the worker to send something
             js.Atomics.store(self.int_buffer, 0, ERROR_TIMEOUT)
@@ -142,13 +160,20 @@ class _ReadStream(io.RawIOBase):
                 self.read_len = data_len
                 self.read_pos = 0
             elif data_len == ERROR_EXCEPTION:
-                raise _StreamingError
+                string_len = self.int_buffer[1]
+                # decode the error string
+                js_decoder = js.TextDecoder.new()
+                json_str = js_decoder.decode(self.byte_buffer.slice(0, string_len))
+                raise _StreamingError(
+                    f"Exception thrown in fetch: {json_str}",
+                    request=self.request,
+                    response=None,
+                )
             else:
                 # EOF, free the buffers and return zero
-                self.read_len = 0
-                self.read_pos = 0
-                self.int_buffer = None
-                self.byte_buffer = None
+                # and free the request
+                self.is_live = False
+                self.close()
                 return 0
         # copy from int32array to python bytes
         ret_length = min(self.read_len, len(memoryview(byte_obj)))
@@ -233,15 +258,13 @@ class _StreamingFetcher:
                 request=request,
                 status_code=response_obj["status"],
                 headers=response_obj["headers"],
-                body=io.BufferedReader(
-                    _ReadStream(
-                        js_int_buffer,
-                        js_byte_buffer,
-                        request.timeout,
-                        self.js_worker,
-                        response_obj["connectionID"],
-                    ),
-                    buffer_size=1048576,
+                body=_ReadStream(
+                    js_int_buffer,
+                    js_byte_buffer,
+                    request.timeout,
+                    self.js_worker,
+                    response_obj["connectionID"],
+                    request,
                 ),
             )
         elif js_int_buffer[0] == ERROR_EXCEPTION:
@@ -328,7 +351,7 @@ def _show_streaming_warning() -> None:
             message += " Worker or Blob classes are not available in this environment."
         if streaming_ready() is False:
             message += """ Streaming fetch worker isn't ready. If you want to be sure that streamig fetch
-is working, you need to call: 'await urllib3.contrib.emscripten.fetc.wait_for_streaming_ready()`"""
+is working, you need to call: 'await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()`"""
         from js import console
 
         console.warn(message)

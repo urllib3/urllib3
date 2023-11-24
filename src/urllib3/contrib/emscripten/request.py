@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
-from typing import Any
 
 from ..._base_connection import _TYPE_BODY
 
@@ -22,7 +20,3 @@ class EmscriptenRequest:
 
     def set_body(self, body: _TYPE_BODY | None) -> None:
         self.body = body
-
-    def set_json(self, body: dict[str, Any]) -> None:
-        self.set_header("Content-Type", "application/json; charset=utf-8")
-        self.set_body(json.dumps(body).encode("utf-8"))

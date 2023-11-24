@@ -3,10 +3,11 @@ from __future__ import annotations
 import json as _json
 import logging
 import typing
+from contextlib import contextmanager
 from dataclasses import dataclass
 from io import BytesIO, IOBase
 
-from ...exceptions import InvalidHeader
+from ...exceptions import InvalidHeader, ResponseError, TimeoutError
 from ...response import BaseHTTPResponse
 from ...util.retry import Retry
 from .request import EmscriptenRequest
@@ -37,6 +38,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
         self._response = internal_response
         self._url = url
         self._connection = connection
+        self._closed = False
         super().__init__(
             headers=internal_response.headers,
             status=internal_response.status_code,
@@ -46,6 +48,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
             decode_content=True,
         )
         self.length_remaining = self._init_length(self._response.request.method)
+        self.length_is_certain = False
 
     @property
     def url(self) -> str | None:
@@ -101,19 +104,6 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
         content_length: str | None = self.headers.get("content-length")
 
         if content_length is not None:
-            if self.chunked:
-                # This Response will fail with an IncompleteRead if it can't be
-                # received as chunked. This method falls back to attempt reading
-                # the response before raising an exception.
-                log.warning(
-                    "Received response with both Content-Length and "
-                    "Transfer-Encoding set. This is expressly forbidden "
-                    "by RFC 7230 sec 3.3.2. Ignoring Content-Length and "
-                    "attempting to process response as Transfer-Encoding: "
-                    "chunked."
-                )
-                return None
-
             try:
                 # RFC 7230 section 3.3.2 specifies multiple content lengths can
                 # be sent in a single Content-Length header
@@ -136,15 +126,12 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
         else:  # if content_length is None
             length = None
 
-        # Convert status to int for comparison
-        # In some cases, httplib returns a status of "_UNKNOWN"
-        try:
-            status = int(self.status)
-        except ValueError:
-            status = 0
-
         # Check for responses that shouldn't include a body
-        if status in (204, 304) or 100 <= status < 200 or request_method == "HEAD":
+        if (
+            self.status in (204, 304)
+            or 100 <= self.status < 200
+            or request_method == "HEAD"
+        ):
             length = 0
 
         return length
@@ -155,30 +142,51 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
         decode_content: bool | None = None,  # ignored because browser decodes always
         cache_content: bool = False,
     ) -> bytes:
-        if not isinstance(self._response.body, IOBase):
-            self.length_remaining = len(self._response.body)
-            # wrap body in IOStream
-            self._response.body = BytesIO(self._response.body)
-        if amt is not None:
-            # don't cache partial content
-            cache_content = False
-            data = self._response.body.read(amt)
-            if self.length_remaining:
-                self.length_remaining = max(self.length_remaining - len(data), 0)
-            return typing.cast(bytes, data)
-        else:
-            data = self._response.body.read(None)
-            if cache_content:
-                self._body = data
-            if self.length_remaining:
-                self.length_remaining = max(self.length_remaining - len(data), 0)
-            return typing.cast(bytes, data)
+        if (
+            self._closed
+            or self._response is None
+            or (isinstance(self._response.body, IOBase) and self._response.body.closed)
+        ):
+            return b""
+
+        with self._error_catcher():
+            # body has been preloaded as a string by XmlHttpRequest
+            if not isinstance(self._response.body, IOBase):
+                self.length_remaining = len(self._response.body)
+                self.length_is_certain = True
+                # wrap body in IOStream
+                self._response.body = BytesIO(self._response.body)
+            if amt is not None:
+                # don't cache partial content
+                cache_content = False
+                data = self._response.body.read(amt)
+                if self.length_remaining is not None:
+                    self.length_remaining = max(self.length_remaining - len(data), 0)
+                if (self.length_is_certain and self.length_remaining == 0) or len(
+                    data
+                ) < amt:
+                    # definitely finished reading, close response stream
+                    self._response.body.close()
+                return typing.cast(bytes, data)
+            else:  # read all we can (and cache it)
+                data = self._response.body.read(None)
+                if cache_content:
+                    self._body = data
+                if self.length_remaining is not None:
+                    self.length_remaining = max(self.length_remaining - len(data), 0)
+                if len(data) == 0 or (
+                    self.length_is_certain and self.length_remaining == 0
+                ):
+                    # definitely finished reading, close response stream
+                    self._response.body.close()
+                return typing.cast(bytes, data)
 
     def read_chunked(
         self,
         amt: int | None = None,
         decode_content: bool | None = None,
     ) -> typing.Generator[bytes, None, None]:
+        # chunked is handled by browser
         while True:
             bytes = self.read(amt, decode_content)
             if not bytes:
@@ -216,5 +224,54 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
         return _json.loads(data)
 
     def close(self) -> None:
-        if isinstance(self._response.body, IOBase):
-            self._response.body.close()
+        if not self._closed:
+            if isinstance(self._response.body, IOBase):
+                self._response.body.close()
+            if self._connection:
+                self._connection.close()
+                self._connection = None
+            self._closed = True
+
+    @contextmanager
+    def _error_catcher(self) -> typing.Generator[None, None, None]:
+        """
+        Catch Emscripten specific exceptions thrown by fetch.py,
+        instead re-raising urllib3 variants, so that low-level exceptions
+        are not leaked in the high-level api.
+
+        On exit, release the connection back to the pool.
+        """
+        from .fetch import _RequestError, _TimeoutError  # avoid circular import
+
+        clean_exit = False
+
+        try:
+            yield
+            # If no exception is thrown, we should avoid cleaning up
+            # unnecessarily.
+            clean_exit = True
+        except _TimeoutError as e:
+            raise TimeoutError(e.message)
+        except _RequestError as e:
+            raise ResponseError(e.message)
+        finally:
+            # If we didn't terminate cleanly, we need to throw away our
+            # connection.
+            if not clean_exit:
+                # The response may not be closed but we're not going to use it
+                # anymore so close it now
+                if (
+                    isinstance(self._response.body, IOBase)
+                    and not self._response.body.closed
+                ):
+                    self._response.body.close()
+                # release the connection back to the pool
+                self.release_conn()
+            else:
+                # If we have read everything from the response stream,
+                # return the connection back to the pool.
+                if (
+                    isinstance(self._response.body, IOBase)
+                    and self._response.body.closed
+                ):
+                    self.release_conn()

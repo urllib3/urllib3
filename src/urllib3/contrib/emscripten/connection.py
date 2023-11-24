@@ -13,18 +13,7 @@ from ...util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from ...util.url import Url
 from .fetch import _RequestError, _TimeoutError, send_request, send_streaming_request
 from .request import EmscriptenRequest
-from .response import EmscriptenHttpResponseWrapper
-
-try:  # Compiled with SSL?
-    import ssl
-
-    BaseSSLError = ssl.SSLError
-except (ImportError, AttributeError):
-    ssl = None  # type: ignore[assignment]
-
-    class BaseSSLError(BaseException):  # type: ignore[no-redef]
-        pass
-
+from .response import EmscriptenHttpResponseWrapper, EmscriptenResponse
 
 if typing.TYPE_CHECKING:
     from ..._base_connection import BaseHTTPConnection, BaseHTTPSConnection
@@ -48,6 +37,8 @@ class EmscriptenHTTPConnection:
     is_verified: bool = False
     proxy_is_verified: bool | None = None
 
+    _response: EmscriptenResponse | None
+
     def __init__(
         self,
         host: str,
@@ -60,12 +51,19 @@ class EmscriptenHTTPConnection:
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
     ) -> None:
-        # ignore everything else because we don't have
-        # control over that stuff
         self.host = host
         self.port = port
         self.timeout = timeout if isinstance(timeout, float) else 0.0
         self.scheme = "http"
+        self._closed = True
+        self._response = None
+        # ignore these things because we don't
+        # have control over that stuff
+        self.proxy = None
+        self.proxy_config = None
+        self.blocksize = blocksize
+        self.source_address = None
+        self.socket_options = None
 
     def set_tunnel(
         self,
@@ -94,6 +92,7 @@ class EmscriptenHTTPConnection:
         decode_content: bool = True,
         enforce_content_length: bool = True,
     ) -> None:
+        self._closed = False
         if url.startswith("/"):
             # no scheme / host / port included, make a full url
             url = f"{self.scheme}://{self.host}:{self.port}" + url
@@ -129,7 +128,8 @@ class EmscriptenHTTPConnection:
             raise ResponseNotReady()
 
     def close(self) -> None:
-        pass
+        self._closed = True
+        self._response = None
 
     @property
     def is_closed(self) -> bool:
@@ -137,7 +137,7 @@ class EmscriptenHTTPConnection:
         If this property is True then both ``is_connected`` and ``has_connected_to_proxy``
         properties must be False.
         """
-        return False
+        return self._closed
 
     @property
     def is_connected(self) -> bool:
@@ -163,7 +163,7 @@ class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
     cert_file: str | None
     key_file: str | None
     key_password: str | None
-    ssl_context: ssl.SSLContext | None
+    ssl_context: typing.Any | None
     ssl_version: int | str | None = None
     ssl_minimum_version: int | None = None
     ssl_maximum_version: int | None = None
