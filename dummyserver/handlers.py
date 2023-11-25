@@ -247,6 +247,7 @@ class TestingApp(RequestHandler):
 
     def echo_json(self, request: httputil.HTTPServerRequest) -> Response:
         "Echo back the JSON"
+        print("ECHO JSON:", request.body)
         return Response(json=request.body, headers=list(request.headers.items()))
 
     def echo_uri(self, request: httputil.HTTPServerRequest) -> Response:

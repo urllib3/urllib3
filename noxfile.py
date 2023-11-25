@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+import typing
+from pathlib import Path
 
 import nox
 
@@ -14,6 +16,7 @@ def tests_impl(
     # https://github.com/python-hyper/h2/issues/1236
     byte_string_comparisons: bool = False,
     integration: bool = False,
+    pytest_extra_args: list[str] = [],
 ) -> None:
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
@@ -53,6 +56,7 @@ def tests_impl(
         "--durations=10",
         "--strict-config",
         "--strict-markers",
+        *pytest_extra_args,
         *(session.posargs or ("test/",)),
         env={"PYTHONWARNINGS": "always::DeprecationWarning"},
     )
@@ -150,6 +154,108 @@ def lint(session: nox.Session) -> None:
     session.run("pre-commit", "run", "--all-files")
 
     mypy(session)
+
+
+# TODO: node support is not tested yet - it should work if you require('xmlhttprequest') before
+# loading pyodide, but there is currently no nice way to do this with pytest-pyodide
+# because you can't override the test runner properties easily - see
+# https://github.com/pyodide/pytest-pyodide/issues/118 for more
+@nox.session(python="3.11")
+@nox.parametrize("runner", ["firefox", "chrome"])
+def emscripten(session: nox.Session, runner: str) -> None:
+    """Test on Emscripten with Pyodide & Chrome / Firefox"""
+    session.install("-r", "emscripten-requirements.txt")
+    # build wheel into dist folder
+    session.run("python", "-m", "build")
+    # make sure we have a dist dir for pyodide
+    dist_dir = None
+    if "PYODIDE_ROOT" in os.environ:
+        # we have a pyodide build tree checked out
+        # use the dist directory from that
+        dist_dir = Path(os.environ["PYODIDE_ROOT"]) / "dist"
+    else:
+        # we don't have a build tree, get one
+        # that matches the version of pyodide build
+        pyodide_version = typing.cast(
+            str,
+            session.run(
+                "python",
+                "-c",
+                "import pyodide_build;print(pyodide_build.__version__)",
+                silent=True,
+            ),
+        ).strip()
+
+        pyodide_artifacts_path = Path(session.cache_dir) / f"pyodide-{pyodide_version}"
+        if not pyodide_artifacts_path.exists():
+            print("Fetching pyodide build artifacts")
+            session.run(
+                "wget",
+                f"https://github.com/pyodide/pyodide/releases/download/{pyodide_version}/pyodide-{pyodide_version}.tar.bz2",
+                "-O",
+                f"{pyodide_artifacts_path}.tar.bz2",
+            )
+            pyodide_artifacts_path.mkdir(parents=True)
+            session.run(
+                "tar",
+                "-xjf",
+                f"{pyodide_artifacts_path}.tar.bz2",
+                "-C",
+                str(pyodide_artifacts_path),
+                "--strip-components",
+                "1",
+            )
+
+        dist_dir = pyodide_artifacts_path
+    assert dist_dir is not None
+    assert dist_dir.exists()
+    if runner == "chrome":
+        # install chrome webdriver and add it to path
+        driver = typing.cast(
+            str,
+            session.run(
+                "python",
+                "-c",
+                "from webdriver_manager.chrome import ChromeDriverManager;print(ChromeDriverManager().install())",
+                silent=True,
+            ),
+        ).strip()
+        session.env["PATH"] = f"{Path(driver).parent}:{session.env['PATH']}"
+
+        tests_impl(
+            session,
+            pytest_extra_args=[
+                "--rt",
+                "chrome-no-host",
+                "--dist-dir",
+                str(dist_dir),
+                "test",
+            ],
+        )
+    elif runner == "firefox":
+        driver = typing.cast(
+            str,
+            session.run(
+                "python",
+                "-c",
+                "from webdriver_manager.firefox import GeckoDriverManager;print(GeckoDriverManager().install())",
+                silent=True,
+            ),
+        ).strip()
+        session.env["PATH"] = f"{Path(driver).parent}:{session.env['PATH']}"
+
+        tests_impl(
+            session,
+            pytest_extra_args=[
+                "--rt",
+                "firefox-no-host",
+                "--dist-dir",
+                str(dist_dir),
+                "test",
+            ],
+        )
+    else:
+        raise ValueError(f"Unknown runnner: {runner}")
 
 
 @nox.session(python="3.12")
