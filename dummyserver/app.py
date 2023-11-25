@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import collections
 import contextlib
+import datetime
+import email.utils
 import gzip
 import zlib
 from io import BytesIO
@@ -15,7 +17,9 @@ from quart_trio import QuartTrio
 
 hypercorn_app = QuartTrio(__name__)
 
+# Globals are not safe in Flask/Quart but work for our Hypercorn use case
 RETRY_TEST_NAMES: collections.Counter[str] = collections.Counter()
+LAST_RETRY_AFTER_REQ: datetime.datetime = datetime.datetime.min
 
 
 @hypercorn_app.route("/")
@@ -198,6 +202,36 @@ async def redirect() -> ResponseTypes:
 
     headers = [("Location", target)]
     return await make_response("", status_code, headers)
+
+
+@hypercorn_app.route("/redirect_after")
+async def redirect_after() -> ResponseTypes:
+    "Perform a redirect to ``target``"
+    params = request.args
+    date = params.get("date")
+    if date:
+        dt = datetime.datetime.fromtimestamp(float(date), tz=datetime.timezone.utc)
+        http_dt = email.utils.format_datetime(dt, usegmt=True)
+        retry_after = str(http_dt)
+    else:
+        retry_after = "1"
+    target = params.get("target", "/")
+    headers = [("Location", target), ("Retry-After", retry_after)]
+    return await make_response("", 303, headers)
+
+
+@hypercorn_app.route("/retry_after")
+async def retry_after() -> ResponseTypes:
+    global LAST_RETRY_AFTER_REQ
+    params = request.args
+    if datetime.datetime.now() - LAST_RETRY_AFTER_REQ < datetime.timedelta(seconds=1):
+        status = params.get("status", "429 Too Many Requests")
+        status_code = status.split(" ")[0]
+
+        return await make_response("", status_code, [("Retry-After", "1")])
+
+    LAST_RETRY_AFTER_REQ = datetime.datetime.now()
+    return await make_response("", 200)
 
 
 @hypercorn_app.route("/status")
