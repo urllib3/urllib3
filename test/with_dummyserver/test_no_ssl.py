@@ -8,7 +8,10 @@ from __future__ import annotations
 import pytest
 
 import urllib3
-from dummyserver.testcase import HTTPSDummyServerTestCase, HypercornDummyServerTestCase
+from dummyserver.testcase import (
+    HTTPSHypercornDummyServerTestCase,
+    HypercornDummyServerTestCase,
+)
 from urllib3.exceptions import InsecureRequestWarning
 
 from ..test_no_ssl import TestWithoutSSL
@@ -21,7 +24,7 @@ class TestHTTPWithoutSSL(HypercornDummyServerTestCase, TestWithoutSSL):
             assert r.status == 200, r.data
 
 
-class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):
+class TestHTTPSWithoutSSL(HTTPSHypercornDummyServerTestCase, TestWithoutSSL):
     def test_simple(self) -> None:
         with urllib3.HTTPSConnectionPool(
             self.host, self.port, cert_reqs="NONE"

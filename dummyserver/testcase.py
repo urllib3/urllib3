@@ -303,6 +303,7 @@ class HypercornDummyServerTestCase:
     port: typing.ClassVar[int]
     base_url: typing.ClassVar[str]
     base_url_alt: typing.ClassVar[str]
+    certs: typing.ClassVar[dict[str, typing.Any]] = {}
 
     _stack: typing.ClassVar[contextlib.ExitStack]
 
@@ -310,6 +311,12 @@ class HypercornDummyServerTestCase:
     def setup_class(cls) -> None:
         with contextlib.ExitStack() as stack:
             config = hypercorn.Config()
+            if cls.certs:
+                config.certfile = cls.certs["certfile"]
+                config.keyfile = cls.certs["keyfile"]
+                config.verify_mode = cls.certs["cert_reqs"]
+                config.ca_certs = cls.certs["ca_certs"]
+                config.alpn_protocols = cls.certs["alpn_protocols"]
             config.bind = [f"{cls.host}:0"]
             stack.enter_context(run_hypercorn_in_thread(config, hypercorn_app))
             cls._stack = stack.pop_all()
@@ -318,6 +325,14 @@ class HypercornDummyServerTestCase:
     @classmethod
     def teardown_class(cls) -> None:
         cls._stack.close()
+
+
+class HTTPSHypercornDummyServerTestCase(HypercornDummyServerTestCase):
+    scheme = "https"
+    host = "localhost"
+    certs = DEFAULT_CERTS
+    certs_dir = ""
+    bad_ca_path = ""
 
 
 class ConnectionMarker:
