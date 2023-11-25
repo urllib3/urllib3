@@ -1241,7 +1241,7 @@ class TestRetry(HypercornDummyServerTestCase):
             assert actual == expected
 
 
-class TestRetryAfter(HTTPDummyServerTestCase):
+class TestRetryAfter(HypercornDummyServerTestCase):
     def test_retry_after(self) -> None:
         # Request twice in a second to get a 429 response.
         with HTTPConnectionPool(self.host, self.port) as pool:
