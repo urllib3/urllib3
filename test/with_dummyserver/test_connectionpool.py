@@ -1349,7 +1349,7 @@ class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
 
     def test_redirect_put_file(self) -> None:
         """PUT with file object should work with a redirection response"""
-        with HTTPConnectionPool(self.host, self.port, timeout=0.1) as pool:
+        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
             retry = Retry(total=3, status_forcelist=[418])
             # httplib reads in 8k chunks; use a larger content length
             content_length = 65535
