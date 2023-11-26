@@ -12,11 +12,7 @@ from urllib.parse import urlencode
 
 import pytest
 
-from dummyserver.testcase import (
-    HTTPDummyServerTestCase,
-    HypercornDummyServerTestCase,
-    SocketDummyServerTestCase,
-)
+from dummyserver.testcase import HypercornDummyServerTestCase, SocketDummyServerTestCase
 from dummyserver.tornadoserver import NoIPv6Warning
 from urllib3 import HTTPConnectionPool, encode_multipart_formdata
 from urllib3._collections import HTTPHeaderDict
@@ -1327,7 +1323,7 @@ class TestRetryAfter(HypercornDummyServerTestCase):
             assert delta < 1
 
 
-class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
+class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
     def test_retries_put_filehandle(self) -> None:
         """HTTP PUT retry with a file-like object should not timeout"""
         with HTTPConnectionPool(self.host, self.port, timeout=0.1) as pool:
@@ -1395,7 +1391,7 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
                 pool.urlopen("PUT", url, headers=headers, body=body)
 
 
-class TestRetryPoolSize(HTTPDummyServerTestCase):
+class TestRetryPoolSize(HypercornDummyServerTestCase):
     def test_pool_size_retry(self) -> None:
         retries = Retry(total=1, raise_on_status=False, status_forcelist=[404])
         with HTTPConnectionPool(
@@ -1405,7 +1401,7 @@ class TestRetryPoolSize(HTTPDummyServerTestCase):
             assert pool.num_connections == 1
 
 
-class TestRedirectPoolSize(HTTPDummyServerTestCase):
+class TestRedirectPoolSize(HypercornDummyServerTestCase):
     def test_pool_size_redirect(self) -> None:
         retries = Retry(
             total=1, raise_on_status=False, status_forcelist=[404], redirect=True

@@ -101,7 +101,7 @@ async def keepalive() -> ResponseTypes:
     return await make_response("Keeping alive", 200, headers)
 
 
-@hypercorn_app.route("/echo", methods=["GET", "POST"])
+@hypercorn_app.route("/echo", methods=["GET", "POST", "PUT"])
 async def echo() -> ResponseTypes:
     "Echo back the params"
     if request.method == "GET":
@@ -192,7 +192,7 @@ async def encodingrequest() -> ResponseTypes:
     return await make_response(data, 200, headers)
 
 
-@hypercorn_app.route("/redirect", methods=["GET", "POST"])
+@hypercorn_app.route("/redirect", methods=["GET", "POST", "PUT"])
 async def redirect() -> ResponseTypes:
     "Perform a redirect to ``target``"
     values = await request.values
@@ -248,7 +248,7 @@ async def source_address() -> ResponseTypes:
     return await make_response(request.remote_addr)
 
 
-@hypercorn_app.route("/successful_retry")
+@hypercorn_app.route("/successful_retry", methods=["GET", "PUT"])
 async def successful_retry() -> ResponseTypes:
     """First return an error and then success
 
