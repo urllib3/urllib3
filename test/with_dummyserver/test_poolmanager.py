@@ -9,7 +9,7 @@ import pytest
 
 from dummyserver.testcase import (
     HypercornDummyServerTestCase,
-    IPv6HTTPDummyServerTestCase,
+    IPv6HypercornDummyServerTestCase,
 )
 from dummyserver.tornadoserver import HAS_IPV6
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
@@ -669,7 +669,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
-class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
+class TestIPv6PoolManager(IPv6HypercornDummyServerTestCase):
     @classmethod
     def setup_class(cls) -> None:
         super().setup_class()

@@ -335,6 +335,11 @@ class HTTPSHypercornDummyServerTestCase(HypercornDummyServerTestCase):
     bad_ca_path = ""
 
 
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 not available")
+class IPv6HypercornDummyServerTestCase(HypercornDummyServerTestCase):
+    host = "::1"
+
+
 class ConnectionMarker:
     """
     Marks an HTTP(S)Connection's socket after a request was made.
