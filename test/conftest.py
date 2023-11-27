@@ -16,7 +16,7 @@ from dummyserver.app import hypercorn_app
 from dummyserver.handlers import TestingApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.proxy import ProxyHandler
-from dummyserver.testcase import HTTPSDummyServerTestCase
+from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
 from dummyserver.tornadoserver import (
     HAS_IPV6,
     run_tornado_app,
@@ -318,8 +318,8 @@ def supported_tls_versions() -> typing.AbstractSet[str | None]:
     # disables TLSv1 and TLSv1.1.
     tls_versions = set()
 
-    _server = HTTPSDummyServerTestCase()
-    _server._start_server()
+    _server = HTTPSHypercornDummyServerTestCase
+    _server.setup_class()
     for _ssl_version_name, min_max_version in (
         ("PROTOCOL_TLSv1", ssl.TLSVersion.TLSv1),
         ("PROTOCOL_TLSv1_1", ssl.TLSVersion.TLSv1_1),
@@ -344,7 +344,7 @@ def supported_tls_versions() -> typing.AbstractSet[str | None]:
         else:
             tls_versions.add(_sock.version())
         _sock.close()
-    _server._stop_server()
+    _server.teardown_class()
     return tls_versions
 
 
