@@ -1,0 +1,3 @@
+HTTPResponse.stream(amt=None) now yields data from non-chunked responses as it
+is available.  Previously all intermediate data was buffered and only returned
+as a single bytes object at the end of the the response.
