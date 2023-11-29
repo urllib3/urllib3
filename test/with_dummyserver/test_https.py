@@ -901,7 +901,7 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
                 conn = https_pool._get_conn()
                 try:
                     conn.connect()
-                    if maximum_version != self.tls_version():
+                    if maximum_version == TLSVersion.MAXIMUM_SUPPORTED:
                         # A higher protocol than tls_protocol_name could be negotiated
                         assert conn.sock.version() >= self.tls_protocol_name  # type: ignore[attr-defined]
                     else:
