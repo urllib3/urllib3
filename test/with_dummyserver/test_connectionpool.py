@@ -1326,7 +1326,7 @@ class TestRetryAfter(HypercornDummyServerTestCase):
 class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
     def test_retries_put_filehandle(self) -> None:
         """HTTP PUT retry with a file-like object should not timeout"""
-        with HTTPConnectionPool(self.host, self.port, timeout=0.1) as pool:
+        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
             retry = Retry(total=3, status_forcelist=[418])
             # httplib reads in 8k chunks; use a larger content length
             content_length = 65535
@@ -1384,7 +1384,7 @@ class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
         # httplib uses fileno if Content-Length isn't supplied,
         # which is unsupported by BytesIO.
         headers = {"Content-Length": "8"}
-        with HTTPConnectionPool(self.host, self.port, timeout=0.1) as pool:
+        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
             with pytest.raises(
                 UnrewindableBodyError, match="Unable to record file position for"
             ):
