@@ -23,7 +23,7 @@ import trustme
 
 import urllib3.util as util
 import urllib3.util.ssl_
-from dummyserver.testcase import HTTPSDummyServerTestCase
+from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
 from dummyserver.tornadoserver import (
     DEFAULT_CA,
     DEFAULT_CA_KEY,
@@ -65,7 +65,7 @@ PASSWORD_CLIENT_KEYFILE = "client_password.key"
 CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
 
 
-class TestHTTPS(HTTPSDummyServerTestCase):
+class TestHTTPS(HTTPSHypercornDummyServerTestCase):
     tls_protocol_name: str | None = None
 
     def tls_protocol_not_default(self) -> bool:
@@ -447,6 +447,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # the python ssl module).
             if hasattr(conn.sock, "server_hostname"):  # type: ignore[attr-defined]
                 assert conn.sock.server_hostname == "localhost"  # type: ignore[attr-defined]
+            conn.getresponse().close()
+            conn.close()
 
     def test_assert_fingerprint_md5(self) -> None:
         with HTTPSConnectionPool(
@@ -794,6 +796,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.port,
             ca_certs=DEFAULT_CA,
             ssl_minimum_version=self.tls_version(),
+            ssl_maximum_version=self.tls_version(),
         ) as https_pool:
             conn = https_pool._get_conn()
             try:
@@ -898,7 +901,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 conn = https_pool._get_conn()
                 try:
                     conn.connect()
-                    assert conn.sock.version() == self.tls_protocol_name  # type: ignore[attr-defined]
+                    if maximum_version == TLSVersion.MAXIMUM_SUPPORTED:
+                        # A higher protocol than tls_protocol_name could be negotiated
+                        assert conn.sock.version() >= self.tls_protocol_name  # type: ignore[attr-defined]
+                    else:
+                        assert conn.sock.version() == self.tls_protocol_name  # type: ignore[attr-defined]
                 finally:
                     conn.close()
 
