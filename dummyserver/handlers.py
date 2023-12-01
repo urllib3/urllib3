@@ -247,6 +247,7 @@ class TestingApp(RequestHandler):
 
     def echo_json(self, request: httputil.HTTPServerRequest) -> Response:
         "Echo back the JSON"
+        print("ECHO JSON:", request.body)
         return Response(json=request.body, headers=list(request.headers.items()))
 
     def echo_uri(self, request: httputil.HTTPServerRequest) -> Response:
@@ -280,6 +281,12 @@ class TestingApp(RequestHandler):
 
     def headers(self, request: httputil.HTTPServerRequest) -> Response:
         return Response(json.dumps(dict(request.headers)))
+
+    def headers_and_params(self, request: httputil.HTTPServerRequest) -> Response:
+        params = request_params(request)
+        return Response(
+            json.dumps({"headers": dict(request.headers), "params": params})
+        )
 
     def multi_headers(self, request: httputil.HTTPServerRequest) -> Response:
         return Response(json.dumps({"headers": list(request.headers.get_all())}))

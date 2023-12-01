@@ -1,3 +1,28 @@
+2.1.0 (2023-11-13)
+==================
+
+Read the `v2 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`__ for help upgrading to the latest version of urllib3.
+
+Removals
+--------
+
+- Removed support for the deprecated urllib3[secure] extra. (`#2680 <https://github.com/urllib3/urllib3/issues/2680>`__)
+- Removed support for the deprecated SecureTransport TLS implementation. (`#2681 <https://github.com/urllib3/urllib3/issues/2681>`__)
+- Removed support for the end-of-life Python 3.7. (`#3143 <https://github.com/urllib3/urllib3/issues/3143>`__)
+
+
+Bugfixes
+--------
+
+- Allowed loading CA certificates from memory for proxies. (`#3065 <https://github.com/urllib3/urllib3/issues/3065>`__)
+- Fixed decoding Gzip-encoded responses which specified ``x-gzip`` content-encoding. (`#3174 <https://github.com/urllib3/urllib3/issues/3174>`__)
+
+
+2.0.7 (2023-10-17)
+==================
+
+* Made body stripped from HTTP requests changing the request method to GET after HTTP 303 "See Other" redirect responses.
+
 2.0.6 (2023-10-02)
 ==================
 
@@ -166,6 +191,11 @@ Fixed
 * Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()`` (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__).
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
 * Fixed ``urllib3.contrib.pyopenssl.WrappedSocket`` and ``urllib3.contrib.securetransport.WrappedSocket`` close methods (`#2970 <https://github.com/urllib3/urllib3/issues/2970>`__)
+
+1.26.18 (2023-10-17)
+====================
+
+* Made body stripped from HTTP requests changing the request method to GET after HTTP 303 "See Other" redirect responses.
 
 1.26.17 (2023-10-02)
 ====================

@@ -11,6 +11,7 @@ from socket import timeout as SocketTimeout
 from types import TracebackType
 
 from ._base_connection import _TYPE_BODY
+from ._collections import HTTPHeaderDict
 from ._request_methods import RequestMethods
 from .connection import (
     BaseSSLError,
@@ -542,6 +543,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         response._connection = response_conn  # type: ignore[attr-defined]
         response._pool = self  # type: ignore[attr-defined]
 
+        # emscripten connection doesn't have _http_vsn_str
+        http_version = getattr(conn, "_http_vsn_str", "HTTP/?")
         log.debug(
             '%s://%s:%s "%s %s %s" %s %s',
             self.scheme,
@@ -550,7 +553,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             method,
             url,
             # HTTP version
-            conn._http_vsn_str,  # type: ignore[attr-defined]
+            http_version,
             response.status,
             response.length_remaining,  # type: ignore[attr-defined]
         )
@@ -747,8 +750,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
         if not http_tunnel_required:
-            headers = headers.copy()  # type: ignore[attr-defined]
-            headers.update(self.proxy_headers)  # type: ignore[union-attr]
+            headers = HTTPHeaderDict(headers)
+            headers.update(self.proxy_headers)
 
         # Must keep the exception bound to a separate variable or else Python 3
         # complains about UnboundLocalError.
@@ -892,7 +895,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         redirect_location = redirect and response.get_redirect_location()
         if redirect_location:
             if response.status == 303:
+                # Change the method according to RFC 9110, Section 15.4.4.
                 method = "GET"
+                # And lose the body not to transfer anything sensitive.
+                body = None
+                headers = HTTPHeaderDict(headers)._prepare_for_method_change()
 
             try:
                 retries = retries.increment(method, url, response=response, _pool=self)

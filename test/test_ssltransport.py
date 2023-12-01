@@ -9,8 +9,8 @@ from unittest import mock
 
 import pytest
 
-from dummyserver.server import DEFAULT_CA, DEFAULT_CERTS
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
+from dummyserver.tornadoserver import DEFAULT_CA, DEFAULT_CERTS
 from urllib3.util import ssl_
 from urllib3.util.ssltransport import SSLTransport
 
@@ -91,11 +91,11 @@ def validate_response(
 
 def validate_peercert(ssl_socket: SSLTransport) -> None:
     binary_cert = ssl_socket.getpeercert(binary_form=True)
-    assert type(binary_cert) == bytes
+    assert type(binary_cert) is bytes
     assert len(binary_cert) > 0
 
     cert = ssl_socket.getpeercert()
-    assert type(cert) == dict
+    assert type(cert) is dict
     assert "serialNumber" in cert
     assert cert["serialNumber"] != ""
 
@@ -222,7 +222,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             sock, self.client_context, server_hostname="localhost"
         ) as ssock:
             cipher = ssock.cipher()
-            assert type(cipher) == tuple
+            assert type(cipher) is tuple
 
             # No chosen protocol through ALPN or NPN.
             assert ssock.selected_alpn_protocol() is None
@@ -484,11 +484,11 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 write.flush()
 
                 response = read.read()
-                assert isinstance(response, str)
+                assert type(response) is str
                 if "\r" not in response:
                     # Carriage return will be removed when reading as a file on
                     # some platforms.  We add it before the comparison.
-                    assert isinstance(response, str)
+                    assert type(response) is str
                     response = response.replace("\n", "\r\n")
                 validate_response(response, binary=False)
 

@@ -160,11 +160,6 @@ class HTTPConnection(_HTTPConnection):
         self._tunnel_port: int | None = None
         self._tunnel_scheme: str | None = None
 
-    # https://github.com/python/mypy/issues/4125
-    # Mypy treats this as LSP violation, which is considered a bug.
-    # If `host` is made a property it violates LSP, because a writeable attribute is overridden with a read-only one.
-    # However, there is also a `host` setter so LSP is not violated.
-    # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
     @property
     def host(self) -> str:
         """
@@ -639,6 +634,9 @@ class HTTPSConnection(HTTPConnection):
                 SystemTimeWarning,
             )
 
+        # Remove trailing '.' from fqdn hostnames to allow certificate validation
+        server_hostname_rm_dot = server_hostname.rstrip(".")
+
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock=sock,
             cert_reqs=self.cert_reqs,
@@ -651,7 +649,7 @@ class HTTPSConnection(HTTPConnection):
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
-            server_hostname=server_hostname,
+            server_hostname=server_hostname_rm_dot,
             ssl_context=self.ssl_context,
             tls_in_tls=tls_in_tls,
             assert_hostname=self.assert_hostname,

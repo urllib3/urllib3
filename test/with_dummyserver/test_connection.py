@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import sys
 import typing
 from http.client import ResponseNotReady
@@ -7,7 +8,7 @@ from unittest import mock
 
 import pytest
 
-from dummyserver.testcase import HTTPDummyServerTestCase as server
+from dummyserver.testcase import HypercornDummyServerTestCase as server
 from urllib3 import HTTPConnectionPool
 from urllib3.response import HTTPResponse
 
@@ -23,16 +24,10 @@ def pool() -> typing.Generator[HTTPConnectionPool, None, None]:
 
 
 def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
-    conn = pool._get_conn()
-
-    method = "GET"
-    path = "/"
-
-    conn.request(method, path)
-
-    response = conn.getresponse()
-
-    assert isinstance(response, HTTPResponse)
+    with contextlib.closing(pool._get_conn()) as conn:
+        conn.request("GET", "/")
+        response = conn.getresponse()
+        assert isinstance(response, HTTPResponse)
 
 
 @pytest.mark.skipif(not hasattr(sys, "audit"), reason="requires python 3.8+")
@@ -49,52 +44,37 @@ def test_audit_event(audit_mock: mock.Mock, pool: HTTPConnectionPool) -> None:
 
 
 def test_does_not_release_conn(pool: HTTPConnectionPool) -> None:
-    conn = pool._get_conn()
+    with contextlib.closing(pool._get_conn()) as conn:
+        conn.request("GET", "/")
+        response = conn.getresponse()
 
-    method = "GET"
-    path = "/"
-
-    conn.request(method, path)
-
-    response = conn.getresponse()
-
-    response.release_conn()
-    assert pool.pool.qsize() == 0  # type: ignore[union-attr]
+        response.release_conn()
+        assert pool.pool.qsize() == 0  # type: ignore[union-attr]
 
 
 def test_releases_conn(pool: HTTPConnectionPool) -> None:
-    conn = pool._get_conn()
-    assert conn is not None
+    with contextlib.closing(pool._get_conn()) as conn:
+        conn.request("GET", "/")
+        response = conn.getresponse()
 
-    method = "GET"
-    path = "/"
+        # If these variables are set by the pool
+        # then the response can release the connection
+        # back into the pool.
+        response._pool = pool  # type: ignore[attr-defined]
+        response._connection = conn  # type: ignore[attr-defined]
 
-    conn.request(method, path)
-
-    response = conn.getresponse()
-    # If these variables are set by the pool
-    # then the response can release the connection
-    # back into the pool.
-    response._pool = pool  # type: ignore[attr-defined]
-    response._connection = conn  # type: ignore[attr-defined]
-
-    response.release_conn()
-    assert pool.pool.qsize() == 1  # type: ignore[union-attr]
+        response.release_conn()
+        assert pool.pool.qsize() == 1  # type: ignore[union-attr]
 
 
 def test_double_getresponse(pool: HTTPConnectionPool) -> None:
-    conn = pool._get_conn()
+    with contextlib.closing(pool._get_conn()) as conn:
+        conn.request("GET", "/")
+        _ = conn.getresponse()
 
-    method = "GET"
-    path = "/"
-
-    conn.request(method, path)
-
-    _ = conn.getresponse()
-
-    # Calling getrepsonse() twice should cause an error
-    with pytest.raises(ResponseNotReady):
-        conn.getresponse()
+        # Calling getrepsonse() twice should cause an error
+        with pytest.raises(ResponseNotReady):
+            conn.getresponse()
 
 
 def test_connection_state_properties(pool: HTTPConnectionPool) -> None:
