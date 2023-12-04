@@ -1036,9 +1036,10 @@ class TestResponse:
                 try:
                     return next(self.chunkiter)
                 except StopIteration:
-                    # http.client automatically closes at stream end
-                    self.closed = True
                     return b""
+
+            def close(self) -> None:
+                self.closed = True
 
         chunks = b"foo longer bar".split()
         fp = MockHTTPRequest(iter(chunks))

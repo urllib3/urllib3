@@ -1024,9 +1024,14 @@ class HTTPResponse(BaseHTTPResponse):
                     data = self.read1(amt=amt, decode_content=decode_content)
                 else:
                     data = self.read(amt=amt, decode_content=decode_content)
-
                 if data:
                     yield data
+                else:
+                    if self._fp:
+                        self._fp.close()
+                    break
+        if self.length_remaining:
+            raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
 
     # Overrides from io.IOBase
     def readable(self) -> bool:
