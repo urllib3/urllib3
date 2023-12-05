@@ -14,4 +14,6 @@ trio==0.23.1
 Quart==0.19.4
 quart-trio==0.11.1
 # https://github.com/pgjones/hypercorn/issues/62
-hypercorn @ git+https://github.com/urllib3/hypercorn@tls-extension
+hypercorn @ git+https://github.com/urllib3/hypercorn@urllib3-changes
+httpx==0.25.2
+starlette==0.33.0
