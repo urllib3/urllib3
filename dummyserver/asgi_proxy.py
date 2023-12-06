@@ -1,20 +1,46 @@
 from __future__ import annotations
 
+import typing
+
 import httpx
 import trio
-from starlette.requests import Request
-from starlette.responses import Response
+from hypercorn.typing import (
+    ASGIReceiveCallable,
+    ASGISendCallable,
+    HTTPResponseBodyEvent,
+    HTTPResponseStartEvent,
+    HTTPScope,
+    Scope,
+)
 
 
-async def absolute_uri(request, scope, receive, send):
+async def _read_body(receive: ASGIReceiveCallable) -> bytes:
+    body = bytearray()
+    body_consumed = False
+    while not body_consumed:
+        event = await receive()
+        if event["type"] == "http.request":
+            body.extend(event["body"])
+            body_consumed = not event["more_body"]
+        else:
+            raise ValueError(event["type"])
+    return bytes(body)
+
+
+async def absolute_uri(
+    scope: HTTPScope,
+    receive: ASGIReceiveCallable,
+    send: ASGISendCallable,
+) -> None:
     async with httpx.AsyncClient() as client:
-        response = await client.request(
-            method=request.method,
+        client_response = await client.request(
+            method=scope["method"],
             url=scope["path"],
-            headers=request.headers,
-            data=await request.body(),
+            headers=list(scope["headers"]),
+            content=await _read_body(receive),
         )
-    headers = {}
+
+    headers = []
     for header in (
         "Date",
         "Cache-Control",
@@ -22,22 +48,31 @@ async def absolute_uri(request, scope, receive, send):
         "Content-Type",
         "Location",
     ):
-        v = response.headers.get(header)
+        v = client_response.headers.get(header)
         if v:
-            headers[header] = v
+            headers.append((header.encode(), v.encode()))
+    headers.append((b"Content-Length", str(len(client_response.content)).encode()))
 
-    response = Response(
-        content=response.content,
-        status_code=response.status_code,
-        headers=headers,
+    await send(
+        HTTPResponseStartEvent(
+            type="http.response.start",
+            status=client_response.status_code,
+            headers=headers,
+        )
     )
-    await response(scope, receive, send)
+    await send(
+        HTTPResponseBodyEvent(
+            type="http.response.body",
+            body=client_response.content,
+            more_body=False,
+        )
+    )
 
 
-async def connect(scope, send):
+async def connect(scope: HTTPScope, send: ASGISendCallable) -> None:
     host, port = scope["path"].split(":")
 
-    await send({"type": "http.response.start", "status": 200})
+    await send({"type": "http.response.start", "status": 200, "headers": []})
     await send({"type": "http.response.body", "body": b"", "more_body": True})
 
     async def start_forward(
@@ -54,19 +89,20 @@ async def connect(scope, send):
         await writer.aclose()
 
     upstream = await trio.open_tcp_stream(host, int(port))
-    client: trio.SocketStream = scope["extensions"]["_transport"]
+    client = typing.cast(trio.SocketStream, scope["extensions"]["_transport"])
 
     async with trio.open_nursery(strict_exception_groups=True) as nursery:
         nursery.start_soon(start_forward, client, upstream)
         nursery.start_soon(start_forward, upstream, client)
 
 
-async def proxy_app(scope, receive, send):
+async def proxy_app(
+    scope: Scope, receive: ASGIReceiveCallable, send: ASGISendCallable
+) -> None:
     assert scope["type"] == "http"
-    request = Request(scope, receive)
-    if request.method in ["GET", "POST"]:
-        await absolute_uri(request, scope, receive, send)
-    elif request.method == "CONNECT":
+    if scope["method"] in ["GET", "POST"]:
+        await absolute_uri(scope, receive, send)
+    elif scope["method"] == "CONNECT":
         await connect(scope, send)
     else:
-        raise ValueError(request.method)
+        raise ValueError(scope["method"])
