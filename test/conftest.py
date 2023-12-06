@@ -104,29 +104,25 @@ def run_server_and_proxy_in_thread(
     server_certs = _write_cert_to_dir(server_cert, tmpdir)
     proxy_certs = _write_cert_to_dir(proxy_cert, tmpdir, "proxy")
 
-    server_hypercorn_config = hypercorn.Config()
-    server_hypercorn_config.certfile = server_certs["certfile"]
-    server_hypercorn_config.keyfile = server_certs["keyfile"]
-    server_hypercorn_config.bind = ["localhost:0"]
+    with contextlib.ExitStack() as stack:
+        server_config = hypercorn.Config()
+        server_config.certfile = server_certs["certfile"]
+        server_config.keyfile = server_certs["keyfile"]
+        server_config.bind = ["localhost:0"]
+        stack.enter_context(run_hypercorn_in_thread(server_config, hypercorn_app))
+        port = typing.cast(int, parse_url(server_config.bind[0]).port)
 
-    proxy_hypercorn_config = hypercorn.Config()
-    proxy_hypercorn_config.certfile = proxy_certs["certfile"]
-    proxy_hypercorn_config.keyfile = proxy_certs["keyfile"]
-    proxy_hypercorn_config.bind = [f"{proxy_host}:0"]
+        proxy_config = hypercorn.Config()
+        proxy_config.certfile = proxy_certs["certfile"]
+        proxy_config.keyfile = proxy_certs["keyfile"]
+        proxy_config.bind = [f"{proxy_host}:0"]
+        stack.enter_context(run_hypercorn_in_thread(proxy_config, proxy_app))
+        proxy_port = typing.cast(int, parse_url(proxy_config.bind[0]).port)
 
-    # TODO: use ExitStack?
-    with run_hypercorn_in_thread(server_hypercorn_config, hypercorn_app):
-        port = typing.cast(int, parse_url(server_hypercorn_config.bind[0]).port)
-        server_config = ServerConfig("https", "localhost", port, ca_cert_path)
-
-        with run_hypercorn_in_thread(proxy_hypercorn_config, proxy_app):
-            proxy_port = typing.cast(
-                int, parse_url(proxy_hypercorn_config.bind[0]).port
-            )
-            proxy_config = ServerConfig(
-                proxy_scheme, proxy_host, proxy_port, ca_cert_path
-            )
-            yield (proxy_config, server_config)
+        yield (
+            ServerConfig(proxy_scheme, proxy_host, proxy_port, ca_cert_path),
+            ServerConfig("https", "localhost", port, ca_cert_path),
+        )
 
 
 @pytest.fixture(params=["localhost", "127.0.0.1", "::1"])
