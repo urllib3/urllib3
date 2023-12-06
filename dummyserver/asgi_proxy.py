@@ -70,11 +70,6 @@ async def absolute_uri(
 
 
 async def connect(scope: HTTPScope, send: ASGISendCallable) -> None:
-    host, port = scope["path"].split(":")
-
-    await send({"type": "http.response.start", "status": 200, "headers": []})
-    await send({"type": "http.response.body", "body": b"", "more_body": True})
-
     async def start_forward(
         reader: trio.SocketStream, writer: trio.SocketStream
     ) -> None:
@@ -88,7 +83,12 @@ async def connect(scope: HTTPScope, send: ASGISendCallable) -> None:
             await writer.send_all(data)
         await writer.aclose()
 
+    host, port = scope["path"].split(":")
     upstream = await trio.open_tcp_stream(host, int(port))
+
+    await send({"type": "http.response.start", "status": 200, "headers": []})
+    await send({"type": "http.response.body", "body": b"", "more_body": True})
+
     client = typing.cast(trio.SocketStream, scope["extensions"]["_transport"])
 
     async with trio.open_nursery(strict_exception_groups=True) as nursery:
