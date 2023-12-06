@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import socket
 import ssl
@@ -10,18 +9,12 @@ from pathlib import Path
 import hypercorn
 import pytest
 import trustme
-from tornado import web
 
 from dummyserver.app import hypercorn_app
-from dummyserver.handlers import TestingApp
+from dummyserver.asgi_proxy import proxy_app
 from dummyserver.hypercornserver import run_hypercorn_in_thread
-from dummyserver.proxy import ProxyHandler
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
-from dummyserver.tornadoserver import (
-    HAS_IPV6,
-    run_tornado_app,
-    run_tornado_loop_in_thread,
-)
+from dummyserver.tornadoserver import HAS_IPV6
 from urllib3.util import ssl_
 from urllib3.util.url import parse_url
 
@@ -111,26 +104,25 @@ def run_server_and_proxy_in_thread(
     server_certs = _write_cert_to_dir(server_cert, tmpdir)
     proxy_certs = _write_cert_to_dir(proxy_cert, tmpdir, "proxy")
 
-    with run_tornado_loop_in_thread() as io_loop:
+    with contextlib.ExitStack() as stack:
+        server_config = hypercorn.Config()
+        server_config.certfile = server_certs["certfile"]
+        server_config.keyfile = server_certs["keyfile"]
+        server_config.bind = ["localhost:0"]
+        stack.enter_context(run_hypercorn_in_thread(server_config, hypercorn_app))
+        port = typing.cast(int, parse_url(server_config.bind[0]).port)
 
-        async def run_app() -> tuple[ServerConfig, ServerConfig]:
-            app = web.Application([(r".*", TestingApp)])
-            server_app, port = run_tornado_app(app, server_certs, "https", "localhost")
-            server_config = ServerConfig("https", "localhost", port, ca_cert_path)
+        proxy_config = hypercorn.Config()
+        proxy_config.certfile = proxy_certs["certfile"]
+        proxy_config.keyfile = proxy_certs["keyfile"]
+        proxy_config.bind = [f"{proxy_host}:0"]
+        stack.enter_context(run_hypercorn_in_thread(proxy_config, proxy_app))
+        proxy_port = typing.cast(int, parse_url(proxy_config.bind[0]).port)
 
-            proxy = web.Application([(r".*", ProxyHandler)])
-            proxy_app, proxy_port = run_tornado_app(
-                proxy, proxy_certs, proxy_scheme, proxy_host
-            )
-            proxy_config = ServerConfig(
-                proxy_scheme, proxy_host, proxy_port, ca_cert_path
-            )
-            return proxy_config, server_config
-
-        proxy_config, server_config = asyncio.run_coroutine_threadsafe(
-            run_app(), io_loop.asyncio_loop  # type: ignore[attr-defined]
-        ).result()
-        yield (proxy_config, server_config)
+        yield (
+            ServerConfig(proxy_scheme, proxy_host, proxy_port, ca_cert_path),
+            ServerConfig("https", "localhost", port, ca_cert_path),
+        )
 
 
 @pytest.fixture(params=["localhost", "127.0.0.1", "::1"])
