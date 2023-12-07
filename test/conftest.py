@@ -11,7 +11,7 @@ import pytest
 import trustme
 
 from dummyserver.app import hypercorn_app
-from dummyserver.asgi_proxy import proxy_app
+from dummyserver.asgi_proxy import ProxyApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
 from dummyserver.tornadoserver import HAS_IPV6
@@ -116,7 +116,7 @@ def run_server_and_proxy_in_thread(
         proxy_config.certfile = proxy_certs["certfile"]
         proxy_config.keyfile = proxy_certs["keyfile"]
         proxy_config.bind = [f"{proxy_host}:0"]
-        stack.enter_context(run_hypercorn_in_thread(proxy_config, proxy_app))
+        stack.enter_context(run_hypercorn_in_thread(proxy_config, ProxyApp()))
         proxy_port = typing.cast(int, parse_url(proxy_config.bind[0]).port)
 
         yield (
