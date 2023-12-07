@@ -31,7 +31,6 @@ class ProxyApp:
     async def __call__(
         self, scope: Scope, receive: ASGIReceiveCallable, send: ASGISendCallable
     ) -> None:
-        print(scope)
         assert scope["type"] == "http"
         if scope["method"] in ["GET", "POST"]:
             await self.absolute_uri(scope, receive, send)
