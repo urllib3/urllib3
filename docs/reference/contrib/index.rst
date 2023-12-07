@@ -8,3 +8,4 @@ prime time or that require optional third-party dependencies.
 
    pyopenssl
    socks
+   emscripten

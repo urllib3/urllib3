@@ -98,6 +98,9 @@ intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 # Show typehints as content of the function or method
 autodoc_typehints = "description"
 
+# ignore emscripten imports in docs
+autodoc_mock_imports = ["js","pyodide"]
+
 # Warn about all references to unknown targets
 nitpicky = True
 # Except for these ones, which we expect to point to unknown targets:

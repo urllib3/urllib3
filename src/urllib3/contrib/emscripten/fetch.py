@@ -1,28 +1,53 @@
+# Support for streaming http requests in emscripten. 
+
 """
-Support for streaming http requests in emscripten.
+urllib3.contrib.emscripten.fetch implements streaming fetch in Emscripten where possible. In many browser environments, it is not possible to do streaming of data, and
+all data will be fetched on the first request call. The exception is if your code is running in a web-page served with the correct headers
+to make it cross-origin isolated (see https://developer.mozilla.org/en-US/docs/Web/API/crossOriginIsolated ) and 
+is inside a web-worker. Code running on the main browser thread, or in a non-isolated context cannot launch the worker which 
+handles streaming downloads. In addition to context, the streaming download worker is created on initial import of urllib3. One key thing to note
+is that web-workers are only initialized when control is returned to the browser from all javascript/webassembly calls. This requires an async call in python to occur, to 
+hand control back to javascript. If you need to be really reall sure that streaming is going to work, call ``await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()``
 
-A few caveats -
+For example:
 
-Firstly, you can't do streaming http in the main UI thread, because atomics.wait isn't allowed.
-Streaming only works if you're running pyodide in a web worker.
+.. code-block:: python
 
-Secondly, this uses an extra web worker and SharedArrayBuffer to do the asynchronous fetch
-operation, so it requires that you have crossOriginIsolation enabled, by serving over https
-(or from localhost) with the two headers below set:
+    import urllib3.contrib.emscripten.fetch
+    await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
 
-    Cross-Origin-Opener-Policy: same-origin
-    Cross-Origin-Embedder-Policy: require-corp
+    import urllib3
+    # preload_content == False means stream the request
+    urllib3.request("GET", "http://localhost:8000/test",preload_content=False)
+    response = conn.getresponse()
+    data=response.data 
+    # data is an io stream object. Call read() etc. on it to fetch the data.
 
-You can tell if cross origin isolation is successfully enabled by looking at the global crossOriginIsolated variable in
-javascript console. If it isn't, streaming requests will fallback to XMLHttpRequest, i.e. getting the whole
-request into a buffer and then returning it. it shows a warning in the javascript console in this case.
-
-Finally, the webworker which does the streaming fetch is created on initial import, but will only be started once
-control is returned to javascript. Call `await wait_for_streaming_ready()` to wait for streaming fetch.
-
-NB: in this code, there are a lot of javascript objects. They are named js_*
-to make it clear what type of object they are.
 """
+
+
+
+# A few caveats -
+
+# Firstly, you can't do streaming http in the main UI thread, because atomics.wait isn't allowed.
+# Streaming only works if you're running pyodide in a web worker.
+
+# Secondly, this uses an extra web worker and SharedArrayBuffer to do the asynchronous fetch
+# operation, so it requires that you have crossOriginIsolation enabled, by serving over https
+# (or from localhost) with the two headers below set:
+#     Cross-Origin-Opener-Policy: same-origin
+#     Cross-Origin-Embedder-Policy: require-corp
+
+# You can tell if cross origin isolation is successfully enabled by looking at the global crossOriginIsolated variable in
+# javascript console. If it isn't, streaming requests will fallback to XMLHttpRequest, i.e. getting the whole
+# request into a buffer and then returning it. it shows a warning in the javascript console in this case.
+
+# Finally, the webworker which does the streaming fetch is created on initial import, but will only be started once
+# control is returned to javascript. Call `await wait_for_streaming_ready()` to wait for streaming fetch.
+
+# NB: in this code, there are a lot of javascript objects. They are named js_*
+# to make it clear what type of object they are.
+
 from __future__ import annotations
 
 import io
@@ -399,6 +424,12 @@ def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
 
 
 def streaming_ready() -> bool | None:
+    """Returns True if streaming is ready.
+
+    This returns True if the web-worker which implements streaming downloads is 
+    launched, or False if the web-worker has been started but is not ready to handle
+    requests yet. If it is not possible to run the web-worker, it returns None.
+    """
     if _fetcher:
         return _fetcher.streaming_ready
     else:
@@ -406,6 +437,12 @@ def streaming_ready() -> bool | None:
 
 
 async def wait_for_streaming_ready() -> bool:
+    """ Wait for streaming download web-worker to be ready.
+
+        await this asynchronous function before any downloads which you really need to be
+        streamed. Returns True if the worker successfully initializes, or False if it couldn't 
+        initialize for some reason.
+    """
     if _fetcher:
         await _fetcher.js_worker_ready_promise
         return True
