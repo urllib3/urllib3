@@ -1047,6 +1047,18 @@ class TestResponse:
         assert list(resp.stream(None)) == chunks
         assert fp.closed
 
+    def test_incomplete_stream_via_read1(self) -> None:
+        headers = {
+            "content-length": str(2),
+        }
+        fp = BytesIO(b"a")
+        resp = HTTPResponse(fp, headers=headers, preload_content=False)
+        chunks: list[bytes] = []
+        with pytest.raises(IncompleteRead):
+            chunks.extend(resp.stream(None))
+        assert chunks == [b"a"]
+        assert fp.closed
+
     def test_mock_transfer_encoding_chunked(self) -> None:
         stream = [b"fo", b"o", b"bar"]
         fp = MockChunkedEncodingResponse(stream)

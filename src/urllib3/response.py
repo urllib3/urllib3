@@ -1027,10 +1027,15 @@ class HTTPResponse(BaseHTTPResponse):
                 if data:
                     yield data
                 else:
+                    # http.client.HTTPResponse will often close this for us and
+                    # _raw_read handles a few more cases, but not all of them.
+                    # e.g., when using read1 with a HEAD request this won't
+                    # be closed automatically
                     if self._fp:
                         self._fp.close()
                     break
-        if self.length_remaining:
+        # _raw_read does not raise when amt is None, do this now
+        if self.length_remaining and self.enforce_content_length:
             raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
 
     # Overrides from io.IOBase
