@@ -1,1 +1,1 @@
-Added documentation for Emscripten support
+Added documentation for Emscripten support.
