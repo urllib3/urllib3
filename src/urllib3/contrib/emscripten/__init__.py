@@ -9,7 +9,6 @@ With one exception below, you shouldn't need to call most of the classes in this
 """
 
 
-
 from __future__ import annotations
 
 import urllib3.connection
@@ -19,7 +18,7 @@ from .connection import EmscriptenHTTPConnection, EmscriptenHTTPSConnection
 
 
 def inject_into_urllib3() -> None:
-    """ 
+    """
     Override connection classes to use emscripten specific classes. This is automatically called on import, so
     you shouldn't need to use it.
     """

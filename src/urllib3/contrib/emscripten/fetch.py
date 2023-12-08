@@ -1,13 +1,18 @@
-# Support for streaming http requests in emscripten. 
+# Support for streaming http requests in emscripten.
 
 """
-urllib3.contrib.emscripten.fetch implements streaming fetch in Emscripten where possible. In many browser environments, it is not possible to do streaming of data, and
-all data will be fetched on the first request call. The exception is if your code is running in a web-page served with the correct headers
-to make it cross-origin isolated (see https://developer.mozilla.org/en-US/docs/Web/API/crossOriginIsolated ) and 
-is inside a web-worker. Code running on the main browser thread, or in a non-isolated context cannot launch the worker which 
-handles streaming downloads. In addition to context, the streaming download worker is created on initial import of urllib3. One key thing to note
-is that web-workers are only initialized when control is returned to the browser from all javascript/webassembly calls. This requires an async call in python to occur, to 
-hand control back to javascript. If you need to be really reall sure that streaming is going to work, call ``await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()``
+urllib3.contrib.emscripten.fetch implements streaming fetch in Emscripten where possible.
+In many browser environments, it is not possible to do streaming of data, and all data
+will be fetched on the first request call. The exception is if your code is running in a
+web-page served with the correct headers to make it cross-origin isolated
+(see https://developer.mozilla.org/en-US/docs/Web/API/crossOriginIsolated ) and is inside
+a web-worker. Code running on the main browser thread, or in a non-isolated context
+cannot launch the worker which handles streaming downloads. In addition to context,
+the streaming download worker is created on initial import of urllib3. One key thing to
+note is that web-workers are only initialized when control is returned to the browser
+from all javascript/webassembly calls. This requires an async call in python to occur, to
+hand control back to javascript. If you need to be really reall sure that streaming is
+going to work, call ``await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()``
 
 For example:
 
@@ -17,18 +22,27 @@ For example:
     await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
 
     import urllib3
-    # preload_content == False means stream the request
+    # setting preload_content == False means to stream the request
     urllib3.request("GET", "http://localhost:8000/test",preload_content=False)
     response = conn.getresponse()
-    data=response.data 
+    data=response.data
     # data is an io stream object. Call read() etc. on it to fetch the data.
 
 """
 
 
+from __future__ import annotations
+
+import io
+import json
+from email.parser import Parser
+from importlib.resources import files
+from typing import TYPE_CHECKING, Any
+
+import js  # type: ignore[import]
+from pyodide.ffi import JsArray, JsException, JsProxy, to_js  # type: ignore[import]
 
 # A few caveats -
-
 # Firstly, you can't do streaming http in the main UI thread, because atomics.wait isn't allowed.
 # Streaming only works if you're running pyodide in a web worker.
 
@@ -47,17 +61,6 @@ For example:
 
 # NB: in this code, there are a lot of javascript objects. They are named js_*
 # to make it clear what type of object they are.
-
-from __future__ import annotations
-
-import io
-import json
-from email.parser import Parser
-from importlib.resources import files
-from typing import TYPE_CHECKING, Any
-
-import js  # type: ignore[import]
-from pyodide.ffi import JsArray, JsException, JsProxy, to_js  # type: ignore[import]
 
 if TYPE_CHECKING:
     from typing_extensions import Buffer
@@ -426,7 +429,7 @@ def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
 def streaming_ready() -> bool | None:
     """Returns True if streaming is ready.
 
-    This returns True if the web-worker which implements streaming downloads is 
+    This returns True if the web-worker which implements streaming downloads is
     launched, or False if the web-worker has been started but is not ready to handle
     requests yet. If it is not possible to run the web-worker, it returns None.
     """
@@ -437,11 +440,11 @@ def streaming_ready() -> bool | None:
 
 
 async def wait_for_streaming_ready() -> bool:
-    """ Wait for streaming download web-worker to be ready.
+    """Wait for streaming download web-worker to be ready.
 
-        await this asynchronous function before any downloads which you really need to be
-        streamed. Returns True if the worker successfully initializes, or False if it couldn't 
-        initialize for some reason.
+    await this asynchronous function before any downloads which you really need to be
+    streamed. Returns True if the worker successfully initializes, or False if it couldn't
+    initialize for some reason.
     """
     if _fetcher:
         await _fetcher.js_worker_ready_promise

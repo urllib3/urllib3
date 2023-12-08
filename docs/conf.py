@@ -99,7 +99,7 @@ intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 autodoc_typehints = "description"
 
 # ignore emscripten imports in docs
-autodoc_mock_imports = ["js","pyodide"]
+autodoc_mock_imports = ["js", "pyodide"]
 
 # Warn about all references to unknown targets
 nitpicky = True
