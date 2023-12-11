@@ -1,23 +1,27 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import mimetypes
 import os
 import random
 import textwrap
+import typing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generator
-from urllib.parse import urlsplit
 
+import hypercorn
 import pytest
-from tornado import web
-from tornado.httputil import HTTPServerRequest
+import trio
+from quart import make_response, request
 
-from dummyserver.handlers import Response, TestingApp
-from dummyserver.testcase import HTTPDummyProxyTestCase
-from dummyserver.tornadoserver import run_tornado_app, run_tornado_loop_in_thread
+# TODO switch to Response if https://github.com/pallets/quart/issues/288 is fixed
+from quart.typing import ResponseTypes
+from quart_trio import QuartTrio
+
+from dummyserver.hypercornserver import run_hypercorn_in_thread
+from dummyserver.tornadoserver import DEFAULT_CERTS
+from urllib3.util.url import parse_url
 
 _coverage_count = 0
 
@@ -33,19 +37,37 @@ def _get_coverage_filename(prefix: str) -> str:
 def testserver_http(
     request: pytest.FixtureRequest,
 ) -> Generator[PyodideServerInfo, None, None]:
-    dist_dir = Path(os.getcwd(), request.config.getoption("--dist-dir"))
-    server = PyodideDummyServerTestCase
-    server.setup_class(str(dist_dir))
-    print(
-        f"Server:{server.http_host}:{server.http_port},https({server.https_port}) [{dist_dir}]"
-    )
-    yield PyodideServerInfo(
-        http_host=server.http_host,
-        http_port=server.http_port,
-        https_port=server.https_port,
-    )
-    print("Server teardown")
-    server.teardown_class()
+    pyodide_dist_dir = Path(os.getcwd(), request.config.getoption("--dist-dir"))
+    pyodide_testing_app.config["config.pyodide_dist_dir"] = str(pyodide_dist_dir)
+    http_host = "localhost"
+    with contextlib.ExitStack() as stack:
+        http_server_config = hypercorn.Config()
+        http_server_config.bind = [f"{http_host}:0"]
+        stack.enter_context(
+            run_hypercorn_in_thread(http_server_config, pyodide_testing_app)
+        )
+        http_port = typing.cast(int, parse_url(http_server_config.bind[0]).port)
+
+        https_server_config = hypercorn.Config()
+        https_server_config.accesslog = "/tmp/https_access.txt"
+        https_server_config.errorlog = "/tmp/https_error.txt"
+        https_server_config.certfile = DEFAULT_CERTS["certfile"]
+        https_server_config.keyfile = DEFAULT_CERTS["keyfile"]
+        https_server_config.verify_mode = DEFAULT_CERTS["cert_reqs"]
+        https_server_config.ca_certs = DEFAULT_CERTS["ca_certs"]
+        https_server_config.alpn_protocols = DEFAULT_CERTS["alpn_protocols"]
+        https_server_config.bind = [f"{http_host}:0"]
+        stack.enter_context(
+            run_hypercorn_in_thread(https_server_config, pyodide_testing_app)
+        )
+        https_port = typing.cast(int, parse_url(https_server_config.bind[0]).port)
+
+        yield PyodideServerInfo(
+            http_host=http_host,
+            http_port=http_port,
+            https_port=https_port,
+        )
+        print("Server teardown")
 
 
 @pytest.fixture()
@@ -178,88 +200,82 @@ await pyodide.loadPackage('/wheel/dist.whl')
     )
 
 
-class PyodideTestingApp(TestingApp):
-    pyodide_dist_dir: str = ""
-
-    def set_default_headers(self) -> None:
-        """Allow cross-origin requests for emscripten"""
-        self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Cross-Origin-Opener-Policy", "same-origin")
-        self.set_header("Cross-Origin-Embedder-Policy", "require-corp")
-        self.add_header("Feature-Policy", "sync-xhr *;")
-        self.add_header("Access-Control-Allow-Headers", "*")
-
-    def slow(self, _req: HTTPServerRequest) -> Response:
-        import time
-
-        time.sleep(10)
-        return Response("TEN SECONDS LATER")
-
-    def bigfile(self, req: HTTPServerRequest) -> Response:
-        # great big text file, should force streaming
-        # if supported
-        bigdata = 1048576 * b"WOOO YAY BOOYAKAH"
-        return Response(bigdata)
-
-    def mediumfile(self, req: HTTPServerRequest) -> Response:
-        # quite big file
-        bigdata = 1024 * b"WOOO YAY BOOYAKAH"
-        return Response(bigdata)
-
-    def pyodide(self, req: HTTPServerRequest) -> Response:
-        path = req.path[:]
-        if not path.startswith("/"):
-            path = urlsplit(path).path
-        path_split = path.split("/")
-        file_path = Path(PyodideTestingApp.pyodide_dist_dir, *path_split[2:])
-        if file_path.exists():
-            mime_type, encoding = mimetypes.guess_type(file_path)
-            if not mime_type:
-                mime_type = "text/plain"
-            self.set_header("Content-Type", mime_type)
-            return Response(
-                body=file_path.read_bytes(),
-                headers=[("Access-Control-Allow-Origin", "*")],
-            )
-        else:
-            return Response(status="404 NOT FOUND")
-
-    def wheel(self, _req: HTTPServerRequest) -> Response:
-        # serve our wheel
-        wheel_folder = Path(__file__).parent.parent.parent.parent / "dist"
-        wheels = list(wheel_folder.glob("*.whl"))
-        if len(wheels) > 0:
-            resp = Response(
-                body=wheels[0].read_bytes(),
-                headers=[
-                    ("Content-Disposition", f"inline; filename='{wheels[0].name}'")
-                ],
-            )
-            return resp
-        else:
-            return Response(status="404 NOT FOUND")
+pyodide_testing_app = QuartTrio(__name__)
+DEFAULT_HEADERS = [
+    # Allow cross-origin requests for emscripten
+    ("Access-Control-Allow-Origin", "*"),
+    ("Cross-Origin-Opener-Policy", "same-origin"),
+    ("Cross-Origin-Embedder-Policy", "require-corp"),
+    ("Feature-Policy", "sync-xhr *;"),
+    ("Access-Control-Allow-Headers", "*"),
+]
 
 
-class PyodideDummyServerTestCase(HTTPDummyProxyTestCase):
-    @classmethod
-    def setup_class(cls, pyodide_dist_dir: str) -> None:  # type:ignore[override]
-        PyodideTestingApp.pyodide_dist_dir = pyodide_dist_dir
-        with contextlib.ExitStack() as stack:
-            io_loop = stack.enter_context(run_tornado_loop_in_thread())
+@pyodide_testing_app.route("/")
+@pyodide_testing_app.route("/index")
+async def pyodide_index() -> ResponseTypes:
+    return await make_response("Dummy server!", 200, DEFAULT_HEADERS)
 
-            async def run_app() -> None:
-                app = web.Application([(r".*", PyodideTestingApp)])
-                cls.http_server, cls.http_port = run_tornado_app(
-                    app, None, "http", cls.http_host
-                )
 
-                app = web.Application([(r".*", PyodideTestingApp)])
-                cls.https_server, cls.https_port = run_tornado_app(
-                    app, cls.https_certs, "https", cls.http_host
-                )
+@pyodide_testing_app.route("/status")
+async def status() -> ResponseTypes:
+    values = await request.values
+    status = values.get("status", "200 OK")
+    status_code = status.split(" ")[0]
+    return await make_response("", status_code)
 
-            asyncio.run_coroutine_threadsafe(run_app(), io_loop.asyncio_loop).result()  # type: ignore[attr-defined]
-            cls._stack = stack.pop_all()
+
+@pyodide_testing_app.route("/slow")
+async def slow() -> ResponseTypes:
+    await trio.sleep(10)
+    return await make_response("TEN SECONDS LATER", 200, DEFAULT_HEADERS)
+
+
+@pyodide_testing_app.route("/bigfile")
+async def bigfile() -> ResponseTypes:
+    # great big text file, should force streaming
+    # if supported
+    bigdata = 1048576 * b"WOOO YAY BOOYAKAH"
+    return await make_response(bigdata, 200, DEFAULT_HEADERS)
+
+
+@pyodide_testing_app.route("/mediumfile")
+async def mediumfile() -> ResponseTypes:
+    # quite big file
+    bigdata = 1024 * b"WOOO YAY BOOYAKAH"
+    return await make_response(bigdata, 200, DEFAULT_HEADERS)
+
+
+@pyodide_testing_app.route("/pyodide/<path:path>")
+async def pyodide(path: str) -> ResponseTypes:
+    file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], path)
+    if file_path.exists():
+        mime_type, encoding = mimetypes.guess_type(file_path)
+        if not mime_type:
+            mime_type = "text/plain"
+        return await make_response(
+            file_path.read_bytes(),
+            200,
+            DEFAULT_HEADERS + [("Content-Type", mime_type)],
+        )
+    else:
+        return await make_response("", 404, DEFAULT_HEADERS)
+
+
+@pyodide_testing_app.route("/wheel/dist.whl")
+async def wheel() -> ResponseTypes:
+    # serve our wheel
+    wheel_folder = Path(__file__).parent.parent / "dist"
+    wheels = list(wheel_folder.glob("*.whl"))
+    if len(wheels) > 0:
+        wheel = wheels[0]
+        headers = DEFAULT_HEADERS + [
+            ("Content-Disposition", f"inline; filename='{wheel.name}'")
+        ]
+        resp = await make_response(wheel.read_bytes(), 200, headers)
+        return resp
+    else:
+        return await make_response("", 404, DEFAULT_HEADERS)
 
 
 @dataclass
