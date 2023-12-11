@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import mimetypes
 import os
 import random
@@ -38,7 +39,7 @@ def testserver_http(
     request: pytest.FixtureRequest,
 ) -> Generator[PyodideServerInfo, None, None]:
     pyodide_dist_dir = Path(os.getcwd(), request.config.getoption("--dist-dir"))
-    pyodide_testing_app.config["config.pyodide_dist_dir"] = str(pyodide_dist_dir)
+    pyodide_testing_app.config["pyodide_dist_dir"] = str(pyodide_dist_dir)
     http_host = "localhost"
     with contextlib.ExitStack() as stack:
         http_server_config = hypercorn.Config()
@@ -222,7 +223,18 @@ async def status() -> ResponseTypes:
     values = await request.values
     status = values.get("status", "200 OK")
     status_code = status.split(" ")[0]
-    return await make_response("", status_code)
+    return await make_response("", status_code, DEFAULT_HEADERS)
+
+
+@pyodide_testing_app.route("/specific_method", methods=["POST", "PUT", "GET"])
+async def specific_method() -> ResponseTypes:
+    values = await request.values
+    expected_method = values.get("method", "GET")
+    method = request.method
+    if method.upper() == expected_method.upper():
+        return await make_response("", 200, DEFAULT_HEADERS)
+    else:
+        return await make_response("Wrong method", 400, DEFAULT_HEADERS)
 
 
 @pyodide_testing_app.route("/slow")
@@ -246,17 +258,52 @@ async def mediumfile() -> ResponseTypes:
     return await make_response(bigdata, 200, DEFAULT_HEADERS)
 
 
-@pyodide_testing_app.route("/pyodide/<path:path>")
-async def pyodide(path: str) -> ResponseTypes:
-    file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], path)
+@pyodide_testing_app.route("/echo_json", methods=["POST", "OPTIONS"])
+async def echo_json() -> ResponseTypes:
+    if request.method == "OPTIONS":
+        return await make_response("", 200, DEFAULT_HEADERS)
+    data = await request.get_data(as_text=True)
+    parsed = json.loads(data)
+    return await make_response(
+        json.dumps(parsed),
+        200,
+        DEFAULT_HEADERS + [("Content-Type", "application/json")],
+    )
+
+
+@pyodide_testing_app.route("/upload", methods=["POST", "OPTIONS"])
+async def upload() -> ResponseTypes:
+    if request.method == "OPTIONS":
+        return await make_response("", 200, DEFAULT_HEADERS)
+    spare_data = await request.get_data(parse_form_data=True)
+    if len(spare_data) != 0:
+        return await make_response("Bad upload data", 404, DEFAULT_HEADERS)
+    files = await request.files
+    form = await request.form
+    if form["upload_param"] != "filefield" or form["upload_filename"] != "lolcat.txt":
+        return await make_response("Bad upload form values", 404, DEFAULT_HEADERS)
+    if len(files) != 1 or files.get("filefield") is None:
+        return await make_response("Missing file in form", 404, DEFAULT_HEADERS)
+    file = files["filefield"]
+    if file.filename != "lolcat.txt":
+        return await make_response(
+            f"File name incorrect {file.name}", 404, DEFAULT_HEADERS
+        )
+    data = file.read().decode("utf-8")
+    if data != "I'm in ur multipart form-data, hazing a cheezburgr":
+        return await make_response(f"File data incorrect {data}", 200, DEFAULT_HEADERS)
+    return await make_response("Uploaded file correct", 200, DEFAULT_HEADERS)
+
+
+@pyodide_testing_app.route("/pyodide/<py_file>")
+async def pyodide(py_file: str) -> ResponseTypes:
+    file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
     if file_path.exists():
         mime_type, encoding = mimetypes.guess_type(file_path)
         if not mime_type:
             mime_type = "text/plain"
         return await make_response(
-            file_path.read_bytes(),
-            200,
-            DEFAULT_HEADERS + [("Content-Type", mime_type)],
+            file_path.read_bytes(), 200, DEFAULT_HEADERS + [("Content-Type", mime_type)]
         )
     else:
         return await make_response("", 404, DEFAULT_HEADERS)
@@ -265,7 +312,7 @@ async def pyodide(path: str) -> ResponseTypes:
 @pyodide_testing_app.route("/wheel/dist.whl")
 async def wheel() -> ResponseTypes:
     # serve our wheel
-    wheel_folder = Path(__file__).parent.parent / "dist"
+    wheel_folder = Path(__file__).parent.parent.parent.parent / "dist"
     wheels = list(wheel_folder.glob("*.whl"))
     if len(wheels) > 0:
         wheel = wheels[0]
@@ -275,7 +322,7 @@ async def wheel() -> ResponseTypes:
         resp = await make_response(wheel.read_bytes(), 200, headers)
         return resp
     else:
-        return await make_response("", 404, DEFAULT_HEADERS)
+        return await make_response(f"NO WHEEL IN {wheel_folder}", 404, DEFAULT_HEADERS)
 
 
 @dataclass
