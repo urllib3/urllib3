@@ -5,7 +5,6 @@ import contextlib
 import datetime
 import email.utils
 import gzip
-import json
 import mimetypes
 import zlib
 from io import BytesIO
@@ -26,7 +25,20 @@ RETRY_TEST_NAMES: collections.Counter[str] = collections.Counter()
 LAST_RETRY_AFTER_REQ: datetime.datetime = datetime.datetime.min
 
 
+pyodide_testing_app = QuartTrio(__name__)
+DEFAULT_HEADERS = [
+    # Allow cross-origin requests for emscripten
+    ("Access-Control-Allow-Origin", "*"),
+    ("Cross-Origin-Opener-Policy", "same-origin"),
+    ("Cross-Origin-Embedder-Policy", "require-corp"),
+    ("Feature-Policy", "sync-xhr *;"),
+    ("Access-Control-Allow-Headers", "*"),
+]
+
+
 @hypercorn_app.route("/")
+@pyodide_testing_app.route("/")
+@pyodide_testing_app.route("/index")
 async def index() -> ResponseTypes:
     return await make_response("Dummy server!")
 
@@ -48,15 +60,17 @@ async def certificate() -> ResponseTypes:
 
 
 @hypercorn_app.route("/specific_method", methods=["GET", "POST", "PUT"])
+@pyodide_testing_app.route("/specific_method", methods=["GET", "POST", "PUT"])
 async def specific_method() -> ResponseTypes:
     "Confirm that the request matches the desired method type"
-    method_param = (await request.values).get("method")
+    method_param = (await request.values).get("method", "")
 
-    if request.method != method_param:
+    if request.method.upper() == method_param.upper():
+        return await make_response("", 200)
+    else:
         return await make_response(
             f"Wrong method: {method_param} != {request.method}", 400
         )
-    return await make_response()
 
 
 @hypercorn_app.route("/upload", methods=["POST"])
@@ -131,10 +145,13 @@ async def echo() -> ResponseTypes:
 
 
 @hypercorn_app.route("/echo_json", methods=["POST"])
+@pyodide_testing_app.route("/echo_json", methods=["POST", "OPTIONS"])
 async def echo_json() -> ResponseTypes:
     "Echo back the JSON"
+    if request.method == "OPTIONS":
+        return await make_response("", 200)
     data = await request.get_data()
-    return await make_response(data, 200, request.headers)
+    return await make_response(data, 200, [("Content-Type", "application/json")])
 
 
 @hypercorn_app.route("/echo_uri/<path:rest>")
@@ -255,6 +272,7 @@ async def retry_after() -> ResponseTypes:
 
 
 @hypercorn_app.route("/status")
+@pyodide_testing_app.route("/status")
 async def status() -> ResponseTypes:
     values = await request.values
     status = values.get("status", "200 OK")
@@ -286,47 +304,11 @@ async def successful_retry() -> ResponseTypes:
         return await make_response("need to keep retrying!", 418)
 
 
-pyodide_testing_app = QuartTrio(__name__)
-DEFAULT_HEADERS = [
-    # Allow cross-origin requests for emscripten
-    ("Access-Control-Allow-Origin", "*"),
-    ("Cross-Origin-Opener-Policy", "same-origin"),
-    ("Cross-Origin-Embedder-Policy", "require-corp"),
-    ("Feature-Policy", "sync-xhr *;"),
-    ("Access-Control-Allow-Headers", "*"),
-]
-
-
 @pyodide_testing_app.after_request
 def apply_caching(response: ResponseTypes) -> ResponseTypes:
     for header, value in DEFAULT_HEADERS:
         response.headers[header] = value
     return response
-
-
-@pyodide_testing_app.route("/")
-@pyodide_testing_app.route("/index")
-async def pyodide_index() -> ResponseTypes:
-    return await make_response("Dummy server!", 200)
-
-
-@pyodide_testing_app.route("/status")
-async def pyodide_status() -> ResponseTypes:
-    values = await request.values
-    status = values.get("status", "200 OK")
-    status_code = status.split(" ")[0]
-    return await make_response("", status_code)
-
-
-@pyodide_testing_app.route("/specific_method", methods=["POST", "PUT", "GET"])
-async def pyodide_specific_method() -> ResponseTypes:
-    values = await request.values
-    expected_method = values.get("method", "GET")
-    method = request.method
-    if method.upper() == expected_method.upper():
-        return await make_response("", 200)
-    else:
-        return await make_response("Wrong method", 400)
 
 
 @pyodide_testing_app.route("/slow")
@@ -348,19 +330,6 @@ async def mediumfile() -> ResponseTypes:
     # quite big file
     bigdata = 1024 * b"WOOO YAY BOOYAKAH"
     return await make_response(bigdata, 200)
-
-
-@pyodide_testing_app.route("/echo_json", methods=["POST", "OPTIONS"])
-async def pyodide_echo_json() -> ResponseTypes:
-    if request.method == "OPTIONS":
-        return await make_response("", 200)
-    data = await request.get_data(as_text=True)
-    parsed = json.loads(data)
-    return await make_response(
-        json.dumps(parsed),
-        200,
-        [("Content-Type", "application/json")],
-    )
 
 
 @pyodide_testing_app.route("/upload", methods=["POST", "OPTIONS"])
