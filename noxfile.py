@@ -255,7 +255,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
             ],
         )
     else:
-        raise ValueError(f"Unknown runnner: {runner}")
+        raise ValueError(f"Unknown runner: {runner}")
 
 
 @nox.session(python="3.12")
