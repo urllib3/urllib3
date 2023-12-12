@@ -151,7 +151,7 @@ async def echo_json() -> ResponseTypes:
     if request.method == "OPTIONS":
         return await make_response("", 200)
     data = await request.get_data()
-    return await make_response(data, 200, [("Content-Type", "application/json")])
+    return await make_response(data, 200, request.headers)
 
 
 @hypercorn_app.route("/echo_uri/<path:rest>")
