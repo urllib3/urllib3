@@ -1848,7 +1848,7 @@ class TestHeaders(SocketDummyServerTestCase):
             body.seek(0, 0)
             expected = b"bytes-io-body\r\n0\r\n\r\n"
         else:
-            raise ValueError("Unknonw body type")
+            raise ValueError("Unknown body type")
 
         buffer: bytes = b""
 

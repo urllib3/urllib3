@@ -830,7 +830,7 @@ class TestResponse:
         assert uncompressed_data == payload
 
         # Check that the positions in the stream are correct
-        # It is difficult to determine programatically what the positions
+        # It is difficult to determine programmatically what the positions
         # returned by `tell` will be because the `HTTPResponse.read` method may
         # call socket `read` a couple of times if it doesn't have enough data
         # in the buffer or not call socket `read` at all if it has enough. All
