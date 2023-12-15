@@ -43,8 +43,6 @@ def testserver_http(
         http_port = typing.cast(int, parse_url(http_server_config.bind[0]).port)
 
         https_server_config = hypercorn.Config()
-        https_server_config.accesslog = "/tmp/https_access.txt"
-        https_server_config.errorlog = "/tmp/https_error.txt"
         https_server_config.certfile = DEFAULT_CERTS["certfile"]
         https_server_config.keyfile = DEFAULT_CERTS["keyfile"]
         https_server_config.verify_mode = DEFAULT_CERTS["cert_reqs"]
