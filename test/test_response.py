@@ -540,7 +540,7 @@ class TestResponse:
         with pytest.raises(IOError):
             resp3.fileno()
 
-    def test_io_closed_consistently(self, sock: socket.socket) -> None:
+    def test_io_closed_consistently_with_read(self, sock: socket.socket) -> None:
         try:
             hlr = httplib.HTTPResponse(sock)
             hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
@@ -553,6 +553,41 @@ class TestResponse:
                 assert not is_fp_closed(resp._fp)
                 assert not resp.isclosed()
                 resp.read()
+                assert resp.closed
+                assert resp._fp.isclosed()
+                assert is_fp_closed(resp._fp)
+                assert resp.isclosed()
+        finally:
+            hlr.close()
+
+    @pytest.mark.parametrize("read_amt", (None, 3))
+    @pytest.mark.parametrize("length_known", (True, False))
+    def test_io_closed_consistently_with_read1(
+        self, sock: socket.socket, length_known: bool, read_amt: int | None
+    ) -> None:
+        try:
+            hlr = httplib.HTTPResponse(sock)
+            hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
+            hlr.chunked = 0  # type: ignore[assignment]
+            hlr.length = 3 if length_known else None
+            with HTTPResponse(hlr, preload_content=False) as resp:
+                if length_known:
+                    resp.length_remaining = 3
+                assert not resp.closed
+                assert resp._fp is not None
+                assert not resp._fp.isclosed()
+                assert not is_fp_closed(resp._fp)
+                assert not resp.isclosed()
+                resp.read1(read_amt)
+                # If content length is unknown, IO is not closed until
+                # the next read returning zero bytes.
+                if not length_known:
+                    assert not resp.closed
+                    assert resp._fp is not None
+                    assert not resp._fp.isclosed()
+                    assert not is_fp_closed(resp._fp)
+                    assert not resp.isclosed()
+                    resp.read1(read_amt)
                 assert resp.closed
                 assert resp._fp.isclosed()
                 assert is_fp_closed(resp._fp)
