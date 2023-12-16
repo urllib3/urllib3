@@ -1263,6 +1263,32 @@ class TestProxyManager(SocketDummyServerTestCase):
                 e.value.reason
             )
 
+    def test_proxy_status_not_ok(self) -> None:
+        errored = Event()
+
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            sock.send(b"HTTP/1.0 501 Not Implemented\r\nConnection: close\r\n\r\n")
+            errored.wait()
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        with ProxyManager(base_url) as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", "https://example.com", retries=0)
+
+            errored.set()  # Avoid a ConnectionAbortedError on Windows.
+
+            assert type(e.value.reason) is ProxyError
+            assert e.value.reason.args[0] == "Unable to connect to proxy"
+            assert type(e.value.reason.args[1]) is OSError
+            assert (
+                str(e.value.reason.args[1])
+                == "Tunnel connection failed: 501 Not Implemented"
+            )
+
 
 class TestSSL(SocketDummyServerTestCase):
     def test_ssl_failure_midway_through_conn(self) -> None:
