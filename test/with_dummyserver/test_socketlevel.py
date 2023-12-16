@@ -1331,6 +1331,27 @@ class TestProxyManager(SocketDummyServerTestCase):
                 == "got more than 17 bytes when reading header line"
             )
 
+    def test_debuglevel(self, capsys: pytest.CaptureFixture[str]) -> None:
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            consume_socket(sock)
+            sock.send(b"HTTP/1.0 200 OK\r\nExample-Header: Example-Value\r\n\r\n")
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        with mock.patch("http.client.HTTPConnection.debuglevel", 1):
+            with ProxyManager(base_url) as proxy:
+                with pytest.raises(MaxRetryError):
+                    proxy.request("GET", "https://example.com", retries=0)
+
+        assert capsys.readouterr().out == (
+            "send: b'CONNECT example.com:443 HTTP/1.1\\r\\n"
+            "Host: example.com:443\\r\\n\\r\\n'"
+            "\nheader: Example-Header: Example-Value\r\n\n"
+        )
+
 
 class TestSSL(SocketDummyServerTestCase):
     def test_ssl_failure_midway_through_conn(self) -> None:
