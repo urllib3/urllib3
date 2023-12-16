@@ -12,8 +12,8 @@ from urllib.parse import urlencode
 
 import pytest
 
-from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
-from dummyserver.tornadoserver import HAS_IPV6_AND_DNS, NoIPv6Warning
+from dummyserver.testcase import HypercornDummyServerTestCase, SocketDummyServerTestCase
+from dummyserver.tornadoserver import NoIPv6Warning
 from urllib3 import HTTPConnectionPool, encode_multipart_formdata
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent
@@ -198,7 +198,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
                 conn.connect()
 
 
-class TestConnectionPool(HTTPDummyServerTestCase):
+class TestConnectionPool(HypercornDummyServerTestCase):
     def test_get(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/specific_method", fields={"method": "GET"})
@@ -231,7 +231,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             "upload_filename": "lolcat.txt",
             "filefield": ("lolcat.txt", data),
         }
-        fields["upload_size"] = len(data)  # type: ignore
+        fields["upload_size"] = len(data)  # type: ignore[assignment]
 
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
@@ -270,7 +270,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             "upload_filename": filename,
             fieldname: (filename, data),
         }
-        fields["upload_size"] = size  # type: ignore
+        fields["upload_size"] = size  # type: ignore[assignment]
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200, r.data
@@ -780,7 +780,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_source_address(self) -> None:
         for addr, is_ipv6 in VALID_SOURCE_ADDRESSES:
-            if is_ipv6 and not HAS_IPV6_AND_DNS:
+            if is_ipv6:
+                # TODO enable if HAS_IPV6_AND_DNS when this is fixed:
+                # https://github.com/pgjones/hypercorn/issues/160
                 warnings.warn("No IPv6 support: skipping.", NoIPv6Warning)
                 continue
             with HTTPConnectionPool(
@@ -890,7 +892,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         """ConnectionPool preserves dot segments in the URI"""
         with HTTPConnectionPool(self.host, self.port) as pool:
             response = pool.request("GET", "/echo_uri/seg0/../seg2")
-            assert response.data == b"/echo_uri/seg0/../seg2"
+            assert response.data == b"/echo_uri/seg0/../seg2?"
 
     def test_default_user_agent_header(self) -> None:
         """ConnectionPool has a default user agent"""
@@ -1069,7 +1071,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert request_headers["User-Agent"] == "Schönefeld/1.18.0"
 
 
-class TestRetry(HTTPDummyServerTestCase):
+class TestRetry(HypercornDummyServerTestCase):
     def test_max_retry(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             with pytest.raises(MaxRetryError):
@@ -1233,7 +1235,7 @@ class TestRetry(HTTPDummyServerTestCase):
             assert actual == expected
 
 
-class TestRetryAfter(HTTPDummyServerTestCase):
+class TestRetryAfter(HypercornDummyServerTestCase):
     def test_retry_after(self) -> None:
         # Request twice in a second to get a 429 response.
         with HTTPConnectionPool(self.host, self.port) as pool:
@@ -1319,10 +1321,10 @@ class TestRetryAfter(HTTPDummyServerTestCase):
             assert delta < 1
 
 
-class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
+class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
     def test_retries_put_filehandle(self) -> None:
         """HTTP PUT retry with a file-like object should not timeout"""
-        with HTTPConnectionPool(self.host, self.port, timeout=0.1) as pool:
+        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
             retry = Retry(total=3, status_forcelist=[418])
             # httplib reads in 8k chunks; use a larger content length
             content_length = 65535
@@ -1345,7 +1347,7 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
 
     def test_redirect_put_file(self) -> None:
         """PUT with file object should work with a redirection response"""
-        with HTTPConnectionPool(self.host, self.port, timeout=0.1) as pool:
+        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
             retry = Retry(total=3, status_forcelist=[418])
             # httplib reads in 8k chunks; use a larger content length
             content_length = 65535
@@ -1380,14 +1382,14 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
         # httplib uses fileno if Content-Length isn't supplied,
         # which is unsupported by BytesIO.
         headers = {"Content-Length": "8"}
-        with HTTPConnectionPool(self.host, self.port, timeout=0.1) as pool:
+        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
             with pytest.raises(
                 UnrewindableBodyError, match="Unable to record file position for"
             ):
                 pool.urlopen("PUT", url, headers=headers, body=body)
 
 
-class TestRetryPoolSize(HTTPDummyServerTestCase):
+class TestRetryPoolSize(HypercornDummyServerTestCase):
     def test_pool_size_retry(self) -> None:
         retries = Retry(total=1, raise_on_status=False, status_forcelist=[404])
         with HTTPConnectionPool(
@@ -1397,7 +1399,7 @@ class TestRetryPoolSize(HTTPDummyServerTestCase):
             assert pool.num_connections == 1
 
 
-class TestRedirectPoolSize(HTTPDummyServerTestCase):
+class TestRedirectPoolSize(HypercornDummyServerTestCase):
     def test_pool_size_redirect(self) -> None:
         retries = Retry(
             total=1, raise_on_status=False, status_forcelist=[404], redirect=True

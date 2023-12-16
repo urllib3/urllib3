@@ -16,7 +16,10 @@ import pytest
 import trustme
 
 import urllib3.exceptions
-from dummyserver.testcase import HTTPDummyProxyTestCase, IPv6HTTPDummyProxyTestCase
+from dummyserver.testcase import (
+    HypercornDummyProxyTestCase,
+    IPv6HypercornDummyProxyTestCase,
+)
 from dummyserver.tornadoserver import DEFAULT_CA, HAS_IPV6, get_unreachable_address
 from urllib3 import HTTPResponse
 from urllib3._collections import HTTPHeaderDict
@@ -39,7 +42,7 @@ from urllib3.util.timeout import Timeout
 from .. import TARPIT_HOST, requires_network
 
 
-class TestHTTPProxyManager(HTTPDummyProxyTestCase):
+class TestHTTPProxyManager(HypercornDummyProxyTestCase):
     @classmethod
     def setup_class(cls) -> None:
         super().setup_class()
@@ -132,7 +135,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             hc2 = http.connection_from_host(self.http_host, self.http_port)
             conn = hc2._get_conn()
             try:
-                hc2._make_request(conn, "GET", "/")
+                hc2._make_request(conn, "GET", f"{self.http_url}/")
                 tcp_nodelay_setting = conn.sock.getsockopt(  # type: ignore[attr-defined]
                     socket.IPPROTO_TCP, socket.TCP_NODELAY
                 )
@@ -656,10 +659,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="Only runs on IPv6 systems")
-class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
+class TestIPv6HTTPProxyManager(IPv6HypercornDummyProxyTestCase):
     @classmethod
     def setup_class(cls) -> None:
-        HTTPDummyProxyTestCase.setup_class()
+        super().setup_class()
         cls.http_url = f"http://{cls.http_host}:{int(cls.http_port)}"
         cls.http_url_alt = f"http://{cls.http_host_alt}:{int(cls.http_port)}"
         cls.https_url = f"https://{cls.https_host}:{int(cls.https_port)}"

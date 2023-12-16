@@ -6,11 +6,15 @@ pytest-timeout==2.1.0
 pyOpenSSL==23.2.0
 idna==3.4
 trustme==1.1.0
-cryptography==41.0.4
+cryptography==41.0.6
 backports.zoneinfo==0.2.1;python_version<"3.9"
 towncrier==23.6.0
 pytest-memray==1.5.0;sys_platform!="win32" and implementation_name=="cpython"
 trio==0.23.1
 Quart==0.19.4
 quart-trio==0.11.1
-hypercorn==0.15.0
+# https://github.com/pgjones/hypercorn/issues/62
+# https://github.com/pgjones/hypercorn/issues/168
+# https://github.com/pgjones/hypercorn/issues/169
+hypercorn @ git+https://github.com/urllib3/hypercorn@urllib3-changes
+httpx==0.25.2

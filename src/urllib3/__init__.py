@@ -6,6 +6,7 @@ from __future__ import annotations
 
 # Set default logging handler to avoid "No handler found" warnings.
 import logging
+import sys
 import typing
 import warnings
 from logging import NullHandler
@@ -202,3 +203,9 @@ def request(
         timeout=timeout,
         json=json,
     )
+
+
+if sys.platform == "emscripten":
+    from .contrib.emscripten import inject_into_urllib3  # noqa: 401
+
+    inject_into_urllib3()

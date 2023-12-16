@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import collections
 import contextlib
+import datetime
+import email.utils
 import gzip
 import zlib
 from io import BytesIO
+from typing import Iterator
 
 from quart import make_response, request
 
@@ -13,13 +17,107 @@ from quart_trio import QuartTrio
 
 hypercorn_app = QuartTrio(__name__)
 
+# Globals are not safe in Flask/Quart but work for our Hypercorn use case
+RETRY_TEST_NAMES: collections.Counter[str] = collections.Counter()
+LAST_RETRY_AFTER_REQ: datetime.datetime = datetime.datetime.min
+
 
 @hypercorn_app.route("/")
 async def index() -> ResponseTypes:
     return await make_response("Dummy server!")
 
 
-@hypercorn_app.route("/echo", methods=["GET", "POST"])
+@hypercorn_app.route("/alpn_protocol")
+async def alpn_protocol() -> ResponseTypes:
+    """Return the requester's certificate."""
+    alpn_protocol = request.scope["extensions"]["tls"]["alpn_protocol"]
+    return await make_response(alpn_protocol)
+
+
+@hypercorn_app.route("/certificate")
+async def certificate() -> ResponseTypes:
+    """Return the requester's certificate."""
+    print("scope", request.scope)
+    subject = request.scope["extensions"]["tls"]["client_cert_name"]
+    subject_as_dict = dict(part.split("=") for part in subject.split(", "))
+    return await make_response(subject_as_dict)
+
+
+@hypercorn_app.route("/specific_method", methods=["GET", "POST", "PUT"])
+async def specific_method() -> ResponseTypes:
+    "Confirm that the request matches the desired method type"
+    method_param = (await request.values).get("method")
+
+    if request.method != method_param:
+        return await make_response(
+            f"Wrong method: {method_param} != {request.method}", 400
+        )
+    return await make_response()
+
+
+@hypercorn_app.route("/upload", methods=["POST"])
+async def upload() -> ResponseTypes:
+    "Confirm that the uploaded file conforms to specification"
+    params = await request.form
+    param = params.get("upload_param")
+    filename_param = params.get("upload_filename")
+    size = int(params.get("upload_size", "0"))
+    files_ = (await request.files).getlist(param)
+    assert files_ is not None
+
+    if len(files_) != 1:
+        return await make_response(
+            f"Expected 1 file for '{param}', not {len(files_)}", 400
+        )
+
+    file_ = files_[0]
+    # data is short enough to read synchronously without blocking the event loop
+    with contextlib.closing(file_.stream) as stream:
+        data = stream.read()
+
+    if int(size) != len(data):
+        return await make_response(f"Wrong size: {int(size)} != {len(data)}", 400)
+
+    if filename_param != file_.filename:
+        return await make_response(
+            f"Wrong filename: {filename_param} != {file_.filename}", 400
+        )
+
+    return await make_response()
+
+
+@hypercorn_app.route("/chunked")
+async def chunked() -> ResponseTypes:
+    def generate() -> Iterator[str]:
+        for _ in range(4):
+            yield "123"
+
+    return await make_response(generate())
+
+
+@hypercorn_app.route("/chunked_gzip")
+async def chunked_gzip() -> ResponseTypes:
+    def generate() -> Iterator[bytes]:
+        compressor = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+
+        for uncompressed in [b"123"] * 4:
+            yield compressor.compress(uncompressed)
+        yield compressor.flush()
+
+    return await make_response(generate(), 200, [("Content-Encoding", "gzip")])
+
+
+@hypercorn_app.route("/keepalive")
+async def keepalive() -> ResponseTypes:
+    if request.args.get("close", b"0") == b"1":
+        headers = [("Connection", "close")]
+        return await make_response("Closing", 200, headers)
+
+    headers = [("Connection", "keep-alive")]
+    return await make_response("Keeping alive", 200, headers)
+
+
+@hypercorn_app.route("/echo", methods=["GET", "POST", "PUT"])
 async def echo() -> ResponseTypes:
     "Echo back the params"
     if request.method == "GET":
@@ -35,11 +133,20 @@ async def echo_json() -> ResponseTypes:
     return await make_response(data, 200, request.headers)
 
 
-@hypercorn_app.route("/echo_uri")
-async def echo_uri() -> ResponseTypes:
+@hypercorn_app.route("/echo_uri/<path:rest>")
+@hypercorn_app.route("/echo_uri", defaults={"rest": ""})
+async def echo_uri(rest: str) -> ResponseTypes:
     "Echo back the requested URI"
     assert request.full_path is not None
     return await make_response(request.full_path)
+
+
+@hypercorn_app.route("/echo_params")
+async def echo_params() -> ResponseTypes:
+    "Echo back the query parameters"
+    await request.get_data()
+    echod = sorted((k, v) for k, v in request.args.items())
+    return await make_response(repr(echod))
 
 
 @hypercorn_app.route("/headers", methods=["GET", "POST"])
@@ -60,6 +167,21 @@ async def headers_and_params() -> ResponseTypes:
 @hypercorn_app.route("/multi_headers", methods=["GET", "POST"])
 async def multi_headers() -> ResponseTypes:
     return await make_response({"headers": list(request.headers)})
+
+
+@hypercorn_app.route("/multi_redirect")
+async def multi_redirect() -> ResponseTypes:
+    "Performs a redirect chain based on ``redirect_codes``"
+    params = request.args
+    codes = params.get("redirect_codes", "200")
+    head, tail = codes.split(",", 1) if "," in codes else (codes, None)
+    assert head is not None
+    status = head
+    if not tail:
+        return await make_response("Done redirecting", status)
+
+    headers = [("Location", f"/multi_redirect?redirect_codes={tail}")]
+    return await make_response("", status, headers)
 
 
 @hypercorn_app.route("/encodingrequest")
@@ -86,7 +208,7 @@ async def encodingrequest() -> ResponseTypes:
     return await make_response(data, 200, headers)
 
 
-@hypercorn_app.route("/redirect", methods=["GET", "POST"])
+@hypercorn_app.route("/redirect", methods=["GET", "POST", "PUT"])
 async def redirect() -> ResponseTypes:
     "Perform a redirect to ``target``"
     values = await request.values
@@ -98,9 +220,63 @@ async def redirect() -> ResponseTypes:
     return await make_response("", status_code, headers)
 
 
+@hypercorn_app.route("/redirect_after")
+async def redirect_after() -> ResponseTypes:
+    "Perform a redirect to ``target``"
+    params = request.args
+    date = params.get("date")
+    if date:
+        dt = datetime.datetime.fromtimestamp(float(date), tz=datetime.timezone.utc)
+        http_dt = email.utils.format_datetime(dt, usegmt=True)
+        retry_after = str(http_dt)
+    else:
+        retry_after = "1"
+    target = params.get("target", "/")
+    headers = [("Location", target), ("Retry-After", retry_after)]
+    return await make_response("", 303, headers)
+
+
+@hypercorn_app.route("/retry_after")
+async def retry_after() -> ResponseTypes:
+    global LAST_RETRY_AFTER_REQ
+    params = request.args
+    if datetime.datetime.now() - LAST_RETRY_AFTER_REQ < datetime.timedelta(seconds=1):
+        status = params.get("status", "429 Too Many Requests")
+        status_code = status.split(" ")[0]
+
+        return await make_response("", status_code, [("Retry-After", "1")])
+
+    LAST_RETRY_AFTER_REQ = datetime.datetime.now()
+    return await make_response("", 200)
+
+
 @hypercorn_app.route("/status")
 async def status() -> ResponseTypes:
     values = await request.values
     status = values.get("status", "200 OK")
     status_code = status.split(" ")[0]
     return await make_response("", status_code)
+
+
+@hypercorn_app.route("/source_address")
+async def source_address() -> ResponseTypes:
+    """Return the requester's IP address."""
+    return await make_response(request.remote_addr)
+
+
+@hypercorn_app.route("/successful_retry", methods=["GET", "PUT"])
+async def successful_retry() -> ResponseTypes:
+    """First return an error and then success
+
+    It's not currently very flexible as the number of retries is hard-coded.
+    """
+    test_name = request.headers.get("test-name", None)
+    if not test_name:
+        return await make_response("test-name header not set", 400)
+
+    RETRY_TEST_NAMES[test_name] += 1
+
+    if RETRY_TEST_NAMES[test_name] >= 2:
+        return await make_response("Retry successful!", 200)
+    else:
+        return await make_response("need to keep retrying!", 418)

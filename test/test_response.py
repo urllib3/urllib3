@@ -73,6 +73,23 @@ class TestBytesQueueBuffer:
         assert buffer.get(4) == b"rbaz"
         assert len(buffer) == 0
 
+    def test_get_all_empty(self) -> None:
+        q = BytesQueueBuffer()
+        assert q.get_all() == b""
+
+    def test_get_all_single(self) -> None:
+        q = BytesQueueBuffer()
+        q.put(b"a")
+        assert q.get_all() == b"a"
+
+    def test_get_all_many(self) -> None:
+        q = BytesQueueBuffer()
+        q.put(b"a")
+        q.put(b"b")
+        q.put(b"c")
+        assert q.get_all() == b"abc"
+        assert len(q) == 0
+
     @pytest.mark.limit_memory("12.5 MB")  # assert that we're not doubling memory usage
     def test_memory_usage(self) -> None:
         # Allocate 10 1MiB chunks
@@ -184,6 +201,39 @@ class TestResponse:
         assert r.read(2) == b"oo"
         assert r.read() == b""
         assert r.read() == b""
+
+    def test_reference_read1(self) -> None:
+        fp = BytesIO(b"foobar")
+        r = HTTPResponse(fp, preload_content=False)
+
+        assert r.read1(0) == b""
+        assert r.read1(1) == b"f"
+        assert r.read1(2) == b"oo"
+        assert r.read1() == b"bar"
+        assert r.read1() == b""
+
+    def test_reference_read1_nodecode(self) -> None:
+        fp = BytesIO(b"foobar")
+        r = HTTPResponse(fp, preload_content=False, decode_content=False)
+
+        assert r.read1(0) == b""
+        assert r.read1(1) == b"f"
+        assert r.read1(2) == b"oo"
+        assert r.read1() == b"bar"
+        assert r.read1() == b""
+
+    def test_decoding_read1(self) -> None:
+        data = zlib.compress(b"foobar")
+
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+
+        assert r.read1(1) == b"f"
+        assert r.read1(2) == b"oo"
+        assert r.read1() == b"bar"
+        assert r.read1() == b""
 
     def test_decode_deflate(self) -> None:
         data = zlib.compress(b"foo")
@@ -624,6 +674,35 @@ class TestResponse:
         ):
             resp.read(decode_content=False)
 
+    def test_read1_with_illegal_mix_decode_toggle(self) -> None:
+        data = zlib.compress(b"foo")
+
+        fp = BytesIO(data)
+
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+
+        assert resp.read1(1) == b"f"
+
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r"Calling read1\(decode_content=False\) is not supported after "
+                r"read1\(decode_content=True\) was called"
+            ),
+        ):
+            resp.read1(1, decode_content=False)
+
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r"Calling read1\(decode_content=False\) is not supported after "
+                r"read1\(decode_content=True\) was called"
+            ),
+        ):
+            resp.read1(decode_content=False)
+
     def test_read_with_mix_decode_toggle(self) -> None:
         data = zlib.compress(b"foo")
 
@@ -726,6 +805,9 @@ class TestResponse:
                     return self.payloads.pop(0)
                 return b""
 
+            def read1(self, amt: int) -> bytes:  # type: ignore[override]
+                return self.read(amt)
+
         uncompressed_data = zlib.decompress(ZLIB_PAYLOAD)
 
         payload_part_size = len(ZLIB_PAYLOAD) // NUMBER_OF_READS
@@ -748,7 +830,7 @@ class TestResponse:
         assert uncompressed_data == payload
 
         # Check that the positions in the stream are correct
-        # It is difficult to determine programatically what the positions
+        # It is difficult to determine programmatically what the positions
         # returned by `tell` will be because the `HTTPResponse.read` method may
         # call socket `read` a couple of times if it doesn't have enough data
         # in the buffer or not call socket `read` at all if it has enough. All
@@ -921,6 +1003,9 @@ class TestResponse:
                     self.fp = None
 
                 return data
+
+            def read1(self, amt: int) -> bytes:
+                return self.read(1)
 
             def close(self) -> None:
                 self.fp = None
@@ -1292,6 +1377,9 @@ class MockChunkedEncodingResponse:
         return self.pop_current_chunk(till_crlf=True)
 
     def read(self, amt: int = -1) -> bytes:
+        return self.pop_current_chunk(amt)
+
+    def read1(self, amt: int = -1) -> bytes:
         return self.pop_current_chunk(amt)
 
     def flush(self) -> None:

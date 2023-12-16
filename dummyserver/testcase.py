@@ -12,6 +12,7 @@ import pytest
 from tornado import httpserver, ioloop, web
 
 from dummyserver.app import hypercorn_app
+from dummyserver.asgi_proxy import ProxyApp
 from dummyserver.handlers import TestingApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.proxy import ProxyHandler
@@ -303,6 +304,7 @@ class HypercornDummyServerTestCase:
     port: typing.ClassVar[int]
     base_url: typing.ClassVar[str]
     base_url_alt: typing.ClassVar[str]
+    certs: typing.ClassVar[dict[str, typing.Any]] = {}
 
     _stack: typing.ClassVar[contextlib.ExitStack]
 
@@ -310,6 +312,12 @@ class HypercornDummyServerTestCase:
     def setup_class(cls) -> None:
         with contextlib.ExitStack() as stack:
             config = hypercorn.Config()
+            if cls.certs:
+                config.certfile = cls.certs["certfile"]
+                config.keyfile = cls.certs["keyfile"]
+                config.verify_mode = cls.certs["cert_reqs"]
+                config.ca_certs = cls.certs["ca_certs"]
+                config.alpn_protocols = cls.certs["alpn_protocols"]
             config.bind = [f"{cls.host}:0"]
             stack.enter_context(run_hypercorn_in_thread(config, hypercorn_app))
             cls._stack = stack.pop_all()
@@ -318,6 +326,111 @@ class HypercornDummyServerTestCase:
     @classmethod
     def teardown_class(cls) -> None:
         cls._stack.close()
+
+
+class HTTPSHypercornDummyServerTestCase(HypercornDummyServerTestCase):
+    scheme = "https"
+    host = "localhost"
+    certs = DEFAULT_CERTS
+    certs_dir = ""
+    bad_ca_path = ""
+
+
+class HypercornDummyProxyTestCase:
+    http_host: typing.ClassVar[str] = "localhost"
+    http_host_alt: typing.ClassVar[str] = "127.0.0.1"
+    http_port: typing.ClassVar[int]
+    http_url: typing.ClassVar[str]
+    http_url_alt: typing.ClassVar[str]
+
+    https_host: typing.ClassVar[str] = "localhost"
+    https_host_alt: typing.ClassVar[str] = "127.0.0.1"
+    https_certs: typing.ClassVar[dict[str, typing.Any]] = DEFAULT_CERTS
+    https_port: typing.ClassVar[int]
+    https_url: typing.ClassVar[str]
+    https_url_alt: typing.ClassVar[str]
+    https_url_fqdn: typing.ClassVar[str]
+
+    proxy_host: typing.ClassVar[str] = "localhost"
+    proxy_host_alt: typing.ClassVar[str] = "127.0.0.1"
+    proxy_port: typing.ClassVar[int]
+    proxy_url: typing.ClassVar[str]
+    https_proxy_port: typing.ClassVar[int]
+    https_proxy_url: typing.ClassVar[str]
+
+    certs_dir: typing.ClassVar[str] = ""
+    bad_ca_path: typing.ClassVar[str] = ""
+
+    server_thread: typing.ClassVar[threading.Thread]
+    _stack: typing.ClassVar[contextlib.ExitStack]
+
+    @classmethod
+    def setup_class(cls) -> None:
+        with contextlib.ExitStack() as stack:
+            http_server_config = hypercorn.Config()
+            http_server_config.bind = [f"{cls.http_host}:0"]
+            stack.enter_context(
+                run_hypercorn_in_thread(http_server_config, hypercorn_app)
+            )
+            cls.http_port = typing.cast(int, parse_url(http_server_config.bind[0]).port)
+
+            https_server_config = hypercorn.Config()
+            https_server_config.certfile = cls.https_certs["certfile"]
+            https_server_config.keyfile = cls.https_certs["keyfile"]
+            https_server_config.verify_mode = cls.https_certs["cert_reqs"]
+            https_server_config.ca_certs = cls.https_certs["ca_certs"]
+            https_server_config.alpn_protocols = cls.https_certs["alpn_protocols"]
+            https_server_config.bind = [f"{cls.https_host}:0"]
+            stack.enter_context(
+                run_hypercorn_in_thread(https_server_config, hypercorn_app)
+            )
+            cls.https_port = typing.cast(
+                int, parse_url(https_server_config.bind[0]).port
+            )
+
+            http_proxy_config = hypercorn.Config()
+            http_proxy_config.bind = [f"{cls.proxy_host}:0"]
+            stack.enter_context(run_hypercorn_in_thread(http_proxy_config, ProxyApp()))
+            cls.proxy_port = typing.cast(int, parse_url(http_proxy_config.bind[0]).port)
+
+            https_proxy_config = hypercorn.Config()
+            https_proxy_config.certfile = cls.https_certs["certfile"]
+            https_proxy_config.keyfile = cls.https_certs["keyfile"]
+            https_proxy_config.verify_mode = cls.https_certs["cert_reqs"]
+            https_proxy_config.ca_certs = cls.https_certs["ca_certs"]
+            https_proxy_config.alpn_protocols = cls.https_certs["alpn_protocols"]
+            https_proxy_config.bind = [f"{cls.proxy_host}:0"]
+            upstream_ca_certs = cls.https_certs.get("ca_certs")
+            stack.enter_context(
+                run_hypercorn_in_thread(https_proxy_config, ProxyApp(upstream_ca_certs))
+            )
+            cls.https_proxy_port = typing.cast(
+                int, parse_url(https_proxy_config.bind[0]).port
+            )
+
+            cls._stack = stack.pop_all()
+
+    @classmethod
+    def teardown_class(cls) -> None:
+        cls._stack.close()
+
+
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 not available")
+class IPv6HypercornDummyServerTestCase(HypercornDummyServerTestCase):
+    host = "::1"
+
+
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 not available")
+class IPv6HypercornDummyProxyTestCase(HypercornDummyProxyTestCase):
+    http_host = "localhost"
+    http_host_alt = "127.0.0.1"
+
+    https_host = "localhost"
+    https_host_alt = "127.0.0.1"
+    https_certs = DEFAULT_CERTS
+
+    proxy_host = "::1"
+    proxy_host_alt = "127.0.0.1"
 
 
 class ConnectionMarker:

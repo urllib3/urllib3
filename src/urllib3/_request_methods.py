@@ -119,9 +119,11 @@ class RequestMethods:
 
         if json is not None:
             if headers is None:
-                headers = self.headers.copy()  # type: ignore
+                headers = self.headers
+
             if not ("content-type" in map(str.lower, headers.keys())):
-                headers["Content-Type"] = "application/json"  # type: ignore
+                headers = HTTPHeaderDict(headers)
+                headers["Content-Type"] = "application/json"
 
             body = _json.dumps(json, separators=(",", ":"), ensure_ascii=False).encode(
                 "utf-8"

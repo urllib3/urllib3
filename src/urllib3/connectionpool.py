@@ -543,6 +543,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         response._connection = response_conn  # type: ignore[attr-defined]
         response._pool = self  # type: ignore[attr-defined]
 
+        # emscripten connection doesn't have _http_vsn_str
+        http_version = getattr(conn, "_http_vsn_str", "HTTP/?")
         log.debug(
             '%s://%s:%s "%s %s %s" %s %s',
             self.scheme,
@@ -551,7 +553,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             method,
             url,
             # HTTP version
-            conn._http_vsn_str,  # type: ignore[attr-defined]
+            http_version,
             response.status,
             response.length_remaining,  # type: ignore[attr-defined]
         )
@@ -748,8 +750,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
         if not http_tunnel_required:
-            headers = headers.copy()  # type: ignore[attr-defined]
-            headers.update(self.proxy_headers)  # type: ignore[union-attr]
+            headers = HTTPHeaderDict(headers)
+            headers.update(self.proxy_headers)
 
         # Must keep the exception bound to a separate variable or else Python 3
         # complains about UnboundLocalError.
