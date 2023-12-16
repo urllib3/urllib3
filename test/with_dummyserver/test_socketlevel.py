@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import errno
+import http.client
 import io
 import os
 import os.path
@@ -1290,8 +1291,6 @@ class TestProxyManager(SocketDummyServerTestCase):
             )
 
     def test_early_eof_doesnt_cause_infinite_loop(self) -> None:
-        errored = Event()
-
         def http_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             consume_socket(sock)
@@ -1305,9 +1304,32 @@ class TestProxyManager(SocketDummyServerTestCase):
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", "https://example.com", retries=0)
 
-            errored.set()  # Avoid a ConnectionAbortedError on Windows.
-
             assert type(e.value.reason) is SSLError
+
+    def test_header_longer_than_maxline(self) -> None:
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            consume_socket(sock)
+            sock.send(
+                b"HTTP/1.0 200 OK\r\nThis-Header-Is-Too-Long: Way-Too-Long\r\n\r\n"
+            )
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        with mock.patch("http.client._MAXLINE", 17):
+            with ProxyManager(base_url) as proxy:
+                with pytest.raises(MaxRetryError) as e:
+                    proxy.request("GET", "https://example.com", retries=0)
+
+            assert type(e.value.reason) is ProtocolError
+            assert e.value.reason.args[0] == "Connection aborted."
+            assert type(e.value.reason.args[1]) is http.client.LineTooLong
+            assert (
+                str(e.value.reason.args[1])
+                == "got more than 17 bytes when reading header line"
+            )
 
 
 class TestSSL(SocketDummyServerTestCase):
