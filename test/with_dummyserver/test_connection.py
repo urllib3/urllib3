@@ -24,17 +24,10 @@ def pool() -> typing.Generator[HTTPConnectionPool, None, None]:
 
 
 def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
-    conn = pool._get_conn()
-
-    method = "GET"
-    path = "/"
-
-    conn.request(method, path)
-
-    response = conn.getresponse()
-
-    assert isinstance(response, HTTPResponse)
-    pool._put_conn(conn)
+    with contextlib.closing(pool._get_conn()) as conn:
+        conn.request("GET", "/")
+        response = conn.getresponse()
+        assert isinstance(response, HTTPResponse)
 
 
 @pytest.mark.skipif(not hasattr(sys, "audit"), reason="requires python 3.8+")
@@ -82,8 +75,6 @@ def test_double_getresponse(pool: HTTPConnectionPool) -> None:
         # Calling getrepsonse() twice should cause an error
         with pytest.raises(ResponseNotReady):
             conn.getresponse()
-
-    pool._put_conn(conn)
 
 
 def test_connection_state_properties(pool: HTTPConnectionPool) -> None:

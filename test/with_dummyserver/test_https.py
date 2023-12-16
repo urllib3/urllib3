@@ -874,7 +874,8 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
                 ssl_minimum_version=minimum_version,
                 ssl_maximum_version=maximum_version,
             ) as https_pool:
-                with contextlib.closing(https_pool._get_conn()) as conn:
+                conn = https_pool._get_conn()
+                try:
                     conn.connect()
                     if maximum_version == TLSVersion.MAXIMUM_SUPPORTED:
                         # A higher protocol than tls_protocol_name could be negotiated
