@@ -435,8 +435,8 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
             server_hostname="localhost",
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            with contextlib.closing(https_pool._new_conn()) as conn:
-                conn.request("GET", "/")
+            conn = https_pool._new_conn()
+            conn.request("GET", "/")
 
             # Assert the wrapping socket is using the passed-through SNI name.
             # pyopenssl doesn't let you pull the server_hostname back off the
