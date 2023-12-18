@@ -202,9 +202,9 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             )
             https_pool = http._new_pool("https", self.https_host, self.https_port)
 
-            conn = https_pool._new_conn()
-            assert conn.__class__ == VerifiedHTTPSConnection
-            https_pool.request("GET", "/")  # Should succeed without exceptions.
+            with contextlib.closing(https_pool._new_conn()) as conn:
+                assert conn.__class__ == VerifiedHTTPSConnection
+                https_pool.request("GET", "/")  # Should succeed without exceptions.
 
             http = proxy_from_url(
                 self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
