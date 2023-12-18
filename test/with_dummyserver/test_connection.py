@@ -44,12 +44,12 @@ def test_audit_event(audit_mock: mock.Mock, pool: HTTPConnectionPool) -> None:
 
 
 def test_does_not_release_conn(pool: HTTPConnectionPool) -> None:
-    conn.request("GET", "/")
-    response = conn.getresponse()
+    with contextlib.closing(pool._get_conn()) as conn:
+        conn.request("GET", "/")
+        response = conn.getresponse()
 
-    response.release_conn()
-    assert pool.pool.qsize() == 0  # type: ignore[union-attr]
-    pool._put_conn(conn)
+        response.release_conn()
+        assert pool.pool.qsize() == 0  # type: ignore[union-attr]
 
 
 def test_releases_conn(pool: HTTPConnectionPool) -> None:
