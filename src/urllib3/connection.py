@@ -243,8 +243,7 @@ class HTTPConnection(_HTTPConnection):
 
         if not any(header.lower() == "host" for header in self._tunnel_headers):
             encoded_host = self._tunnel_host.encode("idna").decode("ascii")
-            self._tunnel_headers["Host"] = "%s:%d" % (
-                encoded_host, self._tunnel_port)
+            self._tunnel_headers["Host"] = "%s:%d" % (encoded_host, self._tunnel_port)
         self._tunnel_scheme = scheme
 
     def _tunnel(self) -> None:
