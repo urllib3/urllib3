@@ -1353,7 +1353,7 @@ class TestSSL(SocketDummyServerTestCase):
                         certfile=DEFAULT_CERTS["certfile"],
                         ca_certs=DEFAULT_CA,
                     )
-                except (ssl.SSLError, ConnectionResetError):
+                except (ssl.SSLError, ConnectionResetError, ConnectionAbortedError):
                     pass
 
                 else:
