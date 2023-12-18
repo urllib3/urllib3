@@ -225,7 +225,7 @@ class HTTPConnection(_HTTPConnection):
         self,
         host: str,
         port: int | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: dict[str, str] | None = None,
         scheme: str = "http",
     ) -> None:
         if scheme not in ("http", "https"):
@@ -235,15 +235,15 @@ class HTTPConnection(_HTTPConnection):
         if self.sock:
             raise RuntimeError("Can't set up tunnel for established connection")
 
-        self._tunnel_host, self._tunnel_port = self._get_hostport(host, port)
+        self._tunnel_host, self._tunnel_port = self._get_hostport(host, port)  # type: ignore[attr-defined]
         if headers:
             self._tunnel_headers = headers.copy()
         else:
             self._tunnel_headers.clear()
 
         if not any(header.lower() == "host" for header in self._tunnel_headers):
-            encoded_host = self._tunnel_host.encode("idna").decode("ascii")
-            self._tunnel_headers["Host"] = "%s:%d" % (encoded_host, self._tunnel_port)
+            encoded_host = self._tunnel_host.encode("idna").decode("ascii")  # type: ignore[union-attr]
+            self._tunnel_headers["Host"] = "%s:%d" % (encoded_host, self._tunnel_port)  # type: ignore[str-format]
         self._tunnel_scheme = scheme
 
     def _tunnel(self) -> None:
@@ -256,7 +256,7 @@ class HTTPConnection(_HTTPConnection):
             self._http_vsn_str.encode("ascii"),  # type: ignore[attr-defined]
         )
         headers = [connect]
-        for header, value in self._tunnel_headers.items():  # type: ignore[attr-defined]
+        for header, value in self._tunnel_headers.items():
             headers.append(f"{header}: {value}\r\n".encode("latin-1"))
         headers.append(b"\r\n")
         # Making a single send() call instead of one per line encourages
