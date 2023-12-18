@@ -1354,18 +1354,20 @@ class TestSSL(SocketDummyServerTestCase):
                         ca_certs=DEFAULT_CA,
                     )
                 except (ssl.SSLError, ConnectionResetError):
-                    if i == 1:
-                        raise
-                    return
+                    pass
 
-                ssl_sock.send(
-                    b"HTTP/1.1 200 OK\r\n"
-                    b"Content-Type: text/plain\r\n"
-                    b"Content-Length: 5\r\n\r\n"
-                    b"Hello"
-                )
+                else:
+                    with ssl_sock:
+                        try:
+                            ssl_sock.send(
+                                b"HTTP/1.1 200 OK\r\n"
+                                b"Content-Type: text/plain\r\n"
+                                b"Content-Length: 5\r\n\r\n"
+                                b"Hello"
+                            )
+                        except ssl.SSLEOFError:
+                            pass
 
-                ssl_sock.close()
                 sock.close()
 
         self._start_server(socket_handler)
