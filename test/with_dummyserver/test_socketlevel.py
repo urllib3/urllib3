@@ -1374,7 +1374,10 @@ class TestSSL(SocketDummyServerTestCase):
 
         def request() -> None:
             pool = HTTPSConnectionPool(
-                self.host, self.port, assert_fingerprint=fingerprint
+                self.host,
+                self.port,
+                assert_fingerprint=fingerprint,
+                cert_reqs="CERT_NONE",
             )
             try:
                 timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
@@ -1388,9 +1391,20 @@ class TestSSL(SocketDummyServerTestCase):
         with pytest.raises(MaxRetryError) as cm:
             request()
         assert type(cm.value.reason) is SSLError
+        assert str(cm.value.reason) == (
+            "Fingerprints did not match. Expected "
+            '"a0c4a74600eda72dc0becb9a8cb607ca58ee745e", got '
+            '"728b554c9afc1e88a11cad1bb2e7cc3edbc8f98a"'
+        )
         # Should not hang, see https://github.com/urllib3/urllib3/issues/529
-        with pytest.raises(MaxRetryError):
+        with pytest.raises(MaxRetryError) as cm2:
             request()
+        assert type(cm2.value.reason) is SSLError
+        assert str(cm2.value.reason) == (
+            "Fingerprints did not match. Expected "
+            '"a0c4a74600eda72dc0becb9a8cb607ca58ee745e", got '
+            '"728b554c9afc1e88a11cad1bb2e7cc3edbc8f98a"'
+        )
 
     def test_retry_ssl_error(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
