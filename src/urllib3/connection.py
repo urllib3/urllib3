@@ -232,7 +232,19 @@ class HTTPConnection(_HTTPConnection):
             raise ValueError(
                 f"Invalid proxy scheme for tunneling: {scheme!r}, must be either 'http' or 'https'"
             )
-        super().set_tunnel(host, port=port, headers=headers)
+        if self.sock:
+            raise RuntimeError("Can't set up tunnel for established connection")
+
+        self._tunnel_host, self._tunnel_port = self._get_hostport(host, port)
+        if headers:
+            self._tunnel_headers = headers.copy()
+        else:
+            self._tunnel_headers.clear()
+
+        if not any(header.lower() == "host" for header in self._tunnel_headers):
+            encoded_host = self._tunnel_host.encode("idna").decode("ascii")
+            self._tunnel_headers["Host"] = "%s:%d" % (
+                encoded_host, self._tunnel_port)
         self._tunnel_scheme = scheme
 
     def _tunnel(self) -> None:
