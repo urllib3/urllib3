@@ -38,7 +38,9 @@ def test_audit_event(audit_mock: mock.Mock, pool: HTTPConnectionPool) -> None:
         audit_mock.assert_any_call("http.client.connect", conn, conn.host, conn.port)
         # Ensure the event is raised only once.
         connect_events = [
-            call for call in audit_mock.mock_calls if call.args[0] == "http.client.connect"
+            call
+            for call in audit_mock.mock_calls
+            if call.args[0] == "http.client.connect"
         ]
         assert len(connect_events) == 1
 
