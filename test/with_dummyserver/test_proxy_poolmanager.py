@@ -660,6 +660,9 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             ),
         ],
     )
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_invalid_schema(self, url: str, error_msg: str) -> None:
         with pytest.raises(ProxySchemeUnknown, match=error_msg):
             proxy_from_url(url)
