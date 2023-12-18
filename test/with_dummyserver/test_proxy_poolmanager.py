@@ -188,9 +188,11 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
         with proxy_from_url(
             self.proxy_url, cert_reqs="REQUIRED", ca_certs=self.bad_ca_path
         ) as http:
-            https_pool = http._new_pool("https", self.https_host, self.https_port)
-            with pytest.raises(MaxRetryError) as e:
-                https_pool.request("GET", "/", retries=0)
+            with http._new_pool(
+                "https", self.https_host, self.https_port
+            ) as https_pool:
+                with pytest.raises(MaxRetryError) as e:
+                    https_pool.request("GET", "/", retries=0)
             assert isinstance(e.value.reason, SSLError)
             assert (
                 "certificate verify failed" in str(e.value.reason)
@@ -201,22 +203,26 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             http = proxy_from_url(
                 self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
             )
-            https_pool = http._new_pool("https", self.https_host, self.https_port)
-
-            with contextlib.closing(https_pool._new_conn()) as conn:
-                assert conn.__class__ == VerifiedHTTPSConnection
-                https_pool.request("GET", "/")  # Should succeed without exceptions.
+            with http._new_pool(
+                "https", self.https_host, self.https_port
+            ) as https_pool2:
+                with contextlib.closing(https_pool._new_conn()) as conn:
+                    assert conn.__class__ == VerifiedHTTPSConnection
+                    https_pool2.request(
+                        "GET", "/"
+                    )  # Should succeed without exceptions.
 
             http = proxy_from_url(
                 self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
             )
-            https_fail_pool = http._new_pool("https", "127.0.0.1", self.https_port)
-
-            with pytest.raises(
-                MaxRetryError, match="doesn't match|IP address mismatch"
-            ) as e:
-                https_fail_pool.request("GET", "/", retries=0)
-            assert isinstance(e.value.reason, SSLError)
+            with http._new_pool(
+                "https", "127.0.0.1", self.https_port
+            ) as https_fail_pool:
+                with pytest.raises(
+                    MaxRetryError, match="doesn't match|IP address mismatch"
+                ) as e:
+                    https_fail_pool.request("GET", "/", retries=0)
+                assert isinstance(e.value.reason, SSLError)
 
     def test_redirect(self) -> None:
         with proxy_from_url(self.proxy_url) as http:
