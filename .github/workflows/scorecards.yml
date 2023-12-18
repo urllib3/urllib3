@@ -10,7 +10,7 @@ permissions: read-all
 
 jobs:
   analysis:
-    if: github.repository_owner == "urllib3"
+    if: github.repository_owner == 'urllib3'
     name: "Scorecard"
     runs-on: "ubuntu-latest"
     permissions:
