@@ -1015,7 +1015,8 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             else:
                 conn = pool._get_conn()
                 conn.request("GET", "/headers", chunked=chunked)
-                pool._put_conn(conn)
+                conn.getresponse().close()
+                conn.close()
 
             assert pool.headers == {"key": "val"}
             assert type(pool.headers) is header_type
@@ -1026,7 +1027,8 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             else:
                 conn = pool._get_conn()
                 conn.request("GET", "/headers", headers=headers, chunked=chunked)
-                pool._put_conn(conn)
+                conn.getresponse().close()
+                conn.close()
 
             assert headers == {"key": "val"}
 
@@ -1046,7 +1048,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             resp = conn.getresponse()
             assert resp.status == 200
             assert resp.json()["Transfer-Encoding"] == "chunked"
-            pool._put_conn(conn)
+            conn.close()
 
     def test_bytes_header(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
