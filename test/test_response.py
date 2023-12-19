@@ -608,24 +608,61 @@ class TestResponse:
                 assert is_fp_closed(resp._fp)
                 assert resp.isclosed()
 
-    @pytest.mark.parametrize("read_amt", (0, 2))
     @pytest.mark.parametrize("length_known", (True, False))
-    def test_io_not_closed_by_read1_before_all_data_read(
-        self, sock: socket.socket, length_known: bool, read_amt: int | None
+    def test_io_not_closed_untill_all_data_is_read(
+        self, sock: socket.socket, length_known: bool
     ) -> None:
         with httplib.HTTPResponse(sock) as hlr:
             hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
             hlr.chunked = 0  # type: ignore[assignment]
-            hlr.length = 3 if length_known else None
+            length_remaining = 3
+            hlr.length = length_remaining if length_known else None
             with HTTPResponse(hlr, preload_content=False) as resp:
                 if length_known:
-                    resp.length_remaining = 3
+                    resp.length_remaining = length_remaining
+                while length_remaining:
+                    assert not resp.closed
+                    assert resp._fp is not None
+                    assert not resp._fp.isclosed()
+                    assert not is_fp_closed(resp._fp)
+                    assert not resp.isclosed()
+                    data = resp.read(1)
+                    assert len(data) == 1
+                    length_remaining -= 1
+                # If content length is unknown, IO is not closed until
+                # the next read returning zero bytes.
+                if not length_known:
+                    assert not resp.closed
+                    assert resp._fp is not None
+                    assert not resp._fp.isclosed()
+                    assert not is_fp_closed(resp._fp)
+                    assert not resp.isclosed()
+                    data = resp.read(1)
+                    assert len(data) == 0
+                assert resp.closed
+                assert resp._fp.isclosed()  # type: ignore[union-attr]
+                assert is_fp_closed(resp._fp)
+                assert resp.isclosed()
+
+    @pytest.mark.parametrize("length_known", (True, False))
+    def test_io_not_closed_after_requesting_0_bytes(
+        self, sock: socket.socket, length_known: bool
+    ) -> None:
+        with httplib.HTTPResponse(sock) as hlr:
+            hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
+            hlr.chunked = 0  # type: ignore[assignment]
+            length_remaining = 3
+            hlr.length = length_remaining if length_known else None
+            with HTTPResponse(hlr, preload_content=False) as resp:
+                if length_known:
+                    resp.length_remaining = length_remaining
                 assert not resp.closed
                 assert resp._fp is not None
                 assert not resp._fp.isclosed()
                 assert not is_fp_closed(resp._fp)
                 assert not resp.isclosed()
-                assert len(resp.read1(read_amt)) == read_amt
+                data = resp.read(0)
+                assert data == b""
                 assert not resp.closed
                 assert resp._fp is not None
                 assert not resp._fp.isclosed()
