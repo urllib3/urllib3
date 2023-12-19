@@ -565,8 +565,7 @@ class TestResponse:
     def test_io_closed_consistently_with_read1(
         self, sock: socket.socket, length_known: bool, read_amt: int | None
     ) -> None:
-        try:
-            hlr = httplib.HTTPResponse(sock)
+        with httplib.HTTPResponse(sock) as hlr:
             hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
             hlr.chunked = 0  # type: ignore[assignment]
             hlr.length = 3 if length_known else None
@@ -592,8 +591,6 @@ class TestResponse:
                 assert resp._fp.isclosed()
                 assert is_fp_closed(resp._fp)
                 assert resp.isclosed()
-        finally:
-            hlr.close()
 
     def test_io_bufferedreader(self) -> None:
         fp = BytesIO(b"foo")
