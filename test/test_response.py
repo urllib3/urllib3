@@ -556,7 +556,7 @@ class TestResponse:
         with pytest.raises(IOError):
             resp3.fileno()
 
-    def test_io_closed_consistently_with_read(self, sock: socket.socket) -> None:
+    def test_io_closed_consistently_by_read(self, sock: socket.socket) -> None:
         try:
             hlr = httplib.HTTPResponse(sock)
             hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
@@ -578,7 +578,7 @@ class TestResponse:
 
     @pytest.mark.parametrize("read_amt", (None, 3))
     @pytest.mark.parametrize("length_known", (True, False))
-    def test_io_closed_consistently_with_read1(
+    def test_io_closed_consistently_by_read1(
         self, sock: socket.socket, length_known: bool, read_amt: int | None
     ) -> None:
         with httplib.HTTPResponse(sock) as hlr:
@@ -607,6 +607,30 @@ class TestResponse:
                 assert resp._fp.isclosed()
                 assert is_fp_closed(resp._fp)
                 assert resp.isclosed()
+
+    @pytest.mark.parametrize("read_amt", (0, 2))
+    @pytest.mark.parametrize("length_known", (True, False))
+    def test_io_not_closed_by_read1_before_all_data_read(
+        self, sock: socket.socket, length_known: bool, read_amt: int | None
+    ) -> None:
+        with httplib.HTTPResponse(sock) as hlr:
+            hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
+            hlr.chunked = 0  # type: ignore[assignment]
+            hlr.length = 3 if length_known else None
+            with HTTPResponse(hlr, preload_content=False) as resp:
+                if length_known:
+                    resp.length_remaining = 3
+                assert not resp.closed
+                assert resp._fp is not None
+                assert not resp._fp.isclosed()
+                assert not is_fp_closed(resp._fp)
+                assert not resp.isclosed()
+                assert len(resp.read1(read_amt)) == read_amt
+                assert not resp.closed
+                assert resp._fp is not None
+                assert not resp._fp.isclosed()
+                assert not is_fp_closed(resp._fp)
+                assert not resp.isclosed()
 
     def test_io_bufferedreader(self) -> None:
         fp = BytesIO(b"foo")
