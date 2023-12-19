@@ -5,13 +5,15 @@ import contextlib
 import functools
 import sys
 import threading
-from typing import Generator
+import typing
 
 import hypercorn
 import hypercorn.trio
 import hypercorn.typing
 import trio
 from quart_trio import QuartTrio
+
+from urllib3.util.url import parse_url
 
 
 # https://github.com/pgjones/hypercorn/blob/19dfb96411575a6a647cdea63fa581b48ebb9180/src/hypercorn/utils.py#L172-L178
@@ -42,8 +44,20 @@ async def _start_server(
 
 @contextlib.contextmanager
 def run_hypercorn_in_thread(
-    config: hypercorn.Config, app: hypercorn.typing.ASGIFramework
-) -> Generator[None, None, None]:
+    host: str, certs: dict[str, typing.Any] | None, app: hypercorn.typing.ASGIFramework
+) -> typing.Iterator[int]:
+    config = hypercorn.Config()
+    if certs:
+        config.certfile = certs["certfile"]
+        config.keyfile = certs["keyfile"]
+        if "cert_reqs" in certs:
+            config.verify_mode = certs["cert_reqs"]
+        if "cacerts" in certs:
+            config.ca_certs = certs["ca_certs"]
+        if "alpn_protocols" in certs:
+            config.alpn_protocols = certs["alpn_protocols"]
+    config.bind = [f"{host}:0"]
+
     ready_event = threading.Event()
     shutdown_event = threading.Event()
 
@@ -62,7 +76,7 @@ def run_hypercorn_in_thread(
         if not ready_event.is_set():
             raise Exception("most likely failed to start server")
 
-        yield
+        yield typing.cast(int, parse_url(config.bind[0]).port)
 
         shutdown_event.set()
         future.result()
