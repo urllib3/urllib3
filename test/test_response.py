@@ -98,7 +98,7 @@ class TestBytesQueueBuffer:
         ids=("get", "get_all"),
     )
     @pytest.mark.limit_memory("12.5 MB")  # assert that we're not doubling memory usage
-    def test_memory_usage_of_get(
+    def test_memory_usage(
         self, get_func: typing.Callable[[BytesQueueBuffer], str]
     ) -> None:
         # Allocate 10 1MiB chunks
