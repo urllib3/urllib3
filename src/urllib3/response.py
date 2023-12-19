@@ -291,8 +291,9 @@ class BytesQueueBuffer:
         if len(buffer) == 1:
             result = buffer.pop()
         else:
-            result = b"".join(buffer)
-            buffer.clear()
+            ret = io.BytesIO()
+            ret.writelines(buffer.popleft() for _ in range(len(buffer)))
+            result = ret.getvalue()
         self._size = 0
         return result
 
