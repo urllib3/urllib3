@@ -870,9 +870,10 @@ class HTTPResponse(BaseHTTPResponse):
                     # Content-Length are caught.
                     raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
             elif read1 and (not data or self.length_remaining == len(data)):
-                # All data is read, but CPython's `self._fp.read1` doesn't
-                # always close `http.client.HTTPResponse`, so we close it
-                # here.
+                # All data has been read, but `self._fp.read1` in
+                # CPython 3.12 and older doesn't always close
+                # `http.client.HTTPResponse`, so we close it here.
+                # See https://github.com/python/cpython/issues/113199
                 self._fp.close()
 
         if data:
