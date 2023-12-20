@@ -12,6 +12,7 @@ permissions: "read-all"
 
 jobs:
   analyze:
+    if: github.repository_owner == 'urllib3'
     name: "Analyze"
     runs-on: "ubuntu-latest"
     permissions:
