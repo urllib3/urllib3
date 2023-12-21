@@ -94,6 +94,7 @@ filterwarnings = [
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
     '''default:Async generator 'quart\.wrappers\.response\.DataBody\.__aiter__\.<locals>\._aiter' was garbage collected.*:ResourceWarning''',  # https://github.com/pallets/quart/issues/301
     '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',  # https://github.com/SeleniumHQ/selenium/issues/13328
+    '''default:Unclosed file <tempfile\.SpooledTemporaryFile object at .*>:ResourceWarning''', # pyiodide tests
 ]
 
 [tool.isort]
