@@ -348,7 +348,8 @@ async def pyodide_upload() -> ResponseTypes:
     file = files["filefield"]
     if file.filename != "lolcat.txt":
         return await make_response(f"File name incorrect {file.name}", 404)
-    data = file.read().decode("utf-8")
+    with contextlib.closing(file):
+        data = file.read().decode("utf-8")
     if data != "I'm in ur multipart form-data, hazing a cheezburgr":
         return await make_response(f"File data incorrect {data}", 200)
     return await make_response("Uploaded file correct", 200)
