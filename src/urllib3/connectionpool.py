@@ -507,7 +507,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # We are swallowing BrokenPipeError (errno.EPIPE) since the server is
         # legitimately able to close the connection after sending a valid response.
         # With this behaviour, the received response is still readable.
-        except BrokenPipeError:
+        except (BrokenPipeError, ConnectionResetError):
             pass
         except OSError as e:
             # MacOS/Linux
