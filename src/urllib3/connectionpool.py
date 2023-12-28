@@ -507,13 +507,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # We are swallowing BrokenPipeError (errno.EPIPE) since the server is
         # legitimately able to close the connection after sending a valid response.
         # With this behaviour, the received response is still readable.
-        except (BrokenPipeError, ConnectionResetError):
+        except BrokenPipeError:
             pass
         except OSError as e:
             # MacOS/Linux
-            # EPROTOTYPE is needed on macOS
+            # EPROTOTYPE and ECONNRESET are needed on macOS
             # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
-            if e.errno != errno.EPROTOTYPE:
+            # Condition changed later to emit ECONNRESET instead of only EPROTOTYPE.
+            if e.errno != errno.EPROTOTYPE and e.errno != errno.ECONNRESET:
                 raise
 
         # Reset the timeout for the recv() on the socket
