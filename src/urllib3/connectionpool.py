@@ -511,9 +511,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             pass
         except OSError as e:
             # MacOS/Linux
-            # EPROTOTYPE is needed on macOS
+            # EPROTOTYPE and ECONNRESET are needed on macOS
             # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
-            if e.errno != errno.EPROTOTYPE:
+            # Condition changed later to emit ECONNRESET instead of only EPROTOTYPE.
+            if e.errno != errno.EPROTOTYPE and e.errno != errno.ECONNRESET:
                 raise
 
         # Reset the timeout for the recv() on the socket
