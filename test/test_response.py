@@ -448,6 +448,45 @@ class TestResponse:
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "zstd"})
 
+    decode_param_set = [
+        b"f",
+        b"fo",
+        b"foo",
+        b"foo" * 5,
+        b"123456789012345",
+        b"foo4",
+        b"x" * 100,
+    ]
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_incomplete_read(self, data: bytes) -> None:
+        data = zstd.compress(data)
+        fp = BytesIO(data[:-1])  # shorten the data to trigger DecodeError
+
+        # create response object without(!) reading/decoding the content
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        # read/decode, expecting DecodeError
+        with pytest.raises(DecodeError):
+            r.read(decode_content=True)
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_incomplete_read1(self, data: bytes) -> None:
+        data = zstd.compress(data)
+        fp = BytesIO(data[:-1])
+
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        # read/decode via read1(!), expecting DecodeError
+        with pytest.raises(DecodeError):
+            r.read1(decode_content=True)
+
     def test_multi_decoding_deflate_deflate(self) -> None:
         data = zlib.compress(zlib.compress(b"foo"))
 
