@@ -116,9 +116,9 @@ class EmscriptenHTTPConnection:
             if self._response is None:
                 self._response = send_request(request)
         except _TimeoutError as e:
-            raise TimeoutError(e.message)
+            raise TimeoutError(e.message) from e
         except _RequestError as e:
-            raise HTTPException(e.message)
+            raise HTTPException(e.message) from e
 
     def getresponse(self) -> BaseHTTPResponse:
         if self._response is not None:
