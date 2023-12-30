@@ -882,6 +882,7 @@ class HTTPResponse(BaseHTTPResponse):
         amt: int | None = None,
         decode_content: bool | None = None,
         cache_content: bool = False,
+        read1: bool = False,
     ) -> bytes:
         """
         Similar to :meth:`http.client.HTTPResponse.read`, but with two additional
@@ -902,6 +903,10 @@ class HTTPResponse(BaseHTTPResponse):
             is useful if you want the ``.data`` property to continue working
             after having ``.read()`` the file object. (Overridden if ``amt`` is
             set.)
+
+        :param read1:
+            If True, ``.read()`` will behave like ``.read1()``
+            Default is False.
         """
         self._init_decoder()
         if decode_content is None:
@@ -913,7 +918,7 @@ class HTTPResponse(BaseHTTPResponse):
             if len(self._decoded_buffer) >= amt:
                 return self._decoded_buffer.get(amt)
 
-        data = self._raw_read(amt)
+        data = self._raw_read(amt, read1=read1)
 
         flush_decoder = amt is None or (amt != 0 and not data)
 
@@ -941,7 +946,7 @@ class HTTPResponse(BaseHTTPResponse):
                 # TODO make sure to initially read enough data to get past the headers
                 # For example, the GZ file header takes 10 bytes, we don't want to read
                 # it one byte at a time
-                data = self._raw_read(amt)
+                data = self._raw_read(amt, read1=read1)
                 decoded_data = self._decode(data, decode_content, flush_decoder)
                 self._decoded_buffer.put(decoded_data)
             data = self._decoded_buffer.get(amt)
@@ -965,39 +970,8 @@ class HTTPResponse(BaseHTTPResponse):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
-        if decode_content is None:
-            decode_content = self.decode_content
-        # try and respond without going to the network
-        if self._has_decoded_content:
-            if not decode_content:
-                raise RuntimeError(
-                    "Calling read1(decode_content=False) is not supported after "
-                    "read1(decode_content=True) was called."
-                )
-            if len(self._decoded_buffer) > 0:
-                if amt is None:
-                    return self._decoded_buffer.get_all()
-                return self._decoded_buffer.get(amt)
-        if amt == 0:
-            return b""
 
-        # FIXME, this method's type doesn't say returning None is possible
-        data = self._raw_read(amt, read1=True)
-        if not decode_content or data is None:
-            return data
-
-        self._init_decoder()
-        while True:
-            flush_decoder = not data
-            decoded_data = self._decode(data, decode_content, flush_decoder)
-            self._decoded_buffer.put(decoded_data)
-            if decoded_data or flush_decoder:
-                break
-            data = self._raw_read(8192, read1=True)
-
-        if amt is None:
-            return self._decoded_buffer.get_all()
-        return self._decoded_buffer.get(amt)
+        return self.read(amt, decode_content, read1=True)
 
     def stream(
         self, amt: int | None = 2**16, decode_content: bool | None = None

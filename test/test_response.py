@@ -740,11 +740,12 @@ class TestResponse:
 
         assert resp.read1(1) == b"f"
 
+        # TODO: change error message to "read1", or make it general (e.g. "read/read1")
         with pytest.raises(
             RuntimeError,
             match=(
-                r"Calling read1\(decode_content=False\) is not supported after "
-                r"read1\(decode_content=True\) was called"
+                r"Calling read\(decode_content=False\) is not supported after "
+                r"read\(decode_content=True\) was called"
             ),
         ):
             resp.read1(1, decode_content=False)
@@ -752,8 +753,8 @@ class TestResponse:
         with pytest.raises(
             RuntimeError,
             match=(
-                r"Calling read1\(decode_content=False\) is not supported after "
-                r"read1\(decode_content=True\) was called"
+                r"Calling read\(decode_content=False\) is not supported after "
+                r"read\(decode_content=True\) was called"
             ),
         ):
             resp.read1(decode_content=False)
