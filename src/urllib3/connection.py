@@ -239,12 +239,12 @@ class HTTPConnection(_HTTPConnection):
 
         def _tunnel(self) -> None:
             _MAXLINE = http.client._MAXLINE  # type: ignore[attr-defined]
-            connect = b"CONNECT %s:%d HTTP/1.0\r\n" % (
-                self._tunnel_host.encode("ascii"),
+            connect = b"CONNECT %s:%d HTTP/1.0\r\n" % (  # type: ignore[str-format]
+                self._tunnel_host.encode("ascii"),  # type: ignore[union-attr]
                 self._tunnel_port,
             )
             headers = [connect]
-            for header, value in self._tunnel_headers.items():
+            for header, value in self._tunnel_headers.items():  # type: ignore[attr-defined]
                 headers.append(f"{header}: {value}\r\n".encode("latin-1"))
             headers.append(b"\r\n")
             # Making a single send() call instead of one per line encourages
@@ -253,9 +253,9 @@ class HTTPConnection(_HTTPConnection):
             self.send(b"".join(headers))
             del headers
 
-            response = self.response_class(self.sock, method=self._method)
+            response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
             try:
-                (version, code, message) = response._read_status()
+                (version, code, message) = response._read_status()  # type: ignore[attr-defined]
 
                 if code != http.HTTPStatus.OK:
                     self.close()
@@ -282,7 +282,7 @@ class HTTPConnection(_HTTPConnection):
             self._has_connected_to_proxy = True
 
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
-            self._tunnel()  # type: ignore[attr-defined]
+            self._tunnel()
 
         # If there's a proxy to be connected to we are fully connected.
         # This is set twice (once above and here) due to forwarding proxies
@@ -658,7 +658,7 @@ class HTTPSConnection(HTTPConnection):
             # If we're tunneling it means we're connected to our proxy.
             self._has_connected_to_proxy = True
 
-            self._tunnel()  # type: ignore[attr-defined]
+            self._tunnel()
             # Override the host with the one we're requesting data from.
             server_hostname = self._tunnel_host
 
