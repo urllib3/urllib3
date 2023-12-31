@@ -460,7 +460,8 @@ class TestResponse:
 
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
-    def test_decode_zstd_incomplete_read(self, data: bytes) -> None:
+    @pytest.mark.parametrize("read1", [False, True])
+    def test_decode_zstd_incomplete_read(self, data: bytes, read1: bool) -> None:
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])  # shorten the data to trigger DecodeError
 
@@ -471,21 +472,7 @@ class TestResponse:
 
         # read/decode, expecting DecodeError
         with pytest.raises(DecodeError):
-            r.read(decode_content=True)
-
-    @onlyZstd()
-    @pytest.mark.parametrize("data", decode_param_set)
-    def test_decode_zstd_incomplete_read1(self, data: bytes) -> None:
-        data = zstd.compress(data)
-        fp = BytesIO(data[:-1])
-
-        r = HTTPResponse(
-            fp, headers={"content-encoding": "zstd"}, preload_content=False
-        )
-
-        # read/decode via read1(!), expecting DecodeError
-        with pytest.raises(DecodeError):
-            r.read1(decode_content=True)
+            r.read(decode_content=True, read1=read1)
 
     def test_multi_decoding_deflate_deflate(self) -> None:
         data = zlib.compress(zlib.compress(b"foo"))
@@ -700,7 +687,8 @@ class TestResponse:
         with pytest.raises(ValueError, match="I/O operation on closed file.?"):
             next(reader)
 
-    def test_read_with_illegal_mix_decode_toggle(self) -> None:
+    @pytest.mark.parametrize("read1", [False, True])
+    def test_read_with_illegal_mix_decode_toggle(self, read1: bool) -> None:
         data = zlib.compress(b"foo")
 
         fp = BytesIO(data)
@@ -709,7 +697,7 @@ class TestResponse:
             fp, headers={"content-encoding": "deflate"}, preload_content=False
         )
 
-        assert resp.read(1) == b"f"
+        assert resp.read(1, read1=read1) == b"f"
 
         with pytest.raises(
             RuntimeError,
@@ -718,7 +706,7 @@ class TestResponse:
                 r"read\(decode_content=True\) was called"
             ),
         ):
-            resp.read(1, decode_content=False)
+            resp.read(1, decode_content=False, read1=read1)
 
         with pytest.raises(
             RuntimeError,
@@ -727,37 +715,7 @@ class TestResponse:
                 r"read\(decode_content=True\) was called"
             ),
         ):
-            resp.read(decode_content=False)
-
-    def test_read1_with_illegal_mix_decode_toggle(self) -> None:
-        data = zlib.compress(b"foo")
-
-        fp = BytesIO(data)
-
-        resp = HTTPResponse(
-            fp, headers={"content-encoding": "deflate"}, preload_content=False
-        )
-
-        assert resp.read1(1) == b"f"
-
-        # TODO: change error message to "read1", or make it general (e.g. "read/read1")
-        with pytest.raises(
-            RuntimeError,
-            match=(
-                r"Calling read\(decode_content=False\) is not supported after "
-                r"read\(decode_content=True\) was called"
-            ),
-        ):
-            resp.read1(1, decode_content=False)
-
-        with pytest.raises(
-            RuntimeError,
-            match=(
-                r"Calling read\(decode_content=False\) is not supported after "
-                r"read\(decode_content=True\) was called"
-            ),
-        ):
-            resp.read1(decode_content=False)
+            resp.read(decode_content=False, read1=read1)
 
     def test_read_with_mix_decode_toggle(self) -> None:
         data = zlib.compress(b"foo")
