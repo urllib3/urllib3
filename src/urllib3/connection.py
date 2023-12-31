@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import http.client
 import logging
 import os
 import re
@@ -233,6 +234,46 @@ class HTTPConnection(_HTTPConnection):
             )
         super().set_tunnel(host, port=port, headers=headers)
         self._tunnel_scheme = scheme
+
+    if sys.version_info < (3, 11, 4):
+
+        def _tunnel(self) -> None:
+            _MAXLINE = http.client._MAXLINE  # type: ignore[attr-defined]
+            connect = b"CONNECT %s:%d HTTP/1.0\r\n" % (
+                self._tunnel_host.encode("ascii"),
+                self._tunnel_port,
+            )
+            headers = [connect]
+            for header, value in self._tunnel_headers.items():
+                headers.append(f"{header}: {value}\r\n".encode("latin-1"))
+            headers.append(b"\r\n")
+            # Making a single send() call instead of one per line encourages
+            # the host OS to use a more optimal packet size instead of
+            # potentially emitting a series of small packets.
+            self.send(b"".join(headers))
+            del headers
+
+            response = self.response_class(self.sock, method=self._method)
+            try:
+                (version, code, message) = response._read_status()
+
+                if code != http.HTTPStatus.OK:
+                    self.close()
+                    raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
+                while True:
+                    line = response.fp.readline(_MAXLINE + 1)
+                    if len(line) > _MAXLINE:
+                        raise http.client.LineTooLong("header line")
+                    if not line:
+                        # for sites which EOF without sending a trailer
+                        break
+                    if line in (b"\r\n", b"\n", b""):
+                        break
+
+                    if self.debuglevel > 0:
+                        print("header:", line.decode())
+            finally:
+                response.close()
 
     def connect(self) -> None:
         self.sock = self._new_conn()
