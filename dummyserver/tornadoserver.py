@@ -134,17 +134,18 @@ class SocketServerThread(threading.Thread):
             sock = socket.socket(socket.AF_INET)
         if sys.platform != "win32":
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((self.host, 0))
-        self.port = sock.getsockname()[1]
 
-        # Once listen() returns, the server socket is ready
-        sock.listen(1)
+        with sock:
+            sock.bind((self.host, 0))
+            self.port = sock.getsockname()[1]
 
-        if self.ready_event:
-            self.ready_event.set()
+            # Once listen() returns, the server socket is ready
+            sock.listen(1)
 
-        self.socket_handler(sock)
-        sock.close()
+            if self.ready_event:
+                self.ready_event.set()
+
+            self.socket_handler(sock)
 
     def run(self) -> None:
         self._start_server()
