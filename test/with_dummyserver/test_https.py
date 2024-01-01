@@ -23,13 +23,13 @@ import trustme
 
 import urllib3.util as util
 import urllib3.util.ssl_
-from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
-from dummyserver.tornadoserver import (
+from dummyserver.socketserver import (
     DEFAULT_CA,
     DEFAULT_CA_KEY,
     DEFAULT_CERTS,
     encrypt_key_pem,
 )
+from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import RECENT_DATE, HTTPSConnection, VerifiedHTTPSConnection
 from urllib3.exceptions import (

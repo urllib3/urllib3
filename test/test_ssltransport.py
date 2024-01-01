@@ -9,8 +9,8 @@ from unittest import mock
 
 import pytest
 
+from dummyserver.socketserver import DEFAULT_CA, DEFAULT_CERTS
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from dummyserver.tornadoserver import DEFAULT_CA, DEFAULT_CERTS
 from urllib3.util import ssl_
 from urllib3.util.ssltransport import SSLTransport
 
