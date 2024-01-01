@@ -1,6 +1,10 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - main
 
 permissions: "read-all"
 
@@ -38,11 +42,9 @@ jobs:
         os:
           - macos-11
           - windows-latest
-          - ubuntu-20.04  # OpenSSL 1.1.1
-          - ubuntu-22.04  # OpenSSL 3.0
+          - ubuntu-22.04
         nox-session: ['']
         include:
-          - experimental: false
           # integration
           # 3.8 and 3.9 have a known issue with large SSL requests that we work around:
           # https://github.com/urllib3/urllib3/pull/3181#issuecomment-1794830698
@@ -58,6 +60,11 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test_integration
+          # OpenSSL 1.1.1
+          - python-version: "3.8"
+            os: ubuntu-20.04
+            experimental: false
+            nox-session: test-3.8
           # pypy
           - python-version: "pypy-3.8"
             os: ubuntu-latest
