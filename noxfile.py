@@ -36,6 +36,20 @@ def tests_impl(
     elif sys.platform == "win32":
         memray_supported = False
 
+    # Environment variables being passed to the pytest run.
+    pytest_session_envvars = {
+        "PYTHONWARNINGS": "always::DeprecationWarning",
+    }
+
+    # In coverage 7.4.0 we can only set the setting for Python 3.12+
+    # Future versions of coverage will use sys.monitoring based on availability.
+    if (
+        isinstance(session.python, str)
+        and "." in session.python
+        and int(session.python.split(".")[1]) >= 12
+    ):
+        pytest_session_envvars["COVERAGE_CORE"] = "sysmon"
+
     # Inspired from https://hynek.me/articles/ditch-codecov-python/
     # We use parallel mode and then combine in a later CI step
     session.run(
@@ -58,11 +72,7 @@ def tests_impl(
         "--strict-markers",
         *pytest_extra_args,
         *(session.posargs or ("test/",)),
-        env={
-            "PYTHONWARNINGS": "always::DeprecationWarning",
-            # Use sys.monitoring for coverage for a speed boost.
-            "COVERAGE_CORE": "sysmon",
-        },
+        env=pytest_session_envvars,
     )
 
 
