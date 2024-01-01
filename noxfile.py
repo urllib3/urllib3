@@ -58,7 +58,11 @@ def tests_impl(
         "--strict-markers",
         *pytest_extra_args,
         *(session.posargs or ("test/",)),
-        env={"PYTHONWARNINGS": "always::DeprecationWarning"},
+        env={
+            "PYTHONWARNINGS": "always::DeprecationWarning",
+            # Use sys.monitoring for coverage for a speed boost.
+            "COVERAGE_CORE": "sysmon",
+        },
     )
 
 
