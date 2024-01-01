@@ -99,13 +99,12 @@ class ProxyApp:
             await writer.aclose()
 
         host, port = scope["path"].split(":")
-        upstream = await trio.open_tcp_stream(host, int(port))
+        async with await trio.open_tcp_stream(host, int(port)) as upstream:
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send({"type": "http.response.body", "body": b"", "more_body": True})
 
-        await send({"type": "http.response.start", "status": 200, "headers": []})
-        await send({"type": "http.response.body", "body": b"", "more_body": True})
+            client = typing.cast(trio.SocketStream, scope["extensions"]["_transport"])
 
-        client = typing.cast(trio.SocketStream, scope["extensions"]["_transport"])
-
-        async with trio.open_nursery(strict_exception_groups=True) as nursery:
-            nursery.start_soon(start_forward, client, upstream)
-            nursery.start_soon(start_forward, upstream, client)
+            async with trio.open_nursery(strict_exception_groups=True) as nursery:
+                nursery.start_soon(start_forward, client, upstream)
+                nursery.start_soon(start_forward, upstream, client)

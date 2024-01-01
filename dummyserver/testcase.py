@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import socket
 import ssl
@@ -9,20 +8,11 @@ import typing
 
 import hypercorn
 import pytest
-from tornado import httpserver, ioloop, web
 
 from dummyserver.app import hypercorn_app
 from dummyserver.asgi_proxy import ProxyApp
-from dummyserver.handlers import TestingApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
-from dummyserver.proxy import ProxyHandler
-from dummyserver.tornadoserver import (
-    DEFAULT_CERTS,
-    HAS_IPV6,
-    SocketServerThread,
-    run_tornado_app,
-    run_tornado_loop_in_thread,
-)
+from dummyserver.socketserver import DEFAULT_CERTS, HAS_IPV6, SocketServerThread
 from urllib3.connection import HTTPConnection
 from urllib3.util.ssltransport import SSLTransport
 from urllib3.util.url import parse_url
@@ -150,152 +140,6 @@ class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
         if not ready_event.is_set():
             raise Exception("most likely failed to start server")
         cls.port = cls.server_thread.port
-
-
-class HTTPDummyServerTestCase:
-    """A simple HTTP server that runs when your test class runs
-
-    Have your test class inherit from this one, and then a simple server
-    will start when your tests run, and automatically shut down when they
-    complete. For examples of what test requests you can send to the server,
-    see the TestingApp in dummyserver/handlers.py.
-    """
-
-    scheme = "http"
-    host = "localhost"
-    host_alt = "127.0.0.1"  # Some tests need two hosts
-    certs = DEFAULT_CERTS
-    base_url: typing.ClassVar[str]
-    base_url_alt: typing.ClassVar[str]
-
-    io_loop: typing.ClassVar[ioloop.IOLoop]
-    server: typing.ClassVar[httpserver.HTTPServer]
-    port: typing.ClassVar[int]
-    server_thread: typing.ClassVar[threading.Thread]
-    _stack: typing.ClassVar[contextlib.ExitStack]
-
-    @classmethod
-    def _start_server(cls) -> None:
-        with contextlib.ExitStack() as stack:
-            io_loop = stack.enter_context(run_tornado_loop_in_thread())
-
-            async def run_app() -> None:
-                app = web.Application([(r".*", TestingApp)])
-                cls.server, cls.port = run_tornado_app(
-                    app, cls.certs, cls.scheme, cls.host
-                )
-
-            asyncio.run_coroutine_threadsafe(run_app(), io_loop.asyncio_loop).result()  # type: ignore[attr-defined]
-            cls._stack = stack.pop_all()
-
-    @classmethod
-    def _stop_server(cls) -> None:
-        cls._stack.close()
-
-    @classmethod
-    def setup_class(cls) -> None:
-        cls._start_server()
-
-    @classmethod
-    def teardown_class(cls) -> None:
-        cls._stop_server()
-
-
-class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
-    scheme = "https"
-    host = "localhost"
-    certs = DEFAULT_CERTS
-    certs_dir = ""
-    bad_ca_path = ""
-
-
-class HTTPDummyProxyTestCase:
-    io_loop: typing.ClassVar[ioloop.IOLoop]
-
-    http_host: typing.ClassVar[str] = "localhost"
-    http_host_alt: typing.ClassVar[str] = "127.0.0.1"
-    http_server: typing.ClassVar[httpserver.HTTPServer]
-    http_port: typing.ClassVar[int]
-    http_url: typing.ClassVar[str]
-    http_url_alt: typing.ClassVar[str]
-
-    https_host: typing.ClassVar[str] = "localhost"
-    https_host_alt: typing.ClassVar[str] = "127.0.0.1"
-    https_certs: typing.ClassVar[dict[str, typing.Any]] = DEFAULT_CERTS
-    https_server: typing.ClassVar[httpserver.HTTPServer]
-    https_port: typing.ClassVar[int]
-    https_url: typing.ClassVar[str]
-    https_url_alt: typing.ClassVar[str]
-    https_url_fqdn: typing.ClassVar[str]
-
-    proxy_host: typing.ClassVar[str] = "localhost"
-    proxy_host_alt: typing.ClassVar[str] = "127.0.0.1"
-    proxy_server: typing.ClassVar[httpserver.HTTPServer]
-    proxy_port: typing.ClassVar[int]
-    proxy_url: typing.ClassVar[str]
-    https_proxy_server: typing.ClassVar[httpserver.HTTPServer]
-    https_proxy_port: typing.ClassVar[int]
-    https_proxy_url: typing.ClassVar[str]
-
-    certs_dir: typing.ClassVar[str] = ""
-    bad_ca_path: typing.ClassVar[str] = ""
-
-    server_thread: typing.ClassVar[threading.Thread]
-    _stack: typing.ClassVar[contextlib.ExitStack]
-
-    @classmethod
-    def setup_class(cls) -> None:
-        with contextlib.ExitStack() as stack:
-            io_loop = stack.enter_context(run_tornado_loop_in_thread())
-
-            async def run_app() -> None:
-                app = web.Application([(r".*", TestingApp)])
-                cls.http_server, cls.http_port = run_tornado_app(
-                    app, None, "http", cls.http_host
-                )
-
-                app = web.Application([(r".*", TestingApp)])
-                cls.https_server, cls.https_port = run_tornado_app(
-                    app, cls.https_certs, "https", cls.http_host
-                )
-
-                app = web.Application([(r".*", ProxyHandler)])
-                cls.proxy_server, cls.proxy_port = run_tornado_app(
-                    app, None, "http", cls.proxy_host
-                )
-
-                upstream_ca_certs = cls.https_certs.get("ca_certs")
-                app = web.Application(
-                    [(r".*", ProxyHandler)], upstream_ca_certs=upstream_ca_certs
-                )
-                cls.https_proxy_server, cls.https_proxy_port = run_tornado_app(
-                    app, cls.https_certs, "https", cls.proxy_host
-                )
-
-            asyncio.run_coroutine_threadsafe(run_app(), io_loop.asyncio_loop).result()  # type: ignore[attr-defined]
-            cls._stack = stack.pop_all()
-
-    @classmethod
-    def teardown_class(cls) -> None:
-        cls._stack.close()
-
-
-@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 not available")
-class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
-    host = "::1"
-
-
-@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 not available")
-class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
-    http_host = "localhost"
-    http_host_alt = "127.0.0.1"
-
-    https_host = "localhost"
-    https_host_alt = "127.0.0.1"
-    https_certs = DEFAULT_CERTS
-
-    proxy_host = "::1"
-    proxy_host_alt = "127.0.0.1"
 
 
 class HypercornDummyServerTestCase:
