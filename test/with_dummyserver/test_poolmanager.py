@@ -7,11 +7,11 @@ from unittest import mock
 
 import pytest
 
+from dummyserver.socketserver import HAS_IPV6
 from dummyserver.testcase import (
     HypercornDummyServerTestCase,
     IPv6HypercornDummyServerTestCase,
 )
-from dummyserver.tornadoserver import HAS_IPV6
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown

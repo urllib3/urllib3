@@ -385,7 +385,7 @@ class TestHTTPHeaderDict:
         hdict = {
             "Content-Length": "0",
             "Content-type": "text/plain",
-            "Server": "TornadoServer/1.2.3",
+            "Server": "Hypercorn/1.2.3",
         }
         h = dict(HTTPHeaderDict(hdict).items())
         assert hdict == h
