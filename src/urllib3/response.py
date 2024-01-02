@@ -915,13 +915,15 @@ class HTTPResponse(BaseHTTPResponse):
 
         data = self._raw_read(amt)
 
-        flush_decoder = amt is None or (amt != 0 and not data)
+        flush_decoder = amt != 0 and not data
 
         if not data and len(self._decoded_buffer) == 0:
             return data
 
         if amt is None:
-            data = self._decode(data, decode_content, flush_decoder)
+            # 'data' should contain all content, thus setting 'flush_decoder=True'
+            # to finalize decoding, as this will be the only _decode call
+            data = self._decode(data, decode_content, flush_decoder=True)
             if cache_content:
                 self._body = data
         else:
