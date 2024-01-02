@@ -17,11 +17,11 @@ import pytest
 import trustme
 
 import urllib3.exceptions
+from dummyserver.socketserver import DEFAULT_CA, HAS_IPV6, get_unreachable_address
 from dummyserver.testcase import (
     HypercornDummyProxyTestCase,
     IPv6HypercornDummyProxyTestCase,
 )
-from dummyserver.tornadoserver import DEFAULT_CA, HAS_IPV6, get_unreachable_address
 from urllib3 import HTTPResponse
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import VerifiedHTTPSConnection

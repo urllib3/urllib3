@@ -23,13 +23,13 @@ from unittest import mock
 import pytest
 import trustme
 
-from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from dummyserver.tornadoserver import (
+from dummyserver.socketserver import (
     DEFAULT_CA,
     DEFAULT_CERTS,
     encrypt_key_pem,
     get_unreachable_address,
 )
+from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent

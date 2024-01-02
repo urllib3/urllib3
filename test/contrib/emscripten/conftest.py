@@ -14,7 +14,7 @@ import pytest
 
 from dummyserver.app import pyodide_testing_app
 from dummyserver.hypercornserver import run_hypercorn_in_thread
-from dummyserver.tornadoserver import DEFAULT_CERTS
+from dummyserver.socketserver import DEFAULT_CERTS
 from urllib3.util.url import parse_url
 
 _coverage_count = 0
