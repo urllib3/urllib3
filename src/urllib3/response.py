@@ -913,9 +913,8 @@ class HTTPResponse(BaseHTTPResponse):
             if len(self._decoded_buffer) >= amt:
                 return self._decoded_buffer.get(amt)
 
+        # amt=None will return the whole content
         data = self._raw_read(amt)
-
-        flush_decoder = amt != 0 and not data
 
         if not data and len(self._decoded_buffer) == 0:
             return data
@@ -936,6 +935,11 @@ class HTTPResponse(BaseHTTPResponse):
                     )
                 return data
 
+            # TODO validate necessity of 'amt != 0'
+            #      possibly add 'if amt == 0: return b""' further above as it's done within read1()
+            flush_decoder = amt != 0 and not data
+
+            # TODO: try to remove this code duplication
             decoded_data = self._decode(data, decode_content, flush_decoder)
             self._decoded_buffer.put(decoded_data)
 
@@ -944,6 +948,10 @@ class HTTPResponse(BaseHTTPResponse):
                 # For example, the GZ file header takes 10 bytes, we don't want to read
                 # it one byte at a time
                 data = self._raw_read(amt)
+
+                # TODO verify if flush_decoder is redundant here, as it is not updated
+                #      anyways within the loop. Passing 'False' directly does not lead
+                #      to test-failures. Should be 'True' only(!) for last time called
                 decoded_data = self._decode(data, decode_content, flush_decoder)
                 self._decoded_buffer.put(decoded_data)
             data = self._decoded_buffer.get(amt)
