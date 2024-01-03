@@ -912,6 +912,9 @@ class HTTPResponse(BaseHTTPResponse):
 
             if len(self._decoded_buffer) >= amt:
                 return self._decoded_buffer.get(amt)
+            
+            if amt == 0:
+                return b""
 
         # amt=None will return the whole content
         data = self._raw_read(amt)
@@ -935,9 +938,7 @@ class HTTPResponse(BaseHTTPResponse):
                     )
                 return data
 
-            # TODO validate necessity of 'amt != 0'
-            #      possibly add 'if amt == 0: return b""' further above as it's done within read1()
-            flush_decoder = amt != 0 and not data
+            flush_decoder = not data
 
             # TODO: try to remove this code duplication
             decoded_data = self._decode(data, decode_content, flush_decoder)
