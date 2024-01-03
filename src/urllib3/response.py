@@ -912,23 +912,24 @@ class HTTPResponse(BaseHTTPResponse):
 
             if len(self._decoded_buffer) >= amt:
                 return self._decoded_buffer.get(amt)
-            
+
             if amt == 0:
                 return b""
 
-        # amt=None will return the whole content
-        data = self._raw_read(amt)
-
-        if not data and len(self._decoded_buffer) == 0:
-            return data
-
         if amt is None:
-            # 'data' should contain all content, thus setting 'flush_decoder=True'
-            # to finalize decoding, as this will be the only _decode call
+            data = self._raw_read()
+            if not data and len(self._decoded_buffer) == 0:
+                return data
+
+            # here, 'data' contains all content, thus setting 'flush_decoder=True'
+            # to finalize decoding, as this will be the only/last _decode call
             data = self._decode(data, decode_content, flush_decoder=True)
             if cache_content:
                 self._body = data
+
         else:
+            data = self._raw_read(amt)
+
             # do not waste memory on buffer when not decoding
             if not decode_content:
                 if self._has_decoded_content:
