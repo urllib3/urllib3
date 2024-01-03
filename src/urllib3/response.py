@@ -938,23 +938,13 @@ class HTTPResponse(BaseHTTPResponse):
                     )
                 return data
 
-            flush_decoder = not data
-
-            # TODO: try to remove this code duplication
-            decoded_data = self._decode(data, decode_content, flush_decoder)
-            self._decoded_buffer.put(decoded_data)
-
-            while len(self._decoded_buffer) < amt and data:
-                # TODO make sure to initially read enough data to get past the headers
-                # For example, the GZ file header takes 10 bytes, we don't want to read
-                # it one byte at a time
-                data = self._raw_read(amt)
-
-                # TODO verify if flush_decoder is redundant here, as it is not updated
-                #      anyways within the loop. Passing 'False' directly does not lead
-                #      to test-failures. Should be 'True' only(!) for last time called
+            while True:
+                flush_decoder = not data
                 decoded_data = self._decode(data, decode_content, flush_decoder)
                 self._decoded_buffer.put(decoded_data)
+                if len(self._decoded_buffer) >= amt or flush_decoder:
+                    break
+                data = self._raw_read(amt)
             data = self._decoded_buffer.get(amt)
 
         return data
