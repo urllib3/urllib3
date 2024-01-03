@@ -12,8 +12,8 @@ from urllib.parse import urlencode
 
 import pytest
 
+from dummyserver.socketserver import NoIPv6Warning
 from dummyserver.testcase import HypercornDummyServerTestCase, SocketDummyServerTestCase
-from dummyserver.tornadoserver import NoIPv6Warning
 from urllib3 import HTTPConnectionPool, encode_multipart_formdata
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent

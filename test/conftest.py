@@ -13,8 +13,8 @@ import trustme
 from dummyserver.app import hypercorn_app
 from dummyserver.asgi_proxy import ProxyApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
+from dummyserver.socketserver import HAS_IPV6
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
-from dummyserver.tornadoserver import HAS_IPV6
 from urllib3.util import ssl_
 from urllib3.util.url import parse_url
 

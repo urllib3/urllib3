@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from dummyserver.tornadoserver import DEFAULT_CA
+from dummyserver.socketserver import DEFAULT_CA
 from urllib3 import Retry
 from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import (
