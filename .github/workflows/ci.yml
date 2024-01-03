@@ -38,8 +38,7 @@ jobs:
         os:
           - macos-12
           - windows-latest
-          - ubuntu-20.04  # OpenSSL 1.1.1
-          - ubuntu-22.04  # OpenSSL 3.0
+          - ubuntu-22.04
         nox-session: ['']
         include:
           - experimental: false
@@ -58,6 +57,11 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test_integration
+          # OpenSSL 1.1.1
+          - python-version: "3.8"
+            os: ubuntu-20.04
+            experimental: false
+            nox-session: test-3.8
           # pypy
           - python-version: "pypy-3.8"
             os: ubuntu-latest
