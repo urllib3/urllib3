@@ -907,15 +907,6 @@ class HTTPResponse(BaseHTTPResponse):
         if decode_content is None:
             decode_content = self.decode_content
 
-        if amt is not None:
-            cache_content = False
-
-            if len(self._decoded_buffer) >= amt:
-                return self._decoded_buffer.get(amt)
-
-            if amt == 0:
-                return b""
-
         if amt is None:
             data = self._raw_read()
             if not data and len(self._decoded_buffer) == 0:
@@ -927,7 +918,15 @@ class HTTPResponse(BaseHTTPResponse):
             if cache_content:
                 self._body = data
 
-        else:
+        else:  # amt is not None
+            cache_content = False
+
+            if len(self._decoded_buffer) >= amt:
+                return self._decoded_buffer.get(amt)
+
+            if amt == 0:
+                return b""
+
             data = self._raw_read(amt)
 
             # do not waste memory on buffer when not decoding
