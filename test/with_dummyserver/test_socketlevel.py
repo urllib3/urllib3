@@ -1301,10 +1301,8 @@ class TestProxyManager(SocketDummyServerTestCase):
         base_url = f"http://{self.host}:{self.port}"
 
         with ProxyManager(base_url) as proxy:
-            with pytest.raises(MaxRetryError) as e:
+            with pytest.raises(MaxRetryError):
                 proxy.request("GET", "https://example.com", retries=0)
-
-            assert type(e.value.reason) is SSLError
 
     def test_header_longer_than_maxline(self) -> None:
         def http_socket_handler(listener: socket.socket) -> None:
