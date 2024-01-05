@@ -1,0 +1,3 @@
+-Modified/Extended code, thus HTTP(S)Connection.proxy_is_verified is set to either
+True or False when connecting to a (tunneling or forwading) proxy.
+- Fixed a bug where HTTPConnection.is_verified was not set to False.
