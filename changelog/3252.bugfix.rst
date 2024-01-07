@@ -1,0 +1,2 @@
+backport https://github.com/python/cpython/issues/103472 for 3.11.3 and older to prevent
+a ResourceWarning when using a CONNECT proxy
