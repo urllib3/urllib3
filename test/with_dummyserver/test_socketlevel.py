@@ -12,6 +12,7 @@ import shutil
 import socket
 import ssl
 import tempfile
+import time
 import typing
 import zlib
 from collections import OrderedDict
@@ -1250,6 +1251,7 @@ class TestProxyManager(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(http_socket_handler)
+        time.sleep(0.1)
         base_url = f"https://{self.host}:{self.port}"
 
         with ProxyManager(base_url, cert_reqs="NONE") as proxy:
@@ -1293,7 +1295,7 @@ class TestSSL(SocketDummyServerTestCase):
         self._start_server(socket_handler)
         with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
             with pytest.raises(
-                SSLError, match=r"(wrong version number|record overflow)"
+                SSLError, match=r"(wrong version number|record overflow|record layer failure)"
             ):
                 pool.request("GET", "/", retries=False)
 

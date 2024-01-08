@@ -1,0 +1,1 @@
+Fixed issue where test suite will fail because the server did not have enought time to start up.
