@@ -102,6 +102,7 @@ add_imports = "from __future__ import annotations"
 
 [tool.mypy]
 mypy_path = "src"
+explicit_package_bases = true
 check_untyped_defs = true
 disallow_any_generics = true
 disallow_incomplete_defs = true
