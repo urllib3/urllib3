@@ -431,8 +431,13 @@ class TestResponse:
                 break
         assert ret == b"foobarbaz"
 
+    decode_param_set = [
+        b"foo",
+        b"x" * 100,
+    ]
+
     @onlyZstd()
-    @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
+    @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_error(self, data: bytes) -> None:
         fp = BytesIO(data)
 
@@ -440,13 +445,65 @@ class TestResponse:
             HTTPResponse(fp, headers={"content-encoding": "zstd"})
 
     @onlyZstd()
-    @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
-    def test_decode_zstd_incomplete(self, data: bytes) -> None:
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_incomplete_preload_content(self, data: bytes) -> None:
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])
 
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "zstd"})
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_incomplete_read(self, data: bytes) -> None:
+        data = zstd.compress(data)
+        fp = BytesIO(data[:-1])  # shorten the data to trigger DecodeError
+
+        # create response object without(!) reading/decoding the content
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        # read/decode, expecting DecodeError
+        with pytest.raises(DecodeError):
+            r.read(decode_content=True)
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_incomplete_read1(self, data: bytes) -> None:
+        data = zstd.compress(data)
+        fp = BytesIO(data[:-1])
+
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        # read/decode via read1(!), expecting DecodeError
+        with pytest.raises(DecodeError):
+            amt_decoded = 0
+            # loop, as read1() may return just partial data
+            while amt_decoded < len(data):
+                part = r.read1(decode_content=True)
+                amt_decoded += len(part)
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_read1(self, data: bytes) -> None:
+        encoded_data = zstd.compress(data)
+        fp = BytesIO(encoded_data)
+
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        amt_decoded = 0
+        decoded_data = b""
+        # loop, as read1() may return just partial data
+        while amt_decoded < len(data):
+            part = r.read1(decode_content=True)
+            amt_decoded += len(part)
+            decoded_data += part
+        assert decoded_data == data
 
     def test_multi_decoding_deflate_deflate(self) -> None:
         data = zlib.compress(zlib.compress(b"foo"))
