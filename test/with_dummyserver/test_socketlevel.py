@@ -1293,7 +1293,8 @@ class TestSSL(SocketDummyServerTestCase):
         self._start_server(socket_handler)
         with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
             with pytest.raises(
-                SSLError, match=r"(wrong version number|record overflow)"
+                SSLError,
+                match=r"(wrong version number|record overflow|record layer failure)",
             ):
                 pool.request("GET", "/", retries=False)
 

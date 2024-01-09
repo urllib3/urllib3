@@ -862,6 +862,7 @@ def _wrap_proxy_error(err: Exception, proxy_scheme: str | None) -> ProxyError:
     is_likely_http_proxy = (
         "wrong version number" in error_normalized
         or "unknown protocol" in error_normalized
+        or "record layer failure" in error_normalized
     )
     http_proxy_warning = (
         ". Your proxy appears to only use HTTP and not HTTPS, "
