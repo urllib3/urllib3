@@ -279,9 +279,13 @@ def mypy(session: nox.Session) -> None:
     session.run("mypy", "--version")
     session.run(
         "mypy",
+        "-p",
         "dummyserver",
-        "noxfile.py",
-        "src/urllib3",
+        "-m",
+        "noxfile",
+        "-p",
+        "urllib3",
+        "-p",
         "test",
     )
 
