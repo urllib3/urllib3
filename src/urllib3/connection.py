@@ -248,6 +248,9 @@ class HTTPConnection(_HTTPConnection):
         # not using tunnelling.
         self._has_connected_to_proxy = bool(self.proxy)
 
+        if self._has_connected_to_proxy:
+            self.proxy_is_verified = False
+
     @property
     def is_closed(self) -> bool:
         return self.sock is None
@@ -611,8 +614,11 @@ class HTTPSConnection(HTTPConnection):
         if self._tunnel_host is not None:
             # We're tunneling to an HTTPS origin so need to do TLS-in-TLS.
             if self._tunnel_scheme == "https":
+                # _connect_tls_proxy will verify and assign proxy_is_verified
                 self.sock = sock = self._connect_tls_proxy(self.host, sock)
                 tls_in_tls = True
+            elif self._tunnel_scheme == "http":
+                self.proxy_is_verified = False
 
             # If we're tunneling it means we're connected to our proxy.
             self._has_connected_to_proxy = True
@@ -656,12 +662,22 @@ class HTTPSConnection(HTTPConnection):
             assert_fingerprint=self.assert_fingerprint,
         )
         self.sock = sock_and_verified.socket
+
+        # TODO: Set correct `self.is_verified` in case of HTTPS proxy +
+        #       HTTP destination, see
+        #       `test_is_verified_https_proxy_to_http_target` and
+        #       https://github.com/urllib3/urllib3/issues/3267.
         self.is_verified = sock_and_verified.is_verified
 
         # If there's a proxy to be connected to we are fully connected.
         # This is set twice (once above and here) due to forwarding proxies
         # not using tunnelling.
         self._has_connected_to_proxy = bool(self.proxy)
+
+        # Set `self.proxy_is_verified` unless it's already set while
+        # establishing a tunnel.
+        if self._has_connected_to_proxy and self.proxy_is_verified is None:
+            self.proxy_is_verified = sock_and_verified.is_verified
 
     def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> ssl.SSLSocket:
         """
