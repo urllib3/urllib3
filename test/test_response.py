@@ -431,8 +431,13 @@ class TestResponse:
                 break
         assert ret == b"foobarbaz"
 
+    decode_param_set = [
+        b"foo",
+        b"x" * 100,
+    ]
+
     @onlyZstd()
-    @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
+    @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_error(self, data: bytes) -> None:
         fp = BytesIO(data)
 
@@ -440,18 +445,13 @@ class TestResponse:
             HTTPResponse(fp, headers={"content-encoding": "zstd"})
 
     @onlyZstd()
-    @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
-    def test_decode_zstd_incomplete(self, data: bytes) -> None:
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_incomplete_preload_content(self, data: bytes) -> None:
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])
 
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "zstd"})
-
-    decode_param_set = [
-        b"foo",
-        b"x" * 100,
-    ]
 
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
