@@ -662,6 +662,11 @@ class HTTPSConnection(HTTPConnection):
             assert_fingerprint=self.assert_fingerprint,
         )
         self.sock = sock_and_verified.socket
+
+        # TODO: Set correct `self.is_verified` in case of HTTPS proxy +
+        #       HTTP destination, see
+        #       `test_is_verified_https_proxy_to_http_target` and
+        #       https://github.com/urllib3/urllib3/issues/3267.
         self.is_verified = sock_and_verified.is_verified
 
         # If there's a proxy to be connected to we are fully connected.
@@ -669,10 +674,8 @@ class HTTPSConnection(HTTPConnection):
         # not using tunnelling.
         self._has_connected_to_proxy = bool(self.proxy)
 
-        # TODO validate
-        # in case of forwarding-proxy, still assign 'is_verified'
-        # from https://github.com/urllib3/urllib3/pull/3149 (by tushar5526)
-        # this fixes test_is_verified_https_proxy_to_http_target
+        # Set `self.proxy_is_verified` unless it's already set while
+        # establishing a tunnel.
         if self._has_connected_to_proxy and self.proxy_is_verified is None:
             self.proxy_is_verified = sock_and_verified.is_verified
 
