@@ -1,1 +1,1 @@
-Fixed test suite to handle "record layer failure" error.
+Fixed handling of OpenSSL 3.2.0 new error message for misconfiguring an HTTP proxy as HTTPS.
