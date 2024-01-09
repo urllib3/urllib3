@@ -19,6 +19,7 @@ from urllib3.connection import (  # type: ignore[attr-defined]
 )
 from urllib3.exceptions import HTTPError, ProxyError, SSLError
 from urllib3.util import ssl_
+from urllib3.util.request import SKIP_HEADER
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
@@ -265,3 +266,60 @@ class TestConnection:
                 conn.connect()
 
         context.wrap_socket.return_value.close.assert_called_once_with()
+
+    @pytest.mark.parametrize(
+        "accept_encoding",
+        [
+            "Accept-Encoding",
+            "accept-encoding",
+            b"Accept-Encoding",
+            b"accept-encoding",
+            None,
+        ],
+    )
+    @pytest.mark.parametrize("host", ["Host", "host", b"Host", b"host", None])
+    @pytest.mark.parametrize(
+        "user_agent", ["User-Agent", "user-agent", b"User-Agent", b"user-agent", None]
+    )
+    @pytest.mark.parametrize("chunked", [True, False])
+    def test_skip_header(
+        self,
+        accept_encoding: str | None,
+        host: str | None,
+        user_agent: str | None,
+        chunked: bool,
+    ) -> None:
+        headers = {}
+        if accept_encoding is not None:
+            headers[accept_encoding] = SKIP_HEADER
+        if host is not None:
+            headers[host] = SKIP_HEADER
+        if user_agent is not None:
+            headers[user_agent] = SKIP_HEADER
+
+        # When dropping support for Python 3.9, this can be rewritten to parenthesized
+        # context managers
+        with mock.patch("urllib3.util.connection.create_connection"):
+            with mock.patch(
+                "urllib3.connection._HTTPConnection.putheader"
+            ) as http_client_putheader:
+                conn = HTTPConnection("")
+                conn.request("GET", "/headers", headers=headers, chunked=chunked)
+
+        request_headers = {}
+        for call in http_client_putheader.call_args_list:
+            header, value = call.args
+            request_headers[header] = value
+
+        if accept_encoding is None:
+            assert "Accept-Encoding" in request_headers
+        else:
+            assert accept_encoding not in request_headers
+        if host is None:
+            assert "Host" in request_headers
+        else:
+            assert host not in request_headers
+        if user_agent is None:
+            assert "User-Agent" in request_headers
+        else:
+            assert user_agent not in request_headers

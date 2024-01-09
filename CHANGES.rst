@@ -1,3 +1,40 @@
+2.1.0 (2023-11-13)
+==================
+
+Read the `v2 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`__ for help upgrading to the latest version of urllib3.
+
+Removals
+--------
+
+- Removed support for the deprecated urllib3[secure] extra. (`#2680 <https://github.com/urllib3/urllib3/issues/2680>`__)
+- Removed support for the deprecated SecureTransport TLS implementation. (`#2681 <https://github.com/urllib3/urllib3/issues/2681>`__)
+- Removed support for the end-of-life Python 3.7. (`#3143 <https://github.com/urllib3/urllib3/issues/3143>`__)
+
+
+Bugfixes
+--------
+
+- Allowed loading CA certificates from memory for proxies. (`#3065 <https://github.com/urllib3/urllib3/issues/3065>`__)
+- Fixed decoding Gzip-encoded responses which specified ``x-gzip`` content-encoding. (`#3174 <https://github.com/urllib3/urllib3/issues/3174>`__)
+
+
+2.0.7 (2023-10-17)
+==================
+
+* Made body stripped from HTTP requests changing the request method to GET after HTTP 303 "See Other" redirect responses.
+
+2.0.6 (2023-10-02)
+==================
+
+* Added the ``Cookie`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+
+2.0.5 (2023-09-20)
+==================
+
+- Allowed pyOpenSSL third-party module without any deprecation warning. (`#3126 <https://github.com/urllib3/urllib3/issues/3126>`__)
+- Fixed default ``blocksize`` of ``HTTPConnection`` classes to match high-level classes. Previously was 8KiB, now 16KiB. (`#3066 <https://github.com/urllib3/urllib3/issues/3066>`__)
+
+
 2.0.4 (2023-07-19)
 ==================
 
@@ -154,6 +191,16 @@ Fixed
 * Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()`` (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__).
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
 * Fixed ``urllib3.contrib.pyopenssl.WrappedSocket`` and ``urllib3.contrib.securetransport.WrappedSocket`` close methods (`#2970 <https://github.com/urllib3/urllib3/issues/2970>`__)
+
+1.26.18 (2023-10-17)
+====================
+
+* Made body stripped from HTTP requests changing the request method to GET after HTTP 303 "See Other" redirect responses.
+
+1.26.17 (2023-10-02)
+====================
+
+* Added the ``Cookie`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``. (`#3139 <https://github.com/urllib3/urllib3/pull/3139>`_)
 
 1.26.16 (2023-05-23)
 ====================

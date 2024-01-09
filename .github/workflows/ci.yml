@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
 
       - name: "Setup Python"
-        uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1 # v4.7.0
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
           python-version: "3.x"
           cache: "pip"
@@ -34,19 +34,35 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         os:
-          - macos-11
+          - macos-12
           - windows-latest
-          - ubuntu-20.04  # OpenSSL 1.1.1
-          - ubuntu-22.04  # OpenSSL 3.0
+          - ubuntu-22.04
         nox-session: ['']
         include:
           - experimental: false
-          - python-version: "pypy-3.7"
+          # integration
+          # 3.8 and 3.9 have a known issue with large SSL requests that we work around:
+          # https://github.com/urllib3/urllib3/pull/3181#issuecomment-1794830698
+          - python-version: "3.8"
             os: ubuntu-latest
             experimental: false
-            nox-session: test-pypy
+            nox-session: test_integration
+          - python-version: "3.9"
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test_integration
+          - python-version: "3.12"
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test_integration
+          # OpenSSL 1.1.1
+          - python-version: "3.8"
+            os: ubuntu-20.04
+            experimental: false
+            nox-session: test-3.8
+          # pypy
           - python-version: "pypy-3.8"
             os: ubuntu-latest
             experimental: false
@@ -60,6 +76,7 @@ jobs:
             experimental: false
             nox-session: test-pypy
           - python-version: "3.x"
+          # brotli
             os: ubuntu-latest
             experimental: false
             nox-session: test_brotlipy
@@ -68,21 +85,18 @@ jobs:
             os: ubuntu-20.04  # CPython 3.9.2 is not available for ubuntu-22.04.
             experimental: false
             nox-session: test-3.9
-          - python-version: "3.12"
+          - python-version: "3.11"
+            os: ubuntu-latest
+            nox-session: emscripten
             experimental: true
         exclude:
           # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
           # https://github.com/python/cpython/issues/83001
-          - python-version: "3.7"
-            os: ubuntu-22.04
           - python-version: "3.8"
             os: ubuntu-22.04
-          # Testing with non-final CPython on macOS is too slow for CI.
-          - python-version: "3.12"
-            os: macos-11
 
     runs-on: ${{ matrix.os }}
-    name: ${{ fromJson('{"macos-11":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
+    name: ${{ fromJson('{"macos-12":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
     timeout-minutes: 30
     steps:
@@ -90,7 +104,7 @@ jobs:
         uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
 
       - name: "Setup Python ${{ matrix.python-version }}"
-        uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1 # v4.7.0
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
@@ -98,6 +112,12 @@ jobs:
       - name: "Install dependencies"
         run: python -m pip install --upgrade pip setuptools nox
 
+      - name: "Install Chrome"
+        uses: browser-actions/setup-chrome@52f10de5479c69bcbbab2eab094c9d373148005e # v1.4.0
+        if: ${{ matrix.nox-session == 'emscripten' }}
+      - name: "Install Firefox"
+        uses: browser-actions/setup-firefox@29a706787c6fb2196f091563261e1273bf379ead # v1.4.0
+        if: ${{ matrix.nox-session == 'emscripten' }}
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
         run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION} --error-on-missing-interpreters
@@ -122,12 +142,12 @@ jobs:
         uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
 
       - name: "Setup Python"
-        uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1 # v4.7.0
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
           python-version: "3.x"
 
       - name: "Install coverage"
-        run: "python -m pip install --upgrade coverage"
+        run: "python -m pip install -r dev-requirements.txt"
 
       - name: "Download artifact"
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2

@@ -7,7 +7,7 @@ import warnings
 from types import TracebackType
 from urllib.parse import urljoin
 
-from ._collections import RecentlyUsedContainer
+from ._collections import HTTPHeaderDict, RecentlyUsedContainer
 from ._request_methods import RequestMethods
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
@@ -26,8 +26,7 @@ from .util.url import Url, parse_url
 
 if typing.TYPE_CHECKING:
     import ssl
-
-    from typing_extensions import Literal
+    from typing import Literal
 
 __all__ = ["PoolManager", "ProxyManager", "proxy_from_url"]
 
@@ -39,6 +38,7 @@ SSL_KEYWORDS = (
     "cert_file",
     "cert_reqs",
     "ca_certs",
+    "ca_cert_data",
     "ssl_version",
     "ssl_minimum_version",
     "ssl_maximum_version",
@@ -74,6 +74,7 @@ class PoolKey(typing.NamedTuple):
     key_cert_file: str | None
     key_cert_reqs: str | None
     key_ca_certs: str | None
+    key_ca_cert_data: str | bytes | None
     key_ssl_version: int | str | None
     key_ssl_minimum_version: ssl.TLSVersion | None
     key_ssl_maximum_version: ssl.TLSVersion | None
@@ -449,9 +450,12 @@ class PoolManager(RequestMethods):
         # Support relative URLs for redirecting.
         redirect_location = urljoin(url, redirect_location)
 
-        # RFC 7231, Section 6.4.4
         if response.status == 303:
+            # Change the method according to RFC 9110, Section 15.4.4.
             method = "GET"
+            # And lose the body not to transfer anything sensitive.
+            kw["body"] = None
+            kw["headers"] = HTTPHeaderDict(kw["headers"])._prepare_for_method_change()
 
         retries = kw.get("retries")
         if not isinstance(retries, Retry):

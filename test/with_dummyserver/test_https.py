@@ -5,7 +5,6 @@ import datetime
 import os.path
 import shutil
 import ssl
-import sys
 import tempfile
 import warnings
 from pathlib import Path
@@ -13,9 +12,7 @@ from test import (
     LONG_TIMEOUT,
     SHORT_TIMEOUT,
     TARPIT_HOST,
-    notSecureTransport,
     requires_network,
-    requires_ssl_context_keyfile_password,
     resolvesLocalhostFQDN,
 )
 from test.conftest import ServerConfig
@@ -26,13 +23,13 @@ import trustme
 
 import urllib3.util as util
 import urllib3.util.ssl_
-from dummyserver.server import (
+from dummyserver.socketserver import (
     DEFAULT_CA,
     DEFAULT_CA_KEY,
     DEFAULT_CERTS,
     encrypt_key_pem,
 )
-from dummyserver.testcase import HTTPSDummyServerTestCase
+from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import RECENT_DATE, HTTPSConnection, VerifiedHTTPSConnection
 from urllib3.exceptions import (
@@ -68,7 +65,7 @@ PASSWORD_CLIENT_KEYFILE = "client_password.key"
 CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
 
 
-class TestHTTPS(HTTPSDummyServerTestCase):
+class TestHTTPS(HTTPSHypercornDummyServerTestCase):
     tls_protocol_name: str | None = None
 
     def tls_protocol_not_default(self) -> bool:
@@ -190,7 +187,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             with pytest.raises((SSLError, ProtocolError)):
                 https_pool.request("GET", "/certificate", retries=False)
 
-    @requires_ssl_context_keyfile_password()
     def test_client_key_password(self) -> None:
         with HTTPSConnectionPool(
             self.host,
@@ -205,7 +201,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             subject = r.json()
             assert subject["organizationalUnitName"].startswith("Testing cert")
 
-    @requires_ssl_context_keyfile_password()
     def test_client_encrypted_key_requires_password(self) -> None:
         with HTTPSConnectionPool(
             self.host,
@@ -218,7 +213,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             with pytest.raises(MaxRetryError, match="password is required") as e:
                 https_pool.request("GET", "/certificate")
 
-            assert isinstance(e.value.reason, SSLError)
+            assert type(e.value.reason) is SSLError
 
     def test_verified(self) -> None:
         with HTTPSConnectionPool(
@@ -228,8 +223,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ca_certs=DEFAULT_CA,
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            conn = https_pool._new_conn()
-            assert conn.__class__ == VerifiedHTTPSConnection
+            with contextlib.closing(https_pool._new_conn()) as conn:
+                assert conn.__class__ == VerifiedHTTPSConnection
 
             with warnings.catch_warnings(record=True) as w:
                 r = https_pool.request("GET", "/")
@@ -243,8 +238,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         )
         ctx.load_verify_locations(cafile=DEFAULT_CA)
         with HTTPSConnectionPool(self.host, self.port, ssl_context=ctx) as https_pool:
-            conn = https_pool._new_conn()
-            assert conn.__class__ == VerifiedHTTPSConnection
+            with contextlib.closing(https_pool._new_conn()) as conn:
+                assert conn.__class__ == VerifiedHTTPSConnection
 
             with mock.patch("warnings.warn") as warn:
                 r = https_pool.request("GET", "/")
@@ -258,15 +253,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA, ssl_context=ctx
         ) as https_pool:
-            conn = https_pool._new_conn()
-            assert conn.__class__ == VerifiedHTTPSConnection
+            with contextlib.closing(https_pool._new_conn()) as conn:
+                assert conn.__class__ == VerifiedHTTPSConnection
 
             with mock.patch("warnings.warn") as warn:
                 r = https_pool.request("GET", "/")
                 assert r.status == 200
                 assert not warn.called, warn.call_args_list
 
-    @notSecureTransport()  # SecureTransport does not support cert directories
     def test_ca_dir_verified(self, tmp_path: Path) -> None:
         # OpenSSL looks up certificates by the hash for their name, see c_rehash
         # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
@@ -280,8 +274,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ca_cert_dir=str(tmp_path),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            conn = https_pool._new_conn()
-            assert conn.__class__ == VerifiedHTTPSConnection
+            with contextlib.closing(https_pool._new_conn()) as conn:
+                assert conn.__class__ == VerifiedHTTPSConnection
 
             with warnings.catch_warnings(record=True) as w:
                 r = https_pool.request("GET", "/")
@@ -299,7 +293,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ) as https_pool:
             with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/", retries=0)
-            assert isinstance(e.value.reason, SSLError)
+            assert type(e.value.reason) is SSLError
             assert "doesn't match" in str(
                 e.value.reason
             ) or "certificate verify failed" in str(e.value.reason)
@@ -314,7 +308,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ) as https_pool:
             with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/")
-            assert isinstance(e.value.reason, SSLError)
+            assert type(e.value.reason) is SSLError
             assert (
                 "certificate verify failed" in str(e.value.reason)
                 # PyPy is more specific
@@ -329,14 +323,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ca_certs=self.bad_ca_path,
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            conn = https_pool._get_conn()
-            try:
+            with contextlib.closing(https_pool._get_conn()) as conn:
                 with pytest.raises(ssl.SSLError):
                     conn.connect()
 
                 assert conn.sock is not None  # type: ignore[attr-defined]
-            finally:
-                conn.close()
 
     def test_verified_without_ca_certs(self) -> None:
         # default is cert_reqs=None which is ssl.CERT_NONE
@@ -348,7 +339,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ) as https_pool:
             with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/")
-            assert isinstance(e.value.reason, SSLError)
+            assert type(e.value.reason) is SSLError
             # there is a different error message depending on whether or
             # not pyopenssl is injected
             assert (
@@ -453,6 +444,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # the python ssl module).
             if hasattr(conn.sock, "server_hostname"):  # type: ignore[attr-defined]
                 assert conn.sock.server_hostname == "localhost"  # type: ignore[attr-defined]
+            conn.getresponse().close()
+            conn.close()
 
     def test_assert_fingerprint_md5(self) -> None:
         with HTTPSConnectionPool(
@@ -496,7 +489,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         def _test_request(pool: HTTPSConnectionPool) -> SSLError:
             with pytest.raises(MaxRetryError) as cm:
                 pool.request("GET", "/", retries=0)
-            assert isinstance(cm.value.reason, SSLError)
+            assert type(cm.value.reason) is SSLError
             return cm.value.reason
 
         with HTTPSConnectionPool(
@@ -539,7 +532,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ) as https_pool:
             with pytest.raises(MaxRetryError) as cm:
                 https_pool.request("GET", "/", retries=0)
-            assert isinstance(cm.value.reason, SSLError)
+            assert type(cm.value.reason) is SSLError
 
     def test_verify_none_and_good_fingerprint(self) -> None:
         with HTTPSConnectionPool(
@@ -553,12 +546,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ) as https_pool:
             https_pool.request("GET", "/")
 
-    @notSecureTransport()
     def test_good_fingerprint_and_hostname_mismatch(self) -> None:
-        # This test doesn't run with SecureTransport because we don't turn off
-        # hostname validation without turning off all validation, which this
-        # test doesn't do (deliberately). We should revisit this if we make
-        # new decisions.
         with HTTPSConnectionPool(
             "127.0.0.1",
             self.port,
@@ -623,8 +611,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             cert_reqs="CERT_NONE",
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            conn = https_pool._new_conn()
-            try:
+            with contextlib.closing(https_pool._new_conn()) as conn:
                 conn.set_tunnel(self.host, self.port)
                 with mock.patch.object(
                     conn, "_tunnel", create=True, return_value=None
@@ -632,8 +619,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                     with pytest.warns(InsecureRequestWarning):
                         https_pool._make_request(conn, "GET", "/")
                 conn_tunnel.assert_called_once_with()
-            finally:
-                conn.close()
 
     @requires_network()
     def test_enhanced_timeout(self) -> None:
@@ -644,14 +629,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             retries=False,
             cert_reqs="CERT_REQUIRED",
         ) as https_pool:
-            conn = https_pool._new_conn()
-            try:
+            with contextlib.closing(https_pool._new_conn()) as conn:
                 with pytest.raises(ConnectTimeoutError):
                     https_pool.request("GET", "/")
                 with pytest.raises(ConnectTimeoutError):
                     https_pool._make_request(conn, "GET", "/")
-            finally:
-                conn.close()
 
         with HTTPSConnectionPool(
             TARPIT_HOST,
@@ -670,14 +652,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             retries=False,
             cert_reqs="CERT_REQUIRED",
         ) as https_pool:
-            conn = https_pool._new_conn()
-            try:
+            with contextlib.closing(https_pool._new_conn()) as conn:
                 with pytest.raises(ConnectTimeoutError):
                     https_pool.request(
                         "GET", "/", timeout=Timeout(total=None, connect=SHORT_TIMEOUT)
                     )
-            finally:
-                conn.close()
 
     def test_enhanced_ssl_connection(self) -> None:
         fingerprint = "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
@@ -805,15 +784,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.port,
             ca_certs=DEFAULT_CA,
             ssl_minimum_version=self.tls_version(),
+            ssl_maximum_version=self.tls_version(),
         ) as https_pool:
-            conn = https_pool._get_conn()
-            try:
+            with contextlib.closing(https_pool._get_conn()) as conn:
                 conn.connect()
                 if not hasattr(conn.sock, "version"):  # type: ignore[attr-defined]
                     pytest.skip("SSLSocket.version() not available")
                 assert conn.sock.version() == self.tls_protocol_name  # type: ignore[attr-defined]
-            finally:
-                conn.close()
 
     def test_ssl_version_is_deprecated(self) -> None:
         if self.tls_protocol_name is None:
@@ -822,12 +799,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA, ssl_version=self.ssl_version()
         ) as https_pool:
-            conn = https_pool._get_conn()
-            try:
+            with contextlib.closing(https_pool._get_conn()) as conn:
                 with pytest.warns(DeprecationWarning) as w:
                     conn.connect()
-            finally:
-                conn.close()
 
         assert len(w) >= 1
         assert any(x.category == DeprecationWarning for x in w)
@@ -856,12 +830,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA, ssl_version=ssl_version
         ) as https_pool:
-            conn = https_pool._get_conn()
-            try:
+            with contextlib.closing(https_pool._get_conn()) as conn:
                 with warnings.catch_warnings(record=True) as w:
                     conn.connect()
-            finally:
-                conn.close()
 
         assert [str(wm) for wm in w if wm.category != ResourceWarning] == []
 
@@ -877,12 +848,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ca_certs=DEFAULT_CA,
             ssl_context=ctx,
         ) as https_pool:
-            conn = https_pool._get_conn()
-            try:
+            with contextlib.closing(https_pool._get_conn()) as conn:
                 with warnings.catch_warnings(record=True) as w:
                     conn.connect()
-            finally:
-                conn.close()
 
         assert [str(wm) for wm in w if wm.category != ResourceWarning] == []
 
@@ -909,11 +877,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 conn = https_pool._get_conn()
                 try:
                     conn.connect()
-                    assert conn.sock.version() == self.tls_protocol_name  # type: ignore[attr-defined]
+                    if maximum_version == TLSVersion.MAXIMUM_SUPPORTED:
+                        # A higher protocol than tls_protocol_name could be negotiated
+                        assert conn.sock.version() >= self.tls_protocol_name  # type: ignore[attr-defined]
+                    else:
+                        assert conn.sock.version() == self.tls_protocol_name  # type: ignore[attr-defined]
                 finally:
                     conn.close()
 
-    @pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8+")
     def test_sslkeylogfile(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -977,13 +948,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ctx = urllib3.util.ssl_.create_urllib3_context()
         assert ctx.minimum_version == ssl.TLSVersion.TLSv1_2
         # urllib3 sets a default maximum version only when it is
-        # injected with PyOpenSSL- or SecureTransport-backed
-        # SSL-support.
+        # injected with PyOpenSSL SSL-support.
         # Otherwise, the default maximum version is set by Python's
         # `ssl.SSLContext`. The value respects OpenSSL configuration and
         # can be different from `ssl.TLSVersion.MAXIMUM_SUPPORTED`.
         # https://github.com/urllib3/urllib3/issues/2477#issuecomment-1151452150
-        if util.IS_PYOPENSSL or util.IS_SECURETRANSPORT:
+        if util.IS_PYOPENSSL:
             expected_maximum_version = ssl.TLSVersion.MAXIMUM_SUPPORTED
         else:
             expected_maximum_version = ssl.SSLContext(
@@ -1112,7 +1082,7 @@ class TestHTTPS_Hostname:
         # IP addresses should fail for commonName.
         else:
             assert err is not None
-            assert type(err.reason) == SSLError
+            assert type(err.reason) is SSLError
             assert isinstance(
                 err.reason.args[0], (ssl.SSLCertVerificationError, CertificateError)
             )

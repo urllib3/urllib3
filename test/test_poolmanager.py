@@ -259,11 +259,15 @@ class TestPoolManager:
         assert pool is other_pool
         assert all(isinstance(key, PoolKey) for key in p.pools.keys())
 
-    def test_deprecated_no_scheme(self) -> None:
+    @patch("urllib3.poolmanager.PoolManager.connection_from_host")
+    def test_deprecated_no_scheme(self, connection_from_host: mock.MagicMock) -> None:
+        # Don't actually make a network connection, just verify the DeprecationWarning
+        connection_from_host.side_effect = ConnectionError("Not attempting connection")
         p = PoolManager()
 
         with pytest.warns(DeprecationWarning) as records:
-            p.request(method="GET", url="evil.com://good.com")
+            with pytest.raises(ConnectionError):
+                p.request(method="GET", url="evil.com://good.com")
 
         msg = (
             "URLs without a scheme (ie 'https://') are deprecated and will raise an error "

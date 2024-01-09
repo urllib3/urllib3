@@ -9,13 +9,13 @@ from unittest import mock
 
 import pytest
 
-from dummyserver.server import DEFAULT_CA, DEFAULT_CERTS
+from dummyserver.socketserver import DEFAULT_CA, DEFAULT_CERTS
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from urllib3.util import ssl_
 from urllib3.util.ssltransport import SSLTransport
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
 # consume_socket can iterate forever, we add timeouts to prevent halting.
 PER_TEST_TIMEOUT = 60
@@ -91,11 +91,11 @@ def validate_response(
 
 def validate_peercert(ssl_socket: SSLTransport) -> None:
     binary_cert = ssl_socket.getpeercert(binary_form=True)
-    assert type(binary_cert) == bytes
+    assert type(binary_cert) is bytes
     assert len(binary_cert) > 0
 
     cert = ssl_socket.getpeercert()
-    assert type(cert) == dict
+    assert type(cert) is dict
     assert "serialNumber" in cert
     assert cert["serialNumber"] != ""
 
@@ -184,33 +184,32 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         """
 
         def shutdown_handler(listener: socket.socket) -> None:
-            sock = listener.accept()[0]
-            ssl_sock = self.server_context.wrap_socket(sock, server_side=True)
+            with listener.accept()[0] as sock, self.server_context.wrap_socket(
+                sock, server_side=True
+            ) as ssl_sock:
+                request = consume_socket(ssl_sock)
+                validate_request(request)
+                ssl_sock.sendall(sample_response())
 
-            request = consume_socket(ssl_sock)
-            validate_request(request)
-            ssl_sock.sendall(sample_response())
-
-            unwrapped_sock = ssl_sock.unwrap()
-
-            request = consume_socket(unwrapped_sock)
-            validate_request(request)
-            unwrapped_sock.sendall(sample_response())
+                with ssl_sock.unwrap() as unwrapped_sock:
+                    request = consume_socket(unwrapped_sock)
+                    validate_request(request)
+                    unwrapped_sock.sendall(sample_response())
 
         self.start_dummy_server(shutdown_handler)
-        sock = socket.create_connection((self.host, self.port))
-        ssock = SSLTransport(sock, self.client_context, server_hostname="localhost")
+        with socket.create_connection((self.host, self.port)) as sock:
+            ssock = SSLTransport(sock, self.client_context, server_hostname="localhost")
 
-        # request/response over TLS.
-        ssock.sendall(sample_request())
-        response = consume_socket(ssock)
-        validate_response(response)
+            # request/response over TLS.
+            ssock.sendall(sample_request())
+            response = consume_socket(ssock)
+            validate_response(response)
 
-        # request/response over plaintext after unwrap.
-        ssock.unwrap()
-        sock.sendall(sample_request())
-        response = consume_socket(sock)
-        validate_response(response)
+            # request/response over plaintext after unwrap.
+            ssock.unwrap()
+            sock.sendall(sample_request())
+            response = consume_socket(sock)
+            validate_response(response)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_ssl_object_attributes(self) -> None:
@@ -222,7 +221,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             sock, self.client_context, server_hostname="localhost"
         ) as ssock:
             cipher = ssock.cipher()
-            assert type(cipher) == tuple
+            assert type(cipher) is tuple
 
             # No chosen protocol through ALPN or NPN.
             assert ssock.selected_alpn_protocol() is None
@@ -484,11 +483,11 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 write.flush()
 
                 response = read.read()
-                assert isinstance(response, str)
+                assert type(response) is str
                 if "\r" not in response:
                     # Carriage return will be removed when reading as a file on
                     # some platforms.  We add it before the comparison.
-                    assert isinstance(response, str)
+                    assert type(response) is str
                     response = response.replace("\n", "\r\n")
                 validate_response(response, binary=False)
 

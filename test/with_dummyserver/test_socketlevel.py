@@ -11,28 +11,19 @@ import select
 import shutil
 import socket
 import ssl
-import sys
 import tempfile
-import time
 import typing
 import zlib
 from collections import OrderedDict
 from pathlib import Path
-from test import (
-    LONG_TIMEOUT,
-    SHORT_TIMEOUT,
-    notSecureTransport,
-    notWindows,
-    requires_ssl_context_keyfile_password,
-    resolvesLocalhostFQDN,
-)
+from test import LONG_TIMEOUT, SHORT_TIMEOUT, notWindows, resolvesLocalhostFQDN
 from threading import Event
 from unittest import mock
 
 import pytest
 import trustme
 
-from dummyserver.server import (
+from dummyserver.socketserver import (
     DEFAULT_CA,
     DEFAULT_CERTS,
     encrypt_key_pem,
@@ -329,11 +320,9 @@ class TestClientCerts(SocketDummyServerTestCase):
                 done_receiving.set()
             done_receiving.set()
 
-    @requires_ssl_context_keyfile_password()
     def test_client_cert_with_string_password(self) -> None:
         self.run_client_cert_with_password_test("letmein")
 
-    @requires_ssl_context_keyfile_password()
     def test_client_cert_with_bytes_password(self) -> None:
         self.run_client_cert_with_password_test(b"letmein")
 
@@ -385,7 +374,6 @@ class TestClientCerts(SocketDummyServerTestCase):
 
             assert len(client_certs) == 1
 
-    @requires_ssl_context_keyfile_password()
     def test_load_keyfile_with_invalid_password(self) -> None:
         assert ssl_.SSLContext is not None
         context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
@@ -396,9 +384,6 @@ class TestClientCerts(SocketDummyServerTestCase):
                 password=b"letmei",
             )
 
-    # For SecureTransport, the validation that would raise an error in
-    # this case is deferred.
-    @notSecureTransport()
     def test_load_invalid_cert_file(self) -> None:
         assert ssl_.SSLContext is not None
         context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
@@ -993,9 +978,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         ) as f:
             ssl_sock.close()
             f.close()
-            # SecureTransport is supposed to raise OSError but raises
-            # ssl.SSLError when closed because ssl_sock.context is None
-            with pytest.raises((OSError, ssl.SSLError)):
+            with pytest.raises(OSError):
                 ssl_sock.sendall(b"hello")
             assert ssl_sock.fileno() == -1
 
@@ -1275,7 +1258,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
             errored.set()  # Avoid a ConnectionAbortedError on Windows.
 
-            assert type(e.value.reason) == ProxyError
+            assert type(e.value.reason) is ProxyError
             assert "Your proxy appears to only use HTTP and not HTTPS" in str(
                 e.value.reason
             )
@@ -1284,39 +1267,37 @@ class TestProxyManager(SocketDummyServerTestCase):
 class TestSSL(SocketDummyServerTestCase):
     def test_ssl_failure_midway_through_conn(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
-            sock = listener.accept()[0]
-            sock2 = sock.dup()
-            ssl_sock = original_ssl_wrap_socket(
-                sock,
-                server_side=True,
-                keyfile=DEFAULT_CERTS["keyfile"],
-                certfile=DEFAULT_CERTS["certfile"],
-                ca_certs=DEFAULT_CA,
-            )
+            with listener.accept()[0] as sock, sock.dup() as sock2:
+                ssl_sock = original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                )
 
-            buf = b""
-            while not buf.endswith(b"\r\n\r\n"):
-                buf += ssl_sock.recv(65536)
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += ssl_sock.recv(65536)
 
-            # Deliberately send from the non-SSL socket.
-            sock2.send(
-                b"HTTP/1.1 200 OK\r\n"
-                b"Content-Type: text/plain\r\n"
-                b"Content-Length: 2\r\n"
-                b"\r\n"
-                b"Hi"
-            )
-            sock2.close()
-            ssl_sock.close()
+                # Deliberately send from the non-SSL socket.
+                sock2.send(
+                    b"HTTP/1.1 200 OK\r\n"
+                    b"Content-Type: text/plain\r\n"
+                    b"Content-Length: 2\r\n"
+                    b"\r\n"
+                    b"Hi"
+                )
+                ssl_sock.close()
 
         self._start_server(socket_handler)
         with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
             with pytest.raises(
-                SSLError, match=r"(wrong version number|record overflow)"
+                SSLError,
+                match=r"(wrong version number|record overflow|record layer failure)",
             ):
                 pool.request("GET", "/", retries=False)
 
-    @notSecureTransport()
     def test_ssl_read_timeout(self) -> None:
         timed_out = Event()
 
@@ -1371,19 +1352,21 @@ class TestSSL(SocketDummyServerTestCase):
                         certfile=DEFAULT_CERTS["certfile"],
                         ca_certs=DEFAULT_CA,
                     )
-                except (ssl.SSLError, ConnectionResetError):
-                    if i == 1:
-                        raise
-                    return
+                except (ssl.SSLError, ConnectionResetError, ConnectionAbortedError):
+                    pass
 
-                ssl_sock.send(
-                    b"HTTP/1.1 200 OK\r\n"
-                    b"Content-Type: text/plain\r\n"
-                    b"Content-Length: 5\r\n\r\n"
-                    b"Hello"
-                )
+                else:
+                    with ssl_sock:
+                        try:
+                            ssl_sock.send(
+                                b"HTTP/1.1 200 OK\r\n"
+                                b"Content-Type: text/plain\r\n"
+                                b"Content-Length: 5\r\n\r\n"
+                                b"Hello"
+                            )
+                        except (ssl.SSLEOFError, ConnectionResetError, BrokenPipeError):
+                            pass
 
-                ssl_sock.close()
                 sock.close()
 
         self._start_server(socket_handler)
@@ -1392,7 +1375,10 @@ class TestSSL(SocketDummyServerTestCase):
 
         def request() -> None:
             pool = HTTPSConnectionPool(
-                self.host, self.port, assert_fingerprint=fingerprint
+                self.host,
+                self.port,
+                assert_fingerprint=fingerprint,
+                cert_reqs="CERT_NONE",
             )
             try:
                 timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
@@ -1405,10 +1391,21 @@ class TestSSL(SocketDummyServerTestCase):
 
         with pytest.raises(MaxRetryError) as cm:
             request()
-        assert isinstance(cm.value.reason, SSLError)
+        assert type(cm.value.reason) is SSLError
+        assert str(cm.value.reason) == (
+            "Fingerprints did not match. Expected "
+            '"a0c4a74600eda72dc0becb9a8cb607ca58ee745e", got '
+            '"728b554c9afc1e88a11cad1bb2e7cc3edbc8f98a"'
+        )
         # Should not hang, see https://github.com/urllib3/urllib3/issues/529
-        with pytest.raises(MaxRetryError):
+        with pytest.raises(MaxRetryError) as cm2:
             request()
+        assert type(cm2.value.reason) is SSLError
+        assert str(cm2.value.reason) == (
+            "Fingerprints did not match. Expected "
+            '"a0c4a74600eda72dc0becb9a8cb607ca58ee745e", got '
+            '"728b554c9afc1e88a11cad1bb2e7cc3edbc8f98a"'
+        )
 
     def test_retry_ssl_error(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
@@ -1493,6 +1490,17 @@ class TestSSL(SocketDummyServerTestCase):
         context.load_default_certs = mock.Mock()
         context.options = 0
 
+        class MockSSLSocket:
+            def __init__(
+                self, sock: socket.socket, *args: object, **kwargs: object
+            ) -> None:
+                self._sock = sock
+
+            def close(self) -> None:
+                self._sock.close()
+
+        context.wrap_socket = MockSSLSocket
+
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
             self._start_server(socket_handler)
             with HTTPSConnectionPool(self.host, self.port) as pool:
@@ -1534,6 +1542,17 @@ class TestSSL(SocketDummyServerTestCase):
         context = mock.create_autospec(ssl_.SSLContext)
         context.load_default_certs = mock.Mock()
         context.options = 0
+
+        class MockSSLSocket:
+            def __init__(
+                self, sock: socket.socket, *args: object, **kwargs: object
+            ) -> None:
+                self._sock = sock
+
+            def close(self) -> None:
+                self._sock.close()
+
+        context.wrap_socket = MockSSLSocket
 
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
             for kwargs in [
@@ -1600,18 +1619,47 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=False, timeout=LONG_TIMEOUT)
         assert server_closed.wait(LONG_TIMEOUT), "The socket was not terminated"
 
-    # SecureTransport can read only small pieces of data at the moment.
-    # https://github.com/urllib3/urllib3/pull/2674
-    @notSecureTransport()
-    @pytest.mark.skipif(
-        os.environ.get("CI") == "true" and sys.implementation.name == "pypy",
-        reason="too slow to run in CI",
-    )
+    def _run_preload(self, pool: HTTPSConnectionPool, content_length: int) -> None:
+        response = pool.request("GET", "/")
+        assert len(response.data) == content_length
+
+    def _run_read_None(self, pool: HTTPSConnectionPool, content_length: int) -> None:
+        response = pool.request("GET", "/", preload_content=False)
+        assert len(response.read(None)) == content_length
+        assert response.read(None) == b""
+
+    def _run_read_amt(self, pool: HTTPSConnectionPool, content_length: int) -> None:
+        response = pool.request("GET", "/", preload_content=False)
+        assert len(response.read(content_length)) == content_length
+        assert response.read(5) == b""
+
+    def _run_read1_None(self, pool: HTTPSConnectionPool, content_length: int) -> None:
+        response = pool.request("GET", "/", preload_content=False)
+        remaining = content_length
+        while True:
+            chunk = response.read1(None)
+            if not chunk:
+                break
+            remaining -= len(chunk)
+        assert remaining == 0
+
+    def _run_read1_amt(self, pool: HTTPSConnectionPool, content_length: int) -> None:
+        response = pool.request("GET", "/", preload_content=False)
+        remaining = content_length
+        while True:
+            chunk = response.read1(content_length)
+            if not chunk:
+                break
+            remaining -= len(chunk)
+        assert remaining == 0
+
+    @pytest.mark.integration
     @pytest.mark.parametrize(
-        "preload_content,read_amt", [(True, None), (False, None), (False, 2**31)]
+        "method",
+        [_run_preload, _run_read_None, _run_read_amt, _run_read1_None, _run_read1_amt],
     )
     def test_requesting_large_resources_via_ssl(
-        self, preload_content: bool, read_amt: int | None
+        self, method: typing.Callable[[typing.Any, HTTPSConnectionPool, int], None]
     ) -> None:
         """
         Ensure that it is possible to read 2 GiB or more via an SSL
@@ -1653,9 +1701,7 @@ class TestSSL(SocketDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA, retries=False
         ) as pool:
-            response = pool.request("GET", "/", preload_content=preload_content)
-            data = response.data if preload_content else response.read(read_amt)
-            assert len(data) == content_length
+            method(self, pool, content_length)
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
@@ -1830,13 +1876,16 @@ class TestHeaders(SocketDummyServerTestCase):
         body: None | bytes | io.BytesIO
         if body_type is None:
             body = None
+            expected = b"\r\n\r\n"
         elif body_type == "bytes":
             body = b"my-body"
+            expected = b"\r\n\r\nmy-body"
         elif body_type == "bytes-io":
             body = io.BytesIO(b"bytes-io-body")
             body.seek(0, 0)
+            expected = b"bytes-io-body\r\n0\r\n\r\n"
         else:
-            raise ValueError("Unknonw body type")
+            raise ValueError("Unknown body type")
 
         buffer: bytes = b""
 
@@ -1845,12 +1894,9 @@ class TestHeaders(SocketDummyServerTestCase):
             sock = listener.accept()[0]
             sock.settimeout(0)
 
-            start = time.time()
-            while time.time() - start < (LONG_TIMEOUT / 2):
-                try:
+            while expected not in buffer:
+                with contextlib.suppress(BlockingIOError):
                     buffer += sock.recv(65536)
-                except OSError:
-                    continue
 
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"
@@ -1902,7 +1948,7 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
             for record in logs:
                 if (
                     "Failed to parse headers" in record.msg
-                    and isinstance(record.args, tuple)
+                    and type(record.args) is tuple
                     and _url_from_pool(pool, "/") == record.args[0]
                 ):
                     if (
@@ -2263,18 +2309,16 @@ class TestContentFraming(SocketDummyServerTestCase):
         self, method: str, chunked: bool, body_type: str
     ) -> None:
         buffer = bytearray()
+        expected_bytes = b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n"
 
         def socket_handler(listener: socket.socket) -> None:
             nonlocal buffer
             sock = listener.accept()[0]
             sock.settimeout(0)
 
-            start = time.time()
-            while time.time() - start < (LONG_TIMEOUT / 2):
-                try:
+            while expected_bytes not in buffer:
+                with contextlib.suppress(BlockingIOError):
                     buffer += sock.recv(65536)
-                except OSError:
-                    continue
 
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"
@@ -2313,7 +2357,7 @@ class TestContentFraming(SocketDummyServerTestCase):
         assert b"Transfer-Encoding: chunked\r\n" in sent_bytes
         assert b"User-Agent: python-urllib3/" in sent_bytes
         assert b"content-length" not in sent_bytes.lower()
-        assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes
+        assert expected_bytes in sent_bytes
 
     @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
     @pytest.mark.parametrize(
@@ -2321,18 +2365,44 @@ class TestContentFraming(SocketDummyServerTestCase):
     )
     def test_chunked_not_specified(self, method: str, body_type: str) -> None:
         buffer = bytearray()
+        expected_bytes: bytes
+        body: typing.Any
+
+        if body_type == "generator":
+
+            def body_generator() -> typing.Generator[bytes, None, None]:
+                yield b"x" * 10
+
+            body = body_generator()
+            should_be_chunked = True
+        elif body_type == "file":
+            body = io.BytesIO(b"x" * 10)
+            body.seek(0, 0)
+            should_be_chunked = True
+        elif body_type == "file_text":
+            body = io.StringIO("x" * 10)
+            body.seek(0, 0)
+            should_be_chunked = True
+        elif body_type == "bytearray":
+            body = bytearray(b"x" * 10)
+            should_be_chunked = False
+        else:
+            body = b"x" * 10
+            should_be_chunked = False
+
+        if should_be_chunked:
+            expected_bytes = b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n"
+        else:
+            expected_bytes = b"\r\n\r\nxxxxxxxxxx"
 
         def socket_handler(listener: socket.socket) -> None:
             nonlocal buffer
             sock = listener.accept()[0]
             sock.settimeout(0)
 
-            start = time.time()
-            while time.time() - start < (LONG_TIMEOUT / 2):
-                try:
+            while expected_bytes not in buffer:
+                with contextlib.suppress(BlockingIOError):
                     buffer += sock.recv(65536)
-                except OSError:
-                    continue
 
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"
@@ -2342,33 +2412,6 @@ class TestContentFraming(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-
-        body: typing.Any
-        if body_type == "generator":
-
-            def body_generator() -> typing.Generator[bytes, None, None]:
-                yield b"x" * 10
-
-            body = body_generator()
-            should_be_chunked = True
-
-        elif body_type == "file":
-            body = io.BytesIO(b"x" * 10)
-            body.seek(0, 0)
-            should_be_chunked = True
-
-        elif body_type == "file_text":
-            body = io.StringIO("x" * 10)
-            body.seek(0, 0)
-            should_be_chunked = True
-
-        elif body_type == "bytearray":
-            body = bytearray(b"x" * 10)
-            should_be_chunked = False
-
-        else:
-            body = b"x" * 10
-            should_be_chunked = False
 
         with HTTPConnectionPool(
             self.host, self.port, timeout=LONG_TIMEOUT, retries=False
@@ -2385,12 +2428,12 @@ class TestContentFraming(SocketDummyServerTestCase):
         if should_be_chunked:
             assert b"content-length" not in sent_bytes.lower()
             assert b"Transfer-Encoding: chunked\r\n" in sent_bytes
-            assert b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n" in sent_bytes
+            assert expected_bytes in sent_bytes
 
         else:
             assert b"Content-Length: 10\r\n" in sent_bytes
             assert b"transfer-encoding" not in sent_bytes.lower()
-            assert sent_bytes.endswith(b"\r\n\r\nxxxxxxxxxx")
+            assert sent_bytes.endswith(expected_bytes)
 
     @pytest.mark.parametrize(
         "header_transform",
@@ -2421,12 +2464,9 @@ class TestContentFraming(SocketDummyServerTestCase):
             sock = listener.accept()[0]
             sock.settimeout(0)
 
-            start = time.time()
-            while time.time() - start < (LONG_TIMEOUT / 2):
-                try:
+            while expected not in buffer:
+                with contextlib.suppress(BlockingIOError):
                     buffer += sock.recv(65536)
-                except OSError:
-                    continue
 
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"

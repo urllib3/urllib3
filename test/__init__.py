@@ -10,6 +10,7 @@ import sys
 import typing
 import warnings
 from collections.abc import Sequence
+from functools import wraps
 from importlib.abc import Loader, MetaPathFinder
 from importlib.machinery import ModuleSpec
 from types import ModuleType, TracebackType
@@ -29,8 +30,6 @@ try:
 except ImportError:
     zstd = None
 
-import functools
-
 from urllib3 import util
 from urllib3.connectionpool import ConnectionPool
 from urllib3.exceptions import HTTPWarning
@@ -43,8 +42,7 @@ except ImportError:
 
 if typing.TYPE_CHECKING:
     import ssl
-
-    from typing_extensions import Literal
+    from typing import Literal
 
 
 _RT = typing.TypeVar("_RT")  # return type
@@ -75,7 +73,7 @@ INVALID_SOURCE_ADDRESSES = [(("192.0.2.255", 0), False), (("2001:db8::1", 0), Tr
 # 3. To test our timeout logic by using two different values, eg. by using different
 #    values at the pool level and at the request level.
 SHORT_TIMEOUT = 0.001
-LONG_TIMEOUT = 0.01
+LONG_TIMEOUT = 0.1
 if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") == "true":
     LONG_TIMEOUT = 0.5
 
@@ -157,31 +155,6 @@ def notZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     )
 
 
-# Hack to make pytest evaluate a condition at test runtime instead of collection time.
-def lazy_condition(condition: typing.Callable[[], bool]) -> bool:
-    class LazyCondition:
-        def __bool__(self) -> bool:
-            return condition()
-
-    return typing.cast(bool, LazyCondition())
-
-
-def onlySecureTransport() -> typing.Callable[[_TestFuncT], _TestFuncT]:
-    """Runs this test when SecureTransport is in use."""
-    return pytest.mark.skipif(
-        lazy_condition(lambda: not ssl_.IS_SECURETRANSPORT),
-        reason="Test only runs with SecureTransport",
-    )
-
-
-def notSecureTransport() -> typing.Callable[[_TestFuncT], _TestFuncT]:
-    """Skips this test when SecureTransport is in use."""
-    return pytest.mark.skipif(
-        lazy_condition(lambda: ssl_.IS_SECURETRANSPORT),
-        reason="Test does not run with SecureTransport",
-    )
-
-
 _requires_network_has_route = None
 
 
@@ -207,24 +180,31 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
             else:
                 raise
 
-    global _requires_network_has_route
+    def _skip_if_no_route(f: _TestFuncT) -> _TestFuncT:
+        """Skip test exuction if network is unreachable"""
 
-    if _requires_network_has_route is None:
-        _requires_network_has_route = _has_route()
+        @wraps(f)
+        def wrapper(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+            global _requires_network_has_route
+            if _requires_network_has_route is None:
+                _requires_network_has_route = _has_route()
+            if not _requires_network_has_route:
+                pytest.skip("Can't run the test because the network is unreachable")
+            return f(*args, **kwargs)
 
-    return pytest.mark.skipif(
-        not _requires_network_has_route,
-        reason="Can't run the test because the network is unreachable",
-    )
+        return typing.cast(_TestFuncT, wrapper)
 
+    def _decorator_requires_internet(
+        decorator: typing.Callable[[_TestFuncT], _TestFuncT]
+    ) -> typing.Callable[[_TestFuncT], _TestFuncT]:
+        """Mark a decorator with the "requires_internet" mark"""
 
-def requires_ssl_context_keyfile_password() -> (
-    typing.Callable[[_TestFuncT], _TestFuncT]
-):
-    return pytest.mark.skipif(
-        lazy_condition(lambda: ssl_.IS_SECURETRANSPORT),
-        reason="Test requires password parameter for SSLContext.load_cert_chain()",
-    )
+        def wrapper(f: _TestFuncT) -> typing.Any:
+            return pytest.mark.requires_network(decorator(f))
+
+        return wrapper
+
+    return _decorator_requires_internet(_skip_if_no_route)
 
 
 def resolvesLocalhostFQDN() -> typing.Callable[[_TestFuncT], _TestFuncT]:
@@ -236,7 +216,7 @@ def resolvesLocalhostFQDN() -> typing.Callable[[_TestFuncT], _TestFuncT]:
 
 
 def withPyOpenSSL(test: typing.Callable[..., _RT]) -> typing.Callable[..., _RT]:
-    @functools.wraps(test)
+    @wraps(test)
     def wrapper(*args: typing.Any, **kwargs: typing.Any) -> _RT:
         if not pyopenssl:
             pytest.skip("pyopenssl not available, skipping test.")
