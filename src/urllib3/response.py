@@ -910,11 +910,11 @@ class HTTPResponse(BaseHTTPResponse):
         if amt is not None:
             cache_content = False
 
-            if len(self._decoded_buffer) >= amt:
-                return self._decoded_buffer.get(amt)
-
             if amt == 0:
                 return b""
+
+            if len(self._decoded_buffer) >= amt:
+                return self._decoded_buffer.get(amt)
 
             # TODO make sure to initially read enough data to get past the headers
             # For example, the GZ file header takes 10 bytes, we don't want to read
