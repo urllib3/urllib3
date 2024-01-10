@@ -916,6 +916,9 @@ class HTTPResponse(BaseHTTPResponse):
             if amt == 0:
                 return b""
 
+            # TODO make sure to initially read enough data to get past the headers
+            # For example, the GZ file header takes 10 bytes, we don't want to read
+            # it one byte at a time
             data = self._raw_read(amt)
 
             # do not waste memory on buffer when not decoding
