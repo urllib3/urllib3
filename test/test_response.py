@@ -787,6 +787,12 @@ class TestResponse:
         assert resp.read(2, decode_content=False) is not None
         assert resp.read(1, decode_content=True) == b"f"
 
+    def test_read_amt_zero(self) -> None:
+        fp = BytesIO(b"foo")
+
+        resp = HTTPResponse(fp, decode_content=False, preload_content=False)
+        assert resp.read(0) == b""
+
     def test_streaming(self) -> None:
         fp = BytesIO(b"foo")
         resp = HTTPResponse(fp, preload_content=False)
