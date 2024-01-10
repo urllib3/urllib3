@@ -907,18 +907,7 @@ class HTTPResponse(BaseHTTPResponse):
         if decode_content is None:
             decode_content = self.decode_content
 
-        if amt is None:
-            data = self._raw_read()
-            if not data and len(self._decoded_buffer) == 0:
-                return data
-
-            # here, 'data' contains all content, thus setting 'flush_decoder=True'
-            # to finalize decoding, as this will be the only/last _decode call
-            data = self._decode(data, decode_content, flush_decoder=True)
-            if cache_content:
-                self._body = data
-
-        else:  # amt is not None
+        if amt is not None:
             cache_content = False
 
             if len(self._decoded_buffer) >= amt:
@@ -946,6 +935,17 @@ class HTTPResponse(BaseHTTPResponse):
                     break
                 data = self._raw_read(amt)
             data = self._decoded_buffer.get(amt)
+
+        if amt is None:
+            data = self._raw_read()
+            if not data and len(self._decoded_buffer) == 0:
+                return data
+
+            # here, 'data' contains all content, thus setting 'flush_decoder=True'
+            # to finalize decoding, as this will be the only/last _decode call
+            data = self._decode(data, decode_content, flush_decoder=True)
+            if cache_content:
+                self._body = data
 
         return data
 
