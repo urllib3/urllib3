@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import http.client as httplib
 import ssl
 import typing
@@ -592,3 +593,23 @@ class TestConnectionPool:
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout=timeout)
+
+    def test_idle_timeout(self) -> None:
+        with HTTPConnectionPool(
+            host="localhost", maxsize=1, block=True, idle_timeout=5
+        ) as pool:
+            conn = pool._get_conn()
+            conn.last_activity = datetime.datetime.now() - datetime.timedelta(seconds=6)
+            pool._put_conn(conn)
+
+            assert conn != pool._get_conn()
+
+    def test_idle_timeout_timedelta(self) -> None:
+        with HTTPConnectionPool(
+            host="localhost",
+            maxsize=1,
+            block=True,
+            idle_timeout=datetime.timedelta(seconds=5),
+        ) as pool:
+            conn = pool._get_conn()
+            assert conn.idle_timeout == datetime.timedelta(seconds=5)
