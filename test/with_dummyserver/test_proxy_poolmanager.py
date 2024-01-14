@@ -21,6 +21,7 @@ import trustme
 from dummyserver.server import DEFAULT_CA, HAS_IPV6, get_unreachable_address
 from dummyserver.testcase import HTTPDummyProxyTestCase, IPv6HTTPDummyProxyTestCase
 from urllib3._collections import HTTPHeaderDict
+from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import VerifiedHTTPSConnection, connection_from_url
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -162,6 +163,34 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                     "Expected TCP_NODELAY for proxies to be set "
                     "to zero, instead was %s" % tcp_nodelay_setting
                 )
+            finally:
+                conn.close()
+
+    def test_proxy_add_default_socket_options(self):
+        """Test that options added to HTTPConnection.default_socket_options are honored
+        by ProxyManager, and that the default options for a proxy connection are intact"""
+
+        # set some extra default options...
+        HTTPConnection.default_socket_options += [
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        ]
+        with ProxyManager(self.proxy_url) as http:
+            hc2 = http.connection_from_host(self.http_host, self.http_port)
+            conn = hc2._get_conn()
+            try:
+                hc2._make_request(conn, "GET", "/")
+                tcp_nodelay_setting = conn.sock.getsockopt(
+                    socket.IPPROTO_TCP, socket.TCP_NODELAY
+                )
+                assert tcp_nodelay_setting == 0, (
+                    "Expected TCP_NODELAY for proxies to be set "
+                    "to zero, instead was %s" % tcp_nodelay_setting
+                )
+                # ...verify the option added via HTTPConnection.default_socket_options
+                using_keepalive = (
+                    conn.sock.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) > 0
+                )
+                assert using_keepalive
             finally:
                 conn.close()
 
