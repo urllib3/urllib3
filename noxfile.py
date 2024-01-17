@@ -31,6 +31,8 @@ def tests_impl(
     session.run("python", "-m", "OpenSSL.debug")
 
     memray_supported = True
+    if session.python == "pypy":
+        memray_supported = False
     if sys.implementation.name != "cpython" or sys.version_info.releaselevel != "final":
         memray_supported = False  # pytest-memray requires CPython 3.8+
     elif sys.platform == "win32":
