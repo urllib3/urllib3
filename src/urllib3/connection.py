@@ -265,6 +265,13 @@ class HTTPConnection(_HTTPConnection):
     def has_connected_to_proxy(self) -> bool:
         return self._has_connected_to_proxy
 
+    @property
+    def proxy_is_forwarding(self) -> bool:
+        """
+        Return True if a forwarding proxy is configured, else return False
+        """
+        return bool(self.proxy) and self._tunnel_host is None
+
     def close(self) -> None:
         try:
             super().close()
@@ -663,11 +670,14 @@ class HTTPSConnection(HTTPConnection):
         )
         self.sock = sock_and_verified.socket
 
-        # TODO: Set correct `self.is_verified` in case of HTTPS proxy +
-        #       HTTP destination, see
-        #       `test_is_verified_https_proxy_to_http_target` and
-        #       https://github.com/urllib3/urllib3/issues/3267.
-        self.is_verified = sock_and_verified.is_verified
+        # Forwarding proxies can never have a verified target since
+        # the proxy is the one doing the verification. Should instead
+        # use a CONNECT tunnel in order to verify the target.
+        # See: https://github.com/urllib3/urllib3/issues/3267.
+        if self.proxy_is_forwarding:
+            self.is_verified = False
+        else:
+            self.is_verified = sock_and_verified.is_verified
 
         # If there's a proxy to be connected to we are fully connected.
         # This is set twice (once above and here) due to forwarding proxies
