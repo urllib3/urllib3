@@ -670,7 +670,10 @@ class HTTPSConnection(HTTPConnection):
         )
         self.sock = sock_and_verified.socket
 
-        # https://github.com/urllib3/urllib3/issues/3267.
+        # Forwarding proxies can never have a verified target since
+        # the proxy is the one doing the verification. Should instead
+        # use a CONNECT tunnel in order to verify the target.
+        # See: https://github.com/urllib3/urllib3/issues/3267.
         if self.proxy_is_forwarding:
             self.is_verified = False
         else:
