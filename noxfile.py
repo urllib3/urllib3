@@ -30,10 +30,16 @@ def tests_impl(
     # Print OpenSSL information.
     session.run("python", "-m", "OpenSSL.debug")
 
+    session_python_info = session.run(
+        "python",
+        "-c",
+        "import sys; print(sys.implementation.name,sys.version_info.releaselevel)",
+        silent=True,
+    ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
+    implementation_name, release_level = session_python_info.split(" ")
+
     memray_supported = True
-    if session.python == "pypy":
-        memray_supported = False
-    if sys.implementation.name != "cpython" or sys.version_info.releaselevel != "final":
+    if implementation_name != "cpython" or release_level != "final":
         memray_supported = False  # pytest-memray requires CPython 3.8+
     elif sys.platform == "win32":
         memray_supported = False
