@@ -20,7 +20,7 @@ def setup_module() -> None:
 
 def teardown_module() -> None:
     try:
-        from urllib3.contrib.pyopenssl import extract_from_urllib3
+        from urllib3.contrib.http2 import extract_from_urllib3
 
         extract_from_urllib3()
     except ImportError:
@@ -38,16 +38,21 @@ class TestHypercornDummyServerTestCase(HTTPSHypercornDummyServerTestCase):
         # This is a meta test to make sure our Hypercorn test server is actually using HTTP/2
         # before urllib3 is capable of speaking HTTP/2. Thanks, Daniel! <3
         output = subprocess.check_output(
-            ["curl", "-vvv", "--http2", self.base_url], stderr=subprocess.STDOUT
+            [
+                "curl",
+                "-vvv",
+                "--http2",
+                "--cacert",
+                self.certs["ca_certs"],
+                self.base_url,
+            ],
+            stderr=subprocess.STDOUT,
         )
 
-        # curl does HTTP/1.1 and upgrades to HTTP/2 without TLS which is fine
-        # for us. Hypercorn supports this thankfully, but we should try with
-        # HTTPS as well once that's available.
         assert b"< HTTP/2 200" in output
         assert output.endswith(b"Dummy server!")
 
-    def test_simple_http2(self):
+    def test_simple_http2(self) -> None:
         with urllib3.PoolManager(ca_certs=self.certs["ca_certs"]) as http:
             resp = http.request("HEAD", self.base_url, retries=False)
 

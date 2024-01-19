@@ -4,9 +4,9 @@ import contextlib
 import threading
 import typing
 
-import h2.config
-import h2.connection
-import h2.events
+import h2.config  # type: ignore[import]
+import h2.connection  # type: ignore[import]
+import h2.events  # type: ignore[import]
 
 import urllib3.connection
 import urllib3.util.ssl_
@@ -15,9 +15,13 @@ from .._collections import HTTPHeaderDict
 from ..connection import HTTPSConnection
 from ..connectionpool import HTTPSConnectionPool
 
+orig_HTTPSConnection = HTTPSConnection
+
 
 class HTTP2Connection(HTTPSConnection):
-    def __init__(self, host: str, port: int | None = None, **kwargs):
+    def __init__(
+        self, host: str, port: int | None = None, **kwargs: typing.Any
+    ) -> None:
         self._h2_lock = threading.RLock()
         self._h2_conn = h2.connection.H2Connection(
             config=h2.config.H2Configuration(client_side=True)
@@ -72,7 +76,7 @@ class HTTP2Connection(HTTPSConnection):
                 (header.encode("utf-8").lower(), value.encode("utf-8"))
             )
 
-    def endheaders(self) -> None:
+    def endheaders(self) -> None:  # type: ignore[override]
         with self._lock_h2_conn() as h2_conn:
             h2_conn.send_headers(
                 stream_id=self._h2_stream,
@@ -80,7 +84,7 @@ class HTTP2Connection(HTTPSConnection):
                 end_stream=True,
             )
 
-    def send(self, data: bytes) -> None:
+    def send(self, data: bytes) -> None:  # type: ignore[override]
         if not data:
             return
         raise ValueError("Sending data isn't supported yet")
@@ -93,8 +97,9 @@ class HTTP2Connection(HTTPSConnection):
         with self._lock_h2_conn() as h2_conn:
             end_stream = False
             while not end_stream:
-                if data := self.sock.recv():
-                    events = h2_conn.receive_data(data)
+                # TODO: Arbitrary read value.
+                if received_data := self.sock.recv(65535):
+                    events = h2_conn.receive_data(received_data)
                     for event in events:
                         if isinstance(event, h2.events.InformationalResponseReceived):
                             continue
@@ -124,6 +129,7 @@ class HTTP2Connection(HTTPSConnection):
         # We always close to not have to handle connection management.
         self.close()
 
+        assert status is not None
         return HTTP2Response(status=status, headers=headers, data=bytes(data))
 
     def close(self) -> None:
@@ -153,17 +159,20 @@ class HTTP2Response:
         self.data = data
         self.length_remaining = 0
 
-    def get_redirect_location(self):
+    def get_redirect_location(self) -> None:
         return None
 
 
 def inject_into_urllib3() -> None:
-    HTTPSConnectionPool.ConnectionCls = HTTP2Connection
-    urllib3.connection.HTTPSConnection = HTTP2Connection  # type: ignore[misc,assignment]
+    HTTPSConnectionPool.ConnectionCls = HTTP2Connection  # type: ignore[assignment]
+    urllib3.connection.HTTPSConnection = HTTP2Connection  # type: ignore[misc]
 
-    # TODO: Offer both, but for testing purposes this is handy.
+    # TODO: Offer 'http/1.1' as well, but for testing purposes this is handy.
     urllib3.util.ssl_.ALPN_PROTOCOLS = ["h2"]
 
 
 def extract_from_urllib3() -> None:
-    pass  # TODO: Actually extract from the stdlib.
+    HTTPSConnectionPool.ConnectionCls = orig_HTTPSConnection
+    urllib3.connection.HTTPSConnection = orig_HTTPSConnection  # type: ignore[misc]
+
+    urllib3.util.ssl_.ALPN_PROTOCOLS = ["http/1.1"]
