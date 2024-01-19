@@ -511,9 +511,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             pass
         except OSError as e:
             # MacOS/Linux
-            # EPROTOTYPE is needed on macOS
+            # EPROTOTYPE and ECONNRESET are needed on macOS
             # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
-            if e.errno != errno.EPROTOTYPE:
+            # Condition changed later to emit ECONNRESET instead of only EPROTOTYPE.
+            if e.errno != errno.EPROTOTYPE and e.errno != errno.ECONNRESET:
                 raise
 
         # Reset the timeout for the recv() on the socket
@@ -1097,7 +1098,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if conn.is_closed:
             conn.connect()
 
-        if not conn.is_verified:
+        # TODO revise this, see https://github.com/urllib3/urllib3/issues/2791
+        if not conn.is_verified and not conn.proxy_is_verified:
             warnings.warn(
                 (
                     f"Unverified HTTPS request is being made to host '{conn.host}'. "

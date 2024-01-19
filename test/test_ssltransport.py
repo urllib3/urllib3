@@ -9,8 +9,8 @@ from unittest import mock
 
 import pytest
 
+from dummyserver.socketserver import DEFAULT_CA, DEFAULT_CERTS
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from dummyserver.tornadoserver import DEFAULT_CA, DEFAULT_CERTS
 from urllib3.util import ssl_
 from urllib3.util.ssltransport import SSLTransport
 
@@ -184,33 +184,32 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         """
 
         def shutdown_handler(listener: socket.socket) -> None:
-            sock = listener.accept()[0]
-            ssl_sock = self.server_context.wrap_socket(sock, server_side=True)
+            with listener.accept()[0] as sock, self.server_context.wrap_socket(
+                sock, server_side=True
+            ) as ssl_sock:
+                request = consume_socket(ssl_sock)
+                validate_request(request)
+                ssl_sock.sendall(sample_response())
 
-            request = consume_socket(ssl_sock)
-            validate_request(request)
-            ssl_sock.sendall(sample_response())
-
-            unwrapped_sock = ssl_sock.unwrap()
-
-            request = consume_socket(unwrapped_sock)
-            validate_request(request)
-            unwrapped_sock.sendall(sample_response())
+                with ssl_sock.unwrap() as unwrapped_sock:
+                    request = consume_socket(unwrapped_sock)
+                    validate_request(request)
+                    unwrapped_sock.sendall(sample_response())
 
         self.start_dummy_server(shutdown_handler)
-        sock = socket.create_connection((self.host, self.port))
-        ssock = SSLTransport(sock, self.client_context, server_hostname="localhost")
+        with socket.create_connection((self.host, self.port)) as sock:
+            ssock = SSLTransport(sock, self.client_context, server_hostname="localhost")
 
-        # request/response over TLS.
-        ssock.sendall(sample_request())
-        response = consume_socket(ssock)
-        validate_response(response)
+            # request/response over TLS.
+            ssock.sendall(sample_request())
+            response = consume_socket(ssock)
+            validate_response(response)
 
-        # request/response over plaintext after unwrap.
-        ssock.unwrap()
-        sock.sendall(sample_request())
-        response = consume_socket(sock)
-        validate_response(response)
+            # request/response over plaintext after unwrap.
+            ssock.unwrap()
+            sock.sendall(sample_request())
+            response = consume_socket(sock)
+            validate_response(response)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_ssl_object_attributes(self) -> None:

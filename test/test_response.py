@@ -76,11 +76,13 @@ class TestBytesQueueBuffer:
     def test_get_all_empty(self) -> None:
         q = BytesQueueBuffer()
         assert q.get_all() == b""
+        assert len(q) == 0
 
     def test_get_all_single(self) -> None:
         q = BytesQueueBuffer()
         q.put(b"a")
         assert q.get_all() == b"a"
+        assert len(q) == 0
 
     def test_get_all_many(self) -> None:
         q = BytesQueueBuffer()
@@ -90,15 +92,29 @@ class TestBytesQueueBuffer:
         assert q.get_all() == b"abc"
         assert len(q) == 0
 
+    @pytest.mark.parametrize(
+        "get_func",
+        (lambda b: b.get(len(b)), lambda b: b.get_all()),
+        ids=("get", "get_all"),
+    )
     @pytest.mark.limit_memory("12.5 MB")  # assert that we're not doubling memory usage
-    def test_memory_usage(self) -> None:
+    def test_memory_usage(
+        self, get_func: typing.Callable[[BytesQueueBuffer], str]
+    ) -> None:
         # Allocate 10 1MiB chunks
         buffer = BytesQueueBuffer()
         for i in range(10):
             # This allocates 2MiB, putting the max at around 12MiB. Not sure why.
             buffer.put(bytes(2**20))
 
-        assert len(buffer.get(10 * 2**20)) == 10 * 2**20
+        assert len(get_func(buffer)) == 10 * 2**20
+
+    @pytest.mark.limit_memory("10.01 MB")
+    def test_get_all_memory_usage_single_chunk(self) -> None:
+        buffer = BytesQueueBuffer()
+        chunk = bytes(10 * 2**20)  # 10 MiB
+        buffer.put(chunk)
+        assert buffer.get_all() is chunk
 
 
 # A known random (i.e, not-too-compressible) payload generated with:
@@ -415,8 +431,13 @@ class TestResponse:
                 break
         assert ret == b"foobarbaz"
 
+    decode_param_set = [
+        b"foo",
+        b"x" * 100,
+    ]
+
     @onlyZstd()
-    @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
+    @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_error(self, data: bytes) -> None:
         fp = BytesIO(data)
 
@@ -424,13 +445,65 @@ class TestResponse:
             HTTPResponse(fp, headers={"content-encoding": "zstd"})
 
     @onlyZstd()
-    @pytest.mark.parametrize("data", [b"foo", b"x" * 100])
-    def test_decode_zstd_incomplete(self, data: bytes) -> None:
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_incomplete_preload_content(self, data: bytes) -> None:
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])
 
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "zstd"})
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_incomplete_read(self, data: bytes) -> None:
+        data = zstd.compress(data)
+        fp = BytesIO(data[:-1])  # shorten the data to trigger DecodeError
+
+        # create response object without(!) reading/decoding the content
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        # read/decode, expecting DecodeError
+        with pytest.raises(DecodeError):
+            r.read(decode_content=True)
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_incomplete_read1(self, data: bytes) -> None:
+        data = zstd.compress(data)
+        fp = BytesIO(data[:-1])
+
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        # read/decode via read1(!), expecting DecodeError
+        with pytest.raises(DecodeError):
+            amt_decoded = 0
+            # loop, as read1() may return just partial data
+            while amt_decoded < len(data):
+                part = r.read1(decode_content=True)
+                amt_decoded += len(part)
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_read1(self, data: bytes) -> None:
+        encoded_data = zstd.compress(data)
+        fp = BytesIO(encoded_data)
+
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        amt_decoded = 0
+        decoded_data = b""
+        # loop, as read1() may return just partial data
+        while amt_decoded < len(data):
+            part = r.read1(decode_content=True)
+            amt_decoded += len(part)
+            decoded_data += part
+        assert decoded_data == data
 
     def test_multi_decoding_deflate_deflate(self) -> None:
         data = zlib.compress(zlib.compress(b"foo"))
@@ -830,7 +903,7 @@ class TestResponse:
         assert uncompressed_data == payload
 
         # Check that the positions in the stream are correct
-        # It is difficult to determine programatically what the positions
+        # It is difficult to determine programmatically what the positions
         # returned by `tell` will be because the `HTTPResponse.read` method may
         # call socket `read` a couple of times if it doesn't have enough data
         # in the buffer or not call socket `read` at all if it has enough. All
@@ -891,12 +964,18 @@ class TestResponse:
             next(stream)
 
     @pytest.mark.parametrize(
-        "preload_content, amt",
-        [(True, None), (False, None), (False, 10 * 2**20)],
+        "preload_content, amt, read_meth",
+        [
+            (True, None, "read"),
+            (False, None, "read"),
+            (False, 10 * 2**20, "read"),
+            (False, None, "read1"),
+            (False, 10 * 2**20, "read1"),
+        ],
     )
     @pytest.mark.limit_memory("25 MB")
     def test_buffer_memory_usage_decode_one_chunk(
-        self, preload_content: bool, amt: int
+        self, preload_content: bool, amt: int, read_meth: str
     ) -> None:
         content_length = 10 * 2**20  # 10 MiB
         fp = BytesIO(zlib.compress(bytes(content_length)))
@@ -905,21 +984,27 @@ class TestResponse:
             preload_content=preload_content,
             headers={"content-encoding": "deflate"},
         )
-        data = resp.data if preload_content else resp.read(amt)
+        data = resp.data if preload_content else getattr(resp, read_meth)(amt)
         assert len(data) == content_length
 
     @pytest.mark.parametrize(
-        "preload_content, amt",
-        [(True, None), (False, None), (False, 10 * 2**20)],
+        "preload_content, amt, read_meth",
+        [
+            (True, None, "read"),
+            (False, None, "read"),
+            (False, 10 * 2**20, "read"),
+            (False, None, "read1"),
+            (False, 10 * 2**20, "read1"),
+        ],
     )
     @pytest.mark.limit_memory("10.5 MB")
     def test_buffer_memory_usage_no_decoding(
-        self, preload_content: bool, amt: int
+        self, preload_content: bool, amt: int, read_meth: str
     ) -> None:
         content_length = 10 * 2**20  # 10 MiB
         fp = BytesIO(bytes(content_length))
         resp = HTTPResponse(fp, preload_content=preload_content, decode_content=False)
-        data = resp.data if preload_content else resp.read(amt)
+        data = resp.data if preload_content else getattr(resp, read_meth)(amt)
         assert len(data) == content_length
 
     def test_length_no_header(self) -> None:

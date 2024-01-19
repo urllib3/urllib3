@@ -630,6 +630,7 @@ def test_post_receive_json(
             "POST",
             f"http://{host}:{port}/echo_json",
             body=json.dumps(json_data).encode("utf-8"),
+            headers={"Content-type": "application/json"},
         )
         response = conn.getresponse()
         assert isinstance(response, BaseHTTPResponse)

@@ -282,7 +282,7 @@ class TestHTTPHeaderDict:
         ]
 
         assert list(d.items()) == expected_results
-        # make sure the values persist over copys
+        # make sure the values persist over copies
         assert list(d.copy().items()) == expected_results
 
         other_dict = HTTPHeaderDict()
@@ -385,7 +385,7 @@ class TestHTTPHeaderDict:
         hdict = {
             "Content-Length": "0",
             "Content-type": "text/plain",
-            "Server": "TornadoServer/1.2.3",
+            "Server": "Hypercorn/1.2.3",
         }
         h = dict(HTTPHeaderDict(hdict).items())
         assert hdict == h

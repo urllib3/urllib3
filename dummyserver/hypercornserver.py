@@ -9,6 +9,7 @@ from typing import Generator
 
 import hypercorn
 import hypercorn.trio
+import hypercorn.typing
 import trio
 from quart_trio import QuartTrio
 
@@ -41,7 +42,7 @@ async def _start_server(
 
 @contextlib.contextmanager
 def run_hypercorn_in_thread(
-    config: hypercorn.Config, app: QuartTrio
+    config: hypercorn.Config, app: hypercorn.typing.ASGIFramework
 ) -> Generator[None, None, None]:
     ready_event = threading.Event()
     shutdown_event = threading.Event()
@@ -61,10 +62,11 @@ def run_hypercorn_in_thread(
         if not ready_event.is_set():
             raise Exception("most likely failed to start server")
 
-        yield
-
-        shutdown_event.set()
-        future.result()
+        try:
+            yield
+        finally:
+            shutdown_event.set()
+            future.result()
 
 
 def main() -> int:

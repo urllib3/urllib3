@@ -23,13 +23,13 @@ from unittest import mock
 import pytest
 import trustme
 
-from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from dummyserver.tornadoserver import (
+from dummyserver.socketserver import (
     DEFAULT_CA,
     DEFAULT_CERTS,
     encrypt_key_pem,
     get_unreachable_address,
 )
+from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
@@ -1267,35 +1267,34 @@ class TestProxyManager(SocketDummyServerTestCase):
 class TestSSL(SocketDummyServerTestCase):
     def test_ssl_failure_midway_through_conn(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
-            sock = listener.accept()[0]
-            sock2 = sock.dup()
-            ssl_sock = original_ssl_wrap_socket(
-                sock,
-                server_side=True,
-                keyfile=DEFAULT_CERTS["keyfile"],
-                certfile=DEFAULT_CERTS["certfile"],
-                ca_certs=DEFAULT_CA,
-            )
+            with listener.accept()[0] as sock, sock.dup() as sock2:
+                ssl_sock = original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                )
 
-            buf = b""
-            while not buf.endswith(b"\r\n\r\n"):
-                buf += ssl_sock.recv(65536)
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += ssl_sock.recv(65536)
 
-            # Deliberately send from the non-SSL socket.
-            sock2.send(
-                b"HTTP/1.1 200 OK\r\n"
-                b"Content-Type: text/plain\r\n"
-                b"Content-Length: 2\r\n"
-                b"\r\n"
-                b"Hi"
-            )
-            sock2.close()
-            ssl_sock.close()
+                # Deliberately send from the non-SSL socket.
+                sock2.send(
+                    b"HTTP/1.1 200 OK\r\n"
+                    b"Content-Type: text/plain\r\n"
+                    b"Content-Length: 2\r\n"
+                    b"\r\n"
+                    b"Hi"
+                )
+                ssl_sock.close()
 
         self._start_server(socket_handler)
         with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
             with pytest.raises(
-                SSLError, match=r"(wrong version number|record overflow)"
+                SSLError,
+                match=r"(wrong version number|record overflow|record layer failure)",
             ):
                 pool.request("GET", "/", retries=False)
 
@@ -1353,19 +1352,21 @@ class TestSSL(SocketDummyServerTestCase):
                         certfile=DEFAULT_CERTS["certfile"],
                         ca_certs=DEFAULT_CA,
                     )
-                except (ssl.SSLError, ConnectionResetError):
-                    if i == 1:
-                        raise
-                    return
+                except (ssl.SSLError, ConnectionResetError, ConnectionAbortedError):
+                    pass
 
-                ssl_sock.send(
-                    b"HTTP/1.1 200 OK\r\n"
-                    b"Content-Type: text/plain\r\n"
-                    b"Content-Length: 5\r\n\r\n"
-                    b"Hello"
-                )
+                else:
+                    with ssl_sock:
+                        try:
+                            ssl_sock.send(
+                                b"HTTP/1.1 200 OK\r\n"
+                                b"Content-Type: text/plain\r\n"
+                                b"Content-Length: 5\r\n\r\n"
+                                b"Hello"
+                            )
+                        except (ssl.SSLEOFError, ConnectionResetError, BrokenPipeError):
+                            pass
 
-                ssl_sock.close()
                 sock.close()
 
         self._start_server(socket_handler)
@@ -1374,7 +1375,10 @@ class TestSSL(SocketDummyServerTestCase):
 
         def request() -> None:
             pool = HTTPSConnectionPool(
-                self.host, self.port, assert_fingerprint=fingerprint
+                self.host,
+                self.port,
+                assert_fingerprint=fingerprint,
+                cert_reqs="CERT_NONE",
             )
             try:
                 timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
@@ -1388,9 +1392,20 @@ class TestSSL(SocketDummyServerTestCase):
         with pytest.raises(MaxRetryError) as cm:
             request()
         assert type(cm.value.reason) is SSLError
+        assert str(cm.value.reason) == (
+            "Fingerprints did not match. Expected "
+            '"a0c4a74600eda72dc0becb9a8cb607ca58ee745e", got '
+            '"728b554c9afc1e88a11cad1bb2e7cc3edbc8f98a"'
+        )
         # Should not hang, see https://github.com/urllib3/urllib3/issues/529
-        with pytest.raises(MaxRetryError):
+        with pytest.raises(MaxRetryError) as cm2:
             request()
+        assert type(cm2.value.reason) is SSLError
+        assert str(cm2.value.reason) == (
+            "Fingerprints did not match. Expected "
+            '"a0c4a74600eda72dc0becb9a8cb607ca58ee745e", got '
+            '"728b554c9afc1e88a11cad1bb2e7cc3edbc8f98a"'
+        )
 
     def test_retry_ssl_error(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
@@ -1475,6 +1490,17 @@ class TestSSL(SocketDummyServerTestCase):
         context.load_default_certs = mock.Mock()
         context.options = 0
 
+        class MockSSLSocket:
+            def __init__(
+                self, sock: socket.socket, *args: object, **kwargs: object
+            ) -> None:
+                self._sock = sock
+
+            def close(self) -> None:
+                self._sock.close()
+
+        context.wrap_socket = MockSSLSocket
+
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
             self._start_server(socket_handler)
             with HTTPSConnectionPool(self.host, self.port) as pool:
@@ -1516,6 +1542,17 @@ class TestSSL(SocketDummyServerTestCase):
         context = mock.create_autospec(ssl_.SSLContext)
         context.load_default_certs = mock.Mock()
         context.options = 0
+
+        class MockSSLSocket:
+            def __init__(
+                self, sock: socket.socket, *args: object, **kwargs: object
+            ) -> None:
+                self._sock = sock
+
+            def close(self) -> None:
+                self._sock.close()
+
+        context.wrap_socket = MockSSLSocket
 
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
             for kwargs in [
@@ -1848,7 +1885,7 @@ class TestHeaders(SocketDummyServerTestCase):
             body.seek(0, 0)
             expected = b"bytes-io-body\r\n0\r\n\r\n"
         else:
-            raise ValueError("Unknonw body type")
+            raise ValueError("Unknown body type")
 
         buffer: bytes = b""
 
