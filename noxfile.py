@@ -11,7 +11,10 @@ import nox
 
 def tests_impl(
     session: nox.Session,
-    extras: str = "socks,brotli,zstd",
+    # zstd cannot be installed on CPython 3.13 yet because it pins
+    # an incompatible CFFI version.
+    # https://github.com/indygreg/python-zstandard/issues/210
+    extras: str = "socks,brotli,zstd" if sys.version_info < (3, 13) else "socks,brotli",
     # hypercorn dependency h2 compares bytes and strings
     # https://github.com/python-hyper/h2/issues/1236
     byte_string_comparisons: bool = False,
