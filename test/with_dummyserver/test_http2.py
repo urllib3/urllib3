@@ -7,6 +7,10 @@ import pytest
 
 import urllib3
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
+from dummyserver.tornadoserver import DEFAULT_CERTS
+
+DEFAULT_CERTS_HTTP2 = DEFAULT_CERTS.copy()
+DEFAULT_CERTS_HTTP2["alpn_protocols"] = ["h2"]
 
 
 def setup_module() -> None:
@@ -28,6 +32,8 @@ def teardown_module() -> None:
 
 
 class TestHypercornDummyServerTestCase(HTTPSHypercornDummyServerTestCase):
+    certs = DEFAULT_CERTS_HTTP2
+
     @classmethod
     def setup_class(cls) -> None:
         super().setup_class()
