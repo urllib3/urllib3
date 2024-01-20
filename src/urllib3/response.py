@@ -910,9 +910,6 @@ class HTTPResponse(BaseHTTPResponse):
         if amt is not None:
             cache_content = False
 
-            if amt == 0:
-                return b""
-
             if len(self._decoded_buffer) >= amt:
                 return self._decoded_buffer.get(amt)
 
@@ -931,7 +928,7 @@ class HTTPResponse(BaseHTTPResponse):
                 return data
 
             while True:
-                flush_decoder = not data
+                flush_decoder = amt!=0 and not data
                 decoded_data = self._decode(data, decode_content, flush_decoder)
                 self._decoded_buffer.put(decoded_data)
                 if len(self._decoded_buffer) >= amt or flush_decoder:
