@@ -6,8 +6,8 @@ from test import notWindows
 import pytest
 
 import urllib3
+from dummyserver.socketserver import DEFAULT_CERTS
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
-from dummyserver.tornadoserver import DEFAULT_CERTS
 
 DEFAULT_CERTS_HTTP2 = DEFAULT_CERTS.copy()
 DEFAULT_CERTS_HTTP2["alpn_protocols"] = ["h2"]
