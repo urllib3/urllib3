@@ -915,13 +915,12 @@ class HTTPResponse(BaseHTTPResponse):
 
         data = self._raw_read(amt)
 
-        flush_decoder = amt is None or (amt != 0 and not data)
-
         if not data and len(self._decoded_buffer) == 0:
             return data
 
-        if amt is None:
-            data = self._decode(data, decode_content, flush_decoder)
+        if amt is None:  # reads all content
+            # flush_decoder, as this will be the only and thus last _decode call
+            data = self._decode(data, decode_content, flush_decoder=True)
             if cache_content:
                 self._body = data
         else:
@@ -934,7 +933,9 @@ class HTTPResponse(BaseHTTPResponse):
                     )
                 return data
 
-            decoded_data = self._decode(data, decode_content, flush_decoder)
+            decoded_data = self._decode(
+                data, decode_content, flush_decoder=(amt != 0 and not data)
+            )
             self._decoded_buffer.put(decoded_data)
 
             while len(self._decoded_buffer) < amt and data:
@@ -942,7 +943,12 @@ class HTTPResponse(BaseHTTPResponse):
                 # For example, the GZ file header takes 10 bytes, we don't want to read
                 # it one byte at a time
                 data = self._raw_read(amt)
-                decoded_data = self._decode(data, decode_content, flush_decoder)
+
+                # when we reach EOF (amt != 0 and not data), the decoder needs to be flushed, as this
+                # will be the last _decode() call. see https://github.com/urllib3/urllib3/issues/2799
+                decoded_data = self._decode(
+                    data, decode_content, flush_decoder=(amt != 0 and not data)
+                )
                 self._decoded_buffer.put(decoded_data)
             data = self._decoded_buffer.get(amt)
 
