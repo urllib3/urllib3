@@ -930,10 +930,8 @@ class HTTPResponse(BaseHTTPResponse):
                     )
                 return data
 
-            # restoring old behaviour to see if tests fail
-            flush_decoder = not data
             while True:
-                # flush_decoder = not data
+                flush_decoder = not data
                 decoded_data = self._decode(data, decode_content, flush_decoder)
                 self._decoded_buffer.put(decoded_data)
                 if len(self._decoded_buffer) >= amt or flush_decoder:
