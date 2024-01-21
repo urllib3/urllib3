@@ -561,9 +561,7 @@ class HTTPSConnection(HTTPConnection):
                 raise ValueError(
                     "The 'ssl_context' parameter cannot be set when use_forwarding_for_https is True. Use the 'proxy_ssl_context' parameter to customize the connection to the proxy"
                 )
-            else:
-
-                self.ssl_context = proxy_config.ssl_context
+            self.ssl_context = proxy_config.ssl_context
         else:
             self.ssl_context = ssl_context
 
@@ -665,7 +663,7 @@ class HTTPSConnection(HTTPConnection):
         # Remove trailing '.' from fqdn hostnames to allow certificate validation
         server_hostname_rm_dot = server_hostname.rstrip(".")
 
-        if self._connecting_to_proxy and self.proxy_config:
+        if self.proxy_is_forwarding and self.proxy_config:
             ssl_context = self.proxy_config.ssl_context
         else:
             ssl_context = self.ssl_context
@@ -683,7 +681,7 @@ class HTTPSConnection(HTTPConnection):
             key_file=self.key_file,
             key_password=self.key_password,
             server_hostname=server_hostname_rm_dot,
-            ssl_context=self.ssl_context,
+            ssl_context=ssl_context,
             tls_in_tls=tls_in_tls,
             assert_hostname=self.assert_hostname,
             assert_fingerprint=self.assert_fingerprint,
