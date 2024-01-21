@@ -2380,7 +2380,7 @@ class TestContentFraming(SocketDummyServerTestCase):
             body.seek(0, 0)
             should_be_chunked = True
         elif body_type == "file_text":
-            body = io.StringIO("x" * 10)
+            body = io.StringIO("x\x80\x81")
             body.seek(0, 0)
             should_be_chunked = True
         elif body_type == "bytearray":
@@ -2390,7 +2390,9 @@ class TestContentFraming(SocketDummyServerTestCase):
             body = b"x" * 10
             should_be_chunked = False
 
-        if should_be_chunked:
+        if body_type == "file_text":
+            expected_bytes = b"\r\n\r\n5\r\nx\xc2\x80\xc2\x81\r\n0\r\n\r\n"
+        elif should_be_chunked:
             expected_bytes = b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n"
         else:
             expected_bytes = b"\r\n\r\nxxxxxxxxxx"

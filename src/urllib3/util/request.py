@@ -227,7 +227,7 @@ def body_to_chunks(
                 if not datablock:
                     break
                 if encode:
-                    datablock = datablock.encode("iso-8859-1")
+                    datablock = datablock.encode("utf-8")
                 yield datablock
 
         chunks = chunk_readable()
