@@ -29,8 +29,8 @@ class HTTP2Connection(HTTPSConnection):
         self._h2_stream: int | None = None
         self._h2_headers: list[tuple[bytes, bytes]] = []
 
-        if "proxy" in kwargs or "proxy_config" in kwargs:
-            raise ValueError("Proxies aren't supported with HTTP/2")
+        if "proxy" in kwargs or "proxy_config" in kwargs:  # Defensive:
+            raise NotImplementedError("Proxies aren't supported with HTTP/2")
 
         super().__init__(host, port, **kwargs)
 
@@ -84,10 +84,10 @@ class HTTP2Connection(HTTPSConnection):
                 end_stream=True,
             )
 
-    def send(self, data: bytes) -> None:  # type: ignore[override]
+    def send(self, data: bytes) -> None:  # type: ignore[override]  # Defensive:
         if not data:
             return
-        raise ValueError("Sending data isn't supported yet")
+        raise NotImplementedError("Sending data isn't supported yet")
 
     def getresponse(  # type: ignore[override]
         self,
@@ -101,8 +101,10 @@ class HTTP2Connection(HTTPSConnection):
                 if received_data := self.sock.recv(65535):
                     events = h2_conn.receive_data(received_data)
                     for event in events:
-                        if isinstance(event, h2.events.InformationalResponseReceived):
-                            continue
+                        if isinstance(
+                            event, h2.events.InformationalResponseReceived
+                        ):  # Defensive:
+                            continue  # TODO: Does the stdlib do anything with these responses?
 
                         elif isinstance(event, h2.events.ResponseReceived):
                             headers = HTTPHeaderDict()

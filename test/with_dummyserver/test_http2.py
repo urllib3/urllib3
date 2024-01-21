@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 from test import notWindows
+from test.conftest import ServerConfig
 
 import pytest
 
@@ -58,14 +59,15 @@ class TestHypercornDummyServerTestCase(HTTPSHypercornDummyServerTestCase):
         assert b"< HTTP/2 200" in output
         assert output.endswith(b"Dummy server!")
 
-    def test_simple_http2(self) -> None:
-        with urllib3.PoolManager(ca_certs=self.certs["ca_certs"]) as http:
-            resp = http.request("HEAD", self.base_url, retries=False)
 
-        assert resp.status == 200
-        resp.headers.pop("date")
-        assert resp.headers == {
-            "content-type": "text/html; charset=utf-8",
-            "content-length": "13",
-            "server": "hypercorn-h2",
-        }
+def test_simple_http2(san_server: ServerConfig) -> None:
+    with urllib3.PoolManager(ca_certs=san_server.ca_certs) as http:
+        resp = http.request("HEAD", san_server.base_url, retries=False)
+
+    assert resp.status == 200
+    resp.headers.pop("date")
+    assert resp.headers == {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": "13",
+        "server": "hypercorn-h2",
+    }
