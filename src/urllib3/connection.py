@@ -99,14 +99,11 @@ class HTTPConnection(_HTTPConnection, object):
       Or you may want to disable the defaults by passing an empty list (e.g., ``[]``).
     """
 
-    _SOCKET_OPTIONS_NAGLE_ENABLE = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)]
-    _SOCKET_OPTIONS_NAGLE_DISABLE = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
-
     default_port = port_by_scheme["http"]
 
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options = _SOCKET_OPTIONS_NAGLE_DISABLE
+    default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
     #: Whether this connection verifies the host's certificate.
     is_verified = False
@@ -126,16 +123,22 @@ class HTTPConnection(_HTTPConnection, object):
         self.proxy = kw.pop("proxy", None)
         self.proxy_config = kw.pop("proxy_config", None)
 
+        # Enable Nagle's algorithm by default in case of proxy
         if self.proxy:
-            # Enable Nagle's algorithm by default in case of proxy
+            # Shallow copy the global (class) options to an instance variable,
+            # thus the global options are not overridden
+            self.default_socket_options = HTTPConnection.default_socket_options[:]
+
+            # if 'TCP_NODELAY 1' is within options, remove
             if (
-                self._SOCKET_OPTIONS_NAGLE_DISABLE
-                in HTTPConnection.default_socket_options
+                (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                in self.default_socket_options
             ):
-                HTTPConnection.default_socket_options.remove(
-                    self._SOCKET_OPTIONS_NAGLE_DISABLE
+                self.default_socket_options.remove(
+                    (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 )
-            HTTPConnection.default_socket_options = self._SOCKET_OPTIONS_NAGLE_ENABLE
+            # Add 'TCP_NODELAY 0' option (Enable Nagle)
+            self.default_socket_options += [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)]
 
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
