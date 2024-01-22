@@ -870,6 +870,14 @@ class HTTPResponse(BaseHTTPResponse):
                     # raised during streaming, so all calls with incorrect
                     # Content-Length are caught.
                     raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
+            elif read1 and (
+                (amt != 0 and not data) or self.length_remaining == len(data)
+            ):
+                # All data has been read, but `self._fp.read1` in
+                # CPython 3.12 and older doesn't always close
+                # `http.client.HTTPResponse`, so we close it here.
+                # See https://github.com/python/cpython/issues/113199
+                self._fp.close()
 
         if data:
             self._fp_bytes_read += len(data)
