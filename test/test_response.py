@@ -609,7 +609,7 @@ class TestResponse:
                 assert resp.isclosed()
 
     @pytest.mark.parametrize("length_known", (True, False))
-    def test_io_not_closed_untill_all_data_is_read(
+    def test_io_not_closed_until_all_data_is_read(
         self, sock: socket.socket, length_known: bool
     ) -> None:
         with httplib.HTTPResponse(sock) as hlr:
