@@ -29,11 +29,12 @@ def tests_impl(
     session.run("python", "-c", "import struct; print(struct.calcsize('P') * 8)")
     # Print OpenSSL information.
     session.run("python", "-m", "OpenSSL.debug")
-
+    # Retrieve sys info from the Python implementation under test
+    # to avoid enabling memray when nox runs under CPython but tests PyPy
     session_python_info = session.run(
         "python",
         "-c",
-        "import sys; print(sys.implementation.name,sys.version_info.releaselevel)",
+        "import sys; print(sys.implementation.name, sys.version_info.releaselevel)",
         silent=True,
     ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
     implementation_name, release_level = session_python_info.split(" ")
