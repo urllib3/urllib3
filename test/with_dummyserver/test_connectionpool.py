@@ -104,7 +104,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
             delta = time.time() - now
 
             message = "timeout was pool-level SHORT_TIMEOUT rather than request-level LONG_TIMEOUT"
-            assert delta >= LONG_TIMEOUT, message
+            assert delta >= (LONG_TIMEOUT - 1e-5), message
             block_event.set()  # Release request
 
             # Timeout passed directly to request should raise a request timeout

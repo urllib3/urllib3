@@ -11,7 +11,7 @@ import nox
 
 def tests_impl(
     session: nox.Session,
-    extras: str = "socks,brotli,zstd",
+    extras: str = "socks,brotli,zstd,h2",
     # hypercorn dependency h2 compares bytes and strings
     # https://github.com/python-hyper/h2/issues/1236
     byte_string_comparisons: bool = False,
@@ -279,9 +279,13 @@ def mypy(session: nox.Session) -> None:
     session.run("mypy", "--version")
     session.run(
         "mypy",
+        "-p",
         "dummyserver",
-        "noxfile.py",
-        "src/urllib3",
+        "-m",
+        "noxfile",
+        "-p",
+        "urllib3",
+        "-p",
         "test",
     )
 

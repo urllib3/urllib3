@@ -1110,7 +1110,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 InsecureProxyWarning,
             )
 
-        if not conn.is_verified:
+        if not conn.is_verified and not conn.proxy_is_verified:
             warnings.warn(
                 (
                     f"Unverified HTTPS request is being made to host '{conn._tunnel_host if conn._tunnel_host else conn.host}'. "  # type: ignore[attr-defined]
