@@ -1,1 +1,1 @@
-Made re-raised ProtocolError more verbose regarding corner cases.
+Made raised ``urllib3.exceptions.ProtocolError`` more verbose when a response contains content unexpectedly.
