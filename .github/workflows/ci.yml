@@ -66,15 +66,15 @@ jobs:
           - python-version: "pypy-3.8"
             os: ubuntu-latest
             experimental: false
-            nox-session: test-pypy
+            nox-session: test-pypy3.8
           - python-version: "pypy-3.9"
             os: ubuntu-latest
             experimental: false
-            nox-session: test-pypy
+            nox-session: test-pypy3.9
           - python-version: "pypy-3.10"
             os: ubuntu-latest
             experimental: false
-            nox-session: test-pypy
+            nox-session: test-pypy3.10
           - python-version: "3.x"
           # brotli
             os: ubuntu-latest
