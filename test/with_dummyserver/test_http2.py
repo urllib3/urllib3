@@ -16,7 +16,7 @@ DEFAULT_CERTS_HTTP2["alpn_protocols"] = ["h2"]
 
 def setup_module() -> None:
     try:
-        from urllib3.contrib.http2 import inject_into_urllib3
+        from urllib3.http2 import inject_into_urllib3
 
         inject_into_urllib3()
     except ImportError as e:
@@ -25,7 +25,7 @@ def setup_module() -> None:
 
 def teardown_module() -> None:
     try:
-        from urllib3.contrib.http2 import extract_from_urllib3
+        from urllib3.http2 import extract_from_urllib3
 
         extract_from_urllib3()
     except ImportError:

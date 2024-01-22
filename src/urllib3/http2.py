@@ -11,9 +11,9 @@ import h2.events  # type: ignore[import]
 import urllib3.connection
 import urllib3.util.ssl_
 
-from .._collections import HTTPHeaderDict
-from ..connection import HTTPSConnection
-from ..connectionpool import HTTPSConnectionPool
+from ._collections import HTTPHeaderDict
+from .connection import HTTPSConnection
+from .connectionpool import HTTPSConnectionPool
 
 orig_HTTPSConnection = HTTPSConnection
 
@@ -83,6 +83,8 @@ class HTTP2Connection(HTTPSConnection):
                 headers=self._h2_headers,
                 end_stream=True,
             )
+            if data_to_send := h2_conn.data_to_send():
+                self.sock.sendall(data_to_send)
 
     def send(self, data: bytes) -> None:  # type: ignore[override]  # Defensive:
         if not data:
