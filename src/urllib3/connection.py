@@ -248,6 +248,9 @@ class HTTPConnection(_HTTPConnection):
         # not using tunnelling.
         self._has_connected_to_proxy = bool(self.proxy)
 
+        if self._has_connected_to_proxy:
+            self.proxy_is_verified = False
+
     @property
     def is_closed(self) -> bool:
         return self.sock is None
@@ -261,6 +264,13 @@ class HTTPConnection(_HTTPConnection):
     @property
     def has_connected_to_proxy(self) -> bool:
         return self._has_connected_to_proxy
+
+    @property
+    def proxy_is_forwarding(self) -> bool:
+        """
+        Return True if a forwarding proxy is configured, else return False
+        """
+        return bool(self.proxy) and self._tunnel_host is None
 
     def close(self) -> None:
         try:
@@ -611,8 +621,11 @@ class HTTPSConnection(HTTPConnection):
         if self._tunnel_host is not None:
             # We're tunneling to an HTTPS origin so need to do TLS-in-TLS.
             if self._tunnel_scheme == "https":
+                # _connect_tls_proxy will verify and assign proxy_is_verified
                 self.sock = sock = self._connect_tls_proxy(self.host, sock)
                 tls_in_tls = True
+            elif self._tunnel_scheme == "http":
+                self.proxy_is_verified = False
 
             # If we're tunneling it means we're connected to our proxy.
             self._has_connected_to_proxy = True
@@ -656,12 +669,25 @@ class HTTPSConnection(HTTPConnection):
             assert_fingerprint=self.assert_fingerprint,
         )
         self.sock = sock_and_verified.socket
-        self.is_verified = sock_and_verified.is_verified
+
+        # Forwarding proxies can never have a verified target since
+        # the proxy is the one doing the verification. Should instead
+        # use a CONNECT tunnel in order to verify the target.
+        # See: https://github.com/urllib3/urllib3/issues/3267.
+        if self.proxy_is_forwarding:
+            self.is_verified = False
+        else:
+            self.is_verified = sock_and_verified.is_verified
 
         # If there's a proxy to be connected to we are fully connected.
         # This is set twice (once above and here) due to forwarding proxies
         # not using tunnelling.
         self._has_connected_to_proxy = bool(self.proxy)
+
+        # Set `self.proxy_is_verified` unless it's already set while
+        # establishing a tunnel.
+        if self._has_connected_to_proxy and self.proxy_is_verified is None:
+            self.proxy_is_verified = sock_and_verified.is_verified
 
     def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> ssl.SSLSocket:
         """
@@ -862,6 +888,7 @@ def _wrap_proxy_error(err: Exception, proxy_scheme: str | None) -> ProxyError:
     is_likely_http_proxy = (
         "wrong version number" in error_normalized
         or "unknown protocol" in error_normalized
+        or "record layer failure" in error_normalized
     )
     http_proxy_warning = (
         ". Your proxy appears to only use HTTP and not HTTPS, "
