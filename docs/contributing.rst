@@ -13,8 +13,8 @@ If you wish to add a new feature or fix a bug:
    to start making your changes.
 #. Write a test which shows that the bug was fixed or that the feature works
    as expected.
-#. Format your changes with black using command `$ nox -rs format` and lint your
-   changes using command `nox -rs lint`.
+#. Format your changes with black using command ``nox -rs format`` and lint your
+   changes using command ``nox -rs lint``.
 #. Add a `changelog entry
    <https://github.com/urllib3/urllib3/blob/main/changelog/README.rst>`__.
 #. Send a pull request and bug the maintainer until it gets merged and published.
@@ -36,7 +36,7 @@ We use some external dependencies, multiple interpreters and code coverage
 analysis while running test suite. Our ``noxfile.py`` handles much of this for
 you::
 
-  $ nox --reuse-existing-virtualenvs --sessions test-3.8 test-3.9
+  $ nox --reuse-existing-virtualenvs --sessions test-3.8 test-3.9 test-pypy3.8 test-pypy3.10
   [ Nox will create virtualenv if needed, install the specified dependencies, and run the commands in order.]
   nox > Running session test-3.8
   .......
@@ -48,6 +48,21 @@ you::
   .......
   .......
   nox > Session test-3.9 was successful.
+
+
+Note that for nox to test different interpreters, the interpreters must be on the
+`PATH` first. Check with `which` to see if the interpreter is on the `PATH`
+like so::
+
+  $ which python3.8
+  ~/.pyenv/versions/3.8.16/bin/python3.8
+
+  $ which python3.9
+  ~/.pyenv/versions/3.9.6/bin/python3.9
+
+  $ which pypy3.8
+  ~/.pyenv/versions/pypy3.8-7.3.11/bin/pypy3.8
+
 
 There is also a nox command for running all of our tests and multiple python
 versions.::
