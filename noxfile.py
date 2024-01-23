@@ -64,9 +64,8 @@ def tests_impl(
     session.run(
         "python",
         *(("-bb",) if byte_string_comparisons else ()),
-        "-m",
-        *("coverage", "run", "--parallel-mode")
-        if not session.name.startswith("test-pypy3.9")
+        *("-m", "coverage", "run", "--parallel-mode")
+        if not session.name.startswith("test-pypy")
         else (),
         "-m",
         "pytest",
