@@ -14,7 +14,7 @@ def tests_impl(
     # zstd cannot be installed on CPython 3.13 yet because it pins
     # an incompatible CFFI version.
     # https://github.com/indygreg/python-zstandard/issues/210
-    extras: str = "socks,brotli,zstd" if sys.version_info < (3, 13) else "socks,brotli",
+    extras: str = "socks,brotli,zstd,h2" if sys.version_info < (3, 13) else "socks,brotli,h2",
     # hypercorn dependency h2 compares bytes and strings
     # https://github.com/python-hyper/h2/issues/1236
     byte_string_comparisons: bool = False,
@@ -32,9 +32,18 @@ def tests_impl(
     session.run("python", "-c", "import struct; print(struct.calcsize('P') * 8)")
     # Print OpenSSL information.
     session.run("python", "-m", "OpenSSL.debug")
+    # Retrieve sys info from the Python implementation under test
+    # to avoid enabling memray when nox runs under CPython but tests PyPy
+    session_python_info = session.run(
+        "python",
+        "-c",
+        "import sys; print(sys.implementation.name, sys.version_info.releaselevel)",
+        silent=True,
+    ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
+    implementation_name, release_level = session_python_info.split(" ")
 
     memray_supported = True
-    if sys.implementation.name != "cpython" or sys.version_info.releaselevel != "final":
+    if implementation_name != "cpython" or release_level != "final":
         memray_supported = False  # pytest-memray requires CPython 3.8+
     elif sys.platform == "win32":
         memray_supported = False
