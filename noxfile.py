@@ -65,9 +65,9 @@ def tests_impl(
         "python",
         *(("-bb",) if byte_string_comparisons else ()),
         "-m",
-        "coverage",
-        "run",
-        "--parallel-mode",
+        *("coverage", "run", "--parallel-mode")
+        if not session.name.startswith("test-pypy3.9")
+        else (),
         "-m",
         "pytest",
         *("--memray", "--hide-memray-summary") if memray_supported else (),
