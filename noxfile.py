@@ -32,7 +32,7 @@ def tests_impl(
     # an incompatible CFFI version.
     # https://github.com/indygreg/python-zstandard/issues/210
     if release_level != "final":
-        extras = extras.replace("zstd", "")
+        extras = extras.replace(",zstd", "")
 
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
