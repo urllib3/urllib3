@@ -11,16 +11,29 @@ import nox
 
 def tests_impl(
     session: nox.Session,
-    # zstd cannot be installed on CPython 3.13 yet because it pins
-    # an incompatible CFFI version.
-    # https://github.com/indygreg/python-zstandard/issues/210
-    extras: str = "socks,brotli,zstd,h2" if sys.version_info < (3, 13) else "socks,brotli,h2",
+    extras: str = "socks,brotli,zstd,h2",
     # hypercorn dependency h2 compares bytes and strings
     # https://github.com/python-hyper/h2/issues/1236
     byte_string_comparisons: bool = False,
     integration: bool = False,
     pytest_extra_args: list[str] = [],
 ) -> None:
+    # Retrieve sys info from the Python implementation under test
+    # to avoid enabling memray when nox runs under CPython but tests PyPy
+    session_python_info = session.run(
+        "python",
+        "-c",
+        "import sys; print(sys.implementation.name, sys.version_info.releaselevel)",
+        silent=True,
+    ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
+    implementation_name, release_level = session_python_info.split(" ")
+
+    # zstd cannot be installed on CPython 3.13 yet because it pins
+    # an incompatible CFFI version.
+    # https://github.com/indygreg/python-zstandard/issues/210
+    if release_level != "final":
+        extras = extras.replace("zstd", "")
+
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
     session.install(f".[{extras}]")
@@ -32,15 +45,6 @@ def tests_impl(
     session.run("python", "-c", "import struct; print(struct.calcsize('P') * 8)")
     # Print OpenSSL information.
     session.run("python", "-m", "OpenSSL.debug")
-    # Retrieve sys info from the Python implementation under test
-    # to avoid enabling memray when nox runs under CPython but tests PyPy
-    session_python_info = session.run(
-        "python",
-        "-c",
-        "import sys; print(sys.implementation.name, sys.version_info.releaselevel)",
-        silent=True,
-    ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
-    implementation_name, release_level = session_python_info.split(" ")
 
     memray_supported = True
     if implementation_name != "cpython" or release_level != "final":
