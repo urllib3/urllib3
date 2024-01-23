@@ -49,6 +49,9 @@ zstd = [
 socks = [
   "PySocks>=1.5.6,<2.0,!=1.5.7",
 ]
+h2 = [
+  "h2>=4,<5"
+]
 
 [project.urls]
 "Changelog" = "https://github.com/urllib3/urllib3/blob/main/CHANGES.rst"
