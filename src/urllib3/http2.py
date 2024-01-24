@@ -193,7 +193,7 @@ class HTTP2Response(BaseHTTPResponse):
 
 
 def inject_into_urllib3() -> None:
-    HTTPSConnectionPool.ConnectionCls = HTTP2Connection  # type: ignore[assignment]
+    HTTPSConnectionPool.ConnectionCls = HTTP2Connection
     urllib3.connection.HTTPSConnection = HTTP2Connection  # type: ignore[misc]
 
     # TODO: Offer 'http/1.1' as well, but for testing purposes this is handy.
