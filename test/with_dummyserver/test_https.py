@@ -129,7 +129,7 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
 
         shutil.rmtree(cls.certs_dir)
 
-    def test_simple(self) -> None:
+    def test_simple(self, http_version) -> None:
         with HTTPSConnectionPool(
             self.host,
             self.port,
@@ -138,6 +138,7 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
+            assert r.headers["server"] == f"hypercorn-{http_version}"
 
     @resolvesLocalhostFQDN()
     def test_dotted_fqdn(self) -> None:
