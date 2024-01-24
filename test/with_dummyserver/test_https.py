@@ -139,6 +139,7 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
             r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
             assert r.headers["server"] == f"hypercorn-{http_version}"
+            assert r.data == b"Dummy server!"
 
     @resolvesLocalhostFQDN()
     def test_dotted_fqdn(self) -> None:

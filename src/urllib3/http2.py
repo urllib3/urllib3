@@ -10,6 +10,7 @@ import h2.events  # type: ignore[import]
 
 import urllib3.connection
 import urllib3.util.ssl_
+from urllib3.response import BaseHTTPResponse
 
 from ._collections import HTTPHeaderDict
 from .connection import HTTPSConnection
@@ -54,6 +55,7 @@ class HTTP2Connection(HTTPSConnection):
         skip_accept_encoding: bool = False,
     ) -> None:
         with self._lock_h2_conn() as h2_conn:
+            self._request_url = url
             self._h2_stream = h2_conn.get_next_available_stream_id()
 
             if ":" in self.host:
@@ -134,7 +136,12 @@ class HTTP2Connection(HTTPSConnection):
         self.close()
 
         assert status is not None
-        return HTTP2Response(status=status, headers=headers, data=bytes(data))
+        return HTTP2Response(
+            status=status,
+            headers=headers,
+            request_url=self._request_url,
+            data=bytes(data),
+        )
 
     def close(self) -> None:
         with self._lock_h2_conn() as h2_conn:
@@ -155,20 +162,39 @@ class HTTP2Connection(HTTPSConnection):
         super().close()
 
 
-class HTTP2Response:
+class HTTP2Response(BaseHTTPResponse):
     # TODO: This is a woefully incomplete response object, but works for non-streaming.
-    def __init__(self, status: int, headers: HTTPHeaderDict, data: bytes) -> None:
-        self.status = status
-        self.headers = headers
-        self.data = data
+    def __init__(
+        self,
+        status: int,
+        headers: HTTPHeaderDict,
+        request_url: str,
+        data: bytes,
+        decode_content: bool = False,  # TODO: support decoding
+    ) -> None:
+        super().__init__(
+            status=status,
+            headers=headers,
+            # Following CPython, we map HTTP versions to major * 10 + minor integers
+            version=20,
+            # No reason phrase in HTTP/2
+            reason=None,
+            decode_content=decode_content,
+            request_url=request_url,
+        )
+        self._data = data
         self.length_remaining = 0
+
+    @property
+    def data(self) -> bytes:
+        return self._data
 
     def get_redirect_location(self) -> None:
         return None
 
 
 def inject_into_urllib3() -> None:
-    HTTPSConnectionPool.ConnectionCls = HTTP2Connection  # type: ignore[assignment]
+    HTTPSConnectionPool.ConnectionCls = HTTP2Connection
     urllib3.connection.HTTPSConnection = HTTP2Connection  # type: ignore[misc]
 
     # TODO: Offer 'http/1.1' as well, but for testing purposes this is handy.
