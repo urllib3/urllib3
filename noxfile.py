@@ -8,6 +8,8 @@ from pathlib import Path
 
 import nox
 
+nox.options.error_on_missing_interpreters = True
+
 
 def tests_impl(
     session: nox.Session,
@@ -85,7 +87,9 @@ def tests_impl(
     )
 
 
-@nox.session(python=["3.8", "3.9", "3.10", "3.11", "3.12", "pypy"])
+@nox.session(
+    python=["3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.8", "pypy3.9", "pypy3.10"]
+)
 def test(session: nox.Session) -> None:
     tests_impl(session)
 
