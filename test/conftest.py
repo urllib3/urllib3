@@ -373,7 +373,7 @@ def requires_tlsv1_3(supported_tls_versions: typing.AbstractSet[str]) -> None:
 
 
 @pytest.fixture(params=["h11", "h2"])
-def http_version(request):
+def http_version(request: pytest.FixtureRequest) -> typing.Generator[str, None, None]:
     if request.param == "h2":
         urllib3.http2.inject_into_urllib3()
 

@@ -129,7 +129,7 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
 
         shutil.rmtree(cls.certs_dir)
 
-    def test_simple(self, http_version) -> None:
+    def test_simple(self, http_version: str) -> None:
         with HTTPSConnectionPool(
             self.host,
             self.port,
