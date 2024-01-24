@@ -183,6 +183,7 @@ class HTTP2Response(BaseHTTPResponse):
             request_url=request_url,
         )
         self._data = data
+        self.length_remaining = 0
 
     @property
     def data(self) -> bytes:
