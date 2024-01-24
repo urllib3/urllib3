@@ -1131,7 +1131,7 @@ class TestHTTPS_IPV4SAN:
 class TestHTTPS_IPV6SAN:
     @pytest.mark.parametrize("host", ["::1", "[::1]"])
     def test_can_validate_ipv6_san(
-        self, ipv6_san_server: ServerConfig, host: str
+        self, ipv6_san_server: ServerConfig, host: str, http_version: str
     ) -> None:
         """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
         with HTTPSConnectionPool(
@@ -1142,3 +1142,4 @@ class TestHTTPS_IPV6SAN:
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200
+            assert r.headers["server"] == f"hypercorn-{http_version}"
