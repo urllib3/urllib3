@@ -46,6 +46,7 @@ from urllib3.poolmanager import proxy_from_url
 from urllib3.util import ssl_, ssl_wrap_socket
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
+from urllib3.util.util import to_bytes
 
 from .. import LogRecorder, has_alpn
 
@@ -2302,6 +2303,36 @@ class TestContentFraming(SocketDummyServerTestCase):
         assert b"Content-Length: 0\r\n" in sent_bytes
         assert b"transfer-encoding" not in sent_bytes.lower()
 
+    def test_encode_body_utf_8(self) -> None:
+        buffer = bytearray()
+        expected_bytes = b"\r\n\r\n\xc2\x80\xc2\x81"
+
+        def socket_handler(listener: socket.socket) -> None:
+            nonlocal buffer
+            sock = listener.accept()[0]
+            sock.settimeout(0)
+
+            while expected_bytes not in buffer:
+                with contextlib.suppress(BlockingIOError):
+                    buffer += sock.recv(65536)
+
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: example.com\r\n"
+                b"Content-Length: 0\r\n\r\n"
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        with HTTPConnectionPool(self.host, self.port, timeout=3) as pool:
+            resp = pool.request("POST", "/", body="\x80\x81")
+            assert resp.status == 200
+
+        sent_bytes = bytes(buffer)
+        assert to_bytes("\x80\x81", "utf-8") in sent_bytes
+        assert to_bytes("\x80\x81", "latin-1") not in sent_bytes
+
     @pytest.mark.parametrize("chunked", [True, False])
     @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
     @pytest.mark.parametrize("body_type", ["file", "generator", "bytes"])
@@ -2368,34 +2399,34 @@ class TestContentFraming(SocketDummyServerTestCase):
         expected_bytes: bytes
         body: typing.Any
 
+        body_str = "x" * 9 + "\x80"
+        body_bytes = body_str.encode("utf-8")
         if body_type == "generator":
 
             def body_generator() -> typing.Generator[bytes, None, None]:
-                yield b"x" * 10
+                yield body_bytes
 
             body = body_generator()
             should_be_chunked = True
         elif body_type == "file":
-            body = io.BytesIO(b"x" * 10)
+            body = io.BytesIO(body_bytes)
             body.seek(0, 0)
             should_be_chunked = True
         elif body_type == "file_text":
-            body = io.StringIO("x\x80\x81")
+            body = io.StringIO(body_str)
             body.seek(0, 0)
             should_be_chunked = True
         elif body_type == "bytearray":
-            body = bytearray(b"x" * 10)
+            body = bytearray(body_bytes)
             should_be_chunked = False
         else:
-            body = b"x" * 10
+            body = body_bytes
             should_be_chunked = False
 
-        if body_type == "file_text":
-            expected_bytes = b"\r\n\r\n5\r\nx\xc2\x80\xc2\x81\r\n0\r\n\r\n"
-        elif should_be_chunked:
-            expected_bytes = b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n"
+        if should_be_chunked:
+            expected_bytes = b"\r\n\r\nb\r\nxxxxxxxxx\xc2\x80\r\n0\r\n\r\n"
         else:
-            expected_bytes = b"\r\n\r\nxxxxxxxxxx"
+            expected_bytes = b"\r\n\r\nxxxxxxxxx\xc2\x80"
 
         def socket_handler(listener: socket.socket) -> None:
             nonlocal buffer
@@ -2430,12 +2461,15 @@ class TestContentFraming(SocketDummyServerTestCase):
         if should_be_chunked:
             assert b"content-length" not in sent_bytes.lower()
             assert b"Transfer-Encoding: chunked\r\n" in sent_bytes
-            assert expected_bytes in sent_bytes
+
+            expected_str_body = f"\r\n\r\nb\r\n{body_str}\r\n0\r\n\r\n"
+            assert to_bytes(expected_str_body, "latin-1") not in sent_bytes
+            assert to_bytes(expected_str_body, "utf-8") in sent_bytes
 
         else:
-            assert b"Content-Length: 10\r\n" in sent_bytes
+            assert b"Content-Length: 11\r\n" in sent_bytes
             assert b"transfer-encoding" not in sent_bytes.lower()
-            assert sent_bytes.endswith(expected_bytes)
+            assert sent_bytes.endswith(to_bytes(f"\r\n\r\n{body_str}", "utf-8"))
 
     @pytest.mark.parametrize(
         "header_transform",
