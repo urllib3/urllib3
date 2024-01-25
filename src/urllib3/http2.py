@@ -78,25 +78,32 @@ class HTTP2Connection(HTTPSConnection):
                 (header.encode("utf-8").lower(), value.encode("utf-8"))
             )
 
-    def endheaders(self) -> None:  # type: ignore[override]
+    def endheaders(self, message_body=None, *, encode_chunked=False) -> None:
+        # If there's a message body, don't end the stream after sending headers.
+        end_stream = message_body is None
         with self._lock_h2_conn() as h2_conn:
             h2_conn.send_headers(
                 stream_id=self._h2_stream,
                 headers=self._h2_headers,
-                end_stream=True,
+                end_stream=end_stream,
             )
-            if data_to_send := h2_conn.data_to_send():
-                self.sock.sendall(data_to_send)
+            self._send_outstanding_data(h2_conn)
 
-    def send(self, data: bytes) -> None:  # type: ignore[override]  # Defensive:
+    def _send_outstanding_data(self, h2_conn):
+        data_to_send = h2_conn.data_to_send()
+        if data_to_send:
+            self.sock.sendall(data_to_send)
+
+    def send(self, data: bytes) -> None:
         if not data:
             return
-        raise NotImplementedError("Sending data isn't supported yet")
+        with self._lock_h2_conn() as h2_conn:
+            h2_conn.send_data(self._h2_stream, data)
+            self._send_outstanding_data(h2_conn)
 
-    def getresponse(  # type: ignore[override]
-        self,
-    ) -> HTTP2Response:
+    def getresponse(self) -> HTTP2Response:
         status = None
+        headers = HTTPHeaderDict()  # Initialize headers outside the loop
         data = bytearray()
         with self._lock_h2_conn() as h2_conn:
             end_stream = False
@@ -105,13 +112,11 @@ class HTTP2Connection(HTTPSConnection):
                 if received_data := self.sock.recv(65535):
                     events = h2_conn.receive_data(received_data)
                     for event in events:
-                        if isinstance(
-                            event, h2.events.InformationalResponseReceived
-                        ):  # Defensive:
-                            continue  # TODO: Does the stdlib do anything with these responses?
+                        if isinstance(event, h2.events.InformationalResponseReceived):
+                            continue  # Skip informational responses for now
 
                         elif isinstance(event, h2.events.ResponseReceived):
-                            headers = HTTPHeaderDict()
+                            # Process headers
                             for header, value in event.headers:
                                 if header == b":status":
                                     status = int(value.decode())
@@ -126,7 +131,7 @@ class HTTP2Connection(HTTPSConnection):
                                 event.flow_controlled_length, event.stream_id
                             )
 
-                        elif isinstance(event, h2.events.StreamEnded):
+                            # End of the response
                             end_stream = True
 
                 if data_to_send := h2_conn.data_to_send():
