@@ -105,12 +105,7 @@ class HTTP2Connection(HTTPSConnection):
                 if received_data := self.sock.recv(65535):
                     events = h2_conn.receive_data(received_data)
                     for event in events:
-                        if isinstance(
-                            event, h2.events.InformationalResponseReceived
-                        ):  # Defensive:
-                            continue  # TODO: Does the stdlib do anything with these responses?
-
-                        elif isinstance(event, h2.events.ResponseReceived):
+                        if isinstance(event, h2.events.ResponseReceived):
                             headers = HTTPHeaderDict()
                             for header, value in event.headers:
                                 if header == b":status":
