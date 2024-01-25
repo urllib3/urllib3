@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import contextlib
 import threading
+import types
 import typing
 
 import h2.config  # type: ignore[import]
@@ -18,15 +18,41 @@ from .connectionpool import HTTPSConnectionPool
 
 orig_HTTPSConnection = HTTPSConnection
 
+T = typing.TypeVar("T")
+
+
+class _LockedObject(typing.Generic[T]):
+    """
+    A wrapper class that hides a specific object behind a lock.
+
+    The goal here is to provide a simple way to protect access to an object
+    that cannot safely be simultaneously accessed from multiple threads. The
+    intended use of this class is simple: take hold of it with a context
+    manager, which returns the protected object.
+    """
+
+    def __init__(self, obj: T):
+        self.lock = threading.RLock()
+        self._obj = obj
+
+    def __enter__(self) -> T:
+        self.lock.acquire()
+        return self._obj
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
+        self.lock.release()
+
 
 class HTTP2Connection(HTTPSConnection):
     def __init__(
         self, host: str, port: int | None = None, **kwargs: typing.Any
     ) -> None:
-        self._h2_lock = threading.RLock()
-        self._h2_conn = h2.connection.H2Connection(
-            config=h2.config.H2Configuration(client_side=True)
-        )
+        self._h2_conn = self._new_h2_conn()
         self._h2_stream: int | None = None
         self._h2_headers: list[tuple[bytes, bytes]] = []
 
@@ -35,15 +61,14 @@ class HTTP2Connection(HTTPSConnection):
 
         super().__init__(host, port, **kwargs)
 
-    @contextlib.contextmanager
-    def _lock_h2_conn(self) -> typing.Generator[h2.connection.H2Connection, None, None]:
-        with self._h2_lock:
-            yield self._h2_conn
+    def _new_h2_conn(self) -> _LockedObject[h2.connection.H2Connection]:
+        config = h2.config.H2Configuration(client_side=True)
+        return _LockedObject(h2.connection.H2Connection(config=config))
 
     def connect(self) -> None:
         super().connect()
 
-        with self._lock_h2_conn() as h2_conn:
+        with self._h2_conn as h2_conn:
             h2_conn.initiate_connection()
             self.sock.sendall(h2_conn.data_to_send())
 
@@ -54,7 +79,7 @@ class HTTP2Connection(HTTPSConnection):
         skip_host: bool = False,
         skip_accept_encoding: bool = False,
     ) -> None:
-        with self._lock_h2_conn() as h2_conn:
+        with self._h2_conn as h2_conn:
             self._request_url = url
             self._h2_stream = h2_conn.get_next_available_stream_id()
 
@@ -105,7 +130,7 @@ class HTTP2Connection(HTTPSConnection):
         status = None
         headers = HTTPHeaderDict()  # Initialize headers outside the loop
         data = bytearray()
-        with self._lock_h2_conn() as h2_conn:
+        with self._h2_conn as h2_conn:
             end_stream = False
             while not end_stream:
                 # TODO: Arbitrary read value.
@@ -149,18 +174,16 @@ class HTTP2Connection(HTTPSConnection):
         )
 
     def close(self) -> None:
-        with self._lock_h2_conn() as h2_conn:
+        with self._h2_conn as h2_conn:
             try:
-                self._h2_conn.close_connection()
+                h2_conn.close_connection()
                 if data := h2_conn.data_to_send():
                     self.sock.sendall(data)
             except Exception:
                 pass
 
         # Reset all our HTTP/2 connection state.
-        self._h2_conn = h2.connection.H2Connection(
-            config=h2.config.H2Configuration(client_side=True)
-        )
+        self._h2_conn = self._new_h2_conn()
         self._h2_stream = None
         self._h2_headers = []
 
