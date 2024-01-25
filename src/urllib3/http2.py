@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 import threading
 import types
 import typing
@@ -53,8 +54,9 @@ class HTTP2Connection(HTTPSConnection):
         self, host: str, port: int | None = None, **kwargs: typing.Any
     ) -> None:
         self._h2_conn = self._new_h2_conn()
-        self._h2_stream: int | None = None
+        self._h2_stream_id: int | None = None
         self._h2_headers: list[tuple[bytes, bytes]] = []
+        self._streams: dict[int, HTTP2Stream] = {}
 
         if "proxy" in kwargs or "proxy_config" in kwargs:  # Defensive:
             raise NotImplementedError("Proxies aren't supported with HTTP/2")
@@ -72,6 +74,20 @@ class HTTP2Connection(HTTPSConnection):
             h2_conn.initiate_connection()
             self.sock.sendall(h2_conn.data_to_send())
 
+    def _next_event(self, stream_id) -> h2.events.Event:
+        with self._h2_conn as h2_conn:
+            stream = self._streams[stream_id]
+            if stream.events:
+                return stream.events.popleft()
+
+            # TODO: Arbitrary read value.
+            received_data = self.sock.recv(65535)
+            events = h2_conn.receive_data(received_data)
+            for event in events:
+                stream.events.append(event)
+
+            return stream.events.popleft()
+
     def putrequest(
         self,
         method: str,
@@ -81,7 +97,7 @@ class HTTP2Connection(HTTPSConnection):
     ) -> None:
         with self._h2_conn as h2_conn:
             self._request_url = url
-            self._h2_stream = h2_conn.get_next_available_stream_id()
+            self._h2_stream_id = h2_conn.get_next_available_stream_id()
 
             if ":" in self.host:
                 authority = f"[{self.host}]:{self.port or 443}"
@@ -106,7 +122,7 @@ class HTTP2Connection(HTTPSConnection):
     def endheaders(self) -> None:  # type: ignore[override]
         with self._h2_conn as h2_conn:
             h2_conn.send_headers(
-                stream_id=self._h2_stream,
+                stream_id=self._h2_stream_id,
                 headers=self._h2_headers,
                 end_stream=True,
             )
@@ -121,52 +137,28 @@ class HTTP2Connection(HTTPSConnection):
     def getresponse(  # type: ignore[override]
         self,
     ) -> HTTP2Response:
-        status = None
-        data = bytearray()
-        with self._h2_conn as h2_conn:
-            end_stream = False
-            while not end_stream:
-                # TODO: Arbitrary read value.
-                if received_data := self.sock.recv(65535):
-                    events = h2_conn.receive_data(received_data)
-                    for event in events:
-                        if isinstance(
-                            event, h2.events.InformationalResponseReceived
-                        ):  # Defensive:
-                            continue  # TODO: Does the stdlib do anything with these responses?
+        while True:
+            stream = HTTP2Stream(self, self._h2_stream_id)
+            self._streams[self._h2_stream_id] = stream
+            event = self._next_event(self._h2_stream_id)
+            # TODO: Handle information responses?
+            if isinstance(event, h2.events.ResponseReceived):
+                status = None
+                headers = HTTPHeaderDict()
 
-                        elif isinstance(event, h2.events.ResponseReceived):
-                            headers = HTTPHeaderDict()
-                            for header, value in event.headers:
-                                if header == b":status":
-                                    status = int(value.decode())
-                                else:
-                                    headers.add(
-                                        header.decode("ascii"), value.decode("ascii")
-                                    )
+                for header, value in event.headers:
+                    if header == b":status":
+                        status = int(value.decode())
+                    else:
+                        headers.add(header.decode("ascii"), value.decode("ascii"))
 
-                        elif isinstance(event, h2.events.DataReceived):
-                            data += event.data
-                            h2_conn.acknowledge_received_data(
-                                event.flow_controlled_length, event.stream_id
-                            )
-
-                        elif isinstance(event, h2.events.StreamEnded):
-                            end_stream = True
-
-                if data_to_send := h2_conn.data_to_send():
-                    self.sock.sendall(data_to_send)
-
-        # We always close to not have to handle connection management.
-        self.close()
-
-        assert status is not None
-        return HTTP2Response(
-            status=status,
-            headers=headers,
-            request_url=self._request_url,
-            data=bytes(data),
-        )
+                assert status is not None
+                return HTTP2Response(
+                    status=status,
+                    headers=headers,
+                    request_url=self._request_url,
+                    stream=stream,
+                )
 
     def close(self) -> None:
         with self._h2_conn as h2_conn:
@@ -179,10 +171,41 @@ class HTTP2Connection(HTTPSConnection):
 
         # Reset all our HTTP/2 connection state.
         self._h2_conn = self._new_h2_conn()
-        self._h2_stream = None
         self._h2_headers = []
+        self._h2_stream_id = None
+        for stream in self._streams.values():
+            stream.close()
+        self._streams = {}
 
         super().close()
+
+
+class HTTP2Stream:
+    def __init__(self, conn, stream_id):
+        self._conn = conn
+        self._stream_id = stream_id
+        self.events: typing.Deque[h2.events.Event] = collections.deque()
+        self._data = bytearray()
+
+    def next_event(self):
+        return self._conn._next_event(self._stream_id)
+
+    def add_data(self, event: h2.events.DataReceived):
+        self._data += event.data
+        # TODO All use of h2_conn should happen in HTTP2Connection
+        with self._conn._h2_conn as h2_conn:
+            h2_conn.acknowledge_received_data(
+                event.flow_controlled_length, event.stream_id
+            )
+
+    @property
+    def data(self):
+        return bytes(self._data)
+
+    def close(self) -> None:
+        with self._conn._h2_conn as h2_conn:
+            if data_to_send := h2_conn.data_to_send():
+                self._conn.sock.sendall(data_to_send)
 
 
 class HTTP2Response(BaseHTTPResponse):
@@ -192,7 +215,7 @@ class HTTP2Response(BaseHTTPResponse):
         status: int,
         headers: HTTPHeaderDict,
         request_url: str,
-        data: bytes,
+        stream: HTTP2Stream,
         decode_content: bool = False,  # TODO: support decoding
     ) -> None:
         super().__init__(
@@ -205,11 +228,29 @@ class HTTP2Response(BaseHTTPResponse):
             decode_content=decode_content,
             request_url=request_url,
         )
-        self._data = data
         self.length_remaining = 0
+        self._stream = stream
+        self._data: bytes | None = None
+
+    def read(self) -> bytes:
+        while True:
+            event = self._stream.next_event()
+            if isinstance(event, h2.events.DataReceived):
+                self._stream.add_data(event)
+            elif isinstance(event, h2.events.StreamEnded):
+                break
+
+        self._data = self._stream.data
+        self._stream.close()
+        # We always close to not have to handle connection management.
+        self._stream._conn.close()
+
+        return self._data
 
     @property
     def data(self) -> bytes:
+        if not self._data:
+            self.read()
         return self._data
 
     def get_redirect_location(self) -> None:
