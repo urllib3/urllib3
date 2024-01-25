@@ -40,7 +40,7 @@ like this:
 
 from __future__ import annotations
 
-import OpenSSL.SSL  # type: ignore[import]
+import OpenSSL.SSL  # type: ignore[import-untyped]
 from cryptography import x509
 
 try:
@@ -61,7 +61,7 @@ from socket import timeout
 from .. import util
 
 if typing.TYPE_CHECKING:
-    from OpenSSL.crypto import X509  # type: ignore[import]
+    from OpenSSL.crypto import X509  # type: ignore[import-untyped]
 
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
@@ -412,7 +412,12 @@ class PyOpenSSLContext:
     """
 
     def __init__(self, protocol: int) -> None:
-        self.protocol = _openssl_versions[protocol]
+        ssl_method = _openssl_versions.get(OpenSSL.SSL._SSLMethod(protocol))
+        if ssl_method is None:
+            # Handle the case when protocol is not found
+            raise ValueError(f"Unsupported SSL/TLS protocol: {protocol}")
+
+        self.protocol = ssl_method
         self._ctx = OpenSSL.SSL.Context(self.protocol)
         self._options = 0
         self.check_hostname = False

@@ -4,9 +4,9 @@ import contextlib
 import threading
 import typing
 
-import h2.config  # type: ignore[import]
-import h2.connection  # type: ignore[import]
-import h2.events  # type: ignore[import]
+import h2.config  # type: ignore[import-untyped]
+import h2.connection  # type: ignore[import-untyped]
+import h2.events  # type: ignore[import-untyped]
 
 import urllib3.connection
 import urllib3.util.ssl_
@@ -72,11 +72,19 @@ class HTTP2Connection(HTTPSConnection):
                 )
             )
 
-    def putheader(self, header: str, *values: str) -> None:
+    def putheader(self, header: str | bytes, *values: str | bytes) -> None:
         for value in values:
-            self._h2_headers.append(
-                (header.encode("utf-8").lower(), value.encode("utf-8"))
-            )
+            if isinstance(header, str):
+                header_bytes = header.encode("utf-8").lower()
+            else:
+                header_bytes = header.lower()
+
+            if isinstance(value, str):
+                value_bytes = value.encode("utf-8")
+            else:
+                value_bytes = value
+
+            self._h2_headers.append((header_bytes, value_bytes))
 
     def endheaders(self) -> None:  # type: ignore[override]
         with self._lock_h2_conn() as h2_conn:
