@@ -415,9 +415,6 @@ class PyOpenSSLContext:
 
     def __init__(self, protocol: int) -> None:
         ssl_method = _openssl_versions[protocol]
-        if ssl_method is None:
-            # Handle the case when protocol is not found
-            raise ValueError(f"Unsupported SSL/TLS protocol: {protocol}")
         self.protocol = ssl_method
         self._ctx = OpenSSL.SSL.Context(self.protocol)
         self._options = 0
