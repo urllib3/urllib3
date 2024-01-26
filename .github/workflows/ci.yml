@@ -66,15 +66,15 @@ jobs:
           - python-version: "pypy-3.8"
             os: ubuntu-latest
             experimental: false
-            nox-session: test-pypy
-          - python-version: "pypy-3.9"
+            nox-session: test-pypy3.8
+          - python-version: "pypy-3.9-v7.3.13"
             os: ubuntu-latest
             experimental: false
-            nox-session: test-pypy
+            nox-session: test-pypy3.9
           - python-version: "pypy-3.10"
             os: ubuntu-latest
             experimental: false
-            nox-session: test-pypy
+            nox-session: test-pypy3.10
           - python-version: "3.x"
           # brotli
             os: ubuntu-latest
@@ -120,7 +120,7 @@ jobs:
         if: ${{ matrix.nox-session == 'emscripten' }}
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
-        run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION} --error-on-missing-interpreters
+        run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
           NOX_SESSION: ${{ matrix.nox-session }}

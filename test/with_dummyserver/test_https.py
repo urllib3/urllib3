@@ -129,7 +129,7 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
 
         shutil.rmtree(cls.certs_dir)
 
-    def test_simple(self) -> None:
+    def test_simple(self, http_version: str) -> None:
         with HTTPSConnectionPool(
             self.host,
             self.port,
@@ -138,6 +138,8 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
+            assert r.headers["server"] == f"hypercorn-{http_version}"
+            assert r.data == b"Dummy server!"
 
     @resolvesLocalhostFQDN()
     def test_dotted_fqdn(self) -> None:
@@ -1130,7 +1132,7 @@ class TestHTTPS_IPV4SAN:
 class TestHTTPS_IPV6SAN:
     @pytest.mark.parametrize("host", ["::1", "[::1]"])
     def test_can_validate_ipv6_san(
-        self, ipv6_san_server: ServerConfig, host: str
+        self, ipv6_san_server: ServerConfig, host: str, http_version: str
     ) -> None:
         """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
         with HTTPSConnectionPool(
@@ -1141,3 +1143,4 @@ class TestHTTPS_IPV6SAN:
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200
+            assert r.headers["server"] == f"hypercorn-{http_version}"
