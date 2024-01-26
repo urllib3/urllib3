@@ -83,28 +83,17 @@ class SSLMethodEnum(Enum):
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions: dict[int, int] = {
-    SSLMethodEnum.PROTOCOL_TLS.value: OpenSSL.SSL.SSLv23_METHOD,
-    SSLMethodEnum.PROTOCOL_TLS_CLIENT.value: OpenSSL.SSL.SSLv23_METHOD,
-    SSLMethodEnum.PROTOCOL_TLSv1.value: OpenSSL.SSL.TLSv1_METHOD,
+    util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
+    util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
+    ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
 
-if SSLMethodEnum.PROTOCOL_TLSv1_1.value is not None and hasattr(
-    OpenSSL.SSL, "TLSv1_1_METHOD"
-):
-    _openssl_versions[SSLMethodEnum.PROTOCOL_TLSv1_1.value] = OpenSSL.SSL.TLSv1_1_METHOD
-
-if SSLMethodEnum.PROTOCOL_TLSv1_2.value is not None and hasattr(
-    OpenSSL.SSL, "TLSv1_2_METHOD"
-):
-    _openssl_versions[SSLMethodEnum.PROTOCOL_TLSv1_2.value] = OpenSSL.SSL.TLSv1_2_METHOD
+if hasattr(ssl, "PROTOCOL_TLSv1_1") and hasattr(OpenSSL.SSL, "TLSv1_1_METHOD"):
+    _openssl_versions[ssl.PROTOCOL_TLSv1_1] = OpenSSL.SSL.TLSv1_1_METHOD
 
 
-def get_openssl_version(protocol_int: int) -> OpenSSL.SSL.Method | None:
-    try:
-        protocol_enum = SSLMethodEnum(protocol_int)
-        return _openssl_versions.get(protocol_enum.value)
-    except ValueError:
-        raise ValueError(f"Invalid protocol number: {protocol_int}")
+if hasattr(ssl, "PROTOCOL_TLSv1_2") and hasattr(OpenSSL.SSL, "TLSv1_2_METHOD"):
+    _openssl_versions[ssl.PROTOCOL_TLSv1_2] = OpenSSL.SSL.TLSv1_2_METHOD
 
 
 _stdlib_to_openssl_verify = {
@@ -439,7 +428,10 @@ class PyOpenSSLContext:
     """
 
     def __init__(self, protocol: int) -> None:
-        ssl_method = get_openssl_version(protocol)
+        ssl_method = _openssl_versions[protocol]
+        if ssl_method is None:
+            # Handle the case when protocol is not found
+            raise ValueError(f"Unsupported SSL/TLS protocol: {protocol}")
         self.protocol = ssl_method
         self._ctx = OpenSSL.SSL.Context(self.protocol)
         self._options = 0
