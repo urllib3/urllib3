@@ -72,7 +72,7 @@ class HTTP2Connection(HTTPSConnection):
                 )
             )
 
-    def putheader(self, header: str | bytes, *values: str | bytes) -> None:
+    def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         for value in values:
             if isinstance(header, str):
                 header_bytes = header.encode("utf-8").lower()

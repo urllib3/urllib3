@@ -40,8 +40,6 @@ like this:
 
 from __future__ import annotations
 
-from enum import Enum
-
 import OpenSSL.SSL  # type: ignore[import-untyped]
 from cryptography import x509
 
@@ -67,18 +65,6 @@ if typing.TYPE_CHECKING:
 
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
-
-
-class SSLMethodEnum(Enum):
-    PROTOCOL_TLS = util.ssl_.PROTOCOL_TLS  # type: ignore[attr-defined]
-    PROTOCOL_TLS_CLIENT = util.ssl_.PROTOCOL_TLS_CLIENT  # type: ignore[attr-defined]
-    PROTOCOL_TLSv1 = ssl.PROTOCOL_TLSv1
-    PROTOCOL_TLSv1_1 = (
-        ssl.PROTOCOL_TLSv1_1 if hasattr(ssl, "PROTOCOL_TLSv1_1") else None
-    )
-    PROTOCOL_TLSv1_2 = (
-        ssl.PROTOCOL_TLSv1_2 if hasattr(ssl, "PROTOCOL_TLSv1_2") else None
-    )
 
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
