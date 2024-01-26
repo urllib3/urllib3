@@ -82,7 +82,7 @@ class SSLMethodEnum(Enum):
 
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
-_openssl_versions = {
+_openssl_versions: dict[int, int] = {
     SSLMethodEnum.PROTOCOL_TLS.value: OpenSSL.SSL.SSLv23_METHOD,
     SSLMethodEnum.PROTOCOL_TLS_CLIENT.value: OpenSSL.SSL.SSLv23_METHOD,
     SSLMethodEnum.PROTOCOL_TLSv1.value: OpenSSL.SSL.TLSv1_METHOD,
