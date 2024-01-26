@@ -66,7 +66,6 @@ if typing.TYPE_CHECKING:
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
-
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions: dict[int, int] = {
     util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
