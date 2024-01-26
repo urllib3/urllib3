@@ -33,10 +33,10 @@ class HTTP2Connection(HTTPSConnection):
         if "proxy" in kwargs or "proxy_config" in kwargs:  # Defensive:
             raise NotImplementedError("Proxies aren't supported with HTTP/2")
 
+        super().__init__(host, port, **kwargs)
+
         if self._tunnel_host is not None:
             raise NotImplementedError("Tunneling isn't supported with HTTP/2")
-
-        super().__init__(host, port, **kwargs)
 
     @contextlib.contextmanager
     def _lock_h2_conn(self) -> typing.Generator[h2.connection.H2Connection, None, None]:
