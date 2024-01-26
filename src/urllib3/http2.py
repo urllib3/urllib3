@@ -76,13 +76,9 @@ class HTTP2Connection(HTTPSConnection):
         for value in values:
             if isinstance(header, str):
                 header_bytes = header.encode("utf-8").lower()
-            else:
-                header_bytes = header.lower()
 
             if isinstance(value, str):
                 value_bytes = value.encode("utf-8")
-            else:
-                value_bytes = value
 
             self._h2_headers.append((header_bytes, value_bytes))
 
