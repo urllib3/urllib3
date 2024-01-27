@@ -412,8 +412,7 @@ class PyOpenSSLContext:
     """
 
     def __init__(self, protocol: int) -> None:
-        ssl_method = _openssl_versions[protocol]
-        self.protocol = ssl_method
+        self.protocol = _openssl_versions[protocol]
         self._ctx = OpenSSL.SSL.Context(self.protocol)
         self._options = 0
         self.check_hostname = False
