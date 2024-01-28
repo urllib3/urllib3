@@ -7,6 +7,7 @@ import h2.connection  # type: ignore[import-untyped]
 import h2.events  # type: ignore[import-untyped]
 
 import urllib3.connection
+import urllib3.util
 import urllib3.util.ssl_
 from urllib3.response import BaseHTTPResponse
 
@@ -188,6 +189,7 @@ def inject_into_urllib3() -> None:
     urllib3.connection.HTTPSConnection = HTTP2Connection  # type: ignore[misc]
 
     # TODO: Offer 'http/1.1' as well, but for testing purposes this is handy.
+    urllib3.util.ALPN_PROTOCOLS = ["h2"]
     urllib3.util.ssl_.ALPN_PROTOCOLS = ["h2"]
 
 
@@ -195,4 +197,5 @@ def extract_from_urllib3() -> None:
     HTTPSConnectionPool.ConnectionCls = orig_HTTPSConnection
     urllib3.connection.HTTPSConnection = orig_HTTPSConnection  # type: ignore[misc]
 
+    urllib3.util.ALPN_PROTOCOLS = ["http/1.1"]
     urllib3.util.ssl_.ALPN_PROTOCOLS = ["http/1.1"]

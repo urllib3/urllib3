@@ -16,6 +16,7 @@ from dummyserver.asgi_proxy import ProxyApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.socketserver import HAS_IPV6
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
+from urllib3.connection import _HTTP2_PROBE_CACHE
 from urllib3.util import ssl_
 from urllib3.util.url import parse_url
 
@@ -376,8 +377,17 @@ def requires_tlsv1_3(supported_tls_versions: typing.AbstractSet[str]) -> None:
 def http_version(request: pytest.FixtureRequest) -> typing.Generator[str, None, None]:
     if request.param == "h2":
         urllib3.http2.inject_into_urllib3()
+    try:
+        yield request.param
+    finally:
+        if request.param == "h2":
+            urllib3.http2.extract_from_urllib3()
 
-    yield request.param
 
-    if request.param == "h2":
-        urllib3.http2.extract_from_urllib3()
+@pytest.fixture(autouse=True)
+def reset_http2_probe_cache() -> typing.Generator[None, None, None]:
+    # Always reset the HTTP/2 probe cache per test case.
+    try:
+        yield
+    finally:
+        _HTTP2_PROBE_CACHE.reset()
