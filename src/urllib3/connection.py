@@ -6,6 +6,7 @@ import os
 import re
 import socket
 import sys
+import threading
 import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
@@ -20,7 +21,7 @@ if typing.TYPE_CHECKING:
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
 
-from ._collections import HTTPHeaderDict
+from ._collections import HTTPHeaderDict, _LockedObject
 from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
@@ -493,6 +494,56 @@ class HTTPConnection(_HTTPConnection):
         return response
 
 
+class _HTTP2ProbeCache:
+    __slots__ = (
+        "_lock",
+        "_values",
+    )
+
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+        self._values: dict[tuple[str, int], _LockedObject[bool | None]] = {}
+
+    def get(self, host: str, port: int) -> bool | None:
+        with self._lock:
+            try:
+                obj = self._values[(host, port)]
+            except KeyError:
+                obj = _LockedObject(None)
+                self._values[(host, port)] = obj
+
+        # If the value is unknown, we acquire the lock to signal
+        # to the requesting thread that the probe is in progress
+        # or that the current thread needs to return their findings.
+        if obj._obj is None:
+            obj.lock.acquire()
+        return obj._obj
+
+    def set(self, host: str, port: int, supports_http2: bool | None) -> None:
+        obj = self._values[(host, port)]
+        with obj:  # _LockedObject uses RLock, so can be locked again from same thread.
+            if supports_http2 is None and obj._obj is not None:
+                self._values.pop((host, port), None)
+                raise ValueError(
+                    "Cannot reset HTTP/2 support for origin after value has been set."
+                )
+            obj._obj = supports_http2
+        obj.lock.release()
+
+    def values(self) -> dict[tuple[str, int], bool | None]:
+        """This function is for testing purposes only. Gets the current state of the probe cache"""
+        with self._lock:
+            return {k: v._obj for k, v in self._values.items()}
+
+    def reset(self) -> None:
+        """This function is for testing purposes only. Reset the cache values"""
+        with self._lock:
+            self._values = {}
+
+
+_HTTP2_PROBE_CACHE = _HTTP2ProbeCache()
+
+
 class HTTPSConnection(HTTPConnection):
     """
     Many of the parameters to this constructor are passed to the underlying SSL
@@ -612,63 +663,104 @@ class HTTPSConnection(HTTPConnection):
         self.ca_cert_data = ca_cert_data
 
     def connect(self) -> None:
-        sock: socket.socket | ssl.SSLSocket
-        self.sock = sock = self._new_conn()
-        server_hostname: str = self.host
-        tls_in_tls = False
+        # Today we don't need to be doing this step before the /actual/ socket
+        # connection, however in the future we'll need to decide whether to
+        # create a new socket or re-use an existing "shared" socket as a part
+        # of the HTTP/2 handshake dance.
+        probe_http2_host = self.host if self._tunnel_host is None else self._tunnel_host
+        probe_http2_port = self.port if self._tunnel_host is None else self._tunnel_port
+        if probe_http2_port is None:
+            probe_http2_port = 443
 
-        # Do we need to establish a tunnel?
-        if self._tunnel_host is not None:
-            # We're tunneling to an HTTPS origin so need to do TLS-in-TLS.
-            if self._tunnel_scheme == "https":
-                # _connect_tls_proxy will verify and assign proxy_is_verified
-                self.sock = sock = self._connect_tls_proxy(self.host, sock)
-                tls_in_tls = True
-            elif self._tunnel_scheme == "http":
-                self.proxy_is_verified = False
-
-            # If we're tunneling it means we're connected to our proxy.
-            self._has_connected_to_proxy = True
-
-            self._tunnel()  # type: ignore[attr-defined]
-            # Override the host with the one we're requesting data from.
-            server_hostname = self._tunnel_host
-
-        if self.server_hostname is not None:
-            server_hostname = self.server_hostname
-
-        is_time_off = datetime.date.today() < RECENT_DATE
-        if is_time_off:
-            warnings.warn(
-                (
-                    f"System time is way off (before {RECENT_DATE}). This will probably "
-                    "lead to SSL verification errors"
-                ),
-                SystemTimeWarning,
+        # Check if the target origin supports HTTP/2.
+        # If the value comes back as 'None' it means that the current thread
+        # is probing for HTTP/2 support. Otherwise, we're waiting for another
+        # probe to complete, or we get a value right away.
+        if "h2" in ssl_.ALPN_PROTOCOLS:
+            target_supports_http2 = _HTTP2_PROBE_CACHE.get(
+                host=probe_http2_host, port=probe_http2_port
             )
+        else:
+            # If HTTP/2 isn't going to be offered it doesn't matter if
+            # the target supports HTTP/2. Don't want to make a probe.
+            target_supports_http2 = False
 
-        # Remove trailing '.' from fqdn hostnames to allow certificate validation
-        server_hostname_rm_dot = server_hostname.rstrip(".")
+        try:
+            sock: socket.socket | ssl.SSLSocket
+            self.sock = sock = self._new_conn()
+            server_hostname: str = self.host
+            tls_in_tls = False
 
-        sock_and_verified = _ssl_wrap_socket_and_match_hostname(
-            sock=sock,
-            cert_reqs=self.cert_reqs,
-            ssl_version=self.ssl_version,
-            ssl_minimum_version=self.ssl_minimum_version,
-            ssl_maximum_version=self.ssl_maximum_version,
-            ca_certs=self.ca_certs,
-            ca_cert_dir=self.ca_cert_dir,
-            ca_cert_data=self.ca_cert_data,
-            cert_file=self.cert_file,
-            key_file=self.key_file,
-            key_password=self.key_password,
-            server_hostname=server_hostname_rm_dot,
-            ssl_context=self.ssl_context,
-            tls_in_tls=tls_in_tls,
-            assert_hostname=self.assert_hostname,
-            assert_fingerprint=self.assert_fingerprint,
-        )
-        self.sock = sock_and_verified.socket
+            # Do we need to establish a tunnel?
+            if self._tunnel_host is not None:
+                # We're tunneling to an HTTPS origin so need to do TLS-in-TLS.
+                if self._tunnel_scheme == "https":
+                    # _connect_tls_proxy will verify and assign proxy_is_verified
+                    self.sock = sock = self._connect_tls_proxy(self.host, sock)
+                    tls_in_tls = True
+                elif self._tunnel_scheme == "http":
+                    self.proxy_is_verified = False
+
+                # If we're tunneling it means we're connected to our proxy.
+                self._has_connected_to_proxy = True
+
+                self._tunnel()  # type: ignore[attr-defined]
+                # Override the host with the one we're requesting data from.
+                server_hostname = self._tunnel_host
+
+            if self.server_hostname is not None:
+                server_hostname = self.server_hostname
+
+            is_time_off = datetime.date.today() < RECENT_DATE
+            if is_time_off:
+                warnings.warn(
+                    (
+                        f"System time is way off (before {RECENT_DATE}). This will probably "
+                        "lead to SSL verification errors"
+                    ),
+                    SystemTimeWarning,
+                )
+
+            # Remove trailing '.' from fqdn hostnames to allow certificate validation
+            server_hostname_rm_dot = server_hostname.rstrip(".")
+
+            sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                sock=sock,
+                cert_reqs=self.cert_reqs,
+                ssl_version=self.ssl_version,
+                ssl_minimum_version=self.ssl_minimum_version,
+                ssl_maximum_version=self.ssl_maximum_version,
+                ca_certs=self.ca_certs,
+                ca_cert_dir=self.ca_cert_dir,
+                ca_cert_data=self.ca_cert_data,
+                cert_file=self.cert_file,
+                key_file=self.key_file,
+                key_password=self.key_password,
+                server_hostname=server_hostname_rm_dot,
+                ssl_context=self.ssl_context,
+                tls_in_tls=tls_in_tls,
+                assert_hostname=self.assert_hostname,
+                assert_fingerprint=self.assert_fingerprint,
+            )
+            self.sock = sock_and_verified.socket
+
+        # If an error occurs during connection/handshake we may need to release
+        # our lock so another connection can probe the origin.
+        except BaseException:
+            if target_supports_http2 is None:
+                _HTTP2_PROBE_CACHE.set(
+                    host=probe_http2_host, port=probe_http2_port, supports_http2=None
+                )
+            raise
+
+        # If this is a probe connection we need to set the value to unlock the lock.
+        if target_supports_http2 is None:
+            supports_http2 = sock_and_verified.socket.selected_alpn_protocol() == "h2"
+            _HTTP2_PROBE_CACHE.set(
+                host=probe_http2_host,
+                port=probe_http2_port,
+                supports_http2=supports_http2,
+            )
 
         # Forwarding proxies can never have a verified target since
         # the proxy is the one doing the verification. Should instead
