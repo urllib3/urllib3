@@ -18,3 +18,4 @@ quart-trio==0.11.1
 # https://github.com/pgjones/hypercorn/issues/169
 hypercorn @ git+https://github.com/urllib3/hypercorn@urllib3-changes
 httpx==0.25.2
+pytest-socket==0.7.0
