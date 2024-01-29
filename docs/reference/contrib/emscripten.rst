@@ -16,7 +16,7 @@ libraries that depend on urllib3 may now be usable from Emscripten and Pyodide e
  .. warning::
 
     **Support for Emscripten and Pyodide is experimental**. Report all bugs to the `urllib3 issue tracker <https://github.com/urllib3/urllib3/issues>`_.
-    Currently only supports browsers, does not yet support running in NodeJS.
+    Currently only supports browsers, does not yet support running in Node.js.
 
 It's recommended to `run Pyodide in a Web Worker <https://pyodide.org/en/stable/usage/webworker.html#using-from-webworker>`_
 in order to take full advantage of features like the fetch API which enables streaming of HTTP response bodies.
