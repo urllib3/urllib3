@@ -122,7 +122,7 @@ class TestSSL:
             (True, True, ssl.CERT_NONE),
             (True, True, ssl.CERT_OPTIONAL),
             (True, True, ssl.CERT_REQUIRED),
-        ]
+        ],
     )
     def test_create_urllib3_context_pha(
         self,
