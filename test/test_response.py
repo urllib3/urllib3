@@ -563,6 +563,7 @@ class TestResponse:
         resp = BaseHTTPResponse(
             status=200,
             version=11,
+            version_string="HTTP/1.1",
             reason=None,
             decode_content=False,
             request_url=None,
