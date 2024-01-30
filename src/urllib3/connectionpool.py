@@ -556,7 +556,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # HTTP version
             http_version,
             response.status,
-            response.length_remaining,  # type: ignore[attr-defined]
+            response.length_remaining,
         )
 
         return response
