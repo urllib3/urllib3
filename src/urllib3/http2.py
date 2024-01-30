@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import threading
 import types
 import typing
@@ -217,8 +216,7 @@ class HTTP2Response(BaseHTTPResponse):
         return None
 
     def close(self) -> None:
-        if not self.auto_close:
-            io.IOBase.close(self)
+        pass
 
 
 def inject_into_urllib3() -> None:
