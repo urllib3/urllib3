@@ -1,12 +1,20 @@
-coverage==7.0.4
-tornado==6.2
+h2==4.1.0
+coverage==7.4.0
 PySocks==1.7.1
-pytest==7.2.0
+pytest==7.4.2
 pytest-timeout==2.1.0
-pytest-freezegun==0.4.2
-flaky==3.7.0
-trustme==0.9.0
-cryptography==39.0.0
+pyOpenSSL==23.2.0
+idna==3.4
+trustme==1.1.0
+cryptography==41.0.6
 backports.zoneinfo==0.2.1;python_version<"3.9"
-towncrier==21.9.0
-pytest-memray==1.4.0;python_version>="3.8" and sys_platform!="win32" and implementation_name=="cpython"
+towncrier==23.6.0
+pytest-memray==1.5.0;sys_platform!="win32" and implementation_name=="cpython"
+trio==0.23.1
+Quart==0.19.4
+quart-trio==0.11.1
+# https://github.com/pgjones/hypercorn/issues/62
+# https://github.com/pgjones/hypercorn/issues/168
+# https://github.com/pgjones/hypercorn/issues/169
+hypercorn @ git+https://github.com/urllib3/hypercorn@urllib3-changes
+httpx==0.25.2

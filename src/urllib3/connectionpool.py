@@ -11,6 +11,7 @@ from socket import timeout as SocketTimeout
 from types import TracebackType
 
 from ._base_connection import _TYPE_BODY
+from ._collections import HTTPHeaderDict
 from ._request_methods import RequestMethods
 from .connection import (
     BaseSSLError,
@@ -52,8 +53,7 @@ from .util.util import to_str
 
 if typing.TYPE_CHECKING:
     import ssl
-
-    from typing_extensions import Literal
+    from typing import Literal
 
     from ._base_connection import BaseHTTPConnection, BaseHTTPSConnection
 
@@ -316,7 +316,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # self.pool is None.
                 pass
             except queue.Full:
-
                 # Connection never got put back into the pool, close it.
                 if conn:
                     conn.close()
@@ -512,9 +511,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             pass
         except OSError as e:
             # MacOS/Linux
-            # EPROTOTYPE is needed on macOS
+            # EPROTOTYPE and ECONNRESET are needed on macOS
             # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
-            if e.errno != errno.EPROTOTYPE:
+            # Condition changed later to emit ECONNRESET instead of only EPROTOTYPE.
+            if e.errno != errno.EPROTOTYPE and e.errno != errno.ECONNRESET:
                 raise
 
         # Reset the timeout for the recv() on the socket
@@ -544,6 +544,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         response._connection = response_conn  # type: ignore[attr-defined]
         response._pool = self  # type: ignore[attr-defined]
 
+        # emscripten connection doesn't have _http_vsn_str
+        http_version = getattr(conn, "_http_vsn_str", "HTTP/?")
         log.debug(
             '%s://%s:%s "%s %s %s" %s %s',
             self.scheme,
@@ -552,9 +554,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             method,
             url,
             # HTTP version
-            conn._http_vsn_str,  # type: ignore[attr-defined]
+            http_version,
             response.status,
-            response.length_remaining,  # type: ignore[attr-defined]
+            response.length_remaining,
         )
 
         return response
@@ -749,8 +751,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
         if not http_tunnel_required:
-            headers = headers.copy()  # type: ignore[attr-defined]
-            headers.update(self.proxy_headers)  # type: ignore[union-attr]
+            headers = HTTPHeaderDict(headers)
+            headers.update(self.proxy_headers)
 
         # Must keep the exception bound to a separate variable or else Python 3
         # complains about UnboundLocalError.
@@ -894,7 +896,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         redirect_location = redirect and response.get_redirect_location()
         if redirect_location:
             if response.status == 303:
+                # Change the method according to RFC 9110, Section 15.4.4.
                 method = "GET"
+                # And lose the body not to transfer anything sensitive.
+                body = None
+                headers = HTTPHeaderDict(headers)._prepare_for_method_change()
 
             try:
                 retries = retries.increment(method, url, response=response, _pool=self)
@@ -1001,7 +1007,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         ca_cert_dir: str | None = None,
         **conn_kw: typing.Any,
     ) -> None:
-
         super().__init__(
             host,
             port,
@@ -1093,7 +1098,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if conn.is_closed:
             conn.connect()
 
-        if not conn.is_verified:
+        # TODO revise this, see https://github.com/urllib3/urllib3/issues/2791
+        if not conn.is_verified and not conn.proxy_is_verified:
             warnings.warn(
                 (
                     f"Unverified HTTPS request is being made to host '{conn.host}'. "

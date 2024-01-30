@@ -35,7 +35,14 @@ extensions = [
     "sphinx_copybutton",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
+    "sphinxext.opengraph",
 ]
+
+# Open Graph metadata
+ogp_title = "urllib3 documentation"
+ogp_type = "website"
+ogp_social_cards = {"image": "images/logo.png", "line_color": "#F09837"}
+ogp_description = "urllib3 is a user-friendly HTTP client library for Python."
 
 # Test code blocks only when explicitly specified
 doctest_test_doctest_blocks = ""
@@ -65,6 +72,9 @@ exclude_patterns = ["_build"]
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "friendly"
 
+# The base URL with a proper language and version.
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "/")
+
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 html_theme = "furo"
@@ -74,8 +84,8 @@ html_static_path = ["_static"]
 html_theme_options = {
     "announcement": """
         <a style=\"text-decoration: none; color: white;\" 
-           href=\"https://github.com/sponsors/urllib3\">
-           <img src=\"/en/latest/_static/favicon.png\"/> Support urllib3 on GitHub Sponsors
+           href=\"https://opencollective.com/urllib3/updates/urllib3-is-fundraising-for-http-2-support\">
+           <img src=\"/en/latest/_static/favicon.png\"/> urllib3 is fundraising for HTTP/2 support!
         </a>
     """,
     "sidebar_hide_name": True,

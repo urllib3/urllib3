@@ -34,8 +34,7 @@ urllib3 is powerful and easy to use:
 
 ```python3
 >>> import urllib3
->>> http = urllib3.PoolManager()
->>> resp = http.request("GET", "http://httpbin.org/robots.txt")
+>>> resp = urllib3.request("GET", "http://httpbin.org/robots.txt")
 >>> resp.status
 200
 >>> resp.data
@@ -88,6 +87,7 @@ Tidelift will coordinate the fix and disclosure with maintainers.
 
 - [@sethmlarson](https://github.com/sethmlarson) (Seth M. Larson)
 - [@pquentin](https://github.com/pquentin) (Quentin Pradet)
+- [@illia-v](https://github.com/illia-v) (Illia Volochii)
 - [@theacodes](https://github.com/theacodes) (Thea Flowers)
 - [@haikuginger](https://github.com/haikuginger) (Jess Shapiro)
 - [@lukasa](https://github.com/lukasa) (Cory Benfield)

@@ -9,7 +9,7 @@ from ..exceptions import UnrewindableBodyError
 from .util import to_bytes
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Final
+    from typing import Final
 
 # Pass as a value within ``headers`` to skip
 # emitting some HTTP headers that are added automatically.
@@ -21,15 +21,15 @@ SKIPPABLE_HEADERS = frozenset(["accept-encoding", "host", "user-agent"])
 ACCEPT_ENCODING = "gzip,deflate"
 try:
     try:
-        import brotlicffi as _unused_module_brotli  # type: ignore[import] # noqa: F401
+        import brotlicffi as _unused_module_brotli  # type: ignore[import-not-found] # noqa: F401
     except ImportError:
-        import brotli as _unused_module_brotli  # type: ignore[import] # noqa: F401
+        import brotli as _unused_module_brotli  # type: ignore[import-not-found] # noqa: F401
 except ImportError:
     pass
 else:
     ACCEPT_ENCODING += ",br"
 try:
-    import zstandard as _unused_module_zstd  # type: ignore[import] # noqa: F401
+    import zstandard as _unused_module_zstd  # type: ignore[import-not-found] # noqa: F401
 except ImportError:
     pass
 else:
@@ -223,7 +223,7 @@ def body_to_chunks(
             nonlocal body, blocksize
             encode = isinstance(body, io.TextIOBase)
             while True:
-                datablock = body.read(blocksize)  # type: ignore[union-attr]
+                datablock = body.read(blocksize)
                 if not datablock:
                     break
                 if encode:

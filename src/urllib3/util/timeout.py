@@ -8,7 +8,7 @@ from socket import getdefaulttimeout
 from ..exceptions import TimeoutStateError
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Final
+    from typing import Final
 
 
 class _TYPE_DEFAULT(Enum):
@@ -101,10 +101,6 @@ class Timeout:
         the case; if a server streams one byte every fifteen seconds, a timeout
         of 20 seconds will not trigger, even though the request will take
         several minutes to complete.
-
-        If your goal is to cut off any request after a set amount of wall clock
-        time, consider having a second "watcher" thread to cut off a slow
-        request.
     """
 
     #: A sentinel object representing the default timeout value

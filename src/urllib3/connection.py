@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import socket
+import sys
 import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
@@ -13,7 +14,7 @@ from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
     from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
@@ -72,9 +73,11 @@ port_by_scheme = {"http": 80, "https": 443}
 
 # When it comes time to update this value as a part of regular maintenance
 # (ie test_recent_date is failing) update it to ~6 months before the current date.
-RECENT_DATE = datetime.date(2022, 1, 1)
+RECENT_DATE = datetime.date(2023, 6, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+
+_HAS_SYS_AUDIT = hasattr(sys, "audit")
 
 
 class HTTPConnection(_HTTPConnection):
@@ -134,7 +137,7 @@ class HTTPConnection(_HTTPConnection):
         *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
-        blocksize: int = 8192,
+        blocksize: int = 16384,
         socket_options: None
         | (connection._TYPE_SOCKET_OPTIONS) = default_socket_options,
         proxy: Url | None = None,
@@ -157,11 +160,6 @@ class HTTPConnection(_HTTPConnection):
         self._tunnel_port: int | None = None
         self._tunnel_scheme: str | None = None
 
-    # https://github.com/python/mypy/issues/4125
-    # Mypy treats this as LSP violation, which is considered a bug.
-    # If `host` is made a property it violates LSP, because a writeable attribute is overridden with a read-only one.
-    # However, there is also a `host` setter so LSP is not violated.
-    # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
     @property
     def host(self) -> str:
         """
@@ -216,6 +214,10 @@ class HTTPConnection(_HTTPConnection):
                 self, f"Failed to establish a new connection: {e}"
             ) from e
 
+        # Audit hooks are only available in Python 3.8+
+        if _HAS_SYS_AUDIT:
+            sys.audit("http.client.connect", self, self.host, self.port)
+
         return sock
 
     def set_tunnel(
@@ -246,6 +248,9 @@ class HTTPConnection(_HTTPConnection):
         # not using tunnelling.
         self._has_connected_to_proxy = bool(self.proxy)
 
+        if self._has_connected_to_proxy:
+            self.proxy_is_verified = False
+
     @property
     def is_closed(self) -> bool:
         return self.sock is None
@@ -259,6 +264,13 @@ class HTTPConnection(_HTTPConnection):
     @property
     def has_connected_to_proxy(self) -> bool:
         return self._has_connected_to_proxy
+
+    @property
+    def proxy_is_forwarding(self) -> bool:
+        """
+        Return True if a forwarding proxy is configured, else return False
+        """
+        return bool(self.proxy) and self._tunnel_host is None
 
     def close(self) -> None:
         try:
@@ -295,7 +307,7 @@ class HTTPConnection(_HTTPConnection):
             method, url, skip_host=skip_host, skip_accept_encoding=skip_accept_encoding
         )
 
-    def putheader(self, header: str, *values: str) -> None:
+    def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
@@ -321,7 +333,6 @@ class HTTPConnection(_HTTPConnection):
         decode_content: bool = True,
         enforce_content_length: bool = True,
     ) -> None:
-
         # Update the inner socket's timeout value to send the request.
         # This only triggers if the connection is re-used.
         if self.sock is not None:
@@ -506,7 +517,7 @@ class HTTPSConnection(HTTPConnection):
         *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
-        blocksize: int = 8192,
+        blocksize: int = 16384,
         socket_options: None
         | (connection._TYPE_SOCKET_OPTIONS) = HTTPConnection.default_socket_options,
         proxy: Url | None = None,
@@ -526,7 +537,6 @@ class HTTPSConnection(HTTPConnection):
         key_file: str | None = None,
         key_password: str | None = None,
     ) -> None:
-
         super().__init__(
             host,
             port=port,
@@ -611,8 +621,11 @@ class HTTPSConnection(HTTPConnection):
         if self._tunnel_host is not None:
             # We're tunneling to an HTTPS origin so need to do TLS-in-TLS.
             if self._tunnel_scheme == "https":
+                # _connect_tls_proxy will verify and assign proxy_is_verified
                 self.sock = sock = self._connect_tls_proxy(self.host, sock)
                 tls_in_tls = True
+            elif self._tunnel_scheme == "http":
+                self.proxy_is_verified = False
 
             # If we're tunneling it means we're connected to our proxy.
             self._has_connected_to_proxy = True
@@ -634,6 +647,9 @@ class HTTPSConnection(HTTPConnection):
                 SystemTimeWarning,
             )
 
+        # Remove trailing '.' from fqdn hostnames to allow certificate validation
+        server_hostname_rm_dot = server_hostname.rstrip(".")
+
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock=sock,
             cert_reqs=self.cert_reqs,
@@ -646,19 +662,32 @@ class HTTPSConnection(HTTPConnection):
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
-            server_hostname=server_hostname,
+            server_hostname=server_hostname_rm_dot,
             ssl_context=self.ssl_context,
             tls_in_tls=tls_in_tls,
             assert_hostname=self.assert_hostname,
             assert_fingerprint=self.assert_fingerprint,
         )
         self.sock = sock_and_verified.socket
-        self.is_verified = sock_and_verified.is_verified
+
+        # Forwarding proxies can never have a verified target since
+        # the proxy is the one doing the verification. Should instead
+        # use a CONNECT tunnel in order to verify the target.
+        # See: https://github.com/urllib3/urllib3/issues/3267.
+        if self.proxy_is_forwarding:
+            self.is_verified = False
+        else:
+            self.is_verified = sock_and_verified.is_verified
 
         # If there's a proxy to be connected to we are fully connected.
         # This is set twice (once above and here) due to forwarding proxies
         # not using tunnelling.
         self._has_connected_to_proxy = bool(self.proxy)
+
+        # Set `self.proxy_is_verified` unless it's already set while
+        # establishing a tunnel.
+        if self._has_connected_to_proxy and self.proxy_is_verified is None:
+            self.proxy_is_verified = sock_and_verified.is_verified
 
     def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> ssl.SSLSocket:
         """
@@ -743,6 +772,8 @@ def _ssl_wrap_socket_and_match_hostname(
         # `ssl` can't verify fingerprints or alternate hostnames
         assert_fingerprint
         or assert_hostname
+        # assert_hostname can be set to False to disable hostname checking
+        or assert_hostname is False
         # We still support OpenSSL 1.0.2, which prevents us from verifying
         # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
         or ssl_.IS_PYOPENSSL
@@ -750,10 +781,9 @@ def _ssl_wrap_socket_and_match_hostname(
     ):
         context.check_hostname = False
 
-    # Try to load OS default certs if none are given.
-    # We need to do the hasattr() check for our custom
-    # pyOpenSSL and SecureTransport SSLContext objects
-    # because neither support load_default_certs().
+    # Try to load OS default certs if none are given. We need to do the hasattr() check
+    # for custom pyOpenSSL SSLContext objects because they don't support
+    # load_default_certs().
     if (
         not ca_certs
         and not ca_cert_dir
@@ -786,36 +816,42 @@ def _ssl_wrap_socket_and_match_hostname(
         tls_in_tls=tls_in_tls,
     )
 
-    if assert_fingerprint:
-        _assert_fingerprint(ssl_sock.getpeercert(binary_form=True), assert_fingerprint)
-    elif (
-        context.verify_mode != ssl.CERT_NONE
-        and not context.check_hostname
-        and assert_hostname is not False
-    ):
-        cert: _TYPE_PEER_CERT_RET_DICT = ssl_sock.getpeercert()  # type: ignore[assignment]
+    try:
+        if assert_fingerprint:
+            _assert_fingerprint(
+                ssl_sock.getpeercert(binary_form=True), assert_fingerprint
+            )
+        elif (
+            context.verify_mode != ssl.CERT_NONE
+            and not context.check_hostname
+            and assert_hostname is not False
+        ):
+            cert: _TYPE_PEER_CERT_RET_DICT = ssl_sock.getpeercert()  # type: ignore[assignment]
 
-        # Need to signal to our match_hostname whether to use 'commonName' or not.
-        # If we're using our own constructed SSLContext we explicitly set 'False'
-        # because PyPy hard-codes 'True' from SSLContext.hostname_checks_common_name.
-        if default_ssl_context:
-            hostname_checks_common_name = False
-        else:
-            hostname_checks_common_name = (
-                getattr(context, "hostname_checks_common_name", False) or False
+            # Need to signal to our match_hostname whether to use 'commonName' or not.
+            # If we're using our own constructed SSLContext we explicitly set 'False'
+            # because PyPy hard-codes 'True' from SSLContext.hostname_checks_common_name.
+            if default_ssl_context:
+                hostname_checks_common_name = False
+            else:
+                hostname_checks_common_name = (
+                    getattr(context, "hostname_checks_common_name", False) or False
+                )
+
+            _match_hostname(
+                cert,
+                assert_hostname or server_hostname,  # type: ignore[arg-type]
+                hostname_checks_common_name,
             )
 
-        _match_hostname(
-            cert,
-            assert_hostname or server_hostname,  # type: ignore[arg-type]
-            hostname_checks_common_name,
+        return _WrappedAndVerifiedSocket(
+            socket=ssl_sock,
+            is_verified=context.verify_mode == ssl.CERT_REQUIRED
+            or bool(assert_fingerprint),
         )
-
-    return _WrappedAndVerifiedSocket(
-        socket=ssl_sock,
-        is_verified=context.verify_mode == ssl.CERT_REQUIRED
-        or bool(assert_fingerprint),
-    )
+    except BaseException:
+        ssl_sock.close()
+        raise
 
 
 def _match_hostname(
@@ -852,6 +888,7 @@ def _wrap_proxy_error(err: Exception, proxy_scheme: str | None) -> ProxyError:
     is_likely_http_proxy = (
         "wrong version number" in error_normalized
         or "unknown protocol" in error_normalized
+        or "record layer failure" in error_normalized
     )
     http_proxy_warning = (
         ". Your proxy appears to only use HTTP and not HTTPS, "
