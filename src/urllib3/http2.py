@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import threading
 import types
 import typing
@@ -214,6 +215,10 @@ class HTTP2Response(BaseHTTPResponse):
 
     def get_redirect_location(self) -> None:
         return None
+
+    def close(self) -> None:
+        if not self.auto_close:
+            io.IOBase.close(self)
 
 
 def inject_into_urllib3() -> None:
