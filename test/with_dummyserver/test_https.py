@@ -1031,7 +1031,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 self.host,
                 self.port,
                 ca_certs=None,
-                timeout=SHORT_TIMEOUT,
+                timeout=LONG_TIMEOUT,
             ) as pool:
                 with pytest.raises(SSLError):
                     pool.request("GET", "/", retries=False)

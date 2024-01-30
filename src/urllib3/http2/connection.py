@@ -11,9 +11,9 @@ import urllib3.util
 import urllib3.util.ssl_
 from urllib3.response import BaseHTTPResponse
 
-from ._collections import HTTPHeaderDict, _LockedObject
-from .connection import HTTPSConnection
-from .connectionpool import HTTPSConnectionPool
+from .._collections import HTTPHeaderDict, _LockedObject
+from ..connection import HTTPSConnection
+from ..connectionpool import HTTPSConnectionPool
 
 orig_HTTPSConnection = HTTPSConnection
 
