@@ -1,15 +1,15 @@
 2.2.0 (2024-01-30)
 ==================
 
-- Added support for Emscripten, including streaming support in cross-origin isolated browser environments where threading is enabled. (`#2951 <https://github.com/urllib3/urllib3/issues/2951>`__)
-- Added support for HTTPResponse.read1() method. (`#3186 <https://github.com/urllib3/urllib3/issues/3186>`__)
-- Added rudimentary support for HTTP/2 via ``urllib3.contrib.h2`` and ``HTTP2Connection`` class. (`#3284 <https://github.com/urllib3/urllib3/issues/3284>`__)
+- Added support for `Emscripten and Pyodide <https://urllib3.readthedocs.io/en/latest/reference/contrib/emscripten.html>`__, including streaming support in cross-origin isolated browser environments where threading is enabled. (`#2951 <https://github.com/urllib3/urllib3/issues/2951>`__)
+- Added support for ``HTTPResponse.read1()`` method. (`#3186 <https://github.com/urllib3/urllib3/issues/3186>`__)
+- Added rudimentary support for HTTP/2. (`#3284 <https://github.com/urllib3/urllib3/issues/3284>`__)
 - Fixed issue where requests against urls with trailing dots were failing due to SSL errors
   when using proxy. (`#2244 <https://github.com/urllib3/urllib3/issues/2244>`__)
 - Fixed ``HTTPConnection.proxy_is_verified`` and ``HTTPSConnection.proxy_is_verified``
   to be always set to a boolean after connecting to a proxy. It could be
   ``None`` in some cases previously. (`#3130 <https://github.com/urllib3/urllib3/issues/3130>`__)
-- Fixed an issue where ``headers`` passed with ``json`` would be mutated (`#3203 <https://github.com/urllib3/urllib3/issues/3203>`__)
+- Fixed an issue where ``headers`` passed in a request with ``json=`` would be mutated (`#3203 <https://github.com/urllib3/urllib3/issues/3203>`__)
 - Fixed ``HTTPSConnection.is_verified`` to be set to ``False`` when connecting
   from a HTTPS proxy to an HTTP target. It was set to ``True`` previously. (`#3267 <https://github.com/urllib3/urllib3/issues/3267>`__)
 - Fixed handling of new error message from OpenSSL 3.2.0 when configuring an HTTP proxy as HTTPS (`#3268 <https://github.com/urllib3/urllib3/issues/3268>`__)
