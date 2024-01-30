@@ -4,9 +4,9 @@ import threading
 import types
 import typing
 
-import h2.config  # type: ignore[import]
-import h2.connection  # type: ignore[import]
-import h2.events  # type: ignore[import]
+import h2.config  # type: ignore[import-untyped]
+import h2.connection  # type: ignore[import-untyped]
+import h2.events  # type: ignore[import-untyped]
 
 import urllib3.connection
 import urllib3.util.ssl_
@@ -97,7 +97,7 @@ class HTTP2Connection(HTTPSConnection):
                 )
             )
 
-    def putheader(self, header: str, *values: str) -> None:
+    def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         for value in values:
             self._h2_headers.append(
                 (header.encode("utf-8").lower(), value.encode("utf-8"))
