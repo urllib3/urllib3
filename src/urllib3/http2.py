@@ -99,13 +99,9 @@ class HTTP2Connection(HTTPSConnection):
 
     def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         for value in values:
-            if isinstance(header, str):
-                header_bytes = header.encode("utf-8").lower()
-
-            if isinstance(value, str):
-                value_bytes = value.encode("utf-8")
-
-            self._h2_headers.append((header_bytes, value_bytes))
+            self._h2_headers.append(
+                (header.encode("utf-8").lower(), value.encode("utf-8"))
+            )
 
     def endheaders(self) -> None:  # type: ignore[override]
         with self._h2_conn as h2_conn:
