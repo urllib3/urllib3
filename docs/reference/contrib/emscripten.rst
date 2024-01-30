@@ -39,11 +39,11 @@ Try using the following code in a Pyodide console or ``<script>`` tag:
     await micropip.install("urllib3")
 
     import urllib3
-    resp = urllib3.request("GET", "https://example.com")
+    resp = urllib3.request("GET", "https://httpbin.org/anything")
 
     print(resp.status)  # 200
     print(resp.headers) # HTTPHeaderDict(...)
-    print(resp.data)    # ...
+    print(resp.json())  # {"headers": {"Accept": "*/*", ...}, ...}
 
 Because `Requests <https://requests.readthedocs.io/en/latest/>`_ is built on urllib3, Requests also works out of the box:
 
@@ -53,7 +53,7 @@ Because `Requests <https://requests.readthedocs.io/en/latest/>`_ is built on url
     await micropip.install("requests")
 
     import requests
-    resp = requests.request("GET", "https://example.com")
+    resp = requests.request("GET", "https://httpbin.org/anything")
 
     print(resp.status_code)  # 200
     print(resp.headers)
