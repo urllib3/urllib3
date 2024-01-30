@@ -1,2 +1,0 @@
-Fixed ``HTTPSConnection.is_verified`` to be set to ``False`` when connecting
-from a https proxy to a http target. It was set to ``True`` previously.
