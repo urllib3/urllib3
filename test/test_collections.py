@@ -282,7 +282,7 @@ class TestHTTPHeaderDict:
         ]
 
         assert list(d.items()) == expected_results
-        # make sure the values persist over copys
+        # make sure the values persist over copies
         assert list(d.copy().items()) == expected_results
 
         other_dict = HTTPHeaderDict()
@@ -385,7 +385,7 @@ class TestHTTPHeaderDict:
         hdict = {
             "Content-Length": "0",
             "Content-type": "text/plain",
-            "Server": "TornadoServer/1.2.3",
+            "Server": "Hypercorn/1.2.3",
         }
         h = dict(HTTPHeaderDict(hdict).items())
         assert hdict == h
@@ -423,3 +423,32 @@ class TestHTTPHeaderDict:
         d._container[marker] = ["some", "strings"]  # type: ignore[index]
         assert marker not in d
         assert marker in d._container
+
+    def test_union(self, d: HTTPHeaderDict) -> None:
+        to_merge = {"Cookie": "tim-tam"}
+        result = d | to_merge
+        assert result == HTTPHeaderDict({"Cookie": "foo, bar, tim-tam"})
+        assert to_merge == {"Cookie": "tim-tam"}
+        assert d == HTTPHeaderDict({"Cookie": "foo, bar"})
+
+    def test_union_rhs(self, d: HTTPHeaderDict) -> None:
+        to_merge = {"Cookie": "tim-tam"}
+        result = to_merge | d
+        assert result == HTTPHeaderDict({"Cookie": "tim-tam, foo, bar"})
+        assert to_merge == {"Cookie": "tim-tam"}
+        assert d == HTTPHeaderDict({"Cookie": "foo, bar"})
+
+    def test_inplace_union(self, d: HTTPHeaderDict) -> None:
+        to_merge = {"Cookie": "tim-tam"}
+        d |= to_merge
+        assert d == HTTPHeaderDict({"Cookie": "foo, bar, tim-tam"})
+
+    def test_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
+        with pytest.raises(TypeError, match="unsupported operand type.*'int'"):
+            d | 42
+        with pytest.raises(TypeError, match="unsupported operand type.*'float'"):
+            3.14 | d
+
+    def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
+        with pytest.raises(TypeError, match="unsupported operand type.*'NoneType'"):
+            d |= None

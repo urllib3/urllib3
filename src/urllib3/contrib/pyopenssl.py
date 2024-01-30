@@ -8,10 +8,10 @@ This needs the following packages installed:
 
 * `pyOpenSSL`_ (tested with 16.0.0)
 * `cryptography`_ (minimum 1.3.4, from pyopenssl)
-* `idna`_ (minimum 2.0, from cryptography)
+* `idna`_ (minimum 2.0)
 
-However, pyOpenSSL depends on cryptography, which depends on idna, so while we
-use all three directly here we end up having relatively few packages required.
+However, pyOpenSSL depends on cryptography, so while we use all three directly here we
+end up having relatively few packages required.
 
 You can install them with the following command:
 
@@ -40,7 +40,7 @@ like this:
 
 from __future__ import annotations
 
-import OpenSSL.SSL  # type: ignore[import]
+import OpenSSL.SSL  # type: ignore[import-untyped]
 from cryptography import x509
 
 try:
@@ -54,29 +54,20 @@ except ImportError:
 import logging
 import ssl
 import typing
-import warnings
 from io import BytesIO
 from socket import socket as socket_cls
 from socket import timeout
 
 from .. import util
 
-warnings.warn(
-    "'urllib3.contrib.pyopenssl' module is deprecated and will be removed "
-    "in urllib3 v2.1.0. Read more in this issue: "
-    "https://github.com/urllib3/urllib3/issues/2680",
-    category=DeprecationWarning,
-    stacklevel=2,
-)
-
 if typing.TYPE_CHECKING:
-    from OpenSSL.crypto import X509  # type: ignore[import]
+    from OpenSSL.crypto import X509  # type: ignore[import-untyped]
 
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
-_openssl_versions = {
+_openssl_versions: dict[int, int] = {
     util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
     util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
@@ -380,14 +371,15 @@ class WrappedSocket:
         self.connection.shutdown()
 
     def close(self) -> None:
-        if self._io_refs < 1:
-            try:
-                self._closed = True
-                return self.connection.close()  # type: ignore[no-any-return]
-            except OpenSSL.SSL.Error:
-                return
-        else:
-            self._io_refs -= 1
+        self._closed = True
+        if self._io_refs <= 0:
+            self._real_close()
+
+    def _real_close(self) -> None:
+        try:
+            return self.connection.close()  # type: ignore[no-any-return]
+        except OpenSSL.SSL.Error:
+            return
 
     def getpeercert(
         self, binary_form: bool = False

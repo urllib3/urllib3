@@ -1,1 +1,0 @@
-Fixed the type hint of ``PoolKey.key_retries`` by adding ``bool`` to the union.
