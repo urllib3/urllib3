@@ -344,6 +344,7 @@ class BaseHTTPResponse(io.IOBase):
             self.chunked = True
 
         self._decoder: ContentDecoder | None = None
+        self.length_remaining: int | None
 
     def get_redirect_location(self) -> str | None | Literal[False]:
         """

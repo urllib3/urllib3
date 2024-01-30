@@ -1,0 +1,1 @@
+Fixed TLS 1.3 Post Handshake Auth when the server certificate validation was disabled.

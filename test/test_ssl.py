@@ -108,13 +108,28 @@ class TestSSL:
                 ssl_.ssl_wrap_socket(sock, tls_in_tls=True)
 
     @pytest.mark.parametrize(
-        ["pha", "expected_pha"], [(None, None), (False, True), (True, True)]
+        ["pha", "expected_pha", "cert_reqs"],
+        [
+            (None, None, None),
+            (None, None, ssl.CERT_NONE),
+            (None, None, ssl.CERT_OPTIONAL),
+            (None, None, ssl.CERT_REQUIRED),
+            (False, True, None),
+            (False, True, ssl.CERT_NONE),
+            (False, True, ssl.CERT_OPTIONAL),
+            (False, True, ssl.CERT_REQUIRED),
+            (True, True, None),
+            (True, True, ssl.CERT_NONE),
+            (True, True, ssl.CERT_OPTIONAL),
+            (True, True, ssl.CERT_REQUIRED),
+        ],
     )
     def test_create_urllib3_context_pha(
         self,
         monkeypatch: pytest.MonkeyPatch,
         pha: bool | None,
         expected_pha: bool | None,
+        cert_reqs: int | None,
     ) -> None:
         context = mock.create_autospec(ssl_.SSLContext)
         context.set_ciphers = mock.Mock()
@@ -122,7 +137,7 @@ class TestSSL:
         context.post_handshake_auth = pha
         monkeypatch.setattr(ssl_, "SSLContext", lambda *_, **__: context)
 
-        assert ssl_.create_urllib3_context() is context
+        assert ssl_.create_urllib3_context(cert_reqs=cert_reqs) is context
 
         assert context.post_handshake_auth == expected_pha
 
