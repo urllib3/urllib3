@@ -52,8 +52,7 @@ class HTTP2Connection(HTTPSConnection):
     def __init__(
         self, host: str, port: int | None = None, **kwargs: typing.Any
     ) -> None:
-        config = h2.config.H2Configuration(client_side=True)
-        self._h2_conn = _LockedObject(h2.connection.H2Connection(config=config))
+        self._h2_conn = self._new_h2_conn()
         self._h2_stream: int | None = None
         self._h2_headers: list[tuple[bytes, bytes]] = []
 

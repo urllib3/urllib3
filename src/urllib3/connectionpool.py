@@ -553,7 +553,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             url,
             response.version,
             response.status,
-            response.length_remaining,  # type: ignore[attr-defined]
+            response.length_remaining,
         )
 
         return response
