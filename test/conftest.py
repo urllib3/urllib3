@@ -1,23 +1,51 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import socket
 import ssl
 import typing
 from pathlib import Path
 
+import hypercorn
 import pytest
 import trustme
-from tornado import web
 
-from dummyserver.handlers import TestingApp
-from dummyserver.proxy import ProxyHandler
-from dummyserver.server import HAS_IPV6, run_loop_in_thread, run_tornado_app
-from dummyserver.testcase import HTTPSDummyServerTestCase
+import urllib3.http2
+from dummyserver.app import hypercorn_app
+from dummyserver.asgi_proxy import ProxyApp
+from dummyserver.hypercornserver import run_hypercorn_in_thread
+from dummyserver.socketserver import HAS_IPV6
+from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
 from urllib3.util import ssl_
+from urllib3.util.url import parse_url
 
 from .tz_stub import stub_timezone_ctx
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--integration",
+        action="store_true",
+        default=False,
+        help="run integration tests only",
+    )
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    integration_mode = bool(config.getoption("--integration"))
+    skip_integration = pytest.mark.skip(
+        reason="skipping, need --integration option to run"
+    )
+    skip_normal = pytest.mark.skip(
+        reason="skipping non integration tests in --integration mode"
+    )
+    for item in items:
+        if "integration" in item.keywords and not integration_mode:
+            item.add_marker(skip_integration)
+        elif integration_mode and "integration" not in item.keywords:
+            item.add_marker(skip_normal)
 
 
 class ServerConfig(typing.NamedTuple):
@@ -53,17 +81,13 @@ def run_server_in_thread(
     ca.cert_pem.write_to_path(ca_cert_path)
     server_certs = _write_cert_to_dir(server_cert, tmpdir)
 
-    with run_loop_in_thread() as io_loop:
-
-        async def run_app() -> int:
-            app = web.Application([(r".*", TestingApp)])
-            server, port = run_tornado_app(app, server_certs, scheme, host)
-            return port
-
-        port = asyncio.run_coroutine_threadsafe(
-            run_app(), io_loop.asyncio_loop  # type: ignore[attr-defined]
-        ).result()
-        yield ServerConfig("https", host, port, ca_cert_path)
+    config = hypercorn.Config()
+    config.certfile = server_certs["certfile"]
+    config.keyfile = server_certs["keyfile"]
+    config.bind = [f"{host}:0"]
+    with run_hypercorn_in_thread(config, hypercorn_app):
+        port = typing.cast(int, parse_url(config.bind[0]).port)
+        yield ServerConfig(scheme, host, port, ca_cert_path)
 
 
 @contextlib.contextmanager
@@ -81,26 +105,25 @@ def run_server_and_proxy_in_thread(
     server_certs = _write_cert_to_dir(server_cert, tmpdir)
     proxy_certs = _write_cert_to_dir(proxy_cert, tmpdir, "proxy")
 
-    with run_loop_in_thread() as io_loop:
+    with contextlib.ExitStack() as stack:
+        server_config = hypercorn.Config()
+        server_config.certfile = server_certs["certfile"]
+        server_config.keyfile = server_certs["keyfile"]
+        server_config.bind = ["localhost:0"]
+        stack.enter_context(run_hypercorn_in_thread(server_config, hypercorn_app))
+        port = typing.cast(int, parse_url(server_config.bind[0]).port)
 
-        async def run_app() -> tuple[ServerConfig, ServerConfig]:
-            app = web.Application([(r".*", TestingApp)])
-            server_app, port = run_tornado_app(app, server_certs, "https", "localhost")
-            server_config = ServerConfig("https", "localhost", port, ca_cert_path)
+        proxy_config = hypercorn.Config()
+        proxy_config.certfile = proxy_certs["certfile"]
+        proxy_config.keyfile = proxy_certs["keyfile"]
+        proxy_config.bind = [f"{proxy_host}:0"]
+        stack.enter_context(run_hypercorn_in_thread(proxy_config, ProxyApp()))
+        proxy_port = typing.cast(int, parse_url(proxy_config.bind[0]).port)
 
-            proxy = web.Application([(r".*", ProxyHandler)])
-            proxy_app, proxy_port = run_tornado_app(
-                proxy, proxy_certs, proxy_scheme, proxy_host
-            )
-            proxy_config = ServerConfig(
-                proxy_scheme, proxy_host, proxy_port, ca_cert_path
-            )
-            return proxy_config, server_config
-
-        proxy_config, server_config = asyncio.run_coroutine_threadsafe(
-            run_app(), io_loop.asyncio_loop  # type: ignore[attr-defined]
-        ).result()
-        yield (proxy_config, server_config)
+        yield (
+            ServerConfig(proxy_scheme, proxy_host, proxy_port, ca_cert_path),
+            ServerConfig("https", "localhost", port, ca_cert_path),
+        )
 
 
 @pytest.fixture(params=["localhost", "127.0.0.1", "::1"])
@@ -288,13 +311,13 @@ def supported_tls_versions() -> typing.AbstractSet[str | None]:
     # disables TLSv1 and TLSv1.1.
     tls_versions = set()
 
-    _server = HTTPSDummyServerTestCase()
-    _server._start_server()
-    for _ssl_version_name in (
-        "PROTOCOL_TLSv1",
-        "PROTOCOL_TLSv1_1",
-        "PROTOCOL_TLSv1_2",
-        "PROTOCOL_TLS",
+    _server = HTTPSHypercornDummyServerTestCase
+    _server.setup_class()
+    for _ssl_version_name, min_max_version in (
+        ("PROTOCOL_TLSv1", ssl.TLSVersion.TLSv1),
+        ("PROTOCOL_TLSv1_1", ssl.TLSVersion.TLSv1_1),
+        ("PROTOCOL_TLSv1_2", ssl.TLSVersion.TLSv1_2),
+        ("PROTOCOL_TLS", None),
     ):
         _ssl_version = getattr(ssl, _ssl_version_name, 0)
         if _ssl_version == 0:
@@ -302,14 +325,19 @@ def supported_tls_versions() -> typing.AbstractSet[str | None]:
         _sock = socket.create_connection((_server.host, _server.port))
         try:
             _sock = ssl_.ssl_wrap_socket(
-                _sock, cert_reqs=ssl.CERT_NONE, ssl_version=_ssl_version
+                _sock,
+                ssl_context=ssl_.create_urllib3_context(
+                    cert_reqs=ssl.CERT_NONE,
+                    ssl_minimum_version=min_max_version,
+                    ssl_maximum_version=min_max_version,
+                ),
             )
         except ssl.SSLError:
             pass
         else:
             tls_versions.add(_sock.version())
         _sock.close()
-    _server._stop_server()
+    _server.teardown_class()
     return tls_versions
 
 
@@ -342,3 +370,14 @@ def requires_tlsv1_3(supported_tls_versions: typing.AbstractSet[str]) -> None:
         or "TLSv1.3" not in supported_tls_versions
     ):
         pytest.skip("Test requires TLSv1.3")
+
+
+@pytest.fixture(params=["h11", "h2"])
+def http_version(request: pytest.FixtureRequest) -> typing.Generator[str, None, None]:
+    if request.param == "h2":
+        urllib3.http2.inject_into_urllib3()
+
+    yield request.param
+
+    if request.param == "h2":
+        urllib3.http2.extract_from_urllib3()

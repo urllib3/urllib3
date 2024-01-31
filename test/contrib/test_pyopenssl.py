@@ -7,7 +7,10 @@ import pytest
 
 try:
     from cryptography import x509
-    from OpenSSL.crypto import FILETYPE_PEM, load_certificate  # type: ignore[import]
+    from OpenSSL.crypto import (  # type: ignore[import-untyped]
+        FILETYPE_PEM,
+        load_certificate,
+    )
 
     from urllib3.contrib.pyopenssl import _dnsname_to_stdlib, get_subj_alt_name
 except ImportError:

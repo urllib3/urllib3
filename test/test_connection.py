@@ -17,7 +17,9 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     _url_from_connection,
     _wrap_proxy_error,
 )
-from urllib3.exceptions import HTTPError, ProxyError
+from urllib3.exceptions import HTTPError, ProxyError, SSLError
+from urllib3.util import ssl_
+from urllib3.util.request import SKIP_HEADER
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
@@ -62,7 +64,7 @@ class TestConnection:
                 "bar",
                 {"subjectAltName": (("DNS", "foo"),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     def test_match_hostname_no_dns(self) -> None:
         cert: _TYPE_PEER_CERT_RET_DICT = {"subjectAltName": (("DNS", ""),)}
@@ -77,7 +79,7 @@ class TestConnection:
                 "bar",
                 {"subjectAltName": (("DNS", ""),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     def test_match_hostname_startwith_wildcard(self) -> None:
         cert: _TYPE_PEER_CERT_RET_DICT = {"subjectAltName": (("DNS", "*"),)}
@@ -137,7 +139,7 @@ class TestConnection:
                 "1.1.1.2",
                 {"subjectAltName": (("IP Address", "1.1.1.1"),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     @pytest.mark.parametrize(
         ["asserted_hostname", "san_ip"],
@@ -171,7 +173,7 @@ class TestConnection:
                 "1:2::2:2",
                 {"subjectAltName": (("IP Address", "1:2::2:1"),)},
             )
-            assert e._peer_cert == cert
+            assert e._peer_cert == cert  # type: ignore[attr-defined]
 
     def test_match_hostname_dns_with_brackets_doesnt_match(self) -> None:
         cert: _TYPE_PEER_CERT_RET_DICT = {
@@ -235,3 +237,89 @@ class TestConnection:
         # Should error if a request has not been sent
         with pytest.raises(ResponseNotReady):
             conn.getresponse()
+
+    def test_assert_fingerprint_closes_socket(self) -> None:
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.wrap_socket.return_value.getpeercert.return_value = b"fake cert"
+        conn = HTTPSConnection(
+            "google.com",
+            port=443,
+            assert_fingerprint="AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA",
+            ssl_context=context,
+        )
+        with mock.patch.object(conn, "_new_conn"):
+            with pytest.raises(SSLError):
+                conn.connect()
+
+        context.wrap_socket.return_value.close.assert_called_once_with()
+
+    def test_assert_hostname_closes_socket(self) -> None:
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.wrap_socket.return_value.getpeercert.return_value = {
+            "subjectAltName": (("DNS", "google.com"),)
+        }
+        conn = HTTPSConnection(
+            "google.com", port=443, assert_hostname="example.com", ssl_context=context
+        )
+        with mock.patch.object(conn, "_new_conn"):
+            with pytest.raises(ImplementationCertificateError):
+                conn.connect()
+
+        context.wrap_socket.return_value.close.assert_called_once_with()
+
+    @pytest.mark.parametrize(
+        "accept_encoding",
+        [
+            "Accept-Encoding",
+            "accept-encoding",
+            b"Accept-Encoding",
+            b"accept-encoding",
+            None,
+        ],
+    )
+    @pytest.mark.parametrize("host", ["Host", "host", b"Host", b"host", None])
+    @pytest.mark.parametrize(
+        "user_agent", ["User-Agent", "user-agent", b"User-Agent", b"user-agent", None]
+    )
+    @pytest.mark.parametrize("chunked", [True, False])
+    def test_skip_header(
+        self,
+        accept_encoding: str | None,
+        host: str | None,
+        user_agent: str | None,
+        chunked: bool,
+    ) -> None:
+        headers = {}
+        if accept_encoding is not None:
+            headers[accept_encoding] = SKIP_HEADER
+        if host is not None:
+            headers[host] = SKIP_HEADER
+        if user_agent is not None:
+            headers[user_agent] = SKIP_HEADER
+
+        # When dropping support for Python 3.9, this can be rewritten to parenthesized
+        # context managers
+        with mock.patch("urllib3.util.connection.create_connection"):
+            with mock.patch(
+                "urllib3.connection._HTTPConnection.putheader"
+            ) as http_client_putheader:
+                conn = HTTPConnection("")
+                conn.request("GET", "/headers", headers=headers, chunked=chunked)
+
+        request_headers = {}
+        for call in http_client_putheader.call_args_list:
+            header, value = call.args
+            request_headers[header] = value
+
+        if accept_encoding is None:
+            assert "Accept-Encoding" in request_headers
+        else:
+            assert accept_encoding not in request_headers
+        if host is None:
+            assert "Host" in request_headers
+        else:
+            assert host not in request_headers
+        if user_agent is None:
+            assert "User-Agent" in request_headers
+        else:
+            assert user_agent not in request_headers

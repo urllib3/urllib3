@@ -6,9 +6,7 @@ on:
       - "*"
 
 permissions:
-  contents: "read"
-  # Needed to access the workflow's OIDC identity.
-  id-token: "write"
+  contents: read
 
 jobs:
   build:
@@ -21,10 +19,10 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: "actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b"
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
 
       - name: "Setup Python"
-        uses: "actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912"
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
           python-version: "3.x"
 
@@ -39,10 +37,10 @@ jobs:
       - name: "Generate hashes"
         id: hash
         run: |
-          cd dist && echo "::set-output name=hashes::$(sha256sum * | base64 -w0)"
+          cd dist && echo "hashes=$(sha256sum * | base64 -w0)" >> $GITHUB_OUTPUT
 
       - name: "Upload dists"
-        uses: "actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce"
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: "dist"
           path: "dist/"
@@ -54,11 +52,10 @@ jobs:
     permissions:
       actions: read
       contents: write
-      id-token: write
-    uses: "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.2.1"
+      id-token: write # Needed to access the workflow's OIDC identity.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.9.0
     with:
       base64-subjects: "${{ needs.build.outputs.hashes }}"
-      attestation-name: "urllib3.intoto.jsonl"
       upload-assets: true
       compile-generator: true # Workaround for https://github.com/slsa-framework/slsa-github-generator/issues/1163
 
@@ -68,11 +65,12 @@ jobs:
     needs: ["build", "provenance"]
     permissions:
       contents: write
+      id-token: write # Needed for trusted publishing to PyPI.
     runs-on: "ubuntu-latest"
 
     steps:
     - name: "Download dists"
-      uses: "actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a"
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
       with:
         name: "dist"
         path: "dist/"
@@ -84,7 +82,4 @@ jobs:
         gh release upload ${{ github.ref_name }} dist/* --repo ${{ github.repository }}
 
     - name: "Publish dists to PyPI"
-      uses: "pypa/gh-action-pypi-publish@c7f29f7adef1a245bd91520e94867e5c6eedddcc"
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
+      uses: pypa/gh-action-pypi-publish@f8c70e705ffc13c3b4d1221169b84f12a75d6ca8 # v1.8.8

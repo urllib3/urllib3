@@ -14,16 +14,19 @@ from http.client import HTTPMessage as _HttplibHTTPMessage
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
 
+if typing.TYPE_CHECKING:
+    from ._base_connection import BaseHTTPConnection
+
 try:
     try:
-        import brotlicffi as brotli  # type: ignore[import]
+        import brotlicffi as brotli  # type: ignore[import-not-found]
     except ImportError:
-        import brotli  # type: ignore[import]
+        import brotli  # type: ignore[import-not-found]
 except ImportError:
     brotli = None
 
 try:
-    import zstandard as zstd  # type: ignore[import]
+    import zstandard as zstd  # type: ignore[import-not-found]
 
     # The package 'zstandard' added the 'eof' property starting
     # in v0.18.0 which we require to ensure a complete and
@@ -58,7 +61,7 @@ from .util.response import is_fp_closed, is_response_to_head
 from .util.retry import Retry
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing import Literal
 
     from .connectionpool import HTTPConnectionPool
 
@@ -106,7 +109,6 @@ class DeflateDecoder(ContentDecoder):
 
 
 class GzipDecoderState:
-
     FIRST_MEMBER = 0
     OTHER_MEMBERS = 1
     SWALLOW_DATA = 2
@@ -170,10 +172,15 @@ if zstd is not None:
         def decompress(self, data: bytes) -> bytes:
             if not data:
                 return b""
-            return self._obj.decompress(data)  # type: ignore[no-any-return]
+            data_parts = [self._obj.decompress(data)]
+            while self._obj.eof and self._obj.unused_data:
+                unused_data = self._obj.unused_data
+                self._obj = zstd.ZstdDecompressor().decompressobj()
+                data_parts.append(self._obj.decompress(unused_data))
+            return b"".join(data_parts)
 
         def flush(self) -> bytes:
-            ret = self._obj.flush()
+            ret = self._obj.flush()  # note: this is a no-op
             if not self._obj.eof:
                 raise DecodeError("Zstandard data is incomplete")
             return ret  # type: ignore[no-any-return]
@@ -204,7 +211,9 @@ def _get_decoder(mode: str) -> ContentDecoder:
     if "," in mode:
         return MultiDecoder(mode)
 
-    if mode == "gzip":
+    # According to RFC 9110 section 8.4.1.3, recipients should
+    # consider x-gzip equivalent to gzip
+    if mode in ("gzip", "x-gzip"):
         return GzipDecoder()
 
     if brotli is not None and mode == "br":
@@ -245,7 +254,9 @@ class BytesQueueBuffer:
         self._size += len(data)
 
     def get(self, n: int) -> bytes:
-        if not self.buffer:
+        if n == 0:
+            return b""
+        elif not self.buffer:
             raise RuntimeError("buffer is empty")
         elif n < 0:
             raise ValueError("n should be > 0")
@@ -272,9 +283,23 @@ class BytesQueueBuffer:
 
         return ret.getvalue()
 
+    def get_all(self) -> bytes:
+        buffer = self.buffer
+        if not buffer:
+            assert self._size == 0
+            return b""
+        if len(buffer) == 1:
+            result = buffer.pop()
+        else:
+            ret = io.BytesIO()
+            ret.writelines(buffer.popleft() for _ in range(len(buffer)))
+            result = ret.getvalue()
+        self._size = 0
+        return result
+
 
 class BaseHTTPResponse(io.IOBase):
-    CONTENT_DECODERS = ["gzip", "deflate"]
+    CONTENT_DECODERS = ["gzip", "x-gzip", "deflate"]
     if brotli is not None:
         CONTENT_DECODERS += ["br"]
     if zstd is not None:
@@ -319,6 +344,7 @@ class BaseHTTPResponse(io.IOBase):
             self.chunked = True
 
         self._decoder: ContentDecoder | None = None
+        self.length_remaining: int | None
 
     def get_redirect_location(self) -> str | None | Literal[False]:
         """
@@ -358,7 +384,7 @@ class BaseHTTPResponse(io.IOBase):
         raise NotImplementedError()
 
     @property
-    def connection(self) -> HTTPConnection | None:
+    def connection(self) -> BaseHTTPConnection | None:
         raise NotImplementedError()
 
     @property
@@ -382,6 +408,13 @@ class BaseHTTPResponse(io.IOBase):
         amt: int | None = None,
         decode_content: bool | None = None,
         cache_content: bool = False,
+    ) -> bytes:
+        raise NotImplementedError()
+
+    def read1(
+        self,
+        amt: int | None = None,
+        decode_content: bool | None = None,
     ) -> bytes:
         raise NotImplementedError()
 
@@ -744,7 +777,12 @@ class HTTPResponse(BaseHTTPResponse):
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
 
-    def _fp_read(self, amt: int | None = None) -> bytes:
+    def _fp_read(
+        self,
+        amt: int | None = None,
+        *,
+        read1: bool = False,
+    ) -> bytes:
         """
         Read a response with the thought that reading the number of bytes
         larger than can fit in a 32-bit int at a time via SSL in some
@@ -761,13 +799,15 @@ class HTTPResponse(BaseHTTPResponse):
         assert self._fp
         c_int_max = 2**31 - 1
         if (
-            (
-                (amt and amt > c_int_max)
-                or (self.length_remaining and self.length_remaining > c_int_max)
+            (amt and amt > c_int_max)
+            or (
+                amt is None
+                and self.length_remaining
+                and self.length_remaining > c_int_max
             )
-            and not util.IS_SECURETRANSPORT
-            and (util.IS_PYOPENSSL or sys.version_info < (3, 10))
-        ):
+        ) and (util.IS_PYOPENSSL or sys.version_info < (3, 10)):
+            if read1:
+                return self._fp.read1(c_int_max)
             buffer = io.BytesIO()
             # Besides `max_chunk_amt` being a maximum chunk size, it
             # affects memory overhead of reading a response by this
@@ -788,6 +828,8 @@ class HTTPResponse(BaseHTTPResponse):
                 buffer.write(data)
                 del data  # to reduce peak memory usage by `max_chunk_amt`.
             return buffer.getvalue()
+        elif read1:
+            return self._fp.read1(amt) if amt is not None else self._fp.read1()
         else:
             # StringIO doesn't like amt=None
             return self._fp.read(amt) if amt is not None else self._fp.read()
@@ -795,6 +837,8 @@ class HTTPResponse(BaseHTTPResponse):
     def _raw_read(
         self,
         amt: int | None = None,
+        *,
+        read1: bool = False,
     ) -> bytes:
         """
         Reads `amt` of bytes from the socket.
@@ -805,7 +849,7 @@ class HTTPResponse(BaseHTTPResponse):
         fp_closed = getattr(self._fp, "closed", False)
 
         with self._error_catcher():
-            data = self._fp_read(amt) if not fp_closed else b""
+            data = self._fp_read(amt, read1=read1) if not fp_closed else b""
             if amt is not None and amt != 0 and not data:
                 # Platform-specific: Buggy versions of Python.
                 # Close the connection when no data is returned
@@ -827,6 +871,14 @@ class HTTPResponse(BaseHTTPResponse):
                     # raised during streaming, so all calls with incorrect
                     # Content-Length are caught.
                     raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
+            elif read1 and (
+                (amt != 0 and not data) or self.length_remaining == len(data)
+            ):
+                # All data has been read, but `self._fp.read1` in
+                # CPython 3.12 and older doesn't always close
+                # `http.client.HTTPResponse`, so we close it here.
+                # See https://github.com/python/cpython/issues/113199
+                self._fp.close()
 
         if data:
             self._fp_bytes_read += len(data)
@@ -872,11 +924,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         data = self._raw_read(amt)
 
-        flush_decoder = False
-        if amt is None:
-            flush_decoder = True
-        elif amt != 0 and not data:
-            flush_decoder = True
+        flush_decoder = amt is None or (amt != 0 and not data)
 
         if not data and len(self._decoded_buffer) == 0:
             return data
@@ -909,6 +957,57 @@ class HTTPResponse(BaseHTTPResponse):
 
         return data
 
+    def read1(
+        self,
+        amt: int | None = None,
+        decode_content: bool | None = None,
+    ) -> bytes:
+        """
+        Similar to ``http.client.HTTPResponse.read1`` and documented
+        in :meth:`io.BufferedReader.read1`, but with an additional parameter:
+        ``decode_content``.
+
+        :param amt:
+            How much of the content to read.
+
+        :param decode_content:
+            If True, will attempt to decode the body based on the
+            'content-encoding' header.
+        """
+        if decode_content is None:
+            decode_content = self.decode_content
+        # try and respond without going to the network
+        if self._has_decoded_content:
+            if not decode_content:
+                raise RuntimeError(
+                    "Calling read1(decode_content=False) is not supported after "
+                    "read1(decode_content=True) was called."
+                )
+            if len(self._decoded_buffer) > 0:
+                if amt is None:
+                    return self._decoded_buffer.get_all()
+                return self._decoded_buffer.get(amt)
+        if amt == 0:
+            return b""
+
+        # FIXME, this method's type doesn't say returning None is possible
+        data = self._raw_read(amt, read1=True)
+        if not decode_content or data is None:
+            return data
+
+        self._init_decoder()
+        while True:
+            flush_decoder = not data
+            decoded_data = self._decode(data, decode_content, flush_decoder)
+            self._decoded_buffer.put(decoded_data)
+            if decoded_data or flush_decoder:
+                break
+            data = self._raw_read(8192, read1=True)
+
+        if amt is None:
+            return self._decoded_buffer.get_all()
+        return self._decoded_buffer.get(amt)
+
     def stream(
         self, amt: int | None = 2**16, decode_content: bool | None = None
     ) -> typing.Generator[bytes, None, None]:
@@ -930,7 +1029,7 @@ class HTTPResponse(BaseHTTPResponse):
         if self.chunked and self.supports_chunked_reads():
             yield from self.read_chunked(amt, decode_content=decode_content)
         else:
-            while not is_fp_closed(self._fp):
+            while not is_fp_closed(self._fp) or len(self._decoded_buffer) > 0:
                 data = self.read(amt=amt, decode_content=decode_content)
 
                 if data:

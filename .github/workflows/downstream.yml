@@ -5,20 +5,20 @@ on: [push, pull_request]
 permissions: "read-all"
 
 jobs:
-  integration:
+  downstream:
     strategy:
       fail-fast: false
       matrix:
         downstream: [botocore, requests]
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
 
     steps:
       - name: "Checkout repository"
-        uses: "actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b"
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
 
       - name: "Setup Python"
-        uses: "actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912"
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
           python-version: "3.x"
 
