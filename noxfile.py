@@ -20,6 +20,22 @@ def tests_impl(
     integration: bool = False,
     pytest_extra_args: list[str] = [],
 ) -> None:
+    # Retrieve sys info from the Python implementation under test
+    # to avoid enabling memray when nox runs under CPython but tests PyPy
+    session_python_info = session.run(
+        "python",
+        "-c",
+        "import sys; print(sys.implementation.name, sys.version_info.releaselevel)",
+        silent=True,
+    ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
+    implementation_name, release_level = session_python_info.split(" ")
+
+    # zstd cannot be installed on CPython 3.13 yet because it pins
+    # an incompatible CFFI version.
+    # https://github.com/indygreg/python-zstandard/issues/210
+    if release_level != "final":
+        extras = extras.replace(",zstd", "")
+
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
     session.install(f".[{extras}]")
@@ -31,15 +47,6 @@ def tests_impl(
     session.run("python", "-c", "import struct; print(struct.calcsize('P') * 8)")
     # Print OpenSSL information.
     session.run("python", "-m", "OpenSSL.debug")
-    # Retrieve sys info from the Python implementation under test
-    # to avoid enabling memray when nox runs under CPython but tests PyPy
-    session_python_info = session.run(
-        "python",
-        "-c",
-        "import sys; print(sys.implementation.name, sys.version_info.releaselevel)",
-        silent=True,
-    ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
-    implementation_name, release_level = session_python_info.split(" ")
 
     memray_supported = True
     if implementation_name != "cpython" or release_level != "final":
@@ -88,7 +95,17 @@ def tests_impl(
 
 
 @nox.session(
-    python=["3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.8", "pypy3.9", "pypy3.10"]
+    python=[
+        "3.8",
+        "3.9",
+        "3.10",
+        "3.11",
+        "3.12",
+        "3.13",
+        "pypy3.8",
+        "pypy3.9",
+        "pypy3.10",
+    ]
 )
 def test(session: nox.Session) -> None:
     tests_impl(session)

@@ -559,6 +559,7 @@ class TestResponse:
         assert resp.data == b"foo"
         assert resp.closed
 
+    @pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
     def test_base_io(self) -> None:
         resp = BaseHTTPResponse(
             status=200,

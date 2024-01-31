@@ -215,6 +215,9 @@ class HTTP2Response(BaseHTTPResponse):
     def get_redirect_location(self) -> None:
         return None
 
+    def close(self) -> None:
+        pass
+
 
 def inject_into_urllib3() -> None:
     HTTPSConnectionPool.ConnectionCls = HTTP2Connection

@@ -1,5 +1,5 @@
 h2==4.1.0
-coverage==7.4.0
+coverage==7.4.1
 PySocks==1.7.1
 pytest==7.4.2
 pytest-timeout==2.1.0
@@ -9,8 +9,11 @@ trustme==1.1.0
 cryptography==41.0.6
 backports.zoneinfo==0.2.1;python_version<"3.9"
 towncrier==23.6.0
-pytest-memray==1.5.0;sys_platform!="win32" and implementation_name=="cpython"
-trio==0.23.1
+pytest-memray==1.5.0;python_version<"3.13" and sys_platform!="win32" and implementation_name=="cpython"
+trio==0.23.1;python_version<"3.13"
+# We need a release of Trio newer than 0.24.0 to support CPython 3.13.
+# https://github.com/python-trio/trio/issues/2903
+trio @ git+https://github.com/python-trio/trio@e4c8eb2d7ef59eeea1441656e392fe1b0870a374; python_version == "3.13"
 Quart==0.19.4
 quart-trio==0.11.1
 # https://github.com/pgjones/hypercorn/issues/62
@@ -18,3 +21,7 @@ quart-trio==0.11.1
 # https://github.com/pgjones/hypercorn/issues/169
 hypercorn @ git+https://github.com/urllib3/hypercorn@urllib3-changes
 httpx==0.25.2
+# CFFI is not going to support CPython 3.13 in an actual release until
+# there is a release candidate for 3.13.
+# https://github.com/python-cffi/cffi/issues/23#issuecomment-1845861410
+cffi @ git+https://github.com/python-cffi/cffi@14723b0bbd127790c450945099db31018d80fa83; python_version == "3.13"
