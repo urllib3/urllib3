@@ -65,7 +65,7 @@ PASSWORD_CLIENT_KEYFILE = "client_password.key"
 CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
 
 
-class TestHTTPS(HTTPSHypercornDummyServerTestCase):
+class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
     tls_protocol_name: str | None = None
 
     def tls_protocol_not_default(self) -> bool:
@@ -992,25 +992,25 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
 
 
 @pytest.mark.usefixtures("requires_tlsv1")
-class TestHTTPS_TLSv1(TestHTTPS):
+class TestHTTPS_TLSv1(BaseTestHTTPS):
     tls_protocol_name = "TLSv1"
     certs = TLSv1_CERTS
 
 
 @pytest.mark.usefixtures("requires_tlsv1_1")
-class TestHTTPS_TLSv1_1(TestHTTPS):
+class TestHTTPS_TLSv1_1(BaseTestHTTPS):
     tls_protocol_name = "TLSv1.1"
     certs = TLSv1_1_CERTS
 
 
 @pytest.mark.usefixtures("requires_tlsv1_2")
-class TestHTTPS_TLSv1_2(TestHTTPS):
+class TestHTTPS_TLSv1_2(BaseTestHTTPS):
     tls_protocol_name = "TLSv1.2"
     certs = TLSv1_2_CERTS
 
 
 @pytest.mark.usefixtures("requires_tlsv1_3")
-class TestHTTPS_TLSv1_3(TestHTTPS):
+class TestHTTPS_TLSv1_3(BaseTestHTTPS):
     tls_protocol_name = "TLSv1.3"
     certs = TLSv1_3_CERTS
 
