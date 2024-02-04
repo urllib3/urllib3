@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         os:
           - macos-12
           - windows-latest
@@ -88,6 +88,8 @@ jobs:
           - python-version: "3.11"
             os: ubuntu-latest
             nox-session: emscripten
+            experimental: true
+          - python-version: "3.13"
             experimental: true
         exclude:
           # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
