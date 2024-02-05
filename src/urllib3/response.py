@@ -753,7 +753,7 @@ class HTTPResponse(BaseHTTPResponse):
                 if (
                     e.expected is not None
                     and e.partial is not None
-                    and int(e.expected) == -int(e.partial)
+                    and e.expected == -e.partial
                 ):
                     arg = "Protocol violation: Response may not contain content."
                 else:

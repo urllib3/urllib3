@@ -1293,7 +1293,7 @@ class TestResponse:
 
         orig_ex = ctx.value.args[1]
         assert isinstance(orig_ex, IncompleteRead)
-        assert orig_ex.partial == 0  # type: ignore[comparison-overlap]
+        assert orig_ex.partial == 0
         assert orig_ex.expected == content_length
 
     def test_incomplete_chunk(self) -> None:

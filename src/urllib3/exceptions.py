@@ -253,12 +253,12 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
     """
 
     def __init__(self, partial: int, expected: int) -> None:
-        self.partial = partial  # type: ignore[assignment]
-        self.expected = expected
+        self.partial: int = partial  # type: ignore[assignment]
+        self.expected: int = expected
 
     def __repr__(self) -> str:
         return "IncompleteRead(%i bytes read, %i more expected)" % (
-            self.partial,  # type: ignore[str-format]
+            self.partial,
             self.expected,
         )
 
