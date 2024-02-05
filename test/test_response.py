@@ -1510,26 +1510,20 @@ class TestResponse:
             headers = {"content-length": "5"}
             resp = HTTPResponse(fp, status=204, headers=headers)
             resp.read(16)
-        assert "Protocol violation: Response may not contain content" in str(
-            excinfo.value
-        )
+        assert "Response may not contain content" in str(excinfo.value)
 
         with pytest.raises(ProtocolError):
             fp = BytesIO(b"12345")
             headers = {"content-length": "0"}
             resp = HTTPResponse(fp, status=204, headers=headers)
             resp.read(16)
-        assert "Protocol violation: Response may not contain content" in str(
-            excinfo.value
-        )
+        assert "Response may not contain content" in str(excinfo.value)
 
         with pytest.raises(ProtocolError):
             fp = BytesIO(b"12345")
             resp = HTTPResponse(fp, status=204)
             resp.read(16)
-        assert "Protocol violation: Response may not contain content" in str(
-            excinfo.value
-        )
+        assert "Response may not contain content" in str(excinfo.value)
 
 
 class MockChunkedEncodingResponse:
