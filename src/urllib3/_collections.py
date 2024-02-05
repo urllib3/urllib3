@@ -198,7 +198,7 @@ class HTTPHeaderDictItemView(typing.Set[typing.Tuple[str, str]]):
     def __contains__(self, item: object) -> bool:
         if isinstance(item, tuple) and len(item) == 2:
             passed_key, passed_val = item
-            if isinstance(passed_key, str) and isinstance(passed_val, str):
+            if isinstance(passed_key, str) and isinstance(passed_val, (str, bytes)):
                 return self._headers._has_value_for_header(passed_key, passed_val)
         return False
 
@@ -258,7 +258,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
 
     def __getitem__(self, key: str) -> str:
         val = self._container[key.lower()]
-        return ", ".join(val[1:])
+        return ", ".join(val[1:]) if isinstance(val[1], str) else b", ".join(val[1:])
 
     def __delitem__(self, key: str) -> None:
         del self._container[key.lower()]
@@ -329,8 +329,9 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             # if there are values here, then there is at least the initial
             # key/value pair
             assert len(vals) >= 2
+            assert type(vals[-1]) == type(val), "Can not mix strings and bytes in header values"
             if combine:
-                vals[-1] = vals[-1] + ", " + val
+                vals[-1] = vals[-1] + ", " + val if isinstance(vals[-1], str) else vals[-1] + b", " + val
             else:
                 vals.append(val)
 
@@ -443,7 +444,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         """Iterate over all headers, merging duplicate ones together."""
         for key in self:
             val = self._container[key.lower()]
-            yield val[0], ", ".join(val[1:])
+            yield val[0], ", ".join(val[1:]) if isinstance(val[1], str) else b", ".join(val[1:])
 
     def items(self) -> HTTPHeaderDictItemView:  # type: ignore[override]
         return HTTPHeaderDictItemView(self)

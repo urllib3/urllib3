@@ -1926,6 +1926,40 @@ class TestHeaders(SocketDummyServerTestCase):
             assert r.status == 200
             assert b"A: 1\r\nA: 4\r\nC: 3, 5\r\nC: 6\r\nB: 2\r\nB: 3" in buffer
 
+    def test_headers_with_byte_vals(self) -> None:
+        """
+        Simple check that headers with bytes objects as values work properly
+        """
+
+        buffer: bytes = b""
+        expected = b"\xc2\x80\r\n\r\n"
+        def socket_handler(listener: socket.socket) -> None:
+            nonlocal buffer
+            sock = listener.accept()[0]
+            sock.settimeout(0)
+
+            while expected not in buffer:
+                with contextlib.suppress(BlockingIOError):
+                    buffer += sock.recv(65536)
+
+            request_headers = buffer.split(b"\n", 1)[1]
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: example.com\r\n"
+                b"Content-Length: 0\r\n" + request_headers
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        headers = HTTPHeaderDict()
+        headers.add("rawcookie", b"\xc2\x80")
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            r = pool.request("GET", "/", headers=headers)
+            assert r.status == 200
+            ## Note that b"\xc2\x80" is Â\x80 when decoded as latin-1
+            assert r.headers["rawcookie"] == "Â\x80"
+
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
     def _test_broken_header_parsing(
