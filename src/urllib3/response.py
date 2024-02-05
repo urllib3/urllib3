@@ -755,7 +755,7 @@ class HTTPResponse(BaseHTTPResponse):
                     and e.partial is not None
                     and e.expected == -e.partial
                 ):
-                    arg = "Protocol violation: Response may not contain content."
+                    arg = "Response may not contain content."
                 else:
                     arg = f"Connection broken: {e!r}"
                 raise ProtocolError(arg, e) from e
