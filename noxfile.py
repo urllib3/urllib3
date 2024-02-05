@@ -201,12 +201,15 @@ def lint(session: nox.Session) -> None:
 
 
 @nox.session(python="3.11")
-def pyodineconsole(session: nox.Session) -> None:
+def pyodideconsole(session: nox.Session) -> None:
     # build wheel into dist folder
     session.install("build")
     session.run("python", "-m", "build")
     session.run(
-        "cp", "templates/pyodide-console.html", "dist/index.html", external=True
+        "cp",
+        "test/contrib/emscripten/templates/pyodide-console.html",
+        "dist/index.html",
+        external=True,
     )
     session.cd("dist")
     session.run("python", "-m", "http.server")
