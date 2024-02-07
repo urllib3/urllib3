@@ -65,7 +65,7 @@ PASSWORD_CLIENT_KEYFILE = "client_password.key"
 CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
 
 
-class TestHTTPS(HTTPSHypercornDummyServerTestCase):
+class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
     tls_protocol_name: str | None = None
 
     def tls_protocol_not_default(self) -> bool:
@@ -83,11 +83,17 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
     def ssl_version(self) -> int:
         if self.tls_protocol_name is None:
             return pytest.skip("Skipping base test class")
-        attribute = f"PROTOCOL_{self.tls_protocol_name.replace('.', '_')}"
-        ssl_version = getattr(ssl, attribute, None)
-        if ssl_version is None:
-            return pytest.skip(f"ssl.{attribute} isn't available")
-        return ssl_version  # type: ignore[no-any-return]
+
+        if self.tls_protocol_name == "TLSv1.3" and ssl.HAS_TLSv1_3:
+            return ssl.PROTOCOL_TLS_CLIENT
+        if self.tls_protocol_name == "TLSv1.2" and ssl.HAS_TLSv1_2:
+            return ssl.PROTOCOL_TLSv1_2
+        if self.tls_protocol_name == "TLSv1.1" and ssl.HAS_TLSv1_1:
+            return ssl.PROTOCOL_TLSv1_1
+        if self.tls_protocol_name == "TLSv1" and ssl.HAS_TLSv1:
+            return ssl.PROTOCOL_TLSv1
+        else:
+            return pytest.skip(f"{self.tls_protocol_name} isn't available")
 
     @classmethod
     def setup_class(cls) -> None:
@@ -797,6 +803,10 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
     def test_ssl_version_is_deprecated(self) -> None:
         if self.tls_protocol_name is None:
             pytest.skip("Skipping base test class")
+        if self.ssl_version() == ssl.PROTOCOL_TLS_CLIENT:
+            pytest.skip(
+                "Skipping because ssl_version=ssl.PROTOCOL_TLS_CLIENT is not deprecated"
+            )
 
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA, ssl_version=self.ssl_version()
@@ -964,6 +974,11 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
         assert ctx.maximum_version == expected_maximum_version
 
     def test_ssl_context_ssl_version_uses_ssl_min_max_versions(self) -> None:
+        if self.ssl_version() == ssl.PROTOCOL_TLS_CLIENT:
+            pytest.skip(
+                "Skipping because ssl_version=ssl.PROTOCOL_TLS_CLIENT is not deprecated"
+            )
+
         with pytest.warns(
             DeprecationWarning,
             match=r"'ssl_version' option is deprecated and will be removed in "
@@ -977,25 +992,25 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
 
 
 @pytest.mark.usefixtures("requires_tlsv1")
-class TestHTTPS_TLSv1(TestHTTPS):
+class TestHTTPS_TLSv1(BaseTestHTTPS):
     tls_protocol_name = "TLSv1"
     certs = TLSv1_CERTS
 
 
 @pytest.mark.usefixtures("requires_tlsv1_1")
-class TestHTTPS_TLSv1_1(TestHTTPS):
+class TestHTTPS_TLSv1_1(BaseTestHTTPS):
     tls_protocol_name = "TLSv1.1"
     certs = TLSv1_1_CERTS
 
 
 @pytest.mark.usefixtures("requires_tlsv1_2")
-class TestHTTPS_TLSv1_2(TestHTTPS):
+class TestHTTPS_TLSv1_2(BaseTestHTTPS):
     tls_protocol_name = "TLSv1.2"
     certs = TLSv1_2_CERTS
 
 
 @pytest.mark.usefixtures("requires_tlsv1_3")
-class TestHTTPS_TLSv1_3(TestHTTPS):
+class TestHTTPS_TLSv1_3(BaseTestHTTPS):
     tls_protocol_name = "TLSv1.3"
     certs = TLSv1_3_CERTS
 
