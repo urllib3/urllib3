@@ -103,7 +103,7 @@ class HTTP2Connection(HTTPSConnection):
         headers: typing.Mapping[str, str] | None = None,
         scheme: str = "http",
     ) -> None:
-        raise ValueError("HTTP/2 does not support setting up a tunnel through a proxy")
+        raise NotImplementedError("HTTP/2 does not support setting up a tunnel through a proxy")
 
     def getresponse(  # type: ignore[override]
         self,

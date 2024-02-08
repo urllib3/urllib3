@@ -615,7 +615,7 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
         ) as https_pool:
             with contextlib.closing(https_pool._new_conn()) as conn:
                 if http_version == "h2":
-                    with pytest.raises(ValueError) as e:
+                    with pytest.raises(NotImplementedError) as e:
                         conn.set_tunnel(self.host, self.port)
                     assert (
                         str(e.value)
