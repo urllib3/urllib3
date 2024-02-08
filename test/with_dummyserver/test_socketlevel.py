@@ -1133,12 +1133,12 @@ class TestProxyManager(SocketDummyServerTestCase):
                     retries=False,
                 )
 
-   
     def test_alpn_protocol_in_first_request_packet(self) -> None:
-        self.buf = b''
+        self.buf = b""
+
         def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
-            self.buf = b''
+            self.buf = b""
             while not self.buf.endswith(b"\r\n\r\n"):
                 self.buf += sock.recv(65536)
 
@@ -1158,8 +1158,8 @@ class TestProxyManager(SocketDummyServerTestCase):
         with proxy_from_url(base_url) as proxy:
             r = proxy.request("GET", "http://google.com/")
             assert r.status == 200
-            assert b'HTTP/1.1' in self.buf
-            assert b'h2' not in self.buf
+            assert b"HTTP/1.1" in self.buf
+            assert b"h2" not in self.buf
 
     def test_connect_reconn(self) -> None:
         def proxy_ssl_one(listener: socket.socket) -> None:
