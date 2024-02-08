@@ -64,11 +64,6 @@ class HTTP2Connection(HTTPSConnection):
         if self._tunnel_host is not None:
             raise NotImplementedError("Tunneling isn't supported with HTTP/2")
 
-    @contextlib.contextmanager
-    def _lock_h2_conn(self) -> typing.Generator[h2.connection.H2Connection, None, None]:
-        with self._h2_lock:
-            yield self._h2_conn
-   
     def _new_h2_conn(self) -> _LockedObject[h2.connection.H2Connection]:
         config = h2.config.H2Configuration(client_side=True)
         return _LockedObject(h2.connection.H2Connection(config=config))
@@ -133,7 +128,9 @@ class HTTP2Connection(HTTPSConnection):
         headers: typing.Mapping[str, str] | None = None,
         scheme: str = "http",
     ) -> None:
-        raise NotImplementedError("HTTP/2 does not support setting up a tunnel through a proxy")
+        raise NotImplementedError(
+            "HTTP/2 does not support setting up a tunnel through a proxy"
+        )
 
     def getresponse(  # type: ignore[override]
         self,
