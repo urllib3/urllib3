@@ -603,7 +603,7 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
             with pytest.warns(InsecureRequestWarning):
                 https_pool.request("GET", "/")
 
-    def test_tunnel(self) -> None:
+    def test_tunnel(self, http_version: str) -> None:
         """test the _tunnel behavior"""
         timeout = Timeout(total=None)
         with HTTPSConnectionPool(
@@ -614,13 +614,21 @@ class TestHTTPS(HTTPSHypercornDummyServerTestCase):
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
             with contextlib.closing(https_pool._new_conn()) as conn:
-                conn.set_tunnel(self.host, self.port)
-                with mock.patch.object(
-                    conn, "_tunnel", create=True, return_value=None
-                ) as conn_tunnel:
-                    with pytest.warns(InsecureRequestWarning):
-                        https_pool._make_request(conn, "GET", "/")
-                conn_tunnel.assert_called_once_with()
+                if http_version == "h2":
+                    with pytest.raises(ValueError) as e:
+                        conn.set_tunnel(self.host, self.port)
+                    assert (
+                        str(e.value)
+                        == "HTTP/2 does not support setting up a tunnel through a proxy"
+                    )
+                else:
+                    conn.set_tunnel(self.host, self.port)
+                    with mock.patch.object(
+                        conn, "_tunnel", create=True, return_value=None
+                    ) as conn_tunnel:
+                        with pytest.warns(InsecureRequestWarning):
+                            https_pool._make_request(conn, "GET", "/")
+                    conn_tunnel.assert_called_once_with()
 
     @requires_network()
     def test_enhanced_timeout(self) -> None:

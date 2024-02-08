@@ -96,6 +96,15 @@ class HTTP2Connection(HTTPSConnection):
             return
         raise NotImplementedError("Sending data isn't supported yet")
 
+    def set_tunnel(
+        self,
+        host: str,
+        port: int | None = None,
+        headers: typing.Mapping[str, str] | None = None,
+        scheme: str = "http",
+    ) -> None:
+        raise ValueError("HTTP/2 does not support setting up a tunnel through a proxy")
+
     def getresponse(  # type: ignore[override]
         self,
     ) -> HTTP2Response:

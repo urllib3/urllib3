@@ -437,33 +437,44 @@ class TestConnectionPool(HypercornDummyServerTestCase):
                 [mock.call(x) for x in expect_settimeout_calls]
             )
 
-    def test_tunnel(self) -> None:
+    def test_tunnel(self, http_version: str) -> None:
         # note the actual httplib.py has no tests for this functionality
         timeout = Timeout(total=None)
         with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
             conn = pool._get_conn()
-            try:
-                conn.set_tunnel(self.host, self.port)
-                with mock.patch.object(
-                    conn, "_tunnel", create=True, return_value=None
-                ) as conn_tunnel:
-                    pool._make_request(conn, "GET", "/")
-                conn_tunnel.assert_called_once_with()
-            finally:
-                conn.close()
+            if http_version == "h2":
+                with pytest.raises(ValueError) as e:
+                    conn.set_tunnel(self.host, self.port)
+                assert (
+                    str(e.value)
+                    == "HTTP/2 does not support setting up a tunnel through a proxy"
+                )
+            else:
+                try:
+                    conn.set_tunnel(self.host, self.port)
+                    with mock.patch.object(
+                        conn, "_tunnel", create=True, return_value=None
+                    ) as conn_tunnel:
+                        pool._make_request(conn, "GET", "/")
+                    conn_tunnel.assert_called_once_with()
+                finally:
+                    conn.close()
 
         # test that it's not called when tunnel is not set
         timeout = Timeout(total=None)
         with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
             conn = pool._get_conn()
-            try:
-                with mock.patch.object(
-                    conn, "_tunnel", create=True, return_value=None
-                ) as conn_tunnel:
-                    pool._make_request(conn, "GET", "/")
-                assert not conn_tunnel.called
-            finally:
-                conn.close()
+            if http_version == "h2":
+                pass
+            else:
+                try:
+                    with mock.patch.object(
+                        conn, "_tunnel", create=True, return_value=None
+                    ) as conn_tunnel:
+                        pool._make_request(conn, "GET", "/")
+                    assert not conn_tunnel.called
+                finally:
+                    conn.close()
 
     def test_redirect_relative_url_no_deprecation(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
