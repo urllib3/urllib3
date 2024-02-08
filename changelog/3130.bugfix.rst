@@ -1,3 +1,0 @@
-Fixed ``HTTPConnection.proxy_is_verified`` and ``HTTPSConnection.proxy_is_verified``
-to be always set to a boolean after connecting to a proxy. It could be
-``None`` in some cases previously.

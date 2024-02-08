@@ -17,8 +17,8 @@ if sys.version_info < (3, 11):
 # so we don't break non-emscripten pytest running
 pytest_pyodide = pytest.importorskip("pytest_pyodide")
 
-from pytest_pyodide import run_in_pyodide  # type: ignore[import] # noqa: E402
-from pytest_pyodide.decorator import (  # type: ignore[import] # noqa: E402
+from pytest_pyodide import run_in_pyodide  # type: ignore[import-not-found] # noqa: E402
+from pytest_pyodide.decorator import (  # type: ignore[import-not-found] # noqa: E402
     copy_files_to_pyodide,
 )
 
@@ -227,7 +227,7 @@ def test_timeout_warning(
 ) -> None:
     @run_in_pyodide()  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
-        import js  # type: ignore[import]
+        import js  # type: ignore[import-not-found]
 
         import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPConnection
