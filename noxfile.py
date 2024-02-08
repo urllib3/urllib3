@@ -200,6 +200,21 @@ def lint(session: nox.Session) -> None:
     mypy(session)
 
 
+@nox.session(python="3.11")
+def pyodideconsole(session: nox.Session) -> None:
+    # build wheel into dist folder
+    session.install("build")
+    session.run("python", "-m", "build")
+    session.run(
+        "cp",
+        "test/contrib/emscripten/templates/pyodide-console.html",
+        "dist/index.html",
+        external=True,
+    )
+    session.cd("dist")
+    session.run("python", "-m", "http.server")
+
+
 # TODO: node support is not tested yet - it should work if you require('xmlhttprequest') before
 # loading pyodide, but there is currently no nice way to do this with pytest-pyodide
 # because you can't override the test runner properties easily - see
