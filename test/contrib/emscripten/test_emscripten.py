@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import sys
 import typing
-import warnings
 
 import pytest
 
@@ -956,6 +955,8 @@ def test_insecure_requests_warning(
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int, https_port: int) -> None:  # type: ignore[no-untyped-def]
+        import warnings
+
         import urllib3
         import urllib3.exceptions
 
