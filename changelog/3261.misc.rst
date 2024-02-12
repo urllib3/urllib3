@@ -1,0 +1,1 @@
+Made raised ``urllib3.exceptions.ProtocolError`` more verbose when a response contains content unexpectedly.

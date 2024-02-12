@@ -749,8 +749,18 @@ class HTTPResponse(BaseHTTPResponse):
 
                 raise ReadTimeoutError(self._pool, None, "Read timed out.") from e  # type: ignore[arg-type]
 
+            except IncompleteRead as e:
+                if (
+                    e.expected is not None
+                    and e.partial is not None
+                    and e.expected == -e.partial
+                ):
+                    arg = "Response may not contain content."
+                else:
+                    arg = f"Connection broken: {e!r}"
+                raise ProtocolError(arg, e) from e
+
             except (HTTPException, OSError) as e:
-                # This includes IncompleteRead.
                 raise ProtocolError(f"Connection broken: {e!r}", e) from e
 
             # If no exception is thrown, we should avoid cleaning up
