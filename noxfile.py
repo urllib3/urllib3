@@ -88,6 +88,9 @@ def tests_impl(
         "--durations=10",
         "--strict-config",
         "--strict-markers",
+        "--disable-socket",
+        "--allow-unix-socket",
+        "--allow-hosts=localhost,::1,127.0.0.0,240.0.0.0",  # See `TARPIT_HOST`
         *pytest_extra_args,
         *(session.posargs or ("test/",)),
         env=pytest_session_envvars,
@@ -198,6 +201,21 @@ def lint(session: nox.Session) -> None:
     session.run("pre-commit", "run", "--all-files")
 
     mypy(session)
+
+
+@nox.session(python="3.11")
+def pyodideconsole(session: nox.Session) -> None:
+    # build wheel into dist folder
+    session.install("build")
+    session.run("python", "-m", "build")
+    session.run(
+        "cp",
+        "test/contrib/emscripten/templates/pyodide-console.html",
+        "dist/index.html",
+        external=True,
+    )
+    session.cd("dist")
+    session.run("python", "-m", "http.server")
 
 
 # TODO: node support is not tested yet - it should work if you require('xmlhttprequest') before
