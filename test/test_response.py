@@ -559,6 +559,7 @@ class TestResponse:
         assert resp.data == b"foo"
         assert resp.closed
 
+    @pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
     def test_base_io(self) -> None:
         resp = BaseHTTPResponse(
             status=200,
@@ -613,7 +614,7 @@ class TestResponse:
         with pytest.raises(IOError):
             resp3.fileno()
 
-    def test_io_closed_consistently(self, sock: socket.socket) -> None:
+    def test_io_closed_consistently_by_read(self, sock: socket.socket) -> None:
         try:
             hlr = httplib.HTTPResponse(sock)
             hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
@@ -632,6 +633,99 @@ class TestResponse:
                 assert resp.isclosed()
         finally:
             hlr.close()
+
+    @pytest.mark.parametrize("read_amt", (None, 3))
+    @pytest.mark.parametrize("length_known", (True, False))
+    def test_io_closed_consistently_by_read1(
+        self, sock: socket.socket, length_known: bool, read_amt: int | None
+    ) -> None:
+        with httplib.HTTPResponse(sock) as hlr:
+            hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
+            hlr.chunked = 0  # type: ignore[assignment]
+            hlr.length = 3 if length_known else None
+            with HTTPResponse(hlr, preload_content=False) as resp:
+                if length_known:
+                    resp.length_remaining = 3
+                assert not resp.closed
+                assert resp._fp is not None
+                assert not resp._fp.isclosed()
+                assert not is_fp_closed(resp._fp)
+                assert not resp.isclosed()
+                resp.read1(read_amt)
+                # If content length is unknown, IO is not closed until
+                # the next read returning zero bytes.
+                if not length_known:
+                    assert not resp.closed
+                    assert resp._fp is not None
+                    assert not resp._fp.isclosed()
+                    assert not is_fp_closed(resp._fp)
+                    assert not resp.isclosed()
+                    resp.read1(read_amt)
+                assert resp.closed
+                assert resp._fp.isclosed()
+                assert is_fp_closed(resp._fp)
+                assert resp.isclosed()
+
+    @pytest.mark.parametrize("length_known", (True, False))
+    def test_io_not_closed_until_all_data_is_read(
+        self, sock: socket.socket, length_known: bool
+    ) -> None:
+        with httplib.HTTPResponse(sock) as hlr:
+            hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
+            hlr.chunked = 0  # type: ignore[assignment]
+            length_remaining = 3
+            hlr.length = length_remaining if length_known else None
+            with HTTPResponse(hlr, preload_content=False) as resp:
+                if length_known:
+                    resp.length_remaining = length_remaining
+                while length_remaining:
+                    assert not resp.closed
+                    assert resp._fp is not None
+                    assert not resp._fp.isclosed()
+                    assert not is_fp_closed(resp._fp)
+                    assert not resp.isclosed()
+                    data = resp.read(1)
+                    assert len(data) == 1
+                    length_remaining -= 1
+                # If content length is unknown, IO is not closed until
+                # the next read returning zero bytes.
+                if not length_known:
+                    assert not resp.closed
+                    assert resp._fp is not None
+                    assert not resp._fp.isclosed()
+                    assert not is_fp_closed(resp._fp)
+                    assert not resp.isclosed()
+                    data = resp.read(1)
+                    assert len(data) == 0
+                assert resp.closed
+                assert resp._fp.isclosed()  # type: ignore[union-attr]
+                assert is_fp_closed(resp._fp)
+                assert resp.isclosed()
+
+    @pytest.mark.parametrize("length_known", (True, False))
+    def test_io_not_closed_after_requesting_0_bytes(
+        self, sock: socket.socket, length_known: bool
+    ) -> None:
+        with httplib.HTTPResponse(sock) as hlr:
+            hlr.fp = BytesIO(b"foo")  # type: ignore[assignment]
+            hlr.chunked = 0  # type: ignore[assignment]
+            length_remaining = 3
+            hlr.length = length_remaining if length_known else None
+            with HTTPResponse(hlr, preload_content=False) as resp:
+                if length_known:
+                    resp.length_remaining = length_remaining
+                assert not resp.closed
+                assert resp._fp is not None
+                assert not resp._fp.isclosed()
+                assert not is_fp_closed(resp._fp)
+                assert not resp.isclosed()
+                data = resp.read(0)
+                assert data == b""
+                assert not resp.closed
+                assert resp._fp is not None
+                assert not resp._fp.isclosed()
+                assert not is_fp_closed(resp._fp)
+                assert not resp.isclosed()
 
     def test_io_bufferedreader(self) -> None:
         fp = BytesIO(b"foo")
@@ -1240,6 +1334,21 @@ class TestResponse:
         assert isinstance(orig_ex, InvalidChunkLength)
         assert orig_ex.length == fp.BAD_LENGTH_LINE.encode()
 
+    def test_truncated_before_chunk(self) -> None:
+        stream = [b"foooo", b"bbbbaaaaar"]
+        fp = MockChunkedNoChunks(stream)
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        with pytest.raises(ProtocolError) as ctx:
+            next(resp.read_chunked())
+
+        assert str(ctx.value) == "Response ended prematurely"
+
     def test_chunked_response_without_crlf_on_end(self) -> None:
         stream = [b"foo", b"bar", b"baz"]
         fp = MockChunkedEncodingWithoutCRLFOnEnd(stream)
@@ -1499,6 +1608,11 @@ class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
 class MockChunkedEncodingWithExtensions(MockChunkedEncodingResponse):
     def _encode_chunk(self, chunk: bytes) -> bytes:
         return f"{len(chunk):X};asd=qwe\r\n{chunk.decode()}\r\n".encode()
+
+
+class MockChunkedNoChunks(MockChunkedEncodingResponse):
+    def _encode_chunk(self, chunk: bytes) -> bytes:
+        return b""
 
 
 class MockSock:

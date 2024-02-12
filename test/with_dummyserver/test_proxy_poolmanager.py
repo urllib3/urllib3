@@ -110,7 +110,6 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert r.status == 200
             assert_is_verified(http, proxy=False, target=True)
 
-    @pytest.mark.xfail(reason="see https://github.com/urllib3/urllib3/issues/3267")
     def test_is_verified_https_proxy_to_http_target(self) -> None:
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", f"{self.http_url}/")

@@ -52,7 +52,7 @@ def run_hypercorn_in_thread(
     ) as executor:
         future = executor.submit(
             trio.run,
-            _start_server,  # type: ignore[arg-type]
+            _start_server,
             config,
             app,
             ready_event,

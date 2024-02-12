@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         os:
           - macos-12
           - windows-latest
@@ -66,15 +66,15 @@ jobs:
           - python-version: "pypy-3.8"
             os: ubuntu-latest
             experimental: false
-            nox-session: test-pypy
-          - python-version: "pypy-3.9"
+            nox-session: test-pypy3.8
+          - python-version: "pypy-3.9-v7.3.13"
             os: ubuntu-latest
             experimental: false
-            nox-session: test-pypy
+            nox-session: test-pypy3.9
           - python-version: "pypy-3.10"
             os: ubuntu-latest
             experimental: false
-            nox-session: test-pypy
+            nox-session: test-pypy3.10
           - python-version: "3.x"
           # brotli
             os: ubuntu-latest
@@ -88,6 +88,8 @@ jobs:
           - python-version: "3.11"
             os: ubuntu-latest
             nox-session: emscripten
+            experimental: true
+          - python-version: "3.13"
             experimental: true
         exclude:
           # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
@@ -120,7 +122,7 @@ jobs:
         if: ${{ matrix.nox-session == 'emscripten' }}
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
-        run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION} --error-on-missing-interpreters
+        run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
           NOX_SESSION: ${{ matrix.nox-session }}

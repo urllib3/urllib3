@@ -19,14 +19,14 @@ if typing.TYPE_CHECKING:
 
 try:
     try:
-        import brotlicffi as brotli  # type: ignore[import]
+        import brotlicffi as brotli  # type: ignore[import-not-found]
     except ImportError:
-        import brotli  # type: ignore[import]
+        import brotli  # type: ignore[import-not-found]
 except ImportError:
     brotli = None
 
 try:
-    import zstandard as zstd  # type: ignore[import]
+    import zstandard as zstd  # type: ignore[import-not-found]
 
     # The package 'zstandard' added the 'eof' property starting
     # in v0.18.0 which we require to ensure a complete and
@@ -344,6 +344,7 @@ class BaseHTTPResponse(io.IOBase):
             self.chunked = True
 
         self._decoder: ContentDecoder | None = None
+        self.length_remaining: int | None
 
     def get_redirect_location(self) -> str | None | Literal[False]:
         """
@@ -870,6 +871,14 @@ class HTTPResponse(BaseHTTPResponse):
                     # raised during streaming, so all calls with incorrect
                     # Content-Length are caught.
                     raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
+            elif read1 and (
+                (amt != 0 and not data) or self.length_remaining == len(data)
+            ):
+                # All data has been read, but `self._fp.read1` in
+                # CPython 3.12 and older doesn't always close
+                # `http.client.HTTPResponse`, so we close it here.
+                # See https://github.com/python/cpython/issues/113199
+                self._fp.close()
 
         if data:
             self._fp_bytes_read += len(data)
@@ -1091,9 +1100,13 @@ class HTTPResponse(BaseHTTPResponse):
         try:
             self.chunk_left = int(line, 16)
         except ValueError:
-            # Invalid chunked protocol response, abort.
             self.close()
-            raise InvalidChunkLength(self, line) from None
+            if line:
+                # Invalid chunked protocol response, abort.
+                raise InvalidChunkLength(self, line) from None
+            else:
+                # Truncated at start of next chunk
+                raise ProtocolError("Response ended prematurely") from None
 
     def _handle_chunk(self, amt: int | None) -> bytes:
         returned_chunk = None
