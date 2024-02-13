@@ -1,0 +1,1 @@
+Allowed other encodings for the ``.json()`` for the response.
