@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import collections
 import io
-import json as _json
+import json
 import logging
 import re
 import sys
@@ -364,16 +364,15 @@ class BaseHTTPResponse(io.IOBase):
 
     def json(self) -> typing.Any:
         """
-        Parses the body of the HTTP response as JSON.
+        Deserializes the body of the HTTP response as a Python object. To use a custom JSON decoder pass the result of :attr:`HTTPResponse.data` to your custom decoder instead.
 
-        To use a custom JSON decoder pass the result of :attr:`HTTPResponse.data` to the decoder.
+        If the body of the HTTP response is not a valid JSON document, a `json.JSONDecodeError` will be raised.
 
-        This method can raise either `UnicodeDecodeError` or `json.JSONDecodeError`.
+        Read more :ref:`here <json_content>`.
 
-        Read more :ref:`here <json>`.
+        :returns: The body of the HTTP response as a Python object.
         """
-        data = self.data.decode("utf-8")
-        return _json.loads(data)
+        return json.loads(self.data)
 
     @property
     def url(self) -> str | None:
