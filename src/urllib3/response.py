@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import collections
 import io
-import json
+import json as _json
 import logging
 import re
 import sys
@@ -372,7 +372,8 @@ class BaseHTTPResponse(io.IOBase):
 
         :returns: The body of the HTTP response as a Python object.
         """
-        return json.loads(self.data)
+        data = self.data.decode("utf-8")
+        return _json.loads(data)
 
     @property
     def url(self) -> str | None:

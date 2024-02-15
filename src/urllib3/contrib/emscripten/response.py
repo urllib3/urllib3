@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+import json as _json
 import logging
 import typing
 from contextlib import contextmanager
@@ -219,7 +219,8 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
 
         :returns: The body of the HTTP response as a Python object.
         """
-        return json.loads(self.data)
+        data = self.data.decode("utf-8")
+        return _json.loads(data)
 
     def close(self) -> None:
         if not self._closed:
