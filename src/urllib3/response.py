@@ -372,9 +372,9 @@ class BaseHTTPResponse(io.IOBase):
         To use a custom JSON decoder pass the result of :attr:`HTTPResponse.data` to
         your custom decoder instead.
 
-        If the body of the HTTP response is not decodable to UTF-8, a `UnicodeError`
-        will be raised. If the body of the HTTP response is not a valid JSON document, a
-        `json.JSONDecodeError` will be raised.
+        If the body of the HTTP response is not decodable to UTF-8, a
+        `UnicodeDecodeError` will be raised. If the body of the HTTP response is not a
+        valid JSON document, a `json.JSONDecodeError` will be raised.
 
         Read more :ref:`here <json_content>`.
 
