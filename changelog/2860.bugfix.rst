@@ -1,1 +1,0 @@
-Use ProtocolError instead of InvalidChunkLength if response terminates before the chunk length is sent.
