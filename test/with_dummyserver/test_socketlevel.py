@@ -1933,6 +1933,7 @@ class TestHeaders(SocketDummyServerTestCase):
 
         buffer: bytes = b""
         expected = b"\xc2\x80\r\n\r\n"
+
         def socket_handler(listener: socket.socket) -> None:
             nonlocal buffer
             sock = listener.accept()[0]
@@ -1957,7 +1958,7 @@ class TestHeaders(SocketDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             r = pool.request("GET", "/", headers=headers)
             assert r.status == 200
-            ## Note that b"\xc2\x80" is Â\x80 when decoded as latin-1
+            # Note that b"\xc2\x80" is Â\x80 when decoded as latin-1
             assert r.headers["rawcookie"] == "Â\x80"
 
 

@@ -474,5 +474,7 @@ class TestHTTPHeaderDict:
             d |= None
 
     def test_raises_mixed_type_header_vals(self, d: HTTPHeaderDict) -> None:
-        with pytest.raises(AssertionError, match="Can not mix strings and bytes in header values"):
+        with pytest.raises(
+            AssertionError, match="Can not mix strings and bytes in header values"
+        ):
             d.add("Cookie", b"foo")
