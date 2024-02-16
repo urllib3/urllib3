@@ -7,6 +7,7 @@ import errno
 import io
 import os
 import os.path
+import re
 import select
 import shutil
 import socket
@@ -1943,11 +1944,11 @@ class TestHeaders(SocketDummyServerTestCase):
                 with contextlib.suppress(BlockingIOError):
                     buffer += sock.recv(65536)
 
-            request_headers = buffer.split(b"\n", 1)[1]
+            rawcookie_header = re.search(b"(raw[^\r\n]*)", buffer).group(0)
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"
                 b"Server: example.com\r\n"
-                b"Content-Length: 0\r\n" + request_headers
+                b"Content-Length: 13\r\n\r\n" + rawcookie_header
             )
             sock.close()
 
@@ -1958,8 +1959,7 @@ class TestHeaders(SocketDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             r = pool.request("GET", "/", headers=headers)
             assert r.status == 200
-            # Note that b"\xc2\x80" is Â\x80 when decoded as latin-1
-            assert r.headers["rawcookie"] == "Â\x80"
+            assert r.data == b"rawcookie: \xc2\x80"
 
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
