@@ -751,8 +751,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
         if not http_tunnel_required:
-            headers = HTTPHeaderDict(headers)
-            headers.update(self.proxy_headers)
+            headers = headers.copy()  # type: ignore[attr-defined]
+            headers.update(self.proxy_headers)  # type: ignore[union-attr]
 
         # Must keep the exception bound to a separate variable or else Python 3
         # complains about UnboundLocalError.
