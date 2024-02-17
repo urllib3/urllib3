@@ -644,7 +644,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert "application/json" in r.headers["Content-Type"].replace(
                 " ", ""  # type: ignore[arg-type]
             ).split(
-                "," # type: ignore[arg-type]
+                ","  # type: ignore[arg-type]
             )
 
     def test_top_level_request_with_body_and_json(self) -> None:

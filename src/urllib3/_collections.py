@@ -32,8 +32,8 @@ _DT = typing.TypeVar("_DT")
 
 ValidHTTPHeaderSource = typing.Union[
     "HTTPHeaderDict",
-    typing.Mapping[str, str | bytes],
-    typing.Iterable[typing.Tuple[str, str | bytes]],
+    typing.Mapping[str, typing.Union[str, bytes]],
+    typing.Iterable[typing.Tuple[str, typing.Union[str, bytes]]],
     "HasGettableStringKeys",
 ]
 
