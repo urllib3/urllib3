@@ -329,7 +329,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             # if there are values here, then there is at least the initial
             # key/value pair
             assert len(vals) >= 2
-            if not type(vals[-1]) is type:
+            if not type(vals[-1]) is type(val):
                 raise TypeError("Can not mix strings and bytes in header values")
             if combine:
                 vals[-1] = (
