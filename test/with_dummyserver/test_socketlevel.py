@@ -1944,7 +1944,9 @@ class TestHeaders(SocketDummyServerTestCase):
                 with contextlib.suppress(BlockingIOError):
                     buffer += sock.recv(65536)
 
-            rawcookie_header = re.search(b"(raw[^\r\n]*)", buffer).group(0)
+            rawcookie_header_match_obj = re.search(b"(raw[^\r\n]*)", buffer)
+            if rawcookie_header_match_obj:
+                rawcookie_header = rawcookie_header_match_obj.group(0)
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"
                 b"Server: example.com\r\n"

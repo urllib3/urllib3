@@ -133,14 +133,14 @@ class TestLRUContainer:
 
 
 class NonMappingHeaderContainer:
-    def __init__(self, **kwargs: str) -> None:
+    def __init__(self, **kwargs: str|bytes) -> None:
         self._data = {}
         self._data.update(kwargs)
 
     def keys(self) -> typing.Iterator[str]:
         return iter(self._data)
 
-    def __getitem__(self, key: str) -> str:
+    def __getitem__(self, key: str) -> str | bytes:
         return self._data[key]
 
 
