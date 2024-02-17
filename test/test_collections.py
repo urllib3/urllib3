@@ -133,7 +133,7 @@ class TestLRUContainer:
 
 
 class NonMappingHeaderContainer:
-    def __init__(self, **kwargs: str|bytes) -> None:
+    def __init__(self, **kwargs: str | bytes) -> None:
         self._data = {}
         self._data.update(kwargs)
 

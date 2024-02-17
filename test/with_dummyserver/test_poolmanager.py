@@ -629,7 +629,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
         content_type = HTTPHeaderDict(old_headers).get(
             "Content-Type", "application/json"
         )
-        assert content_type in r.headers["Content-Type"].replace(" ", "").split(",") # type: ignore[arg-type]
+        assert content_type in r.headers["Content-Type"].replace(" ", "").split(",")  # type: ignore[arg-type]
 
         # Ensure the header argument itself is not modified in-place.
         assert headers == old_headers
@@ -642,8 +642,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r.status == 200
             assert r.json() == body
             assert "application/json" in r.headers["Content-Type"].replace(
-                " ", "" # type: ignore[arg-type]
-            ).split(",") # type: ignore[arg-type]
+                " ", ""  # type: ignore[arg-type]
+            ).split(
+                ","
+            )  # type: ignore[arg-type]
 
     def test_top_level_request_with_body_and_json(self) -> None:
         match = "request got values for both 'body' and 'json' parameters which are mutually exclusive"

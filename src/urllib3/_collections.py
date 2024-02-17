@@ -16,7 +16,7 @@ if typing.TYPE_CHECKING:
         def keys(self) -> typing.Iterator[str]:
             ...
 
-        def __getitem__(self, key: str) -> str|bytes:
+        def __getitem__(self, key: str) -> str | bytes:
             ...
 
 
@@ -32,8 +32,8 @@ _DT = typing.TypeVar("_DT")
 
 ValidHTTPHeaderSource = typing.Union[
     "HTTPHeaderDict",
-    typing.Mapping[str, str|bytes],
-    typing.Iterable[typing.Tuple[str, str|bytes]],
+    typing.Mapping[str, str | bytes],
+    typing.Iterable[typing.Tuple[str, str | bytes]],
     "HasGettableStringKeys",
 ]
 
@@ -155,7 +155,7 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
             return set(self._container.keys())
 
 
-class HTTPHeaderDictItemView(typing.Set[typing.Tuple[str, str|bytes]]):
+class HTTPHeaderDictItemView(typing.Set[typing.Tuple[str, str | bytes]]):
     """
     HTTPHeaderDict is unusual for a Mapping[str, str] in that it has two modes of
     address.
@@ -192,7 +192,7 @@ class HTTPHeaderDictItemView(typing.Set[typing.Tuple[str, str|bytes]]):
     def __len__(self) -> int:
         return len(list(self._headers.iteritems()))
 
-    def __iter__(self) -> typing.Iterator[tuple[str, str|bytes]]:
+    def __iter__(self) -> typing.Iterator[tuple[str, str | bytes]]:
         return self._headers.iteritems()
 
     def __contains__(self, item: object) -> bool:
@@ -239,7 +239,9 @@ class HTTPHeaderDict(typing.MutableMapping[str, typing.Union[str, bytes]]):
 
     _container: typing.MutableMapping[str, list[str | bytes]]
 
-    def __init__(self, headers: ValidHTTPHeaderSource | None = None, **kwargs: str|bytes):
+    def __init__(
+        self, headers: ValidHTTPHeaderSource | None = None, **kwargs: str | bytes
+    ):
         super().__init__()
         self._container = {}  # 'dict' is insert-ordered
         if headers is not None:
@@ -250,15 +252,15 @@ class HTTPHeaderDict(typing.MutableMapping[str, typing.Union[str, bytes]]):
         if kwargs:
             self.extend(kwargs)
 
-    def __setitem__(self, key: str, val: str|bytes) -> None:
+    def __setitem__(self, key: str, val: str | bytes) -> None:
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
         self._container[key.lower()] = [key, val]
 
-    def __getitem__(self, key: str) -> str|bytes:
+    def __getitem__(self, key: str) -> str | bytes:
         val = self._container[key.lower()]
-        return ", ".join(val[1:]) if isinstance(val[1], str) else b", ".join(val[1:]) # type: ignore[arg-type]
+        return ", ".join(val[1:]) if isinstance(val[1], str) else b", ".join(val[1:])  # type: ignore[arg-type]
 
     def __delitem__(self, key: str) -> None:
         del self._container[key.lower()]
@@ -268,7 +270,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, typing.Union[str, bytes]]):
             return key.lower() in self._container
         return False
 
-    def setdefault(self, key: str, default: str|bytes = "") -> str|bytes:
+    def setdefault(self, key: str, default: str | bytes = "") -> str | bytes:
         return super().setdefault(key, default)
 
     def __eq__(self, other: object) -> bool:
@@ -291,7 +293,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, typing.Union[str, bytes]]):
     def __iter__(self) -> typing.Iterator[str]:
         # Only provide the originally cased names
         for vals in self._container.values():
-            yield vals[0] # type: ignore[misc]
+            yield vals[0]  # type: ignore[misc]
 
     def discard(self, key: str) -> None:
         try:
@@ -299,7 +301,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, typing.Union[str, bytes]]):
         except KeyError:
             pass
 
-    def add(self, key: str, val: str|bytes, *, combine: bool = False) -> None:
+    def add(self, key: str, val: str | bytes, *, combine: bool = False) -> None:
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
@@ -332,16 +334,16 @@ class HTTPHeaderDict(typing.MutableMapping[str, typing.Union[str, bytes]]):
             if not type(vals[-1]) is type(val):
                 raise TypeError("Can not mix strings and bytes in header values")
             if combine:
-                combined_val: str | bytes = ( 
-                    vals[-1] + ", " + val # type: ignore[operator]
+                combined_val: str | bytes = (
+                    vals[-1] + ", " + val  # type: ignore[operator]
                     if isinstance(vals[-1], str)
-                    else vals[-1] + b", " + val # type: ignore[operator]
+                    else vals[-1] + b", " + val  # type: ignore[operator]
                 )
                 vals[-1] = combined_val
             else:
                 vals.append(val)
 
-    def extend(self, *args: ValidHTTPHeaderSource, **kwargs: str|bytes) -> None:
+    def extend(self, *args: ValidHTTPHeaderSource, **kwargs: str | bytes) -> None:
         """Generic import function for any type of header-like object.
         Adapted version of MutableMapping.update in order to insert items
         with self.add instead of self.__setitem__
@@ -371,7 +373,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, typing.Union[str, bytes]]):
             for key in other.keys():
                 self.add(key, other[key])
 
-        for key, value in kwargs.items(): # type: ignore[assignment]
+        for key, value in kwargs.items():  # type: ignore[assignment]
             self.add(key, value)
 
     @typing.overload
@@ -398,7 +400,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, typing.Union[str, bytes]]):
         else:
             # _DT may or may not be bound; vals[1:] is instance of List[str], which
             # meets our external interface requirement of `Union[List[str], _DT]`.
-            return vals[1:] # type: ignore[return-value]
+            return vals[1:]  # type: ignore[return-value]
 
     def _prepare_for_method_change(self) -> Self:
         """
@@ -439,26 +441,30 @@ class HTTPHeaderDict(typing.MutableMapping[str, typing.Union[str, bytes]]):
         clone._copy_from(self)
         return clone
 
-    def iteritems(self) -> typing.Iterator[tuple[str, str]] | typing.Iterator[tuple[str, bytes]]:
+    def iteritems(
+        self,
+    ) -> typing.Iterator[tuple[str, str]] | typing.Iterator[tuple[str, bytes]]:
         """Iterate over all header lines, including duplicate ones."""
         for key in self:
             vals = self._container[key.lower()]
             for val in vals[1:]:
-                yield vals[0], val # type: ignore[misc]
+                yield vals[0], val  # type: ignore[misc]
 
     def itermerged(self) -> typing.Iterator[tuple[str, str | bytes]]:
         """Iterate over all headers, merging duplicate ones together."""
         for key in self:
             val = self._container[key.lower()]
             h_vals: str | bytes = (
-                ", ".join(val[1:]) if isinstance(val[1], str) else b", ".join(val[1:]) # type: ignore[arg-type]
+                ", ".join(val[1:]) if isinstance(val[1], str) else b", ".join(val[1:])  # type: ignore[arg-type]
             )
-            yield val[0], h_vals # type: ignore[misc]
+            yield val[0], h_vals  # type: ignore[misc]
 
     def items(self) -> HTTPHeaderDictItemView:  # type: ignore[override]
         return HTTPHeaderDictItemView(self)
 
-    def _has_value_for_header(self, header_name: str, potential_value: str|bytes) -> bool:
+    def _has_value_for_header(
+        self, header_name: str, potential_value: str | bytes
+    ) -> bool:
         if header_name in self:
             return potential_value in self._container[header_name.lower()][1:]
         return False
