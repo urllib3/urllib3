@@ -22,6 +22,7 @@ import pytest
 import trustme
 
 import urllib3.http2
+import urllib3.http2.probe as http2_probe
 import urllib3.util as util
 import urllib3.util.ssl_
 from dummyserver.socketserver import (
@@ -32,7 +33,6 @@ from dummyserver.socketserver import (
 )
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
 from urllib3 import HTTPSConnectionPool
-from urllib3.connection import _HTTP2_PROBE_CACHE as http2_probe_cache
 from urllib3.connection import RECENT_DATE, HTTPSConnection, VerifiedHTTPSConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -962,9 +962,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             )
 
     def test_http2_probe_result_is_cached(self, http_version: str) -> None:
-        from urllib3.connection import _HTTP2_PROBE_CACHE as http2_probe_cache
-
-        assert http2_probe_cache.values() == {}
+        assert http2_probe.values() == {}
 
         with HTTPSConnectionPool(
             self.host,
@@ -976,17 +974,17 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
 
         if http_version == "h2":
             # This means the probe was successful.
-            assert http2_probe_cache.values() == {(self.host, self.port): True}
+            assert http2_probe.values() == {(self.host, self.port): True}
         else:
             # This means the probe wasn't attempted, otherwise would have a value.
             assert http_version == "h11"
-            assert http2_probe_cache.values() == {}
+            assert http2_probe.values() == {}
 
     @pytest.mark.xfail(reason="Hypercorn always supports both HTTP/2 and HTTP/1.1")
     def test_http2_probe_result_failed(self, http_version: str) -> None:
         if http_version == "h2":
             pytest.skip("Test must have server in HTTP/1.1 mode")
-        assert http2_probe_cache.values() == {}
+        assert http2_probe.values() == {}
 
         urllib3.http2.inject_into_urllib3()
         try:
@@ -999,12 +997,12 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 assert r.status == 200
 
             # The probe was a failure because Hypercorn didn't support HTTP/2.
-            assert http2_probe_cache.values() == {(self.host, self.port): False}
+            assert http2_probe.values() == {(self.host, self.port): False}
         finally:
             urllib3.http2.extract_from_urllib3()
 
     def test_http2_probe_no_result_in_connect_error(self) -> None:
-        assert http2_probe_cache.values() == {}
+        assert http2_probe.values() == {}
 
         urllib3.http2.inject_into_urllib3()
         try:
@@ -1018,12 +1016,12 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                     pool.request("GET", "/", retries=False)
 
             # The probe was inconclusive since an error occurred during connection.
-            assert http2_probe_cache.values() == {(TARPIT_HOST, self.port): None}
+            assert http2_probe.values() == {(TARPIT_HOST, self.port): None}
         finally:
             urllib3.http2.extract_from_urllib3()
 
     def test_http2_probe_no_result_in_ssl_error(self) -> None:
-        assert http2_probe_cache.values() == {}
+        assert http2_probe.values() == {}
 
         urllib3.http2.inject_into_urllib3()
         try:
@@ -1037,7 +1035,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                     pool.request("GET", "/", retries=False)
 
             # The probe was inconclusive since an error occurred during connection.
-            assert http2_probe_cache.values() == {(self.host, self.port): None}
+            assert http2_probe.values() == {(self.host, self.port): None}
         finally:
             urllib3.http2.extract_from_urllib3()
 

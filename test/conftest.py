@@ -11,12 +11,12 @@ import pytest
 import trustme
 
 import urllib3.http2
+import urllib3.http2.probe as http2_probe
 from dummyserver.app import hypercorn_app
 from dummyserver.asgi_proxy import ProxyApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.socketserver import HAS_IPV6
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
-from urllib3.connection import _HTTP2_PROBE_CACHE
 from urllib3.util import ssl_
 from urllib3.util.url import parse_url
 
@@ -390,4 +390,4 @@ def reset_http2_probe_cache() -> typing.Generator[None, None, None]:
     try:
         yield
     finally:
-        _HTTP2_PROBE_CACHE.reset()
+        http2_probe.reset()

@@ -6,7 +6,6 @@ import os
 import re
 import socket
 import sys
-import threading
 import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
@@ -21,7 +20,8 @@ if typing.TYPE_CHECKING:
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
 
-from ._collections import HTTPHeaderDict, _LockedObject
+from ._collections import HTTPHeaderDict
+from .http2 import probe as http2_probe
 from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
@@ -494,56 +494,6 @@ class HTTPConnection(_HTTPConnection):
         return response
 
 
-class _HTTP2ProbeCache:
-    __slots__ = (
-        "_lock",
-        "_values",
-    )
-
-    def __init__(self) -> None:
-        self._lock = threading.RLock()
-        self._values: dict[tuple[str, int], _LockedObject[bool | None]] = {}
-
-    def get(self, host: str, port: int) -> bool | None:
-        with self._lock:
-            try:
-                obj = self._values[(host, port)]
-            except KeyError:
-                obj = _LockedObject(None)
-                self._values[(host, port)] = obj
-
-        # If the value is unknown, we acquire the lock to signal
-        # to the requesting thread that the probe is in progress
-        # or that the current thread needs to return their findings.
-        if obj._obj is None:
-            obj.lock.acquire()
-        return obj._obj
-
-    def set(self, host: str, port: int, supports_http2: bool | None) -> None:
-        obj = self._values[(host, port)]
-        with obj:  # _LockedObject uses RLock, so can be locked again from same thread.
-            if supports_http2 is None and obj._obj is not None:
-                self._values.pop((host, port), None)
-                raise ValueError(
-                    "Cannot reset HTTP/2 support for origin after value has been set."
-                )
-            obj._obj = supports_http2
-        obj.lock.release()
-
-    def values(self) -> dict[tuple[str, int], bool | None]:
-        """This function is for testing purposes only. Gets the current state of the probe cache"""
-        with self._lock:
-            return {k: v._obj for k, v in self._values.items()}
-
-    def reset(self) -> None:
-        """This function is for testing purposes only. Reset the cache values"""
-        with self._lock:
-            self._values = {}
-
-
-_HTTP2_PROBE_CACHE = _HTTP2ProbeCache()
-
-
 class HTTPSConnection(HTTPConnection):
     """
     Many of the parameters to this constructor are passed to the underlying SSL
@@ -667,8 +617,13 @@ class HTTPSConnection(HTTPConnection):
         # connection, however in the future we'll need to decide whether to
         # create a new socket or re-use an existing "shared" socket as a part
         # of the HTTP/2 handshake dance.
-        probe_http2_host = self.host if self._tunnel_host is None else self._tunnel_host
-        probe_http2_port = self.port if self._tunnel_host is None else self._tunnel_port
+        probe_http2_port: int | None
+        if self._tunnel_host is None:
+            probe_http2_host = self.host
+            probe_http2_port = self.port
+        else:
+            probe_http2_host = self._tunnel_host
+            probe_http2_port = self._tunnel_port
         if probe_http2_port is None:
             probe_http2_port = 443
 
@@ -676,8 +631,9 @@ class HTTPSConnection(HTTPConnection):
         # If the value comes back as 'None' it means that the current thread
         # is probing for HTTP/2 support. Otherwise, we're waiting for another
         # probe to complete, or we get a value right away.
+        target_supports_http2: bool | None
         if "h2" in ssl_.ALPN_PROTOCOLS:
-            target_supports_http2 = _HTTP2_PROBE_CACHE.get(
+            target_supports_http2 = http2_probe.get(
                 host=probe_http2_host, port=probe_http2_port
             )
         else:
@@ -748,15 +704,16 @@ class HTTPSConnection(HTTPConnection):
         # our lock so another connection can probe the origin.
         except BaseException:
             if target_supports_http2 is None:
-                _HTTP2_PROBE_CACHE.set(
+                http2_probe.set(
                     host=probe_http2_host, port=probe_http2_port, supports_http2=None
                 )
             raise
 
-        # If this is a probe connection we need to set the value to unlock the lock.
+        # If this connection doesn't know if the origin supports HTTP/2
+        # we report back to the HTTP/2 probe our result.
         if target_supports_http2 is None:
             supports_http2 = sock_and_verified.socket.selected_alpn_protocol() == "h2"
-            _HTTP2_PROBE_CACHE.set(
+            http2_probe.set(
                 host=probe_http2_host,
                 port=probe_http2_port,
                 supports_http2=supports_http2,
