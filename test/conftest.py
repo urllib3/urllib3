@@ -390,4 +390,4 @@ def reset_http2_probe_cache() -> typing.Generator[None, None, None]:
     try:
         yield
     finally:
-        http2_probe.reset()
+        http2_probe._reset()

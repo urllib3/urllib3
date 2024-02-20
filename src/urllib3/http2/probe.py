@@ -11,11 +11,11 @@ class _HTTP2ProbeCache:
     )
 
     def __init__(self) -> None:
-        self._lock = threading.RLock()
+        self._lock = threading.Lock()
         self._cache_locks: dict[tuple[str, int], threading.RLock] = {}
         self._cache_values: dict[tuple[str, int], bool | None] = {}
 
-    def get(self, host: str, port: int) -> bool | None:
+    def acquire_and_get(self, host: str, port: int) -> bool | None:
         # By the end of this block we know that
         # _cache_[values,locks] is available.
         value = None
@@ -42,14 +42,17 @@ class _HTTP2ProbeCache:
 
         # In case an exception like KeyboardInterrupt is raised here.
         # KeyError shouldn't be possible.
-        except BaseException:
+        except BaseException as e:
+            assert not isinstance(e, KeyError)
             if value is not None:
                 key_lock.release()
             raise
 
         return value
 
-    def set(self, host: str, port: int, supports_http2: bool | None) -> None:
+    def set_and_release(
+        self, host: str, port: int, supports_http2: bool | None
+    ) -> None:
         key = (host, port)
         key_lock = self._cache_locks[key]
         with key_lock:  # Uses an RLock, so can be locked again from same thread.
@@ -61,12 +64,12 @@ class _HTTP2ProbeCache:
         self._cache_values[key] = supports_http2
         key_lock.release()
 
-    def values(self) -> dict[tuple[str, int], bool | None]:
+    def _values(self) -> dict[tuple[str, int], bool | None]:
         """This function is for testing purposes only. Gets the current state of the probe cache"""
         with self._lock:
             return {k: v for k, v in self._cache_values.items()}
 
-    def reset(self) -> None:
+    def _reset(self) -> None:
         """This function is for testing purposes only. Reset the cache values"""
         with self._lock:
             self._cache_locks = {}
@@ -75,14 +78,12 @@ class _HTTP2ProbeCache:
 
 _HTTP2_PROBE_CACHE = _HTTP2ProbeCache()
 
-set = _HTTP2_PROBE_CACHE.set
-get = _HTTP2_PROBE_CACHE.get
-values = _HTTP2_PROBE_CACHE.values
-reset = _HTTP2_PROBE_CACHE.reset
+set_and_release = _HTTP2_PROBE_CACHE.set_and_release
+acquire_and_get = _HTTP2_PROBE_CACHE.acquire_and_get
+_values = _HTTP2_PROBE_CACHE._values
+_reset = _HTTP2_PROBE_CACHE._reset
 
 __all__ = [
-    "set",
-    "get",
-    "values",
-    "reset",
+    "set_and_release",
+    "acquire_and_get",
 ]

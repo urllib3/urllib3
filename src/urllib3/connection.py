@@ -618,12 +618,13 @@ class HTTPSConnection(HTTPConnection):
         # create a new socket or re-use an existing "shared" socket as a part
         # of the HTTP/2 handshake dance.
         probe_http2_port: int | None
-        if self._tunnel_host is None:
-            probe_http2_host = self.host
-            probe_http2_port = self.port
-        else:
+        if self._tunnel_host is not None:
             probe_http2_host = self._tunnel_host
             probe_http2_port = self._tunnel_port
+        else:
+            probe_http2_host = self.host
+            probe_http2_port = self.port
+
         if probe_http2_port is None:
             probe_http2_port = 443
 
@@ -633,7 +634,7 @@ class HTTPSConnection(HTTPConnection):
         # probe to complete, or we get a value right away.
         target_supports_http2: bool | None
         if "h2" in ssl_.ALPN_PROTOCOLS:
-            target_supports_http2 = http2_probe.get(
+            target_supports_http2 = http2_probe.acquire_and_get(
                 host=probe_http2_host, port=probe_http2_port
             )
         else:
@@ -704,7 +705,7 @@ class HTTPSConnection(HTTPConnection):
         # our lock so another connection can probe the origin.
         except BaseException:
             if target_supports_http2 is None:
-                http2_probe.set(
+                http2_probe.set_and_release(
                     host=probe_http2_host, port=probe_http2_port, supports_http2=None
                 )
             raise
@@ -713,7 +714,7 @@ class HTTPSConnection(HTTPConnection):
         # we report back to the HTTP/2 probe our result.
         if target_supports_http2 is None:
             supports_http2 = sock_and_verified.socket.selected_alpn_protocol() == "h2"
-            http2_probe.set(
+            http2_probe.set_and_release(
                 host=probe_http2_host,
                 port=probe_http2_port,
                 supports_http2=supports_http2,

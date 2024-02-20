@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import concurrent.futures
 import contextlib
 import datetime
 import os.path
 import shutil
 import ssl
 import tempfile
+import time
+import typing
 import warnings
 from pathlib import Path
 from test import (
@@ -962,7 +965,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             )
 
     def test_http2_probe_result_is_cached(self, http_version: str) -> None:
-        assert http2_probe.values() == {}
+        assert http2_probe._values() == {}
 
         with HTTPSConnectionPool(
             self.host,
@@ -974,17 +977,17 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
 
         if http_version == "h2":
             # This means the probe was successful.
-            assert http2_probe.values() == {(self.host, self.port): True}
+            assert http2_probe._values() == {(self.host, self.port): True}
         else:
             # This means the probe wasn't attempted, otherwise would have a value.
             assert http_version == "h11"
-            assert http2_probe.values() == {}
+            assert http2_probe._values() == {}
 
     @pytest.mark.xfail(reason="Hypercorn always supports both HTTP/2 and HTTP/1.1")
     def test_http2_probe_result_failed(self, http_version: str) -> None:
         if http_version == "h2":
             pytest.skip("Test must have server in HTTP/1.1 mode")
-        assert http2_probe.values() == {}
+        assert http2_probe._values() == {}
 
         urllib3.http2.inject_into_urllib3()
         try:
@@ -997,12 +1000,12 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 assert r.status == 200
 
             # The probe was a failure because Hypercorn didn't support HTTP/2.
-            assert http2_probe.values() == {(self.host, self.port): False}
+            assert http2_probe._values() == {(self.host, self.port): False}
         finally:
             urllib3.http2.extract_from_urllib3()
 
     def test_http2_probe_no_result_in_connect_error(self) -> None:
-        assert http2_probe.values() == {}
+        assert http2_probe._values() == {}
 
         urllib3.http2.inject_into_urllib3()
         try:
@@ -1016,13 +1019,11 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                     pool.request("GET", "/", retries=False)
 
             # The probe was inconclusive since an error occurred during connection.
-            assert http2_probe.values() == {(TARPIT_HOST, self.port): None}
+            assert http2_probe._values() == {(TARPIT_HOST, self.port): None}
         finally:
             urllib3.http2.extract_from_urllib3()
 
     def test_http2_probe_no_result_in_ssl_error(self) -> None:
-        assert http2_probe.values() == {}
-
         urllib3.http2.inject_into_urllib3()
         try:
             with HTTPSConnectionPool(
@@ -1035,7 +1036,53 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                     pool.request("GET", "/", retries=False)
 
             # The probe was inconclusive since an error occurred during connection.
-            assert http2_probe.values() == {(self.host, self.port): None}
+            assert http2_probe._values() == {(self.host, self.port): None}
+        finally:
+            urllib3.http2.extract_from_urllib3()
+
+    def test_http2_probe_blocked_per_thread(self) -> None:
+        assert http2_probe._values() == {}
+
+        connect_timeout = LONG_TIMEOUT
+        total_threads = 5
+        urllib3.http2.inject_into_urllib3()
+        try:
+
+            def make_request(_: typing.Any) -> tuple[float, float]:
+                with HTTPSConnectionPool(
+                    TARPIT_HOST,
+                    self.port,
+                    ca_certs=DEFAULT_CA,
+                    timeout=connect_timeout,
+                ) as pool:
+                    start_time = time.time()
+                    with pytest.raises(ConnectTimeoutError):
+                        pool.request("GET", "/", retries=False)
+                    end_time = time.time()
+                    return start_time, end_time
+
+            threadpool = concurrent.futures.ThreadPoolExecutor(total_threads)
+            values = list(threadpool.map(make_request, range(total_threads)))
+
+            min_start_time = min(start_time for start_time, _ in values)
+            max_start_time = max(start_time for start_time, _ in values)
+            assert (
+                max_start_time - min_start_time < connect_timeout
+            )  # Everything starts at a similar time.
+
+            # But all end times are sorted by completion and the differences between
+            # end times is greater or equal to the timeout value.
+            assert sorted(end_time for _, end_time in values) == [
+                end_time for _, end_time in values
+            ]
+            # End times are spaced out. This isn't '* total_threads'
+            # because timers aren't perfect within threads.
+            assert values[-1][1] - values[0][1] > (
+                connect_timeout * (total_threads - 2)
+            )
+
+            # The probe was inconclusive since an error occurred during connection.
+            assert http2_probe._values() == {(TARPIT_HOST, self.port): None}
         finally:
             urllib3.http2.extract_from_urllib3()
 
