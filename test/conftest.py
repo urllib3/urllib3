@@ -384,7 +384,7 @@ def http_version(request: pytest.FixtureRequest) -> typing.Generator[str, None, 
             urllib3.http2.extract_from_urllib3()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="function")
 def reset_http2_probe_cache() -> typing.Generator[None, None, None]:
     # Always reset the HTTP/2 probe cache per test case.
     try:

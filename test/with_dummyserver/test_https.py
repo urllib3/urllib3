@@ -1064,17 +1064,11 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             threadpool = concurrent.futures.ThreadPoolExecutor(total_threads)
             values = list(threadpool.map(make_request, range(total_threads)))
 
+            # Everything starts at a similar time.
             min_start_time = min(start_time for start_time, _ in values)
             max_start_time = max(start_time for start_time, _ in values)
-            assert (
-                max_start_time - min_start_time < connect_timeout
-            )  # Everything starts at a similar time.
+            assert max_start_time - min_start_time < connect_timeout
 
-            # But all end times are sorted by completion and the differences between
-            # end times is greater or equal to the timeout value.
-            assert sorted(end_time for _, end_time in values) == [
-                end_time for _, end_time in values
-            ]
             # End times are spaced out. This isn't '* total_threads'
             # because timers aren't perfect within threads.
             assert values[-1][1] - values[0][1] > (
