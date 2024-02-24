@@ -30,7 +30,6 @@ from urllib3.response import (  # type: ignore[attr-defined]
     BytesQueueBuffer,
     HTTPResponse,
     brotli,
-    zstd,
 )
 from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
@@ -389,6 +388,8 @@ class TestResponse:
 
     @onlyZstd()
     def test_decode_zstd(self) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(b"foo")
 
         fp = BytesIO(data)
@@ -397,6 +398,8 @@ class TestResponse:
 
     @onlyZstd()
     def test_decode_multiframe_zstd(self) -> None:
+        import zstandard as zstd
+
         data = (
             # Zstandard frame
             zstd.compress(b"foo")
@@ -416,6 +419,8 @@ class TestResponse:
 
     @onlyZstd()
     def test_chunked_decoding_zstd(self) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(b"foobarbaz")
 
         fp = BytesIO(data)
@@ -447,6 +452,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_preload_content(self, data: bytes) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])
 
@@ -456,6 +463,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_read(self, data: bytes) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])  # shorten the data to trigger DecodeError
 
@@ -471,6 +480,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_read1(self, data: bytes) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])
 
@@ -489,6 +500,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_read1(self, data: bytes) -> None:
+        import zstandard as zstd
+
         encoded_data = zstd.compress(data)
         fp = BytesIO(encoded_data)
 
