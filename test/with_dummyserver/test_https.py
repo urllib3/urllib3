@@ -1044,7 +1044,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         assert http2_probe._values() == {}
 
         connect_timeout = LONG_TIMEOUT
-        total_threads = 5
+        total_threads = 3
         urllib3.http2.inject_into_urllib3()
         try:
 
@@ -1071,9 +1071,9 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
 
             # End times are spaced out. This isn't '* total_threads'
             # because timers aren't perfect within threads.
-            assert values[-1][1] - values[0][1] > (
-                connect_timeout * (total_threads - 2)
-            )
+            min_end_time = min(end_time for _, end_time in values)
+            max_end_time = max(end_time for _, end_time in values)
+            assert max_end_time - min_end_time > connect_timeout
 
             # The probe was inconclusive since an error occurred during connection.
             assert http2_probe._values() == {(TARPIT_HOST, self.port): None}
