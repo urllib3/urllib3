@@ -26,20 +26,21 @@ except ImportError:
     brotli = None
 
 try:
-    import zstandard as zstd  # type: ignore[import-not-found]
-
+    import zstandard as zstd
+except (AttributeError, ImportError, ValueError):  # Defensive:
+    HAS_ZSTD = False
+else:
     # The package 'zstandard' added the 'eof' property starting
     # in v0.18.0 which we require to ensure a complete and
     # valid zstd stream was fed into the ZstdDecoder.
     # See: https://github.com/urllib3/urllib3/pull/2624
-    _zstd_version = _zstd_version = tuple(
+    _zstd_version = tuple(
         map(int, re.search(r"^([0-9]+)\.([0-9]+)", zstd.__version__).groups())  # type: ignore[union-attr]
     )
     if _zstd_version < (0, 18):  # Defensive:
-        zstd = None
-
-except (AttributeError, ImportError, ValueError):  # Defensive:
-    zstd = None
+        HAS_ZSTD = False
+    else:
+        HAS_ZSTD = True
 
 from . import util
 from ._base_connection import _TYPE_BODY
@@ -163,7 +164,7 @@ if brotli is not None:
             return b""
 
 
-if zstd is not None:
+if HAS_ZSTD:
 
     class ZstdDecoder(ContentDecoder):
         def __init__(self) -> None:
@@ -183,7 +184,7 @@ if zstd is not None:
             ret = self._obj.flush()  # note: this is a no-op
             if not self._obj.eof:
                 raise DecodeError("Zstandard data is incomplete")
-            return ret  # type: ignore[no-any-return]
+            return ret
 
 
 class MultiDecoder(ContentDecoder):
@@ -219,7 +220,7 @@ def _get_decoder(mode: str) -> ContentDecoder:
     if brotli is not None and mode == "br":
         return BrotliDecoder()
 
-    if zstd is not None and mode == "zstd":
+    if HAS_ZSTD and mode == "zstd":
         return ZstdDecoder()
 
     return DeflateDecoder()
@@ -302,7 +303,7 @@ class BaseHTTPResponse(io.IOBase):
     CONTENT_DECODERS = ["gzip", "x-gzip", "deflate"]
     if brotli is not None:
         CONTENT_DECODERS += ["br"]
-    if zstd is not None:
+    if HAS_ZSTD:
         CONTENT_DECODERS += ["zstd"]
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
@@ -310,7 +311,7 @@ class BaseHTTPResponse(io.IOBase):
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
 
-    if zstd is not None:
+    if HAS_ZSTD:
         DECODER_ERROR_CLASSES += (zstd.ZstdError,)
 
     def __init__(
