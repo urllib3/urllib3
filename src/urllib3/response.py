@@ -935,7 +935,10 @@ class HTTPResponse(BaseHTTPResponse):
         if decode_content is None:
             decode_content = self.decode_content
 
-        if amt is not None:
+        if amt and amt < 0:
+            # Negative numbers and `None` should be treated the same.
+            amt = None
+        elif amt is not None:
             cache_content = False
 
             if len(self._decoded_buffer) >= amt:
@@ -995,6 +998,9 @@ class HTTPResponse(BaseHTTPResponse):
         """
         if decode_content is None:
             decode_content = self.decode_content
+        if amt and amt < 0:
+            # Negative numbers and `None` should be treated the same.
+            amt = None
         # try and respond without going to the network
         if self._has_decoded_content:
             if not decode_content:
@@ -1188,6 +1194,11 @@ class HTTPResponse(BaseHTTPResponse):
             # then return immediately.
             if self._fp.fp is None:  # type: ignore[union-attr]
                 return None
+
+            if amt and amt < 0:
+                # Negative numbers and `None` should be treated the same,
+                # but httplib handles only `None` correctly.
+                amt = None
 
             while True:
                 self._update_chunk_length()

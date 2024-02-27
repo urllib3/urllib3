@@ -155,7 +155,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
                 self.length_is_certain = True
                 # wrap body in IOStream
                 self._response.body = BytesIO(self._response.body)
-            if amt is not None:
+            if amt is not None and amt >= 0:
                 # don't cache partial content
                 cache_content = False
                 data = self._response.body.read(amt)
