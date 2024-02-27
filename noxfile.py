@@ -178,9 +178,6 @@ def downstream_requests(session: nox.Session) -> None:
     session.install(".[socks]", silent=False)
     session.install("-r", "requirements-dev.txt", silent=False)
 
-    # Workaround until https://github.com/psf/httpbin/pull/29 gets released
-    session.install("flask<3", "werkzeug<3", silent=False)
-
     session.cd(root)
     session.install(".", silent=False)
     session.cd(f"{tmp_dir}/requests")

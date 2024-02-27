@@ -30,7 +30,6 @@ from urllib3.response import (  # type: ignore[attr-defined]
     BytesQueueBuffer,
     HTTPResponse,
     brotli,
-    zstd,
 )
 from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
@@ -389,6 +388,8 @@ class TestResponse:
 
     @onlyZstd()
     def test_decode_zstd(self) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(b"foo")
 
         fp = BytesIO(data)
@@ -397,6 +398,8 @@ class TestResponse:
 
     @onlyZstd()
     def test_decode_multiframe_zstd(self) -> None:
+        import zstandard as zstd
+
         data = (
             # Zstandard frame
             zstd.compress(b"foo")
@@ -416,6 +419,8 @@ class TestResponse:
 
     @onlyZstd()
     def test_chunked_decoding_zstd(self) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(b"foobarbaz")
 
         fp = BytesIO(data)
@@ -447,6 +452,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_preload_content(self, data: bytes) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])
 
@@ -456,6 +463,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_read(self, data: bytes) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])  # shorten the data to trigger DecodeError
 
@@ -471,6 +480,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_read1(self, data: bytes) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])
 
@@ -489,6 +500,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_read1(self, data: bytes) -> None:
+        import zstandard as zstd
+
         encoded_data = zstd.compress(data)
         fp = BytesIO(encoded_data)
 
@@ -1293,7 +1306,7 @@ class TestResponse:
 
         orig_ex = ctx.value.args[1]
         assert isinstance(orig_ex, IncompleteRead)
-        assert orig_ex.partial == 0  # type: ignore[comparison-overlap]
+        assert orig_ex.partial == 0
         assert orig_ex.expected == content_length
 
     def test_incomplete_chunk(self) -> None:
@@ -1503,6 +1516,27 @@ class TestResponse:
             with pytest.raises(SSLError) as e:
                 resp.read()
             assert e.value.args[0] == mac_error
+
+    def test_unexpected_body(self) -> None:
+        with pytest.raises(ProtocolError) as excinfo:
+            fp = BytesIO(b"12345")
+            headers = {"content-length": "5"}
+            resp = HTTPResponse(fp, status=204, headers=headers)
+            resp.read(16)
+        assert "Response may not contain content" in str(excinfo.value)
+
+        with pytest.raises(ProtocolError):
+            fp = BytesIO(b"12345")
+            headers = {"content-length": "0"}
+            resp = HTTPResponse(fp, status=204, headers=headers)
+            resp.read(16)
+        assert "Response may not contain content" in str(excinfo.value)
+
+        with pytest.raises(ProtocolError):
+            fp = BytesIO(b"12345")
+            resp = HTTPResponse(fp, status=204)
+            resp.read(16)
+        assert "Response may not contain content" in str(excinfo.value)
 
 
 class MockChunkedEncodingResponse:

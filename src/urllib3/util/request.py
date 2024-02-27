@@ -29,7 +29,7 @@ except ImportError:
 else:
     ACCEPT_ENCODING += ",br"
 try:
-    import zstandard as _unused_module_zstd  # type: ignore[import-not-found] # noqa: F401
+    import zstandard as _unused_module_zstd  # noqa: F401
 except ImportError:
     pass
 else:
