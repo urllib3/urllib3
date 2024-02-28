@@ -217,6 +217,12 @@ class TestResponse:
         assert r.read() == b""
         assert r.read() == b""
 
+    @pytest.mark.parametrize("read_args", ((), (None,), (-1,)))
+    def test_reference_read_until_eof(self, read_args: tuple[typing.Any, ...]) -> None:
+        fp = BytesIO(b"foo")
+        r = HTTPResponse(fp, preload_content=False)
+        assert r.read(*read_args) == b"foo"
+
     def test_reference_read1(self) -> None:
         fp = BytesIO(b"foobar")
         r = HTTPResponse(fp, preload_content=False)
@@ -226,6 +232,14 @@ class TestResponse:
         assert r.read1(2) == b"oo"
         assert r.read1() == b"bar"
         assert r.read1() == b""
+
+    @pytest.mark.parametrize("read1_args", ((), (None,), (-1,)))
+    def test_reference_read1_without_limit(
+        self, read1_args: tuple[typing.Any, ...]
+    ) -> None:
+        fp = BytesIO(b"foo")
+        r = HTTPResponse(fp, preload_content=False)
+        assert r.read1(*read1_args) == b"foo"
 
     def test_reference_read1_nodecode(self) -> None:
         fp = BytesIO(b"foobar")
@@ -1262,7 +1276,10 @@ class TestResponse:
         response = list(resp.read_chunked(2))
         assert expected_response == response
 
-    def test_mock_transfer_encoding_chunked_unlmtd_read(self) -> None:
+    @pytest.mark.parametrize("read_chunked_args", ((), (None,), (-1,)))
+    def test_mock_transfer_encoding_chunked_unlmtd_read(
+        self, read_chunked_args: tuple[typing.Any, ...]
+    ) -> None:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
@@ -1272,7 +1289,7 @@ class TestResponse:
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
-        assert stream == list(resp.read_chunked())
+        assert stream == list(resp.read_chunked(*read_chunked_args))
 
     def test_read_not_chunked_response_as_chunks(self) -> None:
         fp = BytesIO(b"foo")
