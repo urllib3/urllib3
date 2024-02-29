@@ -1,0 +1,2 @@
+Allowed passing negative integers as ``amt`` to read methods of
+:class:`http.client.HTTPResponse` as an alternative to ``None``.

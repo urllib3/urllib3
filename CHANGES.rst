@@ -3,7 +3,7 @@
 
 - Fixed issue where ``InsecureRequestWarning`` was emitted for HTTPS connections when using Emscripten. (`#3331 <https://github.com/urllib3/urllib3/issues/3331>`__)
 - Fixed ``HTTPConnectionPool.urlopen`` to stop automatically casting non-proxy headers to ``HTTPHeaderDict``. This change was premature as it did not apply to proxy headers and ``HTTPHeaderDict`` does not handle byte header values correctly yet. (`#3343 <https://github.com/urllib3/urllib3/issues/3343>`__)
-- Changed ``ProtocolError`` to ``InvalidChunkLength`` when response terminates before the chunk length is sent. (`#2860 <https://github.com/urllib3/urllib3/issues/2860>`__)
+- Changed ``InvalidChunkLength`` to ``ProtocolError`` when response terminates before the chunk length is sent. (`#2860 <https://github.com/urllib3/urllib3/issues/2860>`__)
 - Changed ``ProtocolError`` to be more verbose on incomplete reads with excess content. (`#3261 <https://github.com/urllib3/urllib3/issues/3261>`__)
 
 
