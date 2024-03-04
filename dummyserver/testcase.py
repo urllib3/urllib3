@@ -5,6 +5,7 @@ import socket
 import ssl
 import threading
 import typing
+from test import LONG_TIMEOUT
 
 import hypercorn
 import pytest
@@ -19,11 +20,18 @@ from urllib3.util.url import parse_url
 
 
 def consume_socket(
-    sock: SSLTransport | socket.socket, chunks: int = 65536
+    sock: SSLTransport | socket.socket,
+    chunks: int = 65536,
+    quit_event: threading.Event = None,
 ) -> bytearray:
     consumed = bytearray()
+    sock.settimeout(LONG_TIMEOUT)
     while True:
+        if quit_event and quit_event.is_set():
+            break
         b = sock.recv(chunks)
+        if b is None:
+            continue
         assert isinstance(b, bytes)
         consumed += b
         if b.endswith(b"\r\n\r\n"):
@@ -80,7 +88,7 @@ class SocketDummyServerTestCase:
                 ready_event.set()
 
                 sock = listener.accept()[0]
-                consume_socket(sock)
+                consume_socket(sock, quit_event=cls.server_thread.quit_event)
                 if block_send:
                     block_send.wait()
                     block_send.clear()
@@ -103,7 +111,10 @@ class SocketDummyServerTestCase:
     @classmethod
     def teardown_class(cls) -> None:
         if hasattr(cls, "server_thread"):
-            cls.server_thread.join(0.1)
+            cls.server_thread.quit_event.set()
+            cls.server_thread.join(LONG_TIMEOUT * 3)
+            if cls.server_thread.is_alive():
+                raise Exception("server_thread did not exit")
 
     def assert_header_received(
         self,

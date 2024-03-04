@@ -135,7 +135,9 @@ class SocketServerThread(threading.Thread):
             if self.ready_event:
                 self.ready_event.set()
 
-            self.socket_handler(sock)
+            self.quit_event = threading.Event()
+
+            self.socket_handler(sock, self.quit_event)
 
     def run(self) -> None:
         self._start_server()

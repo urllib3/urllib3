@@ -12,6 +12,7 @@ import shutil
 import socket
 import ssl
 import tempfile
+import threading
 import typing
 import zlib
 from collections import OrderedDict
@@ -954,8 +955,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
             assert pool.pool.qsize() == 1
             assert response.connection is None
 
+    @pytest.mark.server_threads
     def test_socket_close_socket_then_file(self) -> None:
-        def consume_ssl_socket(listener: socket.socket) -> None:
+        def consume_ssl_socket(
+            listener: socket.socket, quit_event: threading.Event
+        ) -> None:
             try:
                 with listener.accept()[0] as sock, original_ssl_wrap_socket(
                     sock,
@@ -964,7 +968,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 ) as ssl_sock:
-                    consume_socket(ssl_sock)
+                    consume_socket(ssl_sock, quit_event)
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
@@ -2231,12 +2235,30 @@ class TestBrokenPipe(SocketDummyServerTestCase):
 
 
 class TestMultipartResponse(SocketDummyServerTestCase):
+    @pytest.mark.server_threads
     def test_multipart_assert_header_parsing_no_defects(self) -> None:
-        def socket_handler(listener: socket.socket) -> None:
+        def socket_handler(
+            listener: socket.socket, quit_event: threading.Event
+        ) -> None:
             for _ in range(2):
-                sock = listener.accept()[0]
-                while not sock.recv(65536).endswith(b"\r\n\r\n"):
-                    pass
+                listener.settimeout(LONG_TIMEOUT)
+
+                while True:
+                    if quit_event and quit_event.is_set():
+                        return
+                    try:
+                        sock = listener.accept()[0]
+                        break
+                    except TimeoutError:
+                        continue
+
+                sock.settimeout(LONG_TIMEOUT)
+                while True:
+                    if quit_event and quit_event.is_set():
+                        sock.close()
+                        return
+                    if sock.recv(65536).endswith(b"\r\n\r\n"):
+                        break
 
                 sock.sendall(
                     b"HTTP/1.1 404 Not Found\r\n"
