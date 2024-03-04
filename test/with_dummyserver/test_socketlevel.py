@@ -957,8 +957,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
     @pytest.mark.server_threads
     def test_socket_close_socket_then_file(self) -> None:
+        quit_event = threading.Event()
+
         def consume_ssl_socket(
-            listener: socket.socket, quit_event: threading.Event
+            listener: socket.socket,
         ) -> None:
             try:
                 with listener.accept()[0] as sock, original_ssl_wrap_socket(
@@ -968,11 +970,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 ) as ssl_sock:
-                    consume_socket(ssl_sock, quit_event)
+                    consume_socket(ssl_sock, quit_event=quit_event)
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
-        self._start_server(consume_ssl_socket)
+        self._start_server(consume_ssl_socket, quit_event=quit_event)
         with socket.create_connection(
             (self.host, self.port)
         ) as sock, contextlib.closing(
@@ -986,7 +988,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 ssl_sock.sendall(b"hello")
             assert ssl_sock.fileno() == -1
 
+    @pytest.mark.server_threads
     def test_socket_close_stays_open_with_makefile_open(self) -> None:
+        quit_event = threading.Event()
+
         def consume_ssl_socket(listener: socket.socket) -> None:
             try:
                 with listener.accept()[0] as sock, original_ssl_wrap_socket(
@@ -996,11 +1001,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 ) as ssl_sock:
-                    consume_socket(ssl_sock)
+                    consume_socket(ssl_sock, quit_event=quit_event)
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
-        self._start_server(consume_ssl_socket)
+        self._start_server(consume_ssl_socket, quit_event=quit_event)
         with socket.create_connection(
             (self.host, self.port)
         ) as sock, contextlib.closing(
@@ -2237,9 +2242,9 @@ class TestBrokenPipe(SocketDummyServerTestCase):
 class TestMultipartResponse(SocketDummyServerTestCase):
     @pytest.mark.server_threads
     def test_multipart_assert_header_parsing_no_defects(self) -> None:
-        def socket_handler(
-            listener: socket.socket, quit_event: threading.Event
-        ) -> None:
+        quit_event = threading.Event()
+
+        def socket_handler(listener: socket.socket) -> None:
             for _ in range(2):
                 listener.settimeout(LONG_TIMEOUT)
 
@@ -2274,7 +2279,7 @@ class TestMultipartResponse(SocketDummyServerTestCase):
                 )
                 sock.close()
 
-        self._start_server(socket_handler)
+        self._start_server(socket_handler, quit_event=quit_event)
         from urllib3.connectionpool import log
 
         with mock.patch.object(log, "warning") as log_warning:
@@ -2324,21 +2329,34 @@ class TestContentFraming(SocketDummyServerTestCase):
         assert b"Content-Length: 0\r\n" in sent_bytes
         assert b"transfer-encoding" not in sent_bytes.lower()
 
+    @pytest.mark.server_threads
     @pytest.mark.parametrize("chunked", [True, False])
     @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
     @pytest.mark.parametrize("body_type", ["file", "generator", "bytes"])
     def test_chunked_specified(
         self, method: str, chunked: bool, body_type: str
     ) -> None:
+        quit_event = threading.Event()
         buffer = bytearray()
         expected_bytes = b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n"
 
         def socket_handler(listener: socket.socket) -> None:
             nonlocal buffer
-            sock = listener.accept()[0]
-            sock.settimeout(0)
+            listener.settimeout(LONG_TIMEOUT)
+            while True:
+                if quit_event.is_set():
+                    return
+                try:
+                    sock = listener.accept()[0]
+                    break
+                except TimeoutError:
+                    continue
+            sock.settimeout(LONG_TIMEOUT)
 
             while expected_bytes not in buffer:
+                print("test_chunked_specified loop")
+                if quit_event.is_set():
+                    return
                 with contextlib.suppress(BlockingIOError):
                     buffer += sock.recv(65536)
 
@@ -2349,7 +2367,7 @@ class TestContentFraming(SocketDummyServerTestCase):
             )
             sock.close()
 
-        self._start_server(socket_handler)
+        self._start_server(socket_handler, quit_event=quit_event)
 
         body: typing.Any
         if body_type == "generator":
@@ -2363,6 +2381,7 @@ class TestContentFraming(SocketDummyServerTestCase):
             body.seek(0, 0)
         else:
             if chunked is False:
+                # kill the
                 pytest.skip("urllib3 uses Content-Length in this case")
             body = b"x" * 10
 

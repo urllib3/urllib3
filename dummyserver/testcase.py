@@ -22,15 +22,16 @@ from urllib3.util.url import parse_url
 def consume_socket(
     sock: SSLTransport | socket.socket,
     chunks: int = 65536,
-    quit_event: threading.Event = None,
+    quit_event: threading.Event | None = None,
 ) -> bytearray:
     consumed = bytearray()
     sock.settimeout(LONG_TIMEOUT)
     while True:
         if quit_event and quit_event.is_set():
             break
-        b = sock.recv(chunks)
-        if b is None:
+        try:
+            b = sock.recv(chunks)
+        except TimeoutError:
             continue
         assert isinstance(b, bytes)
         consumed += b
@@ -65,17 +66,23 @@ class SocketDummyServerTestCase:
 
     @classmethod
     def _start_server(
-        cls, socket_handler: typing.Callable[[socket.socket], None]
+        cls,
+        socket_handler: typing.Callable[[socket.socket], None],
+        quit_event: threading.Event | None = None,
     ) -> None:
         ready_event = threading.Event()
         cls.server_thread = SocketServerThread(
-            socket_handler=socket_handler, ready_event=ready_event, host=cls.host
+            socket_handler=socket_handler,
+            ready_event=ready_event,
+            host=cls.host,
+            quit_event=quit_event,
         )
         cls.server_thread.start()
         ready_event.wait(5)
         if not ready_event.is_set():
             raise Exception("most likely failed to start server")
         cls.port = cls.server_thread.port
+        print("_start_server")
 
     @classmethod
     def start_response_handler(
@@ -88,7 +95,7 @@ class SocketDummyServerTestCase:
                 ready_event.set()
 
                 sock = listener.accept()[0]
-                consume_socket(sock, quit_event=cls.server_thread.quit_event)
+                consume_socket(sock)
                 if block_send:
                     block_send.wait()
                     block_send.clear()
@@ -111,9 +118,18 @@ class SocketDummyServerTestCase:
     @classmethod
     def teardown_class(cls) -> None:
         if hasattr(cls, "server_thread"):
-            cls.server_thread.quit_event.set()
+            if cls.server_thread.quit_event:
+                cls.server_thread.quit_event.set()
             cls.server_thread.join(LONG_TIMEOUT * 3)
             if cls.server_thread.is_alive():
+                raise Exception("server_thread did not exit")
+
+    def teardown_method(self) -> None:
+        if hasattr(self, "server_thread"):
+            if self.server_thread.quit_event:
+                self.server_thread.quit_event.set()
+            self.server_thread.join(LONG_TIMEOUT * 3)
+            if self.server_thread.is_alive():
                 raise Exception("server_thread did not exit")
 
     def assert_header_received(
@@ -139,11 +155,16 @@ class SocketDummyServerTestCase:
 class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
     @classmethod
     def _start_server(
-        cls, socket_handler: typing.Callable[[socket.socket], None]
+        cls,
+        socket_handler: typing.Callable[[socket.socket], None],
+        quit_event: threading.Event | None = None,
     ) -> None:
         ready_event = threading.Event()
         cls.server_thread = SocketServerThread(
-            socket_handler=socket_handler, ready_event=ready_event, host=cls.host
+            socket_handler=socket_handler,
+            ready_event=ready_event,
+            host=cls.host,
+            quit_event=quit_event,
         )
         cls.server_thread.USE_IPV6 = False
         cls.server_thread.start()
