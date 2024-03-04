@@ -2354,7 +2354,6 @@ class TestContentFraming(SocketDummyServerTestCase):
             sock.settimeout(LONG_TIMEOUT)
 
             while expected_bytes not in buffer:
-                print("test_chunked_specified loop")
                 if quit_event.is_set():
                     return
                 with contextlib.suppress(BlockingIOError):

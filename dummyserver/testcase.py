@@ -82,27 +82,44 @@ class SocketDummyServerTestCase:
         if not ready_event.is_set():
             raise Exception("most likely failed to start server")
         cls.port = cls.server_thread.port
-        print("_start_server")
 
     @classmethod
     def start_response_handler(
-        cls, response: bytes, num: int = 1, block_send: threading.Event | None = None
+        cls,
+        response: bytes,
+        num: int = 1,
+        block_send: threading.Event | None = None,
     ) -> threading.Event:
         ready_event = threading.Event()
+        quit_event = threading.Event()
 
         def socket_handler(listener: socket.socket) -> None:
             for _ in range(num):
                 ready_event.set()
 
-                sock = listener.accept()[0]
-                consume_socket(sock)
+                listener.settimeout(LONG_TIMEOUT)
+                while True:
+                    if quit_event.is_set():
+                        return
+                    try:
+                        sock = listener.accept()[0]
+                        break
+                    except TimeoutError:
+                        continue
+                consume_socket(sock, quit_event=quit_event)
+                if quit_event.is_set():
+                    sock.close()
+                    return
                 if block_send:
-                    block_send.wait()
+                    while not block_send.wait(LONG_TIMEOUT):
+                        if quit_event.is_set():
+                            sock.close()
+                            return
                     block_send.clear()
                 sock.send(response)
                 sock.close()
 
-        cls._start_server(socket_handler)
+        cls._start_server(socket_handler, quit_event=quit_event)
         return ready_event
 
     @classmethod
@@ -128,6 +145,8 @@ class SocketDummyServerTestCase:
         if hasattr(self, "server_thread"):
             if self.server_thread.quit_event:
                 self.server_thread.quit_event.set()
+            else:
+                print("Can't notify the quit_event")
             self.server_thread.join(LONG_TIMEOUT * 3)
             if self.server_thread.is_alive():
                 raise Exception("server_thread did not exit")

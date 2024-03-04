@@ -161,6 +161,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
             finally:
                 conn.close()
 
+    @pytest.mark.server_threads
     def test_total_timeout(self) -> None:
         block_event = Event()
         ready_event = self.start_basic_handler(block_send=block_event, num=2)
