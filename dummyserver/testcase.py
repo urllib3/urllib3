@@ -31,7 +31,7 @@ def consume_socket(
             break
         try:
             b = sock.recv(chunks)
-        except TimeoutError:
+        except (TimeoutError, socket.timeout):
             continue
         assert isinstance(b, bytes)
         consumed += b
@@ -104,7 +104,7 @@ class SocketDummyServerTestCase:
                     try:
                         sock = listener.accept()[0]
                         break
-                    except TimeoutError:
+                    except (TimeoutError, socket.timeout):
                         continue
                 consume_socket(sock, quit_event=quit_event)
                 if quit_event.is_set():
@@ -145,8 +145,6 @@ class SocketDummyServerTestCase:
         if hasattr(self, "server_thread"):
             if self.server_thread.quit_event:
                 self.server_thread.quit_event.set()
-            else:
-                print("Can't notify the quit_event")
             self.server_thread.join(LONG_TIMEOUT * 3)
             if self.server_thread.is_alive():
                 raise Exception("server_thread did not exit")
