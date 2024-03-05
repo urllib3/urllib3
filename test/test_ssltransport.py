@@ -5,7 +5,6 @@ import select
 import socket
 import ssl
 import threading
-import time
 import typing
 from unittest import mock
 
@@ -59,8 +58,6 @@ def validate_request(
     provided_request: bytearray, binary: Literal[False, True] = True
 ) -> None:
     assert provided_request is not None
-    print("provided_request")
-    print(provided_request)
     expected_request = sample_request(binary)
     assert provided_request == expected_request
 
@@ -159,7 +156,6 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             sock, self.client_context, server_hostname="localhost"
         ) as ssock:
             ssock.close()
-            time.sleep(1)
             with pytest.raises(OSError):
                 ssock.send(b"blaaargh")
 

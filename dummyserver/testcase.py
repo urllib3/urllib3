@@ -137,7 +137,7 @@ class SocketDummyServerTestCase:
         if hasattr(cls, "server_thread"):
             if cls.server_thread.quit_event:
                 cls.server_thread.quit_event.set()
-            cls.server_thread.join(LONG_TIMEOUT * 3)
+            cls.server_thread.join(LONG_TIMEOUT * 2 + 5.0)
             if cls.server_thread.is_alive():
                 raise Exception("server_thread did not exit")
 
@@ -145,7 +145,7 @@ class SocketDummyServerTestCase:
         if hasattr(self, "server_thread"):
             if self.server_thread.quit_event:
                 self.server_thread.quit_event.set()
-            self.server_thread.join(LONG_TIMEOUT * 3)
+            self.server_thread.join(LONG_TIMEOUT * 2 + 5.0)
             if self.server_thread.is_alive():
                 raise Exception("server_thread did not exit")
 

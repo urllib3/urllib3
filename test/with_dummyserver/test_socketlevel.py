@@ -2380,7 +2380,6 @@ class TestContentFraming(SocketDummyServerTestCase):
             body.seek(0, 0)
         else:
             if chunked is False:
-                # kill the
                 pytest.skip("urllib3 uses Content-Length in this case")
             body = b"x" * 10
 
