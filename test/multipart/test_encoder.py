@@ -137,12 +137,12 @@ class TestMultipartEncoder(unittest.TestCase):
         )
 
     def test_reads_open_file_objects(self) -> None:
-        with open("setup.py", "rb") as fd:
+        with open(__file__, "rb") as fd:
             m = MultipartEncoder([("field", "foo"), ("file", fd)])
             assert m.read() is not None
 
     def test_reads_open_file_objects_with_a_specified_filename(self) -> None:
-        with open("setup.py", "rb") as fd:
+        with open(__file__, "rb") as fd:
             m = MultipartEncoder(
                 [("field", "foo"), ("file", ("filename", fd, "text/plain"))]
             )
@@ -184,6 +184,10 @@ class TestMultipartEncoder(unittest.TestCase):
             read_so_far += len(data)
 
         assert read_so_far == total_size
+
+        for k, v in fields.items():
+            if k != "test" and hasattr(v[1], "close"):
+                v[1].close()
 
     def test_regression_2(self) -> None:
         """Ensure issue #31 doesn't ever happen again."""
