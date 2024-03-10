@@ -162,7 +162,7 @@ class TestMultipartEncoder(unittest.TestCase):
         m = MultipartEncoder([("field", s.decode("utf-8"))])
         assert m.read() is not None
 
-    def test_regresion_1(self) -> None:
+    def test_regression_1(self) -> None:
         """Ensure issue #31 doesn't ever happen again."""
         fields: typing.Dict[
             str, typing.Union[str, typing.Tuple[str, typing.BinaryIO]]
