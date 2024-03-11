@@ -1,1 +1,0 @@
-Fixed the default value of ``HTTPSConnection.socket_options`` to match ``HTTPConnection``.

@@ -1,6 +1,0 @@
-Added support for configuring header merging behavior with HTTPHeaderDict
-
-When using a ``HTTPHeaderDict`` to provide headers for a request, by default duplicate
-header values will be repeated. But if ``combine=True`` is passed into a call to
-``HTTPHeaderDict.add``, then the added header value will be merged in with an existing
-value into a comma-separated list (``X-My-Header: foo, bar``).

@@ -1,35 +1,30 @@
+from __future__ import annotations
+
 import datetime
 import logging
 import os
 import re
 import socket
+import sys
+import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
+from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
-from typing import (
-    IO,
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Iterable,
-    Mapping,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Union,
-    cast,
-)
 
-if TYPE_CHECKING:
-    from typing_extensions import Literal
-    from .multipart import MultipartEncoder
+if typing.TYPE_CHECKING:
+    from typing import Literal
 
+    from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
 
+from ._collections import HTTPHeaderDict
+from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
+from .util.wait import wait_for_read
 
 try:  # Compiled with SSL?
     import ssl
@@ -42,9 +37,13 @@ except (ImportError, AttributeError):
         pass
 
 
+from ._base_connection import _TYPE_BODY
+from ._base_connection import ProxyConfig as ProxyConfig
+from ._base_connection import _ResponseOptions as _ResponseOptions
 from ._version import __version__
 from .exceptions import (
     ConnectTimeoutError,
+    HeaderParsingError,
     NameResolutionError,
     NewConnectionError,
     ProxyError,
@@ -74,19 +73,11 @@ port_by_scheme = {"http": 80, "https": 443}
 
 # When it comes time to update this value as a part of regular maintenance
 # (ie test_recent_date is failing) update it to ~6 months before the current date.
-RECENT_DATE = datetime.date(2022, 1, 1)
+RECENT_DATE = datetime.date(2023, 6, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
-
-_TYPE_BODY = Union[bytes, IO[Any], Iterable[bytes], str, "MultipartEncoder"]
-
-
-class ProxyConfig(NamedTuple):
-    ssl_context: Optional["ssl.SSLContext"]
-    use_forwarding_for_https: bool
-    assert_hostname: Union[None, str, "Literal[False]"]
-    assert_fingerprint: Optional[str]
+_HAS_SYS_AUDIT = hasattr(sys, "audit")
 
 
 class HTTPConnection(_HTTPConnection):
@@ -114,50 +105,44 @@ class HTTPConnection(_HTTPConnection):
       Or you may want to disable the defaults by passing an empty list (e.g., ``[]``).
     """
 
-    default_port: int = port_by_scheme["http"]
+    default_port: typing.ClassVar[int] = port_by_scheme["http"]  # type: ignore[misc]
 
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options: connection._TYPE_SOCKET_OPTIONS = [
+    default_socket_options: typing.ClassVar[connection._TYPE_SOCKET_OPTIONS] = [
         (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     ]
 
     #: Whether this connection verifies the host's certificate.
     is_verified: bool = False
 
-    #: Whether this proxy connection (if used) verifies the proxy host's
-    #: certificate. If no HTTPS proxy is being used will be ``None``.
-    proxy_is_verified: Optional[bool] = None
+    #: Whether this proxy connection verified the proxy host's certificate.
+    # If no proxy is currently connected to the value will be ``None``.
+    proxy_is_verified: bool | None = None
 
     blocksize: int
-    source_address: Optional[Tuple[str, int]]
-    socket_options: Optional[connection._TYPE_SOCKET_OPTIONS]
-    _tunnel_host: Optional[str]
-    _tunnel: Callable[["HTTPConnection"], None]
-    _connecting_to_proxy: bool
+    source_address: tuple[str, int] | None
+    socket_options: connection._TYPE_SOCKET_OPTIONS | None
+
+    _has_connected_to_proxy: bool
+    _response_options: _ResponseOptions | None
+    _tunnel_host: str | None
+    _tunnel_port: int | None
+    _tunnel_scheme: str | None
 
     def __init__(
         self,
         host: str,
-        port: Optional[int] = None,
+        port: int | None = None,
+        *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-        source_address: Optional[Tuple[str, int]] = None,
-        blocksize: int = 8192,
-        socket_options: Optional[
-            connection._TYPE_SOCKET_OPTIONS
-        ] = default_socket_options,
-        proxy: Optional[Url] = None,
-        proxy_config: Optional[ProxyConfig] = None,
+        source_address: tuple[str, int] | None = None,
+        blocksize: int = 16384,
+        socket_options: None
+        | (connection._TYPE_SOCKET_OPTIONS) = default_socket_options,
+        proxy: Url | None = None,
+        proxy_config: ProxyConfig | None = None,
     ) -> None:
-        # Pre-set source_address.
-        self.source_address = source_address
-
-        self.socket_options = socket_options
-
-        # Proxy options provided by the user.
-        self.proxy = proxy
-        self.proxy_config = proxy_config
-
         super().__init__(
             host=host,
             port=port,
@@ -165,16 +150,18 @@ class HTTPConnection(_HTTPConnection):
             source_address=source_address,
             blocksize=blocksize,
         )
+        self.socket_options = socket_options
+        self.proxy = proxy
+        self.proxy_config = proxy_config
 
-        self._connecting_to_proxy = False
+        self._has_connected_to_proxy = False
+        self._response_options = None
+        self._tunnel_host: str | None = None
+        self._tunnel_port: int | None = None
+        self._tunnel_scheme: str | None = None
 
-    # https://github.com/python/mypy/issues/4125
-    # Mypy treats this as LSP violation, which is considered a bug.
-    # If `host` is made a property it violates LSP, because a writeable attribute is overridden with a read-only one.
-    # However, there is also a `host` setter so LSP is not violated.
-    # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
-    @property  # type: ignore[override]
-    def host(self) -> str:  # type: ignore[override]
+    @property
+    def host(self) -> str:
         """
         Getter method to remove any trailing dots that indicate the hostname is an FQDN.
 
@@ -207,7 +194,6 @@ class HTTPConnection(_HTTPConnection):
 
         :return: New socket connection.
         """
-
         try:
             sock = connection.create_connection(
                 (self._dns_host, self.port),
@@ -228,29 +214,78 @@ class HTTPConnection(_HTTPConnection):
                 self, f"Failed to establish a new connection: {e}"
             ) from e
 
+        # Audit hooks are only available in Python 3.8+
+        if _HAS_SYS_AUDIT:
+            sys.audit("http.client.connect", self, self.host, self.port)
+
         return sock
 
-    def _is_using_tunnel(self) -> Optional[str]:
-        return self._tunnel_host
-
-    def _prepare_conn(self, conn: socket.socket) -> None:
-        self.sock = conn
-        if self._is_using_tunnel():
-            # TODO: Fix tunnel so it doesn't depend on self.sock state.
-            self._tunnel()
-            self._connecting_to_proxy = False
-            # Mark this connection as not reusable
-            self.auto_open = 0
+    def set_tunnel(
+        self,
+        host: str,
+        port: int | None = None,
+        headers: typing.Mapping[str, str] | None = None,
+        scheme: str = "http",
+    ) -> None:
+        if scheme not in ("http", "https"):
+            raise ValueError(
+                f"Invalid proxy scheme for tunneling: {scheme!r}, must be either 'http' or 'https'"
+            )
+        super().set_tunnel(host, port=port, headers=headers)
+        self._tunnel_scheme = scheme
 
     def connect(self) -> None:
-        self._connecting_to_proxy = bool(self.proxy)
-        conn = self._new_conn()
-        self._prepare_conn(conn)
-        self._connecting_to_proxy = False
+        self.sock = self._new_conn()
+        if self._tunnel_host:
+            # If we're tunneling it means we're connected to our proxy.
+            self._has_connected_to_proxy = True
+
+            # TODO: Fix tunnel so it doesn't depend on self.sock state.
+            self._tunnel()  # type: ignore[attr-defined]
+
+        # If there's a proxy to be connected to we are fully connected.
+        # This is set twice (once above and here) due to forwarding proxies
+        # not using tunnelling.
+        self._has_connected_to_proxy = bool(self.proxy)
+
+        if self._has_connected_to_proxy:
+            self.proxy_is_verified = False
+
+    @property
+    def is_closed(self) -> bool:
+        return self.sock is None
+
+    @property
+    def is_connected(self) -> bool:
+        if self.sock is None:
+            return False
+        return not wait_for_read(self.sock, timeout=0.0)
+
+    @property
+    def has_connected_to_proxy(self) -> bool:
+        return self._has_connected_to_proxy
+
+    @property
+    def proxy_is_forwarding(self) -> bool:
+        """
+        Return True if a forwarding proxy is configured, else return False
+        """
+        return bool(self.proxy) and self._tunnel_host is None
 
     def close(self) -> None:
-        self._connecting_to_proxy = False
-        super().close()
+        try:
+            super().close()
+        finally:
+            # Reset all stateful properties so connection
+            # can be re-used without leaking prior configs.
+            self.sock = None
+            self.is_verified = False
+            self.proxy_is_verified = None
+            self._has_connected_to_proxy = False
+            self._response_options = None
+            self._tunnel_host = None
+            self._tunnel_port = None
+            self._tunnel_scheme = None
 
     def putrequest(
         self,
@@ -272,7 +307,7 @@ class HTTPConnection(_HTTPConnection):
             method, url, skip_host=skip_host, skip_accept_encoding=skip_accept_encoding
         )
 
-    def putheader(self, header: str, *values: str) -> None:
+    def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
@@ -290,10 +325,34 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        body: _TYPE_BODY | None = None,
+        headers: typing.Mapping[str, str] | None = None,
+        *,
         chunked: bool = False,
+        preload_content: bool = True,
+        decode_content: bool = True,
+        enforce_content_length: bool = True,
     ) -> None:
+        # Update the inner socket's timeout value to send the request.
+        # This only triggers if the connection is re-used.
+        if self.sock is not None:
+            self.sock.settimeout(self.timeout)
+
+        # Store these values to be fed into the HTTPResponse
+        # object later. TODO: Remove this in favor of a real
+        # HTTP lifecycle mechanism.
+
+        # We have to store these before we call .request()
+        # because sometimes we can still salvage a response
+        # off the wire even if we aren't able to completely
+        # send the request body.
+        self._response_options = _ResponseOptions(
+            request_method=method,
+            request_url=url,
+            preload_content=preload_content,
+            decode_content=decode_content,
+            enforce_content_length=enforce_content_length,
+        )
 
         if headers is None:
             headers = {}
@@ -363,14 +422,75 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        body: _TYPE_BODY | None = None,
+        headers: typing.Mapping[str, str] | None = None,
     ) -> None:
         """
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
+        warnings.warn(
+            "HTTPConnection.request_chunked() is deprecated and will be removed "
+            "in urllib3 v2.1.0. Instead use HTTPConnection.request(..., chunked=True).",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         self.request(method, url, body=body, headers=headers, chunked=True)
+
+    def getresponse(  # type: ignore[override]
+        self,
+    ) -> HTTPResponse:
+        """
+        Get the response from the server.
+
+        If the HTTPConnection is in the correct state, returns an instance of HTTPResponse or of whatever object is returned by the response_class variable.
+
+        If a request has not been sent or if a previous response has not be handled, ResponseNotReady is raised. If the HTTP response indicates that the connection should be closed, then it will be closed before the response is returned. When the connection is closed, the underlying socket is closed.
+        """
+        # Raise the same error as http.client.HTTPConnection
+        if self._response_options is None:
+            raise ResponseNotReady()
+
+        # Reset this attribute for being used again.
+        resp_options = self._response_options
+        self._response_options = None
+
+        # Since the connection's timeout value may have been updated
+        # we need to set the timeout on the socket.
+        self.sock.settimeout(self.timeout)
+
+        # This is needed here to avoid circular import errors
+        from .response import HTTPResponse
+
+        # Get the response from http.client.HTTPConnection
+        httplib_response = super().getresponse()
+
+        try:
+            assert_header_parsing(httplib_response.msg)
+        except (HeaderParsingError, TypeError) as hpe:
+            log.warning(
+                "Failed to parse headers (url=%s): %s",
+                _url_from_connection(self, resp_options.request_url),
+                hpe,
+                exc_info=True,
+            )
+
+        headers = HTTPHeaderDict(httplib_response.msg.items())
+
+        response = HTTPResponse(
+            body=httplib_response,
+            headers=headers,
+            status=httplib_response.status,
+            version=httplib_response.version,
+            reason=httplib_response.reason,
+            preload_content=resp_options.preload_content,
+            decode_content=resp_options.decode_content,
+            original_response=httplib_response,
+            enforce_content_length=resp_options.enforce_content_length,
+            request_method=resp_options.request_method,
+            request_url=resp_options.request_url,
+        )
+        return response
 
 
 class HTTPSConnection(HTTPConnection):
@@ -379,37 +499,44 @@ class HTTPSConnection(HTTPConnection):
     socket by means of :py:func:`urllib3.util.ssl_wrap_socket`.
     """
 
-    default_port = port_by_scheme["https"]
+    default_port = port_by_scheme["https"]  # type: ignore[misc]
 
-    cert_reqs: Optional[Union[int, str]] = None
-    ca_certs: Optional[str] = None
-    ca_cert_dir: Optional[str] = None
-    ca_cert_data: Union[None, str, bytes] = None
-    ssl_version: Optional[Union[int, str]] = None
-    ssl_minimum_version: Optional[int] = None
-    ssl_maximum_version: Optional[int] = None
-    assert_fingerprint: Optional[str] = None
-    tls_in_tls_required: bool = False
+    cert_reqs: int | str | None = None
+    ca_certs: str | None = None
+    ca_cert_dir: str | None = None
+    ca_cert_data: None | str | bytes = None
+    ssl_version: int | str | None = None
+    ssl_minimum_version: int | None = None
+    ssl_maximum_version: int | None = None
+    assert_fingerprint: str | None = None
 
     def __init__(
         self,
         host: str,
-        port: Optional[int] = None,
-        key_file: Optional[str] = None,
-        cert_file: Optional[str] = None,
-        key_password: Optional[str] = None,
+        port: int | None = None,
+        *,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-        ssl_context: Optional["ssl.SSLContext"] = None,
-        server_hostname: Optional[str] = None,
-        source_address: Optional[Tuple[str, int]] = None,
-        blocksize: int = 8192,
-        socket_options: Optional[
-            connection._TYPE_SOCKET_OPTIONS
-        ] = HTTPConnection.default_socket_options,
-        proxy: Optional[Url] = None,
-        proxy_config: Optional[ProxyConfig] = None,
+        source_address: tuple[str, int] | None = None,
+        blocksize: int = 16384,
+        socket_options: None
+        | (connection._TYPE_SOCKET_OPTIONS) = HTTPConnection.default_socket_options,
+        proxy: Url | None = None,
+        proxy_config: ProxyConfig | None = None,
+        cert_reqs: int | str | None = None,
+        assert_hostname: None | str | Literal[False] = None,
+        assert_fingerprint: str | None = None,
+        server_hostname: str | None = None,
+        ssl_context: ssl.SSLContext | None = None,
+        ca_certs: str | None = None,
+        ca_cert_dir: str | None = None,
+        ca_cert_data: None | str | bytes = None,
+        ssl_minimum_version: int | None = None,
+        ssl_maximum_version: int | None = None,
+        ssl_version: int | str | None = None,  # Deprecated
+        cert_file: str | None = None,
+        key_file: str | None = None,
+        key_password: str | None = None,
     ) -> None:
-
         super().__init__(
             host,
             port=port,
@@ -426,25 +553,46 @@ class HTTPSConnection(HTTPConnection):
         self.key_password = key_password
         self.ssl_context = ssl_context
         self.server_hostname = server_hostname
-        self.ssl_version = None
-        self.ssl_minimum_version = None
-        self.ssl_maximum_version = None
+        self.assert_hostname = assert_hostname
+        self.assert_fingerprint = assert_fingerprint
+        self.ssl_version = ssl_version
+        self.ssl_minimum_version = ssl_minimum_version
+        self.ssl_maximum_version = ssl_maximum_version
+        self.ca_certs = ca_certs and os.path.expanduser(ca_certs)
+        self.ca_cert_dir = ca_cert_dir and os.path.expanduser(ca_cert_dir)
+        self.ca_cert_data = ca_cert_data
+
+        # cert_reqs depends on ssl_context so calculate last.
+        if cert_reqs is None:
+            if self.ssl_context is not None:
+                cert_reqs = self.ssl_context.verify_mode
+            else:
+                cert_reqs = resolve_cert_reqs(None)
+        self.cert_reqs = cert_reqs
 
     def set_cert(
         self,
-        key_file: Optional[str] = None,
-        cert_file: Optional[str] = None,
-        cert_reqs: Optional[Union[int, str]] = None,
-        key_password: Optional[str] = None,
-        ca_certs: Optional[str] = None,
-        assert_hostname: Union[None, str, "Literal[False]"] = None,
-        assert_fingerprint: Optional[str] = None,
-        ca_cert_dir: Optional[str] = None,
-        ca_cert_data: Union[None, str, bytes] = None,
+        key_file: str | None = None,
+        cert_file: str | None = None,
+        cert_reqs: int | str | None = None,
+        key_password: str | None = None,
+        ca_certs: str | None = None,
+        assert_hostname: None | str | Literal[False] = None,
+        assert_fingerprint: str | None = None,
+        ca_cert_dir: str | None = None,
+        ca_cert_data: None | str | bytes = None,
     ) -> None:
         """
         This method should only be called once, before the connection is used.
         """
+        warnings.warn(
+            "HTTPSConnection.set_cert() is deprecated and will be removed "
+            "in urllib3 v2.1.0. Instead provide the parameters to the "
+            "HTTPSConnection constructor.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
         # If cert_reqs is not provided we'll assume CERT_REQUIRED unless we also
         # have an SSLContext object in which case we'll use its verify_mode.
         if cert_reqs is None:
@@ -464,32 +612,28 @@ class HTTPSConnection(HTTPConnection):
         self.ca_cert_data = ca_cert_data
 
     def connect(self) -> None:
-        self._connecting_to_proxy = bool(self.proxy)
-
-        sock: Union[socket.socket, "ssl.SSLSocket"]
+        sock: socket.socket | ssl.SSLSocket
         self.sock = sock = self._new_conn()
-        hostname: str = self.host
+        server_hostname: str = self.host
         tls_in_tls = False
 
-        if self._is_using_tunnel():
-            if self.tls_in_tls_required:
-                self.sock = sock = self._connect_tls_proxy(hostname, sock)
+        # Do we need to establish a tunnel?
+        if self._tunnel_host is not None:
+            # We're tunneling to an HTTPS origin so need to do TLS-in-TLS.
+            if self._tunnel_scheme == "https":
+                # _connect_tls_proxy will verify and assign proxy_is_verified
+                self.sock = sock = self._connect_tls_proxy(self.host, sock)
                 tls_in_tls = True
+            elif self._tunnel_scheme == "http":
+                self.proxy_is_verified = False
 
-            self._connecting_to_proxy = False
+            # If we're tunneling it means we're connected to our proxy.
+            self._has_connected_to_proxy = True
 
-            # Calls self._set_hostport(), so self.host is
-            # self._tunnel_host below.
-            self._tunnel()
-            # Mark this connection as not reusable
-            self.auto_open = 0
-
+            self._tunnel()  # type: ignore[attr-defined]
             # Override the host with the one we're requesting data from.
-            hostname = cast(
-                str, self._tunnel_host
-            )  # self._tunnel_host is not None, because self._is_using_tunnel() returned a truthy value.
+            server_hostname = self._tunnel_host
 
-        server_hostname = hostname
         if self.server_hostname is not None:
             server_hostname = self.server_hostname
 
@@ -503,6 +647,9 @@ class HTTPSConnection(HTTPConnection):
                 SystemTimeWarning,
             )
 
+        # Remove trailing '.' from fqdn hostnames to allow certificate validation
+        server_hostname_rm_dot = server_hostname.rstrip(".")
+
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock=sock,
             cert_reqs=self.cert_reqs,
@@ -515,23 +662,39 @@ class HTTPSConnection(HTTPConnection):
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
-            server_hostname=server_hostname,
+            server_hostname=server_hostname_rm_dot,
             ssl_context=self.ssl_context,
             tls_in_tls=tls_in_tls,
             assert_hostname=self.assert_hostname,
             assert_fingerprint=self.assert_fingerprint,
         )
         self.sock = sock_and_verified.socket
-        self.is_verified = sock_and_verified.is_verified
-        self._connecting_to_proxy = False
 
-    def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> "ssl.SSLSocket":
+        # Forwarding proxies can never have a verified target since
+        # the proxy is the one doing the verification. Should instead
+        # use a CONNECT tunnel in order to verify the target.
+        # See: https://github.com/urllib3/urllib3/issues/3267.
+        if self.proxy_is_forwarding:
+            self.is_verified = False
+        else:
+            self.is_verified = sock_and_verified.is_verified
+
+        # If there's a proxy to be connected to we are fully connected.
+        # This is set twice (once above and here) due to forwarding proxies
+        # not using tunnelling.
+        self._has_connected_to_proxy = bool(self.proxy)
+
+        # Set `self.proxy_is_verified` unless it's already set while
+        # establishing a tunnel.
+        if self._has_connected_to_proxy and self.proxy_is_verified is None:
+            self.proxy_is_verified = sock_and_verified.is_verified
+
+    def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> ssl.SSLSocket:
         """
         Establish a TLS connection to the proxy using the provided SSL context.
         """
-        proxy_config = cast(
-            ProxyConfig, self.proxy_config
-        )  # `_connect_tls_proxy` is called when self._is_using_tunnel() is truthy.
+        # `_connect_tls_proxy` is called when self._tunnel_host is truthy.
+        proxy_config = typing.cast(ProxyConfig, self.proxy_config)
         ssl_context = proxy_config.ssl_context
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
@@ -556,33 +719,33 @@ class HTTPSConnection(HTTPConnection):
         return sock_and_verified.socket  # type: ignore[return-value]
 
 
-class _WrappedAndVerifiedSocket(NamedTuple):
+class _WrappedAndVerifiedSocket(typing.NamedTuple):
     """
     Wrapped socket and whether the connection is
     verified after the TLS handshake
     """
 
-    socket: Union["ssl.SSLSocket", "SSLTransport"]
+    socket: ssl.SSLSocket | SSLTransport
     is_verified: bool
 
 
 def _ssl_wrap_socket_and_match_hostname(
     sock: socket.socket,
     *,
-    cert_reqs: Union[None, str, int],
-    ssl_version: Union[None, str, int],
-    ssl_minimum_version: Optional[int],
-    ssl_maximum_version: Optional[int],
-    cert_file: Optional[str],
-    key_file: Optional[str],
-    key_password: Optional[str],
-    ca_certs: Optional[str],
-    ca_cert_dir: Optional[str],
-    ca_cert_data: Union[None, str, bytes],
-    assert_hostname: Union[None, str, "Literal[False]"],
-    assert_fingerprint: Optional[str],
-    server_hostname: Optional[str],
-    ssl_context: Optional["ssl.SSLContext"],
+    cert_reqs: None | str | int,
+    ssl_version: None | str | int,
+    ssl_minimum_version: int | None,
+    ssl_maximum_version: int | None,
+    cert_file: str | None,
+    key_file: str | None,
+    key_password: str | None,
+    ca_certs: str | None,
+    ca_cert_dir: str | None,
+    ca_cert_data: None | str | bytes,
+    assert_hostname: None | str | Literal[False],
+    assert_fingerprint: str | None,
+    server_hostname: str | None,
+    ssl_context: ssl.SSLContext | None,
     tls_in_tls: bool = False,
 ) -> _WrappedAndVerifiedSocket:
     """Logic for constructing an SSLContext from all TLS parameters, passing
@@ -609,6 +772,8 @@ def _ssl_wrap_socket_and_match_hostname(
         # `ssl` can't verify fingerprints or alternate hostnames
         assert_fingerprint
         or assert_hostname
+        # assert_hostname can be set to False to disable hostname checking
+        or assert_hostname is False
         # We still support OpenSSL 1.0.2, which prevents us from verifying
         # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
         or ssl_.IS_PYOPENSSL
@@ -616,7 +781,9 @@ def _ssl_wrap_socket_and_match_hostname(
     ):
         context.check_hostname = False
 
-    # Try to load OS default certs if none are given.
+    # Try to load OS default certs if none are given. We need to do the hasattr() check
+    # for custom pyOpenSSL SSLContext objects because they don't support
+    # load_default_certs().
     if (
         not ca_certs
         and not ca_cert_dir
@@ -649,40 +816,46 @@ def _ssl_wrap_socket_and_match_hostname(
         tls_in_tls=tls_in_tls,
     )
 
-    if assert_fingerprint:
-        _assert_fingerprint(ssl_sock.getpeercert(binary_form=True), assert_fingerprint)
-    elif (
-        context.verify_mode != ssl.CERT_NONE
-        and not context.check_hostname
-        and assert_hostname is not False
-    ):
-        cert: "_TYPE_PEER_CERT_RET_DICT" = ssl_sock.getpeercert()  # type: ignore[assignment]
+    try:
+        if assert_fingerprint:
+            _assert_fingerprint(
+                ssl_sock.getpeercert(binary_form=True), assert_fingerprint
+            )
+        elif (
+            context.verify_mode != ssl.CERT_NONE
+            and not context.check_hostname
+            and assert_hostname is not False
+        ):
+            cert: _TYPE_PEER_CERT_RET_DICT = ssl_sock.getpeercert()  # type: ignore[assignment]
 
-        # Need to signal to our match_hostname whether to use 'commonName' or not.
-        # If we're using our own constructed SSLContext we explicitly set 'False'
-        # because PyPy hard-codes 'True' from SSLContext.hostname_checks_common_name.
-        if default_ssl_context:
-            hostname_checks_common_name = False
-        else:
-            hostname_checks_common_name = (
-                getattr(context, "hostname_checks_common_name", False) or False
+            # Need to signal to our match_hostname whether to use 'commonName' or not.
+            # If we're using our own constructed SSLContext we explicitly set 'False'
+            # because PyPy hard-codes 'True' from SSLContext.hostname_checks_common_name.
+            if default_ssl_context:
+                hostname_checks_common_name = False
+            else:
+                hostname_checks_common_name = (
+                    getattr(context, "hostname_checks_common_name", False) or False
+                )
+
+            _match_hostname(
+                cert,
+                assert_hostname or server_hostname,  # type: ignore[arg-type]
+                hostname_checks_common_name,
             )
 
-        _match_hostname(
-            cert,
-            assert_hostname or server_hostname,  # type: ignore[arg-type]
-            hostname_checks_common_name,
+        return _WrappedAndVerifiedSocket(
+            socket=ssl_sock,
+            is_verified=context.verify_mode == ssl.CERT_REQUIRED
+            or bool(assert_fingerprint),
         )
-
-    return _WrappedAndVerifiedSocket(
-        socket=ssl_sock,
-        is_verified=context.verify_mode == ssl.CERT_REQUIRED
-        or bool(assert_fingerprint),
-    )
+    except BaseException:
+        ssl_sock.close()
+        raise
 
 
 def _match_hostname(
-    cert: Optional["_TYPE_PEER_CERT_RET_DICT"],
+    cert: _TYPE_PEER_CERT_RET_DICT | None,
     asserted_hostname: str,
     hostname_checks_common_name: bool = False,
 ) -> None:
@@ -707,7 +880,7 @@ def _match_hostname(
         raise
 
 
-def _wrap_proxy_error(err: Exception, proxy_scheme: Optional[str]) -> ProxyError:
+def _wrap_proxy_error(err: Exception, proxy_scheme: str | None) -> ProxyError:
     # Look for the phrase 'wrong version number', if found
     # then we should warn the user that we're very sure that
     # this proxy is HTTP-only and they have a configuration issue.
@@ -715,6 +888,7 @@ def _wrap_proxy_error(err: Exception, proxy_scheme: Optional[str]) -> ProxyError
     is_likely_http_proxy = (
         "wrong version number" in error_normalized
         or "unknown protocol" in error_normalized
+        or "record layer failure" in error_normalized
     )
     http_proxy_warning = (
         ". Your proxy appears to only use HTTP and not HTTPS, "
@@ -738,11 +912,19 @@ def _get_default_user_agent() -> str:
 class DummyConnection:
     """Used to detect a failed ConnectionCls import."""
 
-    pass
-
 
 if not ssl:
     HTTPSConnection = DummyConnection  # type: ignore[misc, assignment] # noqa: F811
 
 
 VerifiedHTTPSConnection = HTTPSConnection
+
+
+def _url_from_connection(
+    conn: HTTPConnection | HTTPSConnection, path: str | None = None
+) -> str:
+    """Returns the URL from a given connection. This is mainly used for testing and logging."""
+
+    scheme = "https" if isinstance(conn, HTTPSConnection) else "http"
+
+    return Url(scheme=scheme, host=conn.host, port=conn.port, path=path).url

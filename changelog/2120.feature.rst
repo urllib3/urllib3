@@ -1,1 +1,0 @@
-Changed usage of the deprecated ``socket.error`` to ``OSError``.

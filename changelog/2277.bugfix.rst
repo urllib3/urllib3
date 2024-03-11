@@ -1,1 +1,0 @@
-Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()``.

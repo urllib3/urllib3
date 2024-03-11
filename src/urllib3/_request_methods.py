@@ -1,16 +1,19 @@
+from __future__ import annotations
+
 import json as _json
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
+import typing
 from urllib.parse import urlencode
 
+from ._base_connection import _TYPE_BODY
 from ._collections import HTTPHeaderDict
-from .connection import _TYPE_BODY
 from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .response import BaseHTTPResponse
 
 __all__ = ["RequestMethods"]
 
-_TYPE_ENCODE_URL_FIELDS = Union[
-    Sequence[Tuple[str, Union[str, bytes]]], Mapping[str, Union[str, bytes]]
+_TYPE_ENCODE_URL_FIELDS = typing.Union[
+    typing.Sequence[typing.Tuple[str, typing.Union[str, bytes]]],
+    typing.Mapping[str, typing.Union[str, bytes]],
 ]
 
 
@@ -45,18 +48,18 @@ class RequestMethods:
 
     _encode_url_methods = {"DELETE", "GET", "HEAD", "OPTIONS"}
 
-    def __init__(self, headers: Optional[Mapping[str, str]] = None) -> None:
+    def __init__(self, headers: typing.Mapping[str, str] | None = None) -> None:
         self.headers = headers or {}
 
     def urlopen(
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        body: _TYPE_BODY | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         encode_multipart: bool = True,
-        multipart_boundary: Optional[str] = None,
-        **kw: Any,
+        multipart_boundary: str | None = None,
+        **kw: typing.Any,
     ) -> BaseHTTPResponse:  # Abstract
         raise NotImplementedError(
             "Classes extending RequestMethods must implement "
@@ -67,11 +70,11 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_BODY] = None,
-        fields: Optional[_TYPE_FIELDS] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        json: Optional[Any] = None,
-        **urlopen_kw: Any,
+        body: _TYPE_BODY | None = None,
+        fields: _TYPE_FIELDS | None = None,
+        headers: typing.Mapping[str, str] | None = None,
+        json: typing.Any | None = None,
+        **urlopen_kw: typing.Any,
     ) -> BaseHTTPResponse:
         """
         Make a request using :meth:`urlopen` with the appropriate encoding of
@@ -82,10 +85,32 @@ class RequestMethods:
         option to drop down to more specific methods when necessary, such as
         :meth:`request_encode_url`, :meth:`request_encode_body`,
         or even the lowest level :meth:`urlopen`.
+
+        :param method:
+            HTTP request method (such as GET, POST, PUT, etc.)
+
+        :param url:
+            The URL to perform the request on.
+
+        :param body:
+            Data to send in the request body, either :class:`str`, :class:`bytes`,
+            an iterable of :class:`str`/:class:`bytes`, or a file-like object.
+
+        :param fields:
+            Data to encode and send in the request body.  Values are processed
+            by :func:`urllib.parse.urlencode`.
+
+        :param headers:
+            Dictionary of custom headers to send, such as User-Agent,
+            If-None-Match, etc. If None, pool headers are used. If provided,
+            these headers completely replace any pool-specific headers.
+
+        :param json:
+            Data to encode and send as JSON with UTF-encoded in the request body.
+            The ``"Content-Type"`` header will be set to ``"application/json"``
+            unless specified otherwise.
         """
         method = method.upper()
-
-        urlopen_kw["request_url"] = url
 
         if json is not None and body is not None:
             raise TypeError(
@@ -94,9 +119,11 @@ class RequestMethods:
 
         if json is not None:
             if headers is None:
-                headers = self.headers.copy()  # type: ignore
+                headers = self.headers
+
             if not ("content-type" in map(str.lower, headers.keys())):
-                headers["Content-Type"] = "application/json"  # type: ignore
+                headers = HTTPHeaderDict(headers)
+                headers["Content-Type"] = "application/json"
 
             body = _json.dumps(json, separators=(",", ":"), ensure_ascii=False).encode(
                 "utf-8"
@@ -122,18 +149,32 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        fields: Optional[_TYPE_ENCODE_URL_FIELDS] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        fields: _TYPE_ENCODE_URL_FIELDS | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the url. This is useful for request methods like GET, HEAD, DELETE, etc.
+
+        :param method:
+            HTTP request method (such as GET, POST, PUT, etc.)
+
+        :param url:
+            The URL to perform the request on.
+
+        :param fields:
+            Data to encode and send in the request body.
+
+        :param headers:
+            Dictionary of custom headers to send, such as User-Agent,
+            If-None-Match, etc. If None, pool headers are used. If provided,
+            these headers completely replace any pool-specific headers.
         """
         if headers is None:
             headers = self.headers
 
-        extra_kw: Dict[str, Any] = {"headers": headers}
+        extra_kw: dict[str, typing.Any] = {"headers": headers}
         extra_kw.update(urlopen_kw)
 
         if fields:
@@ -145,10 +186,10 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        fields: Optional[_TYPE_FIELDS] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        fields: _TYPE_FIELDS | None = None,
+        headers: typing.Mapping[str, str] | None = None,
         encode_multipart: bool = True,
-        multipart_boundary: Optional[str] = None,
+        multipart_boundary: str | None = None,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
@@ -185,12 +226,34 @@ class RequestMethods:
         be overwritten because it depends on the dynamic random boundary string
         which is used to compose the body of the request. The random boundary
         string can be explicitly set with the ``multipart_boundary`` parameter.
+
+        :param method:
+            HTTP request method (such as GET, POST, PUT, etc.)
+
+        :param url:
+            The URL to perform the request on.
+
+        :param fields:
+            Data to encode and send in the request body.
+
+        :param headers:
+            Dictionary of custom headers to send, such as User-Agent,
+            If-None-Match, etc. If None, pool headers are used. If provided,
+            these headers completely replace any pool-specific headers.
+
+        :param encode_multipart:
+            If True, encode the ``fields`` using the multipart/form-data MIME
+            format.
+
+        :param multipart_boundary:
+            If not specified, then a random boundary will be generated using
+            :func:`urllib3.filepost.choose_boundary`.
         """
         if headers is None:
             headers = self.headers
 
-        extra_kw: Dict[str, Any] = {"headers": HTTPHeaderDict(headers)}
-        body: Union[bytes, str]
+        extra_kw: dict[str, typing.Any] = {"headers": HTTPHeaderDict(headers)}
+        body: bytes | str
 
         if fields:
             if "body" in urlopen_kw:

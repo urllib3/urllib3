@@ -1,25 +1,23 @@
+from __future__ import annotations
+
 import socket
-from typing import Optional, Sequence, Tuple, Union
+import typing
 
 from ..exceptions import LocationParseError
 from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
-from .wait import wait_for_read
 
-_TYPE_SOCKET_OPTIONS = Sequence[Tuple[int, int, Union[int, bytes]]]
+_TYPE_SOCKET_OPTIONS = typing.Sequence[typing.Tuple[int, int, typing.Union[int, bytes]]]
+
+if typing.TYPE_CHECKING:
+    from .._base_connection import BaseHTTPConnection
 
 
-def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
+def is_connection_dropped(conn: BaseHTTPConnection) -> bool:  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
-
-    :param conn:
-        :class:`http.client.HTTPConnection` object.
+    :param conn: :class:`urllib3.connection.HTTPConnection` object.
     """
-    sock = getattr(conn, "sock", None)
-    if sock is None:  # Connection already closed (such as by httplib).
-        return True
-    # Returns True if readable, which here means it's been dropped
-    return wait_for_read(sock, timeout=0.0)
+    return not conn.is_connected
 
 
 # This function is copied from socket.py in the Python 2.7 standard
@@ -27,10 +25,10 @@ def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
 def create_connection(
-    address: Tuple[str, int],
+    address: tuple[str, int],
     timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
-    source_address: Optional[Tuple[str, int]] = None,
-    socket_options: Optional[_TYPE_SOCKET_OPTIONS] = None,
+    source_address: tuple[str, int] | None = None,
+    socket_options: _TYPE_SOCKET_OPTIONS | None = None,
 ) -> socket.socket:
     """Connect to *address* and return the socket object.
 
@@ -93,7 +91,7 @@ def create_connection(
 
 
 def _set_socket_options(
-    sock: socket.socket, options: Optional[_TYPE_SOCKET_OPTIONS]
+    sock: socket.socket, options: _TYPE_SOCKET_OPTIONS | None
 ) -> None:
     if options is None:
         return

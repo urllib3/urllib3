@@ -1,13 +1,13 @@
 # For backwards compatibility, provide imports that used to be here.
+from __future__ import annotations
+
 from .connection import is_connection_dropped
 from .request import SKIP_HEADER, SKIPPABLE_HEADERS, make_headers
 from .response import is_fp_closed
 from .retry import Retry
 from .ssl_ import (
     ALPN_PROTOCOLS,
-    HAS_SNI,
     IS_PYOPENSSL,
-    IS_SECURETRANSPORT,
     SSLContext,
     assert_fingerprint,
     create_urllib3_context,
@@ -20,9 +20,7 @@ from .url import Url, parse_url
 from .wait import wait_for_read, wait_for_write
 
 __all__ = (
-    "HAS_SNI",
     "IS_PYOPENSSL",
-    "IS_SECURETRANSPORT",
     "SSLContext",
     "ALPN_PROTOCOLS",
     "Retry",

@@ -1,19 +1,13 @@
+from __future__ import annotations
+
 import email
 import logging
+import random
 import re
 import time
+import typing
 from itertools import takewhile
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Collection,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Union,
-)
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -26,20 +20,20 @@ from ..exceptions import (
 )
 from .util import reraise
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from ..connectionpool import ConnectionPool
-    from ..response import HTTPResponse
+    from ..response import BaseHTTPResponse
 
 log = logging.getLogger(__name__)
 
 
 # Data structure for representing the metadata of requests that result in a retry.
-class RequestHistory(NamedTuple):
-    method: Optional[str]
-    url: Optional[str]
-    error: Optional[Exception]
-    status: Optional[int]
-    redirect_location: Optional[str]
+class RequestHistory(typing.NamedTuple):
+    method: str | None
+    url: str | None
+    error: Exception | None
+    status: int | None
+    redirect_location: str | None
 
 
 class Retry:
@@ -149,13 +143,17 @@ class Retry:
         (most errors are resolved immediately by a second try without a
         delay). urllib3 will sleep for::
 
-            {backoff factor} * (2 ** ({number of total retries} - 1))
+            {backoff factor} * (2 ** ({number of previous retries}))
 
-        seconds. If the backoff_factor is 0.1, then :func:`Retry.sleep` will sleep
-        for [0.0s, 0.2s, 0.4s, ...] between retries. It will never be longer
-        than `backoff_max`.
+        seconds. If `backoff_jitter` is non-zero, this sleep is extended by::
 
-        By default, backoff is disabled (set to 0).
+            random.uniform(0, {backoff jitter})
+
+        seconds. For example, if the backoff_factor is 0.1, then :func:`Retry.sleep` will
+        sleep for [0.0s, 0.2s, 0.4s, 0.8s, ...] between retries. No backoff will ever
+        be longer than `backoff_max`.
+
+        By default, backoff is disabled (factor set to 0).
 
     :param bool raise_on_redirect: Whether, if the number of redirects is
         exhausted, to raise a MaxRetryError, or to return a response with a
@@ -189,33 +187,34 @@ class Retry:
     RETRY_AFTER_STATUS_CODES = frozenset([413, 429, 503])
 
     #: Default headers to be used for ``remove_headers_on_redirect``
-    DEFAULT_REMOVE_HEADERS_ON_REDIRECT = frozenset(["Authorization"])
+    DEFAULT_REMOVE_HEADERS_ON_REDIRECT = frozenset(["Cookie", "Authorization"])
 
     #: Default maximum backoff time.
     DEFAULT_BACKOFF_MAX = 120
 
     # Backward compatibility; assigned outside of the class.
-    DEFAULT: ClassVar["Retry"]
+    DEFAULT: typing.ClassVar[Retry]
 
     def __init__(
         self,
-        total: Optional[Union[bool, int]] = 10,
-        connect: Optional[int] = None,
-        read: Optional[int] = None,
-        redirect: Optional[Union[bool, int]] = None,
-        status: Optional[int] = None,
-        other: Optional[int] = None,
-        allowed_methods: Optional[Collection[str]] = DEFAULT_ALLOWED_METHODS,
-        status_forcelist: Optional[Collection[int]] = None,
+        total: bool | int | None = 10,
+        connect: int | None = None,
+        read: int | None = None,
+        redirect: bool | int | None = None,
+        status: int | None = None,
+        other: int | None = None,
+        allowed_methods: typing.Collection[str] | None = DEFAULT_ALLOWED_METHODS,
+        status_forcelist: typing.Collection[int] | None = None,
         backoff_factor: float = 0,
         backoff_max: float = DEFAULT_BACKOFF_MAX,
         raise_on_redirect: bool = True,
         raise_on_status: bool = True,
-        history: Optional[Tuple[RequestHistory, ...]] = None,
+        history: tuple[RequestHistory, ...] | None = None,
         respect_retry_after_header: bool = True,
-        remove_headers_on_redirect: Collection[
+        remove_headers_on_redirect: typing.Collection[
             str
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
+        backoff_jitter: float = 0.0,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -239,8 +238,9 @@ class Retry:
         self.remove_headers_on_redirect = frozenset(
             h.lower() for h in remove_headers_on_redirect
         )
+        self.backoff_jitter = backoff_jitter
 
-    def new(self, **kw: Any) -> "Retry":
+    def new(self, **kw: typing.Any) -> Retry:
         params = dict(
             total=self.total,
             connect=self.connect,
@@ -257,6 +257,7 @@ class Retry:
             history=self.history,
             remove_headers_on_redirect=self.remove_headers_on_redirect,
             respect_retry_after_header=self.respect_retry_after_header,
+            backoff_jitter=self.backoff_jitter,
         )
 
         params.update(kw)
@@ -265,10 +266,10 @@ class Retry:
     @classmethod
     def from_int(
         cls,
-        retries: Optional[Union["Retry", bool, int]],
-        redirect: Optional[Union[bool, int]] = True,
-        default: Optional[Union["Retry", bool, int]] = None,
-    ) -> "Retry":
+        retries: Retry | bool | int | None,
+        redirect: bool | int | None = True,
+        default: Retry | bool | int | None = None,
+    ) -> Retry:
         """Backwards-compatibility for the old retries format."""
         if retries is None:
             retries = default if default is not None else cls.DEFAULT
@@ -296,7 +297,9 @@ class Retry:
             return 0
 
         backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
-        return float(min(self.backoff_max, backoff_value))
+        if self.backoff_jitter != 0.0:
+            backoff_value += random.random() * self.backoff_jitter
+        return float(max(0, min(self.backoff_max, backoff_value)))
 
     def parse_retry_after(self, retry_after: str) -> float:
         seconds: float
@@ -315,17 +318,17 @@ class Retry:
 
         return seconds
 
-    def get_retry_after(self, response: "HTTPResponse") -> Optional[float]:
+    def get_retry_after(self, response: BaseHTTPResponse) -> float | None:
         """Get the value of Retry-After in seconds."""
 
-        retry_after = response.getheader("Retry-After")
+        retry_after = response.headers.get("Retry-After")
 
         if retry_after is None:
             return None
 
         return self.parse_retry_after(retry_after)
 
-    def sleep_for_retry(self, response: "HTTPResponse") -> bool:
+    def sleep_for_retry(self, response: BaseHTTPResponse) -> bool:
         retry_after = self.get_retry_after(response)
         if retry_after:
             time.sleep(retry_after)
@@ -339,7 +342,7 @@ class Retry:
             return
         time.sleep(backoff)
 
-    def sleep(self, response: Optional["HTTPResponse"] = None) -> None:
+    def sleep(self, response: BaseHTTPResponse | None = None) -> None:
         """Sleep between retry attempts.
 
         This method will respect a server's ``Retry-After`` response header
@@ -420,18 +423,18 @@ class Retry:
 
     def increment(
         self,
-        method: Optional[str] = None,
-        url: Optional[str] = None,
-        response: Optional["HTTPResponse"] = None,
-        error: Optional[Exception] = None,
-        _pool: Optional["ConnectionPool"] = None,
-        _stacktrace: Optional[TracebackType] = None,
-    ) -> "Retry":
+        method: str | None = None,
+        url: str | None = None,
+        response: BaseHTTPResponse | None = None,
+        error: Exception | None = None,
+        _pool: ConnectionPool | None = None,
+        _stacktrace: TracebackType | None = None,
+    ) -> Retry:
         """Return a new Retry object with incremented retry counters.
 
         :param response: A response object, or None, if the server did not
             return a response.
-        :type response: :class:`~urllib3.response.HTTPResponse`
+        :type response: :class:`~urllib3.response.BaseHTTPResponse`
         :param Exception error: An error encountered during the request, or
             None if the response was received successfully.
 

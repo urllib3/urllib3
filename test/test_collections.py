@@ -1,4 +1,6 @@
-from typing import Iterator, List, Tuple, Union
+from __future__ import annotations
+
+import typing
 
 import pytest
 
@@ -83,7 +85,7 @@ class TestLRUContainer:
         d.pop(1, None)
 
     def test_get(self) -> None:
-        d: Container[int, Union[bool, int]] = Container(5)
+        d: Container[int, bool | int] = Container(5)
 
         for i in range(5):
             d[i] = True
@@ -101,7 +103,7 @@ class TestLRUContainer:
             d[5]
 
     def test_disposal(self) -> None:
-        evicted_items: List[int] = []
+        evicted_items: list[int] = []
 
         def dispose_func(arg: int) -> None:
             # Save the evicted datum for inspection
@@ -135,7 +137,7 @@ class NonMappingHeaderContainer:
         self._data = {}
         self._data.update(kwargs)
 
-    def keys(self) -> Iterator[str]:
+    def keys(self) -> typing.Iterator[str]:
         return iter(self._data)
 
     def __getitem__(self, key: str) -> str:
@@ -280,7 +282,7 @@ class TestHTTPHeaderDict:
         ]
 
         assert list(d.items()) == expected_results
-        # make sure the values persist over copys
+        # make sure the values persist over copies
         assert list(d.copy().items()) == expected_results
 
         other_dict = HTTPHeaderDict()
@@ -297,7 +299,7 @@ class TestHTTPHeaderDict:
 
     @pytest.mark.parametrize("args", [(1, 2), (1, 2, 3, 4, 5)])
     def test_extend_with_wrong_number_of_args_is_typeerror(
-        self, d: HTTPHeaderDict, args: Tuple[int, ...]
+        self, d: HTTPHeaderDict, args: tuple[int, ...]
     ) -> None:
         with pytest.raises(
             TypeError, match=r"extend\(\) takes at most 1 positional arguments"
@@ -383,7 +385,7 @@ class TestHTTPHeaderDict:
         hdict = {
             "Content-Length": "0",
             "Content-type": "text/plain",
-            "Server": "TornadoServer/1.2.3",
+            "Server": "Hypercorn/1.2.3",
         }
         h = dict(HTTPHeaderDict(hdict).items())
         assert hdict == h
@@ -421,3 +423,32 @@ class TestHTTPHeaderDict:
         d._container[marker] = ["some", "strings"]  # type: ignore[index]
         assert marker not in d
         assert marker in d._container
+
+    def test_union(self, d: HTTPHeaderDict) -> None:
+        to_merge = {"Cookie": "tim-tam"}
+        result = d | to_merge
+        assert result == HTTPHeaderDict({"Cookie": "foo, bar, tim-tam"})
+        assert to_merge == {"Cookie": "tim-tam"}
+        assert d == HTTPHeaderDict({"Cookie": "foo, bar"})
+
+    def test_union_rhs(self, d: HTTPHeaderDict) -> None:
+        to_merge = {"Cookie": "tim-tam"}
+        result = to_merge | d
+        assert result == HTTPHeaderDict({"Cookie": "tim-tam, foo, bar"})
+        assert to_merge == {"Cookie": "tim-tam"}
+        assert d == HTTPHeaderDict({"Cookie": "foo, bar"})
+
+    def test_inplace_union(self, d: HTTPHeaderDict) -> None:
+        to_merge = {"Cookie": "tim-tam"}
+        d |= to_merge
+        assert d == HTTPHeaderDict({"Cookie": "foo, bar, tim-tam"})
+
+    def test_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
+        with pytest.raises(TypeError, match="unsupported operand type.*'int'"):
+            d | 42
+        with pytest.raises(TypeError, match="unsupported operand type.*'float'"):
+            3.14 | d
+
+    def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
+        with pytest.raises(TypeError, match="unsupported operand type.*'NoneType'"):
+            d |= None

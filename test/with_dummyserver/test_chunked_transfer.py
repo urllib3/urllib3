@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import socket
-from typing import List, Optional, Union
 
 import pytest
 
@@ -11,9 +12,6 @@ from dummyserver.testcase import (
 from urllib3 import HTTPConnectionPool
 from urllib3.util import SKIP_HEADER
 from urllib3.util.retry import Retry
-
-# Retry failed tests
-pytestmark = pytest.mark.flaky
 
 
 class TestChunkedTransfer(SocketDummyServerTestCase):
@@ -43,7 +41,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             [b"foo", b"bar", b"", b"bazzzzzzzzzzzzzzzzzzzzzz"],
         ],
     )
-    def test_chunks(self, chunks: List[Union[bytes, str]]) -> None:
+    def test_chunks(self, chunks: list[bytes | str]) -> None:
         self.start_chunked_handler()
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             pool.urlopen("GET", "/", body=chunks, headers=dict(DNT="1"), chunked=True)  # type: ignore[arg-type]
@@ -59,7 +57,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
                 assert lines[i * 2] == hex(len(chunk))[2:].encode("utf-8")
                 assert lines[i * 2 + 1] == chunk.encode("utf-8")
 
-    def _test_body(self, data: Optional[Union[bytes, str]]) -> None:
+    def _test_body(self, data: bytes | str | None) -> None:
         self.start_chunked_handler()
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             pool.urlopen("GET", "/", data, chunked=True)
@@ -92,7 +90,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
     def test_empty_iterable_body(self) -> None:
         self._test_body(None)
 
-    def _get_header_lines(self, prefix: bytes) -> List[bytes]:
+    def _get_header_lines(self, prefix: bytes) -> list[bytes]:
         header_block = self.buffer.split(b"\r\n\r\n", 1)[0].lower()
         header_lines = header_block.split(b"\r\n")[1:]
         return [x for x in header_lines if x.startswith(prefix)]
@@ -190,7 +188,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_preserve_chunked_on_retry_after(self) -> None:
         self.chunked_requests = 0
-        self.socks: List[socket.socket] = []
+        self.socks: list[socket.socket] = []
 
         def socket_handler(listener: socket.socket) -> None:
             for _ in range(2):

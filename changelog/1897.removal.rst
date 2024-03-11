@@ -1,3 +1,0 @@
-Removed default value of ``None`` for the ``request_context`` parameter of ``urllib3.PoolManager.connection_from_pool_key``.
-
-This change should have no effect on users as the default value of ``None`` was an invalid option and was never used.

@@ -38,8 +38,10 @@ with the proxy:
 
 """
 
+from __future__ import annotations
+
 try:
-    import socks  # type: ignore[import]
+    import socks  # type: ignore[import-not-found]
 except ImportError:
     import warnings
 
@@ -49,14 +51,14 @@ except ImportError:
         (
             "SOCKS support in urllib3 requires the installation of optional "
             "dependencies: specifically, PySocks.  For more information, see "
-            "https://urllib3.readthedocs.io/en/latest/contrib.html#socks-proxies"
+            "https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies"
         ),
         DependencyWarning,
     )
     raise
 
+import typing
 from socket import timeout as SocketTimeout
-from typing import Any, Dict, Mapping, Optional
 
 from ..connection import HTTPConnection, HTTPSConnection
 from ..connectionpool import HTTPConnectionPool, HTTPSConnectionPool
@@ -69,19 +71,16 @@ try:
 except ImportError:
     ssl = None  # type: ignore[assignment]
 
-try:
-    from typing import TypedDict
+from typing import TypedDict
 
-    class _TYPE_SOCKS_OPTIONS(TypedDict):
-        socks_version: int
-        proxy_host: Optional[str]
-        proxy_port: Optional[str]
-        username: Optional[str]
-        password: Optional[str]
-        rdns: bool
 
-except ImportError:  # Python 3.7
-    _TYPE_SOCKS_OPTIONS = Dict[str, Any]  # type: ignore[misc, assignment]
+class _TYPE_SOCKS_OPTIONS(TypedDict):
+    socks_version: int
+    proxy_host: str | None
+    proxy_port: str | None
+    username: str | None
+    password: str | None
+    rdns: bool
 
 
 class SOCKSConnection(HTTPConnection):
@@ -90,16 +89,19 @@ class SOCKSConnection(HTTPConnection):
     """
 
     def __init__(
-        self, _socks_options: _TYPE_SOCKS_OPTIONS, *args: Any, **kwargs: Any
+        self,
+        _socks_options: _TYPE_SOCKS_OPTIONS,
+        *args: typing.Any,
+        **kwargs: typing.Any,
     ) -> None:
         self._socks_options = _socks_options
         super().__init__(*args, **kwargs)
 
-    def _new_conn(self) -> "socks.socksocket":
+    def _new_conn(self) -> socks.socksocket:
         """
         Establish a new connection via the SOCKS proxy.
         """
-        extra_kw: Dict[str, Any] = {}
+        extra_kw: dict[str, typing.Any] = {}
         if self.source_address:
             extra_kw["source_address"] = self.source_address
 
@@ -184,11 +186,11 @@ class SOCKSProxyManager(PoolManager):
     def __init__(
         self,
         proxy_url: str,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
         num_pools: int = 10,
-        headers: Optional[Mapping[str, str]] = None,
-        **connection_pool_kw: Any,
+        headers: typing.Mapping[str, str] | None = None,
+        **connection_pool_kw: typing.Any,
     ):
         parsed = parse_url(proxy_url)
 

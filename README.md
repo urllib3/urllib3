@@ -10,7 +10,9 @@
   <a href="https://discord.gg/urllib3"><img alt="Join our Discord" src="https://img.shields.io/discord/756342717725933608?color=%237289da&label=discord" /></a>
   <a href="https://github.com/urllib3/urllib3/actions?query=workflow%3ACI"><img alt="Coverage Status" src="https://img.shields.io/badge/coverage-100%25-success" /></a>
   <a href="https://github.com/urllib3/urllib3/actions?query=workflow%3ACI"><img alt="Build Status on GitHub" src="https://github.com/urllib3/urllib3/workflows/CI/badge.svg" /></a>
-  <a href="https://urllib3.readthedocs.io"><img alt="Documentation Status" src="https://readthedocs.org/projects/urllib3/badge/?version=latest" /></a>
+  <a href="https://urllib3.readthedocs.io"><img alt="Documentation Status" src="https://readthedocs.org/projects/urllib3/badge/?version=latest" /></a><br>
+  <a href="https://deps.dev/pypi/urllib3"><img alt="OpenSSF Scorecard" src="https://api.securityscorecards.dev/projects/github.com/urllib3/urllib3/badge" /></a>
+  <a href="https://slsa.dev"><img alt="SLSA 3" src="https://slsa.dev/images/gh-badge-level3.svg" /></a>
   <a href="https://bestpractices.coreinfrastructure.org/projects/6227"><img alt="CII Best Practices" src="https://bestpractices.coreinfrastructure.org/projects/6227/badge" /></a>
 </p>
 
@@ -32,8 +34,7 @@ urllib3 is powerful and easy to use:
 
 ```python3
 >>> import urllib3
->>> http = urllib3.PoolManager()
->>> resp = http.request("GET", "http://httpbin.org/robots.txt")
+>>> resp = urllib3.request("GET", "http://httpbin.org/robots.txt")
 >>> resp.status
 200
 >>> resp.data
@@ -86,6 +87,7 @@ Tidelift will coordinate the fix and disclosure with maintainers.
 
 - [@sethmlarson](https://github.com/sethmlarson) (Seth M. Larson)
 - [@pquentin](https://github.com/pquentin) (Quentin Pradet)
+- [@illia-v](https://github.com/illia-v) (Illia Volochii)
 - [@theacodes](https://github.com/theacodes) (Thea Flowers)
 - [@haikuginger](https://github.com/haikuginger) (Jess Shapiro)
 - [@lukasa](https://github.com/lukasa) (Cory Benfield)

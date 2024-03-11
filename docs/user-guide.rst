@@ -99,6 +99,8 @@ The :class:`~response.HTTPResponse` object provides
     print(resp.headers)
     # HTTPHeaderDict({"Content-Length": "32", ...})
 
+.. _json_content:
+
 JSON Content
 ~~~~~~~~~~~~
 JSON content can be loaded by :meth:`~response.HTTPResponse.json` 
@@ -238,6 +240,9 @@ the ``;`` delimited key-value pairs:
     print(resp.json())
     # {"cookies": {"id": "30", "session": "f3efe9db"}}  
 
+Note that the ``Cookie`` header will be stripped if the server redirects to a
+different host.
+
 Cookies provided by the server are stored in the ``Set-Cookie`` header:
 
 .. code-block:: python
@@ -343,28 +348,27 @@ memory.
 JSON
 ~~~~
 
-You can send a JSON request by specifying the data as ``json`` argument,
-urllib3 automatically encodes data using ``json`` module with ``UTF-8`` 
-encoding. Also by default ``"Content-Type"`` in headers is set to 
-``"application/json"`` if not specified when calling
-:meth:`~urllib3.PoolManager.request`:
+To send JSON in the body of a request, provide the data in the ``json`` argument to 
+:meth:`~urllib3.PoolManager.request` and  urllib3 will automatically encode the data
+using the ``json`` module with ``UTF-8`` encoding. 
+In addition, when ``json`` is provided, the ``"Content-Type"`` in headers is set to 
+``"application/json"`` if not specified otherwise.
 
 .. code-block:: python
 
     import urllib3
 
-    data = {"attribute": "value"}
-
     resp = urllib3.request(
         "POST",
         "https://httpbin.org/post",
-        body=data,
+        json={"attribute": "value"},
         headers={"Content-Type": "application/json"}
     )
 
     print(resp.json())
-    # {"attribute": "value"}
-
+    # {'headers': {'Content-Type': 'application/json', ...}, 
+    #  'data': '{"attribute":"value"}', 'json': {'attribute': 'value'}, ...}
+    
 Files & Binary Data
 ~~~~~~~~~~~~~~~~~~~
 
@@ -444,13 +448,6 @@ package which provides Mozilla's root certificate bundle:
 .. code-block:: bash
 
     $ python -m pip install certifi
-
-You can also install certifi along with urllib3 by using the ``secure``
-extra:
-
-.. code-block:: bash
-
-    $ python -m pip install urllib3[secure]
 
 Once you have certificates, you can create a :class:`~poolmanager.PoolManager`
 that verifies certificates when making requests:

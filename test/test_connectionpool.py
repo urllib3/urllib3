@@ -1,20 +1,24 @@
+from __future__ import annotations
+
 import http.client as httplib
 import ssl
+import typing
 from http.client import HTTPException
 from queue import Empty
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
-from typing import Any, Optional, Type
 from unittest.mock import Mock, patch
 
 import pytest
 
-from dummyserver.server import DEFAULT_CA
+from dummyserver.socketserver import DEFAULT_CA
+from urllib3 import Retry
 from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
+    _url_from_pool,
     connection_from_url,
 )
 from urllib3.exceptions import (
@@ -37,7 +41,7 @@ from .test_response import MockChunkedEncodingResponse, MockSock
 
 
 class HTTPUnixConnection(HTTPConnection):
-    def __init__(self, host: str, timeout: int = 60, **kwargs: Any) -> None:
+    def __init__(self, host: str, timeout: int = 60, **kwargs: typing.Any) -> None:
         super().__init__("localhost")
         self.unix_socket = host
         self.timeout = timeout
@@ -318,9 +322,9 @@ class TestConnectionPool:
         ) as pool:
 
             def _test(
-                exception: Type[BaseException],
-                expect: Type[BaseException],
-                reason: Optional[Type[BaseException]] = None,
+                exception: type[BaseException],
+                expect: type[BaseException],
+                reason: type[BaseException] | None = None,
             ) -> None:
                 with patch.object(pool, "_make_request", side_effect=exception()):
                     with pytest.raises(expect) as excinfo:
@@ -449,11 +453,10 @@ class TestConnectionPool:
             assert old_pool_queue is not None
             old_pool_queue.get(block=False)
 
-    def test_absolute_url(self) -> None:
-        with connection_from_url("http://google.com:80") as c:
-            assert "http://google.com:80/path?query=foo" == c._absolute_url(
-                "path?query=foo"
-            )
+    def test_url_from_pool(self) -> None:
+        with connection_from_url("http://google.com:80") as pool:
+            path = "path?query=foo"
+            assert f"http://google.com:80/{path}" == _url_from_pool(pool, path)
 
     def test_ca_certs_default_cert_required(self) -> None:
         with connection_from_url("https://google.com:80", ca_certs=DEFAULT_CA) as pool:
@@ -470,7 +473,7 @@ class TestConnectionPool:
         class RealBad(BaseException):
             pass
 
-        def kaboom(*args: Any, **kwargs: Any) -> None:
+        def kaboom(*args: typing.Any, **kwargs: typing.Any) -> None:
             raise RealBad()
 
         with connection_from_url("http://localhost:80") as c:
@@ -506,26 +509,56 @@ class TestConnectionPool:
             successful response on subsequent calls.
             """
 
-            def __init__(self, ex: Type[BaseException]) -> None:
+            def __init__(
+                self, ex: type[BaseException], pool: HTTPConnectionPool
+            ) -> None:
                 super().__init__()
-                self._ex: Optional[Type[BaseException]] = ex
+                self._ex: type[BaseException] | None = ex
+                self._pool = pool
 
-            def __call__(self, *args: Any, **kwargs: Any) -> httplib.HTTPResponse:
+            def __call__(
+                self,
+                conn: HTTPConnection,
+                method: str,
+                url: str,
+                *args: typing.Any,
+                retries: Retry,
+                **kwargs: typing.Any,
+            ) -> HTTPResponse:
                 if self._ex:
                     ex, self._ex = self._ex, None
                     raise ex()
-                response = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-                response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
-                response.headers = response.msg = httplib.HTTPMessage()
+                httplib_response = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+                httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
+                httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()
+
+                response_conn: HTTPConnection | None = kwargs.get("response_conn")
+
+                response = HTTPResponse(
+                    body=httplib_response,
+                    headers=httplib_response.headers,  # type: ignore[arg-type]
+                    status=httplib_response.status,
+                    version=httplib_response.version,
+                    reason=httplib_response.reason,
+                    original_response=httplib_response,
+                    retries=retries,
+                    request_method=method,
+                    request_url=url,
+                    preload_content=False,
+                    connection=response_conn,
+                    pool=self._pool,
+                )
                 return response
 
-        def _test(exception: Type[BaseException]) -> None:
+        def _test(exception: type[BaseException]) -> None:
             with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
                 # Verify that the request succeeds after two attempts, and that the
                 # connection is left on the response object, instead of being
                 # released back into the pool.
                 with patch.object(
-                    pool, "_make_request", _raise_once_make_request_function(exception)
+                    pool,
+                    "_make_request",
+                    _raise_once_make_request_function(exception, pool),
                 ):
                     response = pool.urlopen(
                         "GET",
@@ -552,27 +585,10 @@ class TestConnectionPool:
 
     def test_read_timeout_0_does_not_raise_bad_status_line_error(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
-            conn = Mock()
+            conn = Mock(spec=HTTPConnection)
+            # Needed to tell the pool that the connection is alive.
+            conn.is_closed = False
             with patch.object(Timeout, "read_timeout", 0):
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
-                    pool._make_request(conn, "", "", timeout)
-
-    def test_custom_http_response_class(self) -> None:
-        class CustomHTTPResponse(HTTPResponse):
-            pass
-
-        class CustomConnectionPool(HTTPConnectionPool):
-            ResponseCls = CustomHTTPResponse
-
-            def _make_request(self, *args: Any, **kwargs: Any) -> httplib.HTTPResponse:
-                httplib_response = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
-                httplib_response.fp = MockChunkedEncodingResponse([b"f", b"o", b"o"])  # type: ignore[assignment]
-                httplib_response.headers = httplib_response.msg = httplib.HTTPMessage()
-                return httplib_response
-
-        with CustomConnectionPool(host="localhost", maxsize=1, block=True) as pool:
-            response = pool.request(
-                "GET", "/", retries=False, chunked=True, preload_content=False
-            )
-            assert isinstance(response, CustomHTTPResponse)
+                    pool._make_request(conn, "", "", timeout=timeout)

@@ -1,21 +1,25 @@
+from __future__ import annotations
+
 import time
+import typing
 from enum import Enum
 from socket import getdefaulttimeout
-from typing import TYPE_CHECKING, Optional, Union
 
 from ..exceptions import TimeoutStateError
 
-if TYPE_CHECKING:
-    from typing_extensions import Final
+if typing.TYPE_CHECKING:
+    from typing import Final
 
 
 class _TYPE_DEFAULT(Enum):
-    token = 0
+    # This value should never be passed to socket.settimeout() so for safety we use a -1.
+    # socket.settimout() raises a ValueError for negative values.
+    token = -1
 
 
-_DEFAULT_TIMEOUT: "Final[_TYPE_DEFAULT]" = _TYPE_DEFAULT.token
+_DEFAULT_TIMEOUT: Final[_TYPE_DEFAULT] = _TYPE_DEFAULT.token
 
-_TYPE_TIMEOUT = Optional[Union[float, _TYPE_DEFAULT]]
+_TYPE_TIMEOUT = typing.Optional[typing.Union[float, _TYPE_DEFAULT]]
 
 
 class Timeout:
@@ -97,10 +101,6 @@ class Timeout:
         the case; if a server streams one byte every fifteen seconds, a timeout
         of 20 seconds will not trigger, even though the request will take
         several minutes to complete.
-
-        If your goal is to cut off any request after a set amount of wall clock
-        time, consider having a second "watcher" thread to cut off a slow
-        request.
     """
 
     #: A sentinel object representing the default timeout value
@@ -115,7 +115,7 @@ class Timeout:
         self._connect = self._validate_timeout(connect, "connect")
         self._read = self._validate_timeout(read, "read")
         self.total = self._validate_timeout(total, "total")
-        self._start_connect: Optional[float] = None
+        self._start_connect: float | None = None
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(connect={self._connect!r}, read={self._read!r}, total={self.total!r})"
@@ -124,7 +124,7 @@ class Timeout:
     __str__ = __repr__
 
     @staticmethod
-    def resolve_default_timeout(timeout: _TYPE_TIMEOUT) -> Optional[float]:
+    def resolve_default_timeout(timeout: _TYPE_TIMEOUT) -> float | None:
         return getdefaulttimeout() if timeout is _DEFAULT_TIMEOUT else timeout
 
     @classmethod
@@ -170,7 +170,7 @@ class Timeout:
         return value
 
     @classmethod
-    def from_float(cls, timeout: _TYPE_TIMEOUT) -> "Timeout":
+    def from_float(cls, timeout: _TYPE_TIMEOUT) -> Timeout:
         """Create a new Timeout from a legacy timeout value.
 
         The timeout value used by httplib.py sets the same timeout on the
@@ -185,7 +185,7 @@ class Timeout:
         """
         return Timeout(read=timeout, connect=timeout)
 
-    def clone(self) -> "Timeout":
+    def clone(self) -> Timeout:
         """Create a copy of the timeout object
 
         Timeout properties are stored per-pool but each request needs a fresh
@@ -243,7 +243,7 @@ class Timeout:
         return min(self._connect, self.total)  # type: ignore[type-var]
 
     @property
-    def read_timeout(self) -> Optional[float]:
+    def read_timeout(self) -> float | None:
         """Get the value for the read timeout.
 
         This assumes some time has elapsed in the connection timeout and

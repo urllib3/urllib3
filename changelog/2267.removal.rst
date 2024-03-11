@@ -1,1 +1,0 @@
-Deprecated the ``strict`` parameter as it's not longer needed in Python 3.x.

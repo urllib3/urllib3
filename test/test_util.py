@@ -1,24 +1,25 @@
+from __future__ import annotations
+
 import io
 import logging
 import socket
 import ssl
 import sys
+import typing
 import warnings
 from itertools import chain
 from test import ImportBlocker, ModuleStash, notBrotli, notZstd, onlyBrotli, onlyZstd
-from typing import TYPE_CHECKING, Dict, List, NoReturn, Optional, Tuple, Union
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
 from urllib.parse import urlparse
 
 import pytest
 
-from urllib3 import add_stderr_logger, disable_warnings, util
+from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.connection import ProxyConfig
 from urllib3.exceptions import (
     InsecureRequestWarning,
     LocationParseError,
-    SNIMissingWarning,
     TimeoutStateError,
     UnrewindableBodyError,
 )
@@ -40,8 +41,8 @@ from urllib3.util.util import to_bytes, to_str
 
 from . import clear_warnings
 
-if TYPE_CHECKING:
-    from typing_extensions import Literal
+if typing.TYPE_CHECKING:
+    from typing import Literal
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -50,7 +51,6 @@ TIMEOUT_EPOCH = 1000
 
 
 class TestUtil:
-
     url_host_map = [
         # Hosts
         ("http://google.com/mail", ("http", "google.com", None)),
@@ -143,7 +143,7 @@ class TestUtil:
 
     @pytest.mark.parametrize(["url", "scheme_host_port"], url_host_map)
     def test_scheme_host_port(
-        self, url: str, scheme_host_port: Tuple[str, str, Optional[int]]
+        self, url: str, scheme_host_port: tuple[str, str, int | None]
     ) -> None:
         parsed_url = parse_url(url)
         scheme, host, port = scheme_host_port
@@ -347,6 +347,17 @@ class TestUtil:
         with pytest.raises(LocationParseError):
             parse_url("https://www.google.com:-80/")
 
+    def test_parse_url_remove_leading_zeros(self) -> None:
+        url = parse_url("https://example.com:0000000000080")
+        assert url.port == 80
+
+    def test_parse_url_only_zeros(self) -> None:
+        url = parse_url("https://example.com:0")
+        assert url.port == 0
+
+        url = parse_url("https://example.com:000000000000")
+        assert url.port == 0
+
     def test_Url_str(self) -> None:
         U = Url("http", host="google.com")
         assert str(U) == U.url
@@ -368,7 +379,7 @@ class TestUtil:
         returned_url = parse_url(url)
         assert returned_url.request_uri == expected_request_uri
 
-    url_authority_map: List[Tuple[str, Optional[str]]] = [
+    url_authority_map: list[tuple[str, str | None]] = [
         ("http://user:pass@google.com/mail", "user:pass@google.com"),
         ("http://user:pass@google.com:80/mail", "user:pass@google.com:80"),
         ("http://user@google.com:80/mail", "user@google.com:80"),
@@ -406,18 +417,18 @@ class TestUtil:
     ]
 
     @pytest.mark.parametrize("url, expected_authority", combined_netloc_authority_map)
-    def test_authority(self, url: str, expected_authority: Optional[str]) -> None:
+    def test_authority(self, url: str, expected_authority: str | None) -> None:
         assert parse_url(url).authority == expected_authority
 
     @pytest.mark.parametrize("url, expected_authority", url_authority_with_schemes_map)
     def test_authority_matches_urllib_netloc(
-        self, url: str, expected_authority: Optional[str]
+        self, url: str, expected_authority: str | None
     ) -> None:
         """Validate this matches the behavior of urlparse().netloc"""
         assert urlparse(url).netloc == expected_authority
 
     @pytest.mark.parametrize("url, expected_netloc", url_netloc_map)
-    def test_netloc(self, url: str, expected_netloc: Optional[str]) -> None:
+    def test_netloc(self, url: str, expected_netloc: str | None) -> None:
         assert parse_url(url).netloc == expected_netloc
 
     url_vulnerabilities = [
@@ -487,20 +498,25 @@ class TestUtil:
             ),
         ),
         # Tons of '@' causing backtracking
-        ("https://" + ("@" * 10000) + "[", False),
-        (
+        pytest.param(
+            "https://" + ("@" * 10000) + "[",
+            False,
+            id="Tons of '@' causing backtracking 1",
+        ),
+        pytest.param(
             "https://user:" + ("@" * 10000) + "example.com",
             Url(
                 scheme="https",
                 auth="user:" + ("%40" * 9999),
                 host="example.com",
             ),
+            id="Tons of '@' causing backtracking 2",
         ),
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
     def test_url_vulnerabilities(
-        self, url: str, expected_url: Union["Literal[False]", Url]
+        self, url: str, expected_url: Literal[False] | Url
     ) -> None:
         if expected_url is False:
             with pytest.raises(LocationParseError):
@@ -568,7 +584,7 @@ class TestUtil:
         ],
     )
     def test_make_headers(
-        self, kwargs: Dict[str, Union[bool, str]], expected: Dict[str, str]
+        self, kwargs: dict[str, bool | str], expected: dict[str, str]
     ) -> None:
         assert make_headers(**kwargs) == expected  # type: ignore[arg-type]
 
@@ -604,7 +620,7 @@ class TestUtil:
 
     def test_rewind_body_failed_seek(self) -> None:
         class BadSeek(io.StringIO):
-            def seek(self, offset: int, whence: int = 0) -> NoReturn:
+            def seek(self, offset: int, whence: int = 0) -> typing.NoReturn:
                 raise OSError
 
         with pytest.raises(UnrewindableBodyError):
@@ -621,6 +637,7 @@ class TestUtil:
     def test_disable_warnings(self) -> None:
         with warnings.catch_warnings(record=True) as w:
             clear_warnings()
+            warnings.simplefilter("default", InsecureRequestWarning)
             warnings.warn("This is a test.", InsecureRequestWarning)
             assert len(w) == 1
             disable_warnings()
@@ -650,7 +667,7 @@ class TestUtil:
         ],
     )
     def test_invalid_timeouts(
-        self, kwargs: Dict[str, Union[int, bool]], message: str
+        self, kwargs: dict[str, int | bool], message: str
     ) -> None:
         with pytest.raises(ValueError, match=message):
             Timeout(**kwargs)
@@ -731,7 +748,7 @@ class TestUtil:
     def test_is_fp_closed_object_supports_closed(self) -> None:
         class ClosedFile:
             @property
-            def closed(self) -> "Literal[True]":
+            def closed(self) -> Literal[True]:
                 return True
 
         assert is_fp_closed(ClosedFile())
@@ -747,7 +764,7 @@ class TestUtil:
     def test_is_fp_closed_object_has_fp(self) -> None:
         class FpFile:
             @property
-            def fp(self) -> "Literal[True]":
+            def fp(self) -> Literal[True]:
                 return True
 
         assert not is_fp_closed(FpFile())
@@ -787,7 +804,7 @@ class TestUtil:
 
     @pytest.mark.parametrize("headers", [b"foo", None, object])
     def test_assert_header_parsing_throws_typeerror_with_non_headers(
-        self, headers: Optional[Union[bytes, object]]
+        self, headers: bytes | object | None
     ) -> None:
         with pytest.raises(TypeError):
             assert_header_parsing(headers)  # type: ignore[arg-type]
@@ -920,7 +937,7 @@ class TestUtil:
         ),
     )
     def test_to_str(
-        self, input: Union[bytes, str], params: Dict[str, str], expected: str
+        self, input: bytes | str, params: dict[str, str], expected: str
     ) -> None:
         assert to_str(input, **params) == expected
 
@@ -939,7 +956,7 @@ class TestUtil:
         ),
     )
     def test_to_bytes(
-        self, input: Union[bytes, str], params: Dict[str, str], expected: bytes
+        self, input: bytes | str, params: dict[str, str], expected: bytes
     ) -> None:
         assert to_bytes(input, **params) == expected
 
@@ -962,7 +979,7 @@ class TestUtilSSL:
         ],
     )
     def test_resolve_cert_reqs(
-        self, candidate: Optional[Union[int, str]], requirements: int
+        self, candidate: int | str | None, requirements: int
     ) -> None:
         assert resolve_cert_reqs(candidate) == requirements
 
@@ -975,9 +992,7 @@ class TestUtilSSL:
             (ssl.PROTOCOL_SSLv23, ssl.PROTOCOL_SSLv23),
         ],
     )
-    def test_resolve_ssl_version(
-        self, candidate: Union[int, str], version: int
-    ) -> None:
+    def test_resolve_ssl_version(self, candidate: int | str, version: int) -> None:
         assert resolve_ssl_version(candidate) == version
 
     def test_ssl_wrap_socket_loads_the_cert_chain(self) -> None:
@@ -1027,8 +1042,8 @@ class TestUtilSSL:
         )
 
     def _wrap_socket_and_mock_warn(
-        self, sock: socket.socket, server_hostname: Optional[str]
-    ) -> Tuple[Mock, MagicMock]:
+        self, sock: socket.socket, server_hostname: str | None
+    ) -> tuple[Mock, MagicMock]:
         mock_context = Mock()
         with patch("warnings.warn") as warn:
             ssl_wrap_socket(
@@ -1037,21 +1052,6 @@ class TestUtilSSL:
                 server_hostname=server_hostname,
             )
         return mock_context, warn
-
-    def test_ssl_wrap_socket_sni_hostname_use_or_warn(self) -> None:
-        """Test that either an SNI hostname is used or a warning is made."""
-        sock = Mock()
-        context, warn = self._wrap_socket_and_mock_warn(sock, "www.google.com")
-        if util.HAS_SNI:
-            warn.assert_not_called()
-            context.wrap_socket.assert_called_once_with(
-                sock, server_hostname="www.google.com"
-            )
-        else:
-            assert warn.call_count >= 1
-            warnings = [call[0][1] for call in warn.call_args_list]
-            assert SNIMissingWarning in warnings
-            context.wrap_socket.assert_called_once_with(sock)
 
     def test_ssl_wrap_socket_sni_ip_address_no_warn(self) -> None:
         """Test that a warning is not made if server_hostname is an IP address."""
@@ -1068,19 +1068,21 @@ class TestUtilSSL:
         warn.assert_not_called()
 
     @pytest.mark.parametrize(
-        "openssl_version, openssl_version_number, implementation_name, version_info, reliable",
+        "openssl_version, openssl_version_number, implementation_name, version_info, pypy_version_info, reliable",
         [
             # OpenSSL and Python OK -> reliable
-            ("OpenSSL 1.1.1l", 0x101010CF, "cpython", (3, 9, 3), True),
+            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 3), None, True),
             # Python OK -> reliable
-            ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), True),
-            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 6, 9), False),
-            ("LibreSSL 3.3.5", 0x101010CF, "pypy", (3, 6, 9), False),
+            ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), None, True),
+            # PyPy: depends on the version
+            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 9, 9), (7, 3, 7), False),
+            ("OpenSSL 1.1.1", 0x101010CF, "pypy", (3, 8, 12), (7, 3, 8), True),
             # OpenSSL OK -> reliable
-            ("OpenSSL", 0x101010CF, "cpython", (3, 9, 2), True),
-            # unreliable
-            ("OpenSSL", 0x10101000, "cpython", (3, 9, 2), False),
-            ("LibreSSL", 0x101010CF, "cpython", (3, 9, 2), False),
+            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 2), None, True),
+            # not OpenSSSL -> unreliable
+            ("LibreSSL 2.8.3", 0x101010CF, "cpython", (3, 10, 0), None, False),
+            # old OpenSSL and old Python, unreliable
+            ("OpenSSL 1.1.0", 0x10101000, "cpython", (3, 9, 2), None, False),
         ],
     )
     def test_is_has_never_check_common_name_reliable(
@@ -1089,6 +1091,7 @@ class TestUtilSSL:
         openssl_version_number: int,
         implementation_name: str,
         version_info: _TYPE_VERSION_INFO,
+        pypy_version_info: _TYPE_VERSION_INFO | None,
         reliable: bool,
     ) -> None:
         assert (
@@ -1097,6 +1100,7 @@ class TestUtilSSL:
                 openssl_version_number,
                 implementation_name,
                 version_info,
+                pypy_version_info,
             )
             == reliable
         )
