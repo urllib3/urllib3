@@ -146,6 +146,16 @@ class TestMultipartDecoder(unittest.TestCase):
         assert len(decoder_2.parts[1].headers) == 0
         assert decoder_2.parts[1].content == b"Body 2, Line 1"
 
+    def test_from_response_needs_content_type(self) -> None:
+        response = mock.NonCallableMagicMock(spec=urllib3.response.HTTPResponse)
+        response.headers = {}
+        response.data = b""
+
+        with pytest.raises(
+            ValueError, match="Cannot determine content-type header from response"
+        ):
+            MultipartDecoder.from_response(response)
+
     def test_from_responsecaplarge(self) -> None:
         response = mock.NonCallableMagicMock(spec=urllib3.response.HTTPResponse)
         response.headers = {"content-type": 'Multipart/Related; boundary="samp1"'}
