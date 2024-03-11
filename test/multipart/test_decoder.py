@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 import typing
 import unittest
@@ -18,7 +20,7 @@ from urllib3.multipart.encoder import MultipartEncoder, encode_with
 class TestBodyPart(unittest.TestCase):
     @staticmethod
     def bodypart_bytes_from_headers_and_values(
-        headers: typing.Sequence[typing.Tuple[str, str]], value: str, encoding: str
+        headers: typing.Sequence[tuple[str, str]], value: str, encoding: str
     ) -> bytes:
         return b"\r\n\r\n".join(
             [
@@ -107,14 +109,14 @@ class TestMultipartDecoder(unittest.TestCase):
         assert len(self.sample_1) == len(self.decoded_1.parts)
 
     def test_content_of_parts(self) -> None:
-        def parts_equal(part: BodyPart, sample: typing.Tuple[str, str]) -> bool:
+        def parts_equal(part: BodyPart, sample: tuple[str, str]) -> bool:
             return part.content == encode_with(sample[1], "utf-8")
 
         parts_iter = zip(self.decoded_1.parts, self.sample_1)
         assert all(parts_equal(part, sample) for part, sample in parts_iter)
 
     def test_header_of_parts(self) -> None:
-        def parts_header_equal(part: BodyPart, sample: typing.Tuple[str, str]) -> bool:
+        def parts_header_equal(part: BodyPart, sample: tuple[str, str]) -> bool:
             return (
                 part.headers["Content-Disposition"] == f'form-data; name="{sample[0]}"'
             )

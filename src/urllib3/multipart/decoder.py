@@ -1,4 +1,6 @@
 """Logic for parsing and decomposing a multipart response body."""
+from __future__ import annotations
+
 import email.parser
 import typing
 
@@ -15,9 +17,7 @@ class NonMultipartContentTypeError(Exception):
     pass
 
 
-def _header_parser(
-    headers: bytes, encoding: str
-) -> typing.Sequence[typing.Tuple[str, str]]:
+def _header_parser(headers: bytes, encoding: str) -> typing.Sequence[tuple[str, str]]:
     string = headers.decode(encoding)
     items = email.parser.HeaderParser().parsestr(string).items()
     items = typing.cast(typing.List[typing.Tuple[str, str]], items)
@@ -37,7 +37,7 @@ class BodyPart:
     def __init__(self, content: bytes, encoding: str):
         #: Encoding used for the body part to decode body and headers
         self.encoding = encoding
-        headers: typing.Dict[str, str] = {}
+        headers: dict[str, str] = {}
         # Split into header section (if any) and the content
         headerbytes, separator, bodybytes = content.partition(b"\r\n\r\n")
         if b"\r\n\r\n" != separator:
@@ -94,7 +94,7 @@ class MultipartDecoder:
         #: Response body encoding
         self.encoding = encoding
         #: Parsed parts of the multipart response body
-        self.parts: typing.Tuple[BodyPart, ...] = tuple()
+        self.parts: tuple[BodyPart, ...] = tuple()
         self._find_boundary()
         self._parse_body(content)
 
@@ -138,7 +138,7 @@ class MultipartDecoder:
 
     @classmethod
     def from_response(
-        cls: typing.Type[MD],
+        cls: type[MD],
         response: _response.HTTPResponse,
         encoding: str = "utf-8",
     ) -> MD:

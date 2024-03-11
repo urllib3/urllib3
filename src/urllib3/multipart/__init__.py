@@ -1,5 +1,7 @@
 """Multipart support for urllib3."""
 
+from __future__ import annotations
+
 from .decoder import ImproperBodyPartContentError as ImproperBodyPartContentError
 from .decoder import MultipartDecoder as MultipartDecoder
 from .decoder import NonMultipartContentTypeError as NonMultipartContentTypeError

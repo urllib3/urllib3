@@ -9,7 +9,9 @@ from .util.url import Url
 if typing.TYPE_CHECKING:
     from .multipart import MultipartEncoder
 
-_TYPE_BODY = typing.Union[bytes, typing.IO[typing.Any], typing.Iterable[bytes], str, "MultipartEncoder"]
+_TYPE_BODY = typing.Union[
+    bytes, typing.IO[typing.Any], typing.Iterable[bytes], str, "MultipartEncoder"
+]
 
 
 class ProxyConfig(typing.NamedTuple):
