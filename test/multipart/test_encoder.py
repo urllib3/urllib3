@@ -99,6 +99,9 @@ class TestMultipartEncoder(unittest.TestCase):
         expected = "multipart/form-data; boundary=this-is-a-boundary"
         assert self.instance.content_type == expected
 
+    def test_content_length(self) -> None:
+        assert self.instance.content_length == str(len(self.instance))
+
     def test_encodes_data_the_same(self) -> None:
         encoded = filepost.encode_multipart_formdata(self.parts, self.boundary)[0]
         assert encoded == self.instance.read()
@@ -229,6 +232,26 @@ class TestMultipartEncoder(unittest.TestCase):
                     b"filename".decode("utf-8"),
                     b"filecontent",
                     b"application/json".decode("utf-8"),
+                ),
+            )
+        ]
+        m = MultipartEncoder(fields=fields)
+        output = m.read().decode("utf-8")
+        assert output.index("Content-Type: application/json\r\n") > 0
+
+    def test_accepts_custom_content_type_as_bytes(self) -> None:
+        """Verify that the Encoder handles custom content-types which
+        are bytes.
+
+        See https://github.com/requests/toolbelt/issues/52
+        """
+        fields = [
+            (
+                b"test".decode("utf-8"),
+                (
+                    b"filename".decode("utf-8"),
+                    b"filecontent",
+                    b"application/json",
                 ),
             )
         ]
