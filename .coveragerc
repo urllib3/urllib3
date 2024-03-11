@@ -1,12 +1,12 @@
 [run]
 source =
     urllib3
-    test
 
 [paths]
 source =
     src/urllib3
-    test
+    */urllib3
+    *\urllib3
 
 [report]
 omit =
