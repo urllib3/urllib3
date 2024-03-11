@@ -99,6 +99,8 @@ The :class:`~response.HTTPResponse` object provides
     print(resp.headers)
     # HTTPHeaderDict({"Content-Length": "32", ...})
 
+.. _json_content:
+
 JSON Content
 ~~~~~~~~~~~~
 JSON content can be loaded by :meth:`~response.HTTPResponse.json` 
