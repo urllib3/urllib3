@@ -162,7 +162,7 @@ class TestMultipartEncoder(unittest.TestCase):
         )
         assert m.read() is not None
 
-    def test_handles_uncode_strings(self) -> None:
+    def test_handles_unicode_strings(self) -> None:
         s = b"this is a unicode string: \xc3\xa9 \xc3\xa1 \xc7\xab \xc3\xb3"
         m = MultipartEncoder([("field", s.decode("utf-8"))])
         assert m.read() is not None
