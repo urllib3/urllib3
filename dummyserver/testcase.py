@@ -133,7 +133,7 @@ class SocketDummyServerTestCase:
         )
 
     @staticmethod
-    def quit_server_thread(server_thread) -> None:
+    def quit_server_thread(server_thread: SocketServerThread) -> None:
         if server_thread.quit_event:
             server_thread.quit_event.set()
         # in principle the maximum time that the thread can take to notice
