@@ -108,7 +108,6 @@ class TestBytesQueueBuffer:
 
         assert len(get_func(buffer)) == 10 * 2**20
 
-    @pytest.mark.server_threads
     @pytest.mark.limit_memory("10.01 MB")
     def test_get_all_memory_usage_single_chunk(self) -> None:
         buffer = BytesQueueBuffer()

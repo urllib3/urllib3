@@ -132,22 +132,25 @@ class SocketDummyServerTestCase:
             block_send,
         )
 
+    @staticmethod
+    def quit_server_thread(server_thread) -> None:
+        if server_thread.quit_event:
+            server_thread.quit_event.set()
+        # in principle the maximum time that the thread can take to notice
+        # the quit_event is LONG_TIMEOUT and the thread should terminate
+        # shortly after that, we give 5 seconds leeway just in case
+        server_thread.join(LONG_TIMEOUT * 2 + 5.0)
+        if server_thread.is_alive():
+            raise Exception("server_thread did not exit")
+
     @classmethod
     def teardown_class(cls) -> None:
         if hasattr(cls, "server_thread"):
-            if cls.server_thread.quit_event:
-                cls.server_thread.quit_event.set()
-            cls.server_thread.join(LONG_TIMEOUT * 2 + 5.0)
-            if cls.server_thread.is_alive():
-                raise Exception("server_thread did not exit")
+            cls.quit_server_thread(cls.server_thread)
 
     def teardown_method(self) -> None:
         if hasattr(self, "server_thread"):
-            if self.server_thread.quit_event:
-                self.server_thread.quit_event.set()
-            self.server_thread.join(LONG_TIMEOUT * 2 + 5.0)
-            if self.server_thread.is_alive():
-                raise Exception("server_thread did not exit")
+            self.quit_server_thread(self.server_thread)
 
     def assert_header_received(
         self,

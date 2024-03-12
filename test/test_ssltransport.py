@@ -145,7 +145,6 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         with pytest.raises(OSError):
             SSLTransport(sock, context)
 
-    @pytest.mark.server_threads
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_close_after_handshake(self) -> None:
         """Socket errors should be bubbled up"""

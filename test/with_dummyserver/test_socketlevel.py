@@ -955,7 +955,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
             assert pool.pool.qsize() == 1
             assert response.connection is None
 
-    @pytest.mark.server_threads
     def test_socket_close_socket_then_file(self) -> None:
         quit_event = threading.Event()
 
@@ -988,7 +987,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 ssl_sock.sendall(b"hello")
             assert ssl_sock.fileno() == -1
 
-    @pytest.mark.server_threads
     def test_socket_close_stays_open_with_makefile_open(self) -> None:
         quit_event = threading.Event()
 
@@ -2240,7 +2238,6 @@ class TestBrokenPipe(SocketDummyServerTestCase):
 
 
 class TestMultipartResponse(SocketDummyServerTestCase):
-    @pytest.mark.server_threads
     def test_multipart_assert_header_parsing_no_defects(self) -> None:
         quit_event = threading.Event()
 
@@ -2329,7 +2326,6 @@ class TestContentFraming(SocketDummyServerTestCase):
         assert b"Content-Length: 0\r\n" in sent_bytes
         assert b"transfer-encoding" not in sent_bytes.lower()
 
-    @pytest.mark.server_threads
     @pytest.mark.parametrize("chunked", [True, False])
     @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH"])
     @pytest.mark.parametrize("body_type", ["file", "generator", "bytes"])
