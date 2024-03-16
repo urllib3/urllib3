@@ -42,4 +42,4 @@ Example:
    )
 
 This also adds support for efficiently decoding ``multipart/form-data``
-responses too via ``urllib3.multipart.MultipartDecoder``.
+responses via ``urllib3.multipart.MultipartDecoder``.
