@@ -20,7 +20,6 @@ class NonMultipartContentTypeError(Exception):
 def _header_parser(headers: bytes, encoding: str) -> typing.Sequence[tuple[str, str]]:
     string = headers.decode(encoding)
     items = email.parser.HeaderParser().parsestr(string).items()
-    items = typing.cast(typing.List[typing.Tuple[str, str]], items)
     return items
 
 
@@ -56,14 +55,11 @@ class BodyPart:
         return self.content.decode(self.encoding)
 
 
-MD = typing.TypeVar("MD", bound="MultipartDecoder")
-
-
 class MultipartDecoder:
     """This parses the full multipart/form-data payload.
 
     The ``MultipartDecoder`` object parses the multipart payload of
-    a bytestring into a tuple of ``Response``-like ``BodyPart`` objects.
+    a bytestring into a tuple of ``BodyPart`` objects.
 
     The basic usage is::
 
@@ -138,10 +134,10 @@ class MultipartDecoder:
 
     @classmethod
     def from_response(
-        cls: type[MD],
+        cls,
         response: _response.HTTPResponse,
         encoding: str = "utf-8",
-    ) -> MD:
+    ) -> MultipartDecoder:
         content = response.data
         content_type = response.headers.get("content-type", None)
         if content_type is None:
