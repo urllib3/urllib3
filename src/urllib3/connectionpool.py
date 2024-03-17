@@ -53,7 +53,6 @@ from .util.util import to_str
 
 if typing.TYPE_CHECKING:
     import ssl
-    from typing import Literal
 
     from ._base_connection import BaseHTTPConnection, BaseHTTPSConnection
 
@@ -103,7 +102,7 @@ class ConnectionPool:
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
-    ) -> Literal[False]:
+    ) -> typing.Literal[False]:
         self.close()
         # Return False to re-raise any potential exceptions
         return False
@@ -1002,7 +1001,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         ssl_version: int | str | None = None,
         ssl_minimum_version: ssl.TLSVersion | None = None,
         ssl_maximum_version: ssl.TLSVersion | None = None,
-        assert_hostname: str | Literal[False] | None = None,
+        assert_hostname: str | typing.Literal[False] | None = None,
         assert_fingerprint: str | None = None,
         ca_cert_dir: str | None = None,
         **conn_kw: typing.Any,
