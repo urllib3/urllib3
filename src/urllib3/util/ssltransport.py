@@ -10,10 +10,11 @@ from ..exceptions import ProxySchemeUnsupported
 if typing.TYPE_CHECKING:
     from typing import Literal
 
+    from typing_extensions import Self
+
     from .ssl_ import _TYPE_PEER_CERT_RET, _TYPE_PEER_CERT_RET_DICT
 
 
-_SelfT = typing.TypeVar("_SelfT", bound="SSLTransport")
 _WriteBuffer = typing.Union[bytearray, memoryview]
 _ReturnValue = typing.TypeVar("_ReturnValue")
 
@@ -70,7 +71,7 @@ class SSLTransport:
         # Perform initial handshake.
         self._ssl_io_loop(self.sslobj.do_handshake)
 
-    def __enter__(self: _SelfT) -> _SelfT:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_: typing.Any) -> None:
