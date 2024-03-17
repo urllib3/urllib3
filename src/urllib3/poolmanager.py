@@ -26,7 +26,6 @@ from .util.url import Url, parse_url
 
 if typing.TYPE_CHECKING:
     import ssl
-    from typing import Literal
 
     from typing_extensions import Self
 
@@ -222,7 +221,7 @@ class PoolManager(RequestMethods):
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
-    ) -> Literal[False]:
+    ) -> typing.Literal[False]:
         self.clear()
         # Return False to re-raise any potential exceptions
         return False
@@ -553,7 +552,7 @@ class ProxyManager(PoolManager):
         proxy_headers: typing.Mapping[str, str] | None = None,
         proxy_ssl_context: ssl.SSLContext | None = None,
         use_forwarding_for_https: bool = False,
-        proxy_assert_hostname: None | str | Literal[False] = None,
+        proxy_assert_hostname: None | str | typing.Literal[False] = None,
         proxy_assert_fingerprint: str | None = None,
         **connection_pool_kw: typing.Any,
     ) -> None:

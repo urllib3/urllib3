@@ -14,9 +14,6 @@ from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from urllib3.util import ssl_
 from urllib3.util.ssltransport import SSLTransport
 
-if typing.TYPE_CHECKING:
-    from typing import Literal
-
 # consume_socket can iterate forever, we add timeouts to prevent halting.
 PER_TEST_TIMEOUT = 60
 
@@ -34,12 +31,12 @@ def server_client_ssl_contexts() -> tuple[ssl.SSLContext, ssl.SSLContext]:
 
 
 @typing.overload
-def sample_request(binary: Literal[True] = ...) -> bytes:
+def sample_request(binary: typing.Literal[True] = ...) -> bytes:
     ...
 
 
 @typing.overload
-def sample_request(binary: Literal[False]) -> str:
+def sample_request(binary: typing.Literal[False]) -> str:
     ...
 
 
@@ -54,7 +51,7 @@ def sample_request(binary: bool = True) -> bytes | str:
 
 
 def validate_request(
-    provided_request: bytearray, binary: Literal[False, True] = True
+    provided_request: bytearray, binary: typing.Literal[False, True] = True
 ) -> None:
     assert provided_request is not None
     expected_request = sample_request(binary)
@@ -62,12 +59,12 @@ def validate_request(
 
 
 @typing.overload
-def sample_response(binary: Literal[True] = ...) -> bytes:
+def sample_response(binary: typing.Literal[True] = ...) -> bytes:
     ...
 
 
 @typing.overload
-def sample_response(binary: Literal[False]) -> str:
+def sample_response(binary: typing.Literal[False]) -> str:
     ...
 
 

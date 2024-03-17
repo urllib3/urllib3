@@ -8,8 +8,6 @@ import typing
 from ..exceptions import ProxySchemeUnsupported
 
 if typing.TYPE_CHECKING:
-    from typing import Literal
-
     from typing_extensions import Self
 
     from .ssl_ import _TYPE_PEER_CERT_RET, _TYPE_PEER_CERT_RET_DICT
@@ -175,12 +173,12 @@ class SSLTransport:
 
     @typing.overload
     def getpeercert(
-        self, binary_form: Literal[False] = ...
+        self, binary_form: typing.Literal[False] = ...
     ) -> _TYPE_PEER_CERT_RET_DICT | None:
         ...
 
     @typing.overload
-    def getpeercert(self, binary_form: Literal[True]) -> bytes | None:
+    def getpeercert(self, binary_form: typing.Literal[True]) -> bytes | None:
         ...
 
     def getpeercert(self, binary_form: bool = False) -> _TYPE_PEER_CERT_RET:
