@@ -27,6 +27,8 @@ from .util.url import Url, parse_url
 if typing.TYPE_CHECKING:
     import ssl
 
+    from typing_extensions import Self
+
 __all__ = ["PoolManager", "ProxyManager", "proxy_from_url"]
 
 
@@ -49,8 +51,6 @@ SSL_KEYWORDS = (
 # Default value for `blocksize` - a new parameter introduced to
 # http.client.HTTPConnection & http.client.HTTPSConnection in Python 3.7
 _DEFAULT_BLOCKSIZE = 16384
-
-_SelfT = typing.TypeVar("_SelfT")
 
 
 class PoolKey(typing.NamedTuple):
@@ -213,7 +213,7 @@ class PoolManager(RequestMethods):
         self.pool_classes_by_scheme = pool_classes_by_scheme
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
 
-    def __enter__(self: _SelfT) -> _SelfT:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
