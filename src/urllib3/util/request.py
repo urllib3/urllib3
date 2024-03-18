@@ -213,7 +213,7 @@ def body_to_chunks(
 
     # Bytes or strings become bytes
     elif isinstance(body, (str, bytes)):
-        chunks = (to_bytes(body),)
+        chunks = (to_bytes(body, "utf-8"),)
         content_length = len(chunks[0])
 
     # File-like object, TODO: use seek() and tell() for length?
@@ -227,7 +227,7 @@ def body_to_chunks(
                 if not datablock:
                     break
                 if encode:
-                    datablock = datablock.encode("iso-8859-1")
+                    datablock = datablock.encode("utf-8")
                 yield datablock
 
         chunks = chunk_readable()
