@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import errno
 import logging
 import queue
@@ -164,6 +165,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         A dictionary with proxy headers, should not be used directly,
         instead, see :class:`urllib3.ProxyManager`
 
+    :param idle_timeout:
+       Idle timeout in seconds after which a connection is considered not
+       usable. Useful if connecting via NAT that silently drops connections
+       after inactivity period like `AWS NAT gateway <https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-troubleshooting.html#nat-gateway-troubleshooting-timeout>`_.
+
     :param \\**conn_kw:
         Additional parameters are used to create fresh :class:`urllib3.connection.HTTPConnection`,
         :class:`urllib3.connection.HTTPSConnection` instances.
@@ -186,6 +192,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         _proxy: Url | None = None,
         _proxy_headers: typing.Mapping[str, str] | None = None,
         _proxy_config: ProxyConfig | None = None,
+        idle_timeout: float | datetime.timedelta | None = None,
         **conn_kw: typing.Any,
     ):
         ConnectionPool.__init__(self, host, port)
@@ -198,6 +205,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             retries = Retry.DEFAULT
 
         self.timeout = timeout
+        self.idle_timeout = idle_timeout
         self.retries = retries
 
         self.pool: queue.LifoQueue[typing.Any] | None = self.QueueCls(maxsize)
@@ -251,6 +259,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             host=self.host,
             port=self.port,
             timeout=self.timeout.connect_timeout,
+            idle_timeout=self.idle_timeout,
             **self.conn_kw,
         )
         return conn
@@ -285,6 +294,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     "Pool is empty and a new connection can't be opened due to blocking mode.",
                 ) from None
             pass  # Oh well, we'll create a new connection then
+
+        if conn and conn.has_passed_idle_limit:
+            log.debug("Resetting idle connection: %s", self.host)
+            conn.close()
+            conn = None  # so that we return a new connection instead
 
         # If this is a persistent connection, check if it got disconnected
         if conn and is_connection_dropped(conn):

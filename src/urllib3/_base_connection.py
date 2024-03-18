@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import typing
 
 from .util.connection import _TYPE_SOCKET_OPTIONS
@@ -50,6 +51,8 @@ if typing.TYPE_CHECKING:
 
         is_verified: bool
         proxy_is_verified: bool | None
+        last_activity: datetime.datetime
+        idle_timeout: datetime.timedelta | None
 
         def __init__(
             self,
@@ -62,6 +65,7 @@ if typing.TYPE_CHECKING:
             socket_options: _TYPE_SOCKET_OPTIONS | None = ...,
             proxy: Url | None = None,
             proxy_config: ProxyConfig | None = None,
+            idle_timeout: float | datetime.timedelta | None = None,
         ) -> None:
             ...
 
@@ -110,6 +114,10 @@ if typing.TYPE_CHECKING:
         @property
         def is_connected(self) -> bool:
             """Whether the connection is actively connected to any origin (proxy or target)"""
+
+        @property
+        def has_passed_idle_limit(self) -> bool:
+            """Whether the connection has passed the ``idle_timeout`` limit."""
 
         @property
         def has_connected_to_proxy(self) -> bool:

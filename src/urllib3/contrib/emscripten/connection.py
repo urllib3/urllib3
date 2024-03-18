@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import os
 import typing
 
@@ -42,6 +43,9 @@ class EmscriptenHTTPConnection:
 
     _response: EmscriptenResponse | None
 
+    last_activity: datetime.datetime
+    idle_timeout: datetime.timedelta | None
+
     def __init__(
         self,
         host: str,
@@ -53,6 +57,7 @@ class EmscriptenHTTPConnection:
         socket_options: _TYPE_SOCKET_OPTIONS | None = None,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
+        idle_timeout: float | datetime.timedelta | None = None,
     ) -> None:
         self.host = host
         self.port = port
@@ -67,6 +72,7 @@ class EmscriptenHTTPConnection:
         self.blocksize = blocksize
         self.source_address = None
         self.socket_options = None
+        self.idle_timeout = None
         self.is_verified = False
 
     def set_tunnel(
@@ -156,6 +162,11 @@ class EmscriptenHTTPConnection:
         """
         return False
 
+    @property
+    def has_passed_idle_limit(self) -> bool:
+        """Whether the connection has passed the ``idle_timeout`` limit."""
+        return False
+
 
 class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
     default_port = port_by_scheme["https"]
@@ -200,6 +211,7 @@ class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
         cert_file: str | None = None,
         key_file: str | None = None,
         key_password: str | None = None,
+        idle_timeout: float | datetime.timedelta | None = None,
     ) -> None:
         super().__init__(
             host,
