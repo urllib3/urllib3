@@ -62,8 +62,6 @@ from .util.response import is_fp_closed, is_response_to_head
 from .util.retry import Retry
 
 if typing.TYPE_CHECKING:
-    from typing import Literal
-
     from .connectionpool import HTTPConnectionPool
 
 log = logging.getLogger(__name__)
@@ -347,7 +345,7 @@ class BaseHTTPResponse(io.IOBase):
         self._decoder: ContentDecoder | None = None
         self.length_remaining: int | None
 
-    def get_redirect_location(self) -> str | None | Literal[False]:
+    def get_redirect_location(self) -> str | None | typing.Literal[False]:
         """
         Should we redirect and where to?
 

@@ -21,6 +21,8 @@ from ..exceptions import (
 from .util import reraise
 
 if typing.TYPE_CHECKING:
+    from typing_extensions import Self
+
     from ..connectionpool import ConnectionPool
     from ..response import BaseHTTPResponse
 
@@ -240,7 +242,7 @@ class Retry:
         )
         self.backoff_jitter = backoff_jitter
 
-    def new(self, **kw: typing.Any) -> Retry:
+    def new(self, **kw: typing.Any) -> Self:
         params = dict(
             total=self.total,
             connect=self.connect,
@@ -429,7 +431,7 @@ class Retry:
         error: Exception | None = None,
         _pool: ConnectionPool | None = None,
         _stacktrace: TracebackType | None = None,
-    ) -> Retry:
+    ) -> Self:
         """Return a new Retry object with incremented retry counters.
 
         :param response: A response object, or None, if the server did not
