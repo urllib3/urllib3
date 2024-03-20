@@ -480,6 +480,7 @@ class HTTPConnection(_HTTPConnection):
             headers=headers,
             status=httplib_response.status,
             version=httplib_response.version,
+            version_string=getattr(self, "_http_vsn_str", "HTTP/?"),
             reason=httplib_response.reason,
             preload_content=resp_options.preload_content,
             decode_content=resp_options.decode_content,
