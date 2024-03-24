@@ -63,17 +63,17 @@ class MultipartDecoder:
 
     The basic usage is::
 
-        import requests
-        from requests_toolbelt import MultipartDecoder
+        import urllib3
+        from urllib3.multipart import MultipartDecoder
 
-        response = request.get(url)
+        response = urllib3.request("GET", url)
         decoder = MultipartDecoder.from_response(response)
         for part in decoder.parts:
             print(part.headers['content-type'])
 
     If the multipart content is not from a response, basic usage is::
 
-        from requests_toolbelt import MultipartDecoder
+        from urllib3.multipart import MultipartDecoder
 
         decoder = MultipartDecoder(content, content_type)
         for part in decoder.parts:
