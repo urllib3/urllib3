@@ -10,6 +10,5 @@ hypercorn==0.15.0
 httpx==0.25.2
 types-backports
 types-requests
-types-mock
 nox
 zstandard
