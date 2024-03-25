@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@b32f140b0c872d58512e0a66172253c302617b90 # v4.0.0
+        uses: actions/checkout@cd7d8d697e10461458bc61a30d094dc601a8b017 # v4.0.0
 
       - name: "Setup Python"
         uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
@@ -103,7 +103,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@b32f140b0c872d58512e0a66172253c302617b90 # v4.0.0
+        uses: actions/checkout@cd7d8d697e10461458bc61a30d094dc601a8b017 # v4.0.0
 
       - name: "Setup Python ${{ matrix.python-version }}"
         uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
@@ -141,7 +141,7 @@ jobs:
     needs: test
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@b32f140b0c872d58512e0a66172253c302617b90 # v4.0.0
+        uses: actions/checkout@cd7d8d697e10461458bc61a30d094dc601a8b017 # v4.0.0
 
       - name: "Setup Python"
         uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
