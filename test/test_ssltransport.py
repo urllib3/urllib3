@@ -4,6 +4,7 @@ import platform
 import select
 import socket
 import ssl
+import threading
 import typing
 from unittest import mock
 
@@ -108,20 +109,29 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         cls.server_context, cls.client_context = server_client_ssl_contexts()
 
     def start_dummy_server(
-        self, handler: typing.Callable[[socket.socket], None] | None = None
+        self,
+        handler: typing.Callable[[socket.socket], None] | None = None,
+        validate: bool = True,
     ) -> None:
+        quit_event = threading.Event()
+
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             try:
                 with self.server_context.wrap_socket(sock, server_side=True) as ssock:
-                    request = consume_socket(ssock)
+                    request = consume_socket(
+                        ssock,
+                        quit_event=quit_event,
+                    )
+                    if not validate:
+                        return
                     validate_request(request)
                     ssock.send(sample_response())
             except (ConnectionAbortedError, ConnectionResetError):
                 return
 
         chosen_handler = handler if handler else socket_handler
-        self._start_server(chosen_handler)
+        self._start_server(chosen_handler, quit_event=quit_event)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_start_closed_socket(self) -> None:
@@ -135,7 +145,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_close_after_handshake(self) -> None:
         """Socket errors should be bubbled up"""
-        self.start_dummy_server()
+        self.start_dummy_server(validate=False)
 
         sock = socket.create_connection((self.host, self.port))
         with SSLTransport(

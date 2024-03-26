@@ -12,6 +12,7 @@ import shutil
 import socket
 import ssl
 import tempfile
+import threading
 import typing
 import zlib
 from collections import OrderedDict
@@ -955,7 +956,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
             assert response.connection is None
 
     def test_socket_close_socket_then_file(self) -> None:
-        def consume_ssl_socket(listener: socket.socket) -> None:
+        quit_event = threading.Event()
+
+        def consume_ssl_socket(
+            listener: socket.socket,
+        ) -> None:
             try:
                 with listener.accept()[0] as sock, original_ssl_wrap_socket(
                     sock,
@@ -964,11 +969,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 ) as ssl_sock:
-                    consume_socket(ssl_sock)
+                    consume_socket(ssl_sock, quit_event=quit_event)
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
-        self._start_server(consume_ssl_socket)
+        self._start_server(consume_ssl_socket, quit_event=quit_event)
         with socket.create_connection(
             (self.host, self.port)
         ) as sock, contextlib.closing(
@@ -983,6 +988,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
             assert ssl_sock.fileno() == -1
 
     def test_socket_close_stays_open_with_makefile_open(self) -> None:
+        quit_event = threading.Event()
+
         def consume_ssl_socket(listener: socket.socket) -> None:
             try:
                 with listener.accept()[0] as sock, original_ssl_wrap_socket(
@@ -992,11 +999,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 ) as ssl_sock:
-                    consume_socket(ssl_sock)
+                    consume_socket(ssl_sock, quit_event=quit_event)
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
-        self._start_server(consume_ssl_socket)
+        self._start_server(consume_ssl_socket, quit_event=quit_event)
         with socket.create_connection(
             (self.host, self.port)
         ) as sock, contextlib.closing(
@@ -2232,11 +2239,28 @@ class TestBrokenPipe(SocketDummyServerTestCase):
 
 class TestMultipartResponse(SocketDummyServerTestCase):
     def test_multipart_assert_header_parsing_no_defects(self) -> None:
+        quit_event = threading.Event()
+
         def socket_handler(listener: socket.socket) -> None:
             for _ in range(2):
-                sock = listener.accept()[0]
-                while not sock.recv(65536).endswith(b"\r\n\r\n"):
-                    pass
+                listener.settimeout(LONG_TIMEOUT)
+
+                while True:
+                    if quit_event and quit_event.is_set():
+                        return
+                    try:
+                        sock = listener.accept()[0]
+                        break
+                    except (TimeoutError, socket.timeout):
+                        continue
+
+                sock.settimeout(LONG_TIMEOUT)
+                while True:
+                    if quit_event and quit_event.is_set():
+                        sock.close()
+                        return
+                    if sock.recv(65536).endswith(b"\r\n\r\n"):
+                        break
 
                 sock.sendall(
                     b"HTTP/1.1 404 Not Found\r\n"
@@ -2252,7 +2276,7 @@ class TestMultipartResponse(SocketDummyServerTestCase):
                 )
                 sock.close()
 
-        self._start_server(socket_handler)
+        self._start_server(socket_handler, quit_event=quit_event)
         from urllib3.connectionpool import log
 
         with mock.patch.object(log, "warning") as log_warning:
@@ -2308,15 +2332,26 @@ class TestContentFraming(SocketDummyServerTestCase):
     def test_chunked_specified(
         self, method: str, chunked: bool, body_type: str
     ) -> None:
+        quit_event = threading.Event()
         buffer = bytearray()
         expected_bytes = b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n"
 
         def socket_handler(listener: socket.socket) -> None:
             nonlocal buffer
-            sock = listener.accept()[0]
-            sock.settimeout(0)
+            listener.settimeout(LONG_TIMEOUT)
+            while True:
+                if quit_event.is_set():
+                    return
+                try:
+                    sock = listener.accept()[0]
+                    break
+                except (TimeoutError, socket.timeout):
+                    continue
+            sock.settimeout(LONG_TIMEOUT)
 
             while expected_bytes not in buffer:
+                if quit_event.is_set():
+                    return
                 with contextlib.suppress(BlockingIOError):
                     buffer += sock.recv(65536)
 
@@ -2327,7 +2362,7 @@ class TestContentFraming(SocketDummyServerTestCase):
             )
             sock.close()
 
-        self._start_server(socket_handler)
+        self._start_server(socket_handler, quit_event=quit_event)
 
         body: typing.Any
         if body_type == "generator":
