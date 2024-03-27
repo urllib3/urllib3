@@ -5,6 +5,7 @@ import datetime
 import os.path
 import shutil
 import ssl
+import sys
 import tempfile
 import warnings
 from pathlib import Path
@@ -20,6 +21,7 @@ from unittest import mock
 
 import pytest
 import trustme
+from packaging import version
 
 import urllib3.util as util
 import urllib3.util.ssl_
@@ -158,6 +160,11 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             r = pool.request("GET", "/")
             assert r.status == 200, r.data
 
+    @pytest.mark.xfail(
+        sys.version_info >= (3, 13, 0, "alpha", 5)
+        and version.parse(trustme.__version__).release <= (1, 1, 0),  # type: ignore[attr-defined]
+        reason="https://github.com/urllib3/urllib3/issues/3366#issuecomment-2022599244",
+    )
     def test_client_intermediate(self) -> None:
         """Check that certificate chains work well with client certs
 
@@ -195,6 +202,11 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             with pytest.raises((SSLError, ProtocolError)):
                 https_pool.request("GET", "/certificate", retries=False)
 
+    @pytest.mark.xfail(
+        sys.version_info >= (3, 13, 0, "alpha", 5)
+        and version.parse(trustme.__version__).release <= (1, 1, 0),  # type: ignore[attr-defined]
+        reason="https://github.com/urllib3/urllib3/issues/3366#issuecomment-2022599244",
+    )
     def test_client_key_password(self) -> None:
         with HTTPSConnectionPool(
             self.host,
