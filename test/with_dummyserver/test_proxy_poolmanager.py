@@ -569,6 +569,10 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert sc3 == sc4
 
     @requires_network()
+    @pytest.mark.xfail(
+        sys.version_info == (3, 13, 0, "alpha", 5) and sys.platform == "win32",
+        reason="https://github.com/python/cpython/issues/116764",
+    )
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme", "use_forwarding_for_https"],
         [
