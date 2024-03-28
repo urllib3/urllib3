@@ -9,6 +9,7 @@ import pathlib
 import shutil
 import socket
 import ssl
+import sys
 import tempfile
 from test import LONG_TIMEOUT, SHORT_TIMEOUT, resolvesLocalhostFQDN, withPyOpenSSL
 from test.conftest import ServerConfig
@@ -41,6 +42,11 @@ from urllib3.util.ssl_ import create_urllib3_context
 from urllib3.util.timeout import Timeout
 
 from .. import TARPIT_HOST, requires_network
+
+_broken_on_python313a5 = pytest.mark.xfail(
+    sys.version_info == (3, 13, 0, "alpha", 5),
+    reason="https://github.com/python/cpython/issues/116764",
+)
 
 
 def assert_is_verified(pm: ProxyManager, *, proxy: bool, target: bool) -> None:
@@ -77,6 +83,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
         super().teardown_class()
         shutil.rmtree(cls.certs_dir)
 
+    @_broken_on_python313a5
     def test_basic_proxy(self) -> None:
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
             r = http.request("GET", f"{self.http_url}/")
@@ -85,6 +92,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             r = http.request("GET", f"{self.https_url}/")
             assert r.status == 200
 
+    @_broken_on_python313a5
     def test_https_proxy(self) -> None:
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", f"{self.https_url}/")
@@ -93,6 +101,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             r = https.request("GET", f"{self.http_url}/")
             assert r.status == 200
 
+    @_broken_on_python313a5
     def test_is_verified_http_proxy_to_http_target(self) -> None:
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
             r = http.request("GET", f"{self.http_url}/")
@@ -105,6 +114,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert r.status == 200
             assert_is_verified(http, proxy=False, target=True)
 
+    @_broken_on_python313a5
     def test_is_verified_https_proxy_to_http_target(self) -> None:
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", f"{self.http_url}/")
@@ -117,6 +127,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert r.status == 200
             assert_is_verified(https, proxy=True, target=True)
 
+    @_broken_on_python313a5
     def test_http_and_https_kwarg_ca_cert_data_proxy(self) -> None:
         with open(DEFAULT_CA) as pem_file:
             pem_file_data = pem_file.read()
@@ -127,6 +138,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             r = https.request("GET", f"{self.http_url}/")
             assert r.status == 200
 
+    @_broken_on_python313a5
     def test_https_proxy_with_proxy_ssl_context(self) -> None:
         proxy_ssl_context = create_urllib3_context()
         proxy_ssl_context.load_verify_locations(DEFAULT_CA)
@@ -142,6 +154,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert r.status == 200
 
     @withPyOpenSSL
+    @_broken_on_python313a5
     def test_https_proxy_pyopenssl_not_supported(self) -> None:
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", f"{self.http_url}/")
@@ -152,6 +165,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             ):
                 https.request("GET", f"{self.https_url}/")
 
+    @_broken_on_python313a5
     def test_https_proxy_forwarding_for_https(self) -> None:
         with proxy_from_url(
             self.https_proxy_url,
@@ -164,6 +178,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             r = https.request("GET", f"{self.https_url}/")
             assert r.status == 200
 
+    @_broken_on_python313a5
     def test_nagle_proxy(self) -> None:
         """Test that proxy connections do not have TCP_NODELAY turned on"""
         with ProxyManager(self.proxy_url) as http:
@@ -202,6 +217,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
                 e.value.reason.original_error, urllib3.exceptions.NameResolutionError
             )
 
+    @_broken_on_python313a5
     def test_oldapi(self) -> None:
         with ProxyManager(
             connection_from_url(self.proxy_url), ca_certs=DEFAULT_CA  # type: ignore[arg-type]
@@ -258,6 +274,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
                     https_fail_pool.request("GET", "/", retries=0)
                 assert isinstance(e.value.reason, SSLError)
 
+    @_broken_on_python313a5
     def test_redirect(self) -> None:
         with proxy_from_url(self.proxy_url) as http:
             r = http.request(
@@ -278,6 +295,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert r.status == 200
             assert r.data == b"Dummy server!"
 
+    @_broken_on_python313a5
     def test_cross_host_redirect(self) -> None:
         with proxy_from_url(self.proxy_url) as http:
             cross_host_location = f"{self.http_url_alt}/echo?a=b"
@@ -299,6 +317,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert r._pool is not None
             assert r._pool.host != self.http_host_alt
 
+    @_broken_on_python313a5
     def test_cross_protocol_redirect(self) -> None:
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
             cross_protocol_location = f"{self.https_url}/echo?a=b"
@@ -320,6 +339,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert r._pool is not None
             assert r._pool.host == self.https_host
 
+    @_broken_on_python313a5
     def test_headers(self) -> None:
         with proxy_from_url(
             self.proxy_url,
@@ -395,6 +415,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
                 returned_headers.get("Host") == f"{self.https_host}:{self.https_port}"
             )
 
+    @_broken_on_python313a5
     def test_https_headers(self) -> None:
         with proxy_from_url(
             self.https_proxy_url,
@@ -427,6 +448,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
                 returned_headers.get("Host") == f"{self.https_host}:{self.https_port}"
             )
 
+    @_broken_on_python313a5
     def test_https_headers_forwarding_for_https(self) -> None:
         with proxy_from_url(
             self.https_proxy_url,
@@ -443,6 +465,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
                 returned_headers.get("Host") == f"{self.https_host}:{self.https_port}"
             )
 
+    @_broken_on_python313a5
     def test_headerdict(self) -> None:
         default_headers = HTTPHeaderDict(a="b")
         proxy_headers = HTTPHeaderDict()
@@ -500,6 +523,10 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert sc3 == sc4
 
     @requires_network()
+    @pytest.mark.xfail(
+        sys.version_info == (3, 13, 0, "alpha", 5) and sys.platform == "win32",
+        reason="https://github.com/python/cpython/issues/116764",
+    )
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme", "use_forwarding_for_https"],
         [
@@ -668,6 +695,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
     # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
     # see https://github.com/python/cpython/issues/103472
     @pytest.mark.filterwarnings("default::ResourceWarning")
+    @_broken_on_python313a5
     def test_scheme_host_case_insensitive(self) -> None:
         """Assert that upper-case schemes and hosts are normalized."""
         with proxy_from_url(self.proxy_url.upper(), ca_certs=DEFAULT_CA) as http:
@@ -716,6 +744,7 @@ class TestIPv6HTTPProxyManager(IPv6HypercornDummyProxyTestCase):
     # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
     # see https://github.com/python/cpython/issues/103472
     @pytest.mark.filterwarnings("default::ResourceWarning")
+    @_broken_on_python313a5
     def test_basic_ipv6_proxy(self) -> None:
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
             r = http.request("GET", f"{self.http_url}/")
@@ -750,6 +779,7 @@ class TestHTTPSProxyVerification:
     # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
     # see https://github.com/python/cpython/issues/103472
     @pytest.mark.filterwarnings("default::ResourceWarning")
+    @_broken_on_python313a5
     def test_https_proxy_assert_fingerprint_md5(
         self, no_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
@@ -792,6 +822,7 @@ class TestHTTPSProxyVerification:
     # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
     # see https://github.com/python/cpython/issues/103472
     @pytest.mark.filterwarnings("default::ResourceWarning")
+    @_broken_on_python313a5
     def test_https_proxy_assert_hostname(
         self, san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
@@ -809,6 +840,11 @@ class TestHTTPSProxyVerification:
     def test_https_proxy_assert_hostname_non_matching(
         self, san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
+        if (
+            sys.version_info == (3, 13, 0, "alpha", 5)
+            and san_proxy_with_server[0].host == "::1"
+        ):
+            pytest.xfail(reason="https://github.com/python/cpython/issues/116764")
         proxy, server = san_proxy_with_server
         destination_url = f"https://{server.host}:{server.port}"
 
@@ -860,6 +896,7 @@ class TestHTTPSProxyVerification:
     # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
     # see https://github.com/python/cpython/issues/103472
     @pytest.mark.filterwarnings("default::ResourceWarning")
+    @_broken_on_python313a5
     def test_https_proxy_ipv4_san(
         self, ipv4_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
@@ -870,6 +907,7 @@ class TestHTTPSProxyVerification:
             r = https.request("GET", destination_url)
             assert r.status == 200
 
+    @_broken_on_python313a5
     def test_https_proxy_ipv6_san(
         self, ipv6_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
@@ -903,6 +941,7 @@ class TestHTTPSProxyVerification:
                 ssl_error
             )
 
+    @_broken_on_python313a5
     def test_https_proxy_no_san_hostname_checks_common_name(
         self, no_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
