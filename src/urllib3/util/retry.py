@@ -157,6 +157,8 @@ class Retry:
 
         By default, backoff is disabled (factor set to 0).
 
+    :param bool backoff_first_retry: Whether to apply ``backoff factor`` from first retry instead of from second one (default ``False``).
+
     :param bool raise_on_redirect: Whether, if the number of redirects is
         exhausted, to raise a MaxRetryError, or to return a response with a
         response code in the 3xx range.
@@ -209,6 +211,7 @@ class Retry:
         status_forcelist: typing.Collection[int] | None = None,
         backoff_factor: float = 0,
         backoff_max: float = DEFAULT_BACKOFF_MAX,
+        backoff_first_retry: bool = False,
         raise_on_redirect: bool = True,
         raise_on_status: bool = True,
         history: tuple[RequestHistory, ...] | None = None,
@@ -233,6 +236,7 @@ class Retry:
         self.allowed_methods = allowed_methods
         self.backoff_factor = backoff_factor
         self.backoff_max = backoff_max
+        self.backoff_first_retry = backoff_first_retry
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
         self.history = history or ()
@@ -254,6 +258,7 @@ class Retry:
             status_forcelist=self.status_forcelist,
             backoff_factor=self.backoff_factor,
             backoff_max=self.backoff_max,
+            backoff_first_retry=self.backoff_first_retry,
             raise_on_redirect=self.raise_on_redirect,
             raise_on_status=self.raise_on_status,
             history=self.history,
@@ -295,7 +300,11 @@ class Retry:
                 takewhile(lambda x: x.redirect_location is None, reversed(self.history))
             )
         )
-        if consecutive_errors_len <= 1:
+        if (
+            consecutive_errors_len < 1
+            or consecutive_errors_len == 1
+            and not self.backoff_first_retry
+        ):
             return 0
 
         backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
