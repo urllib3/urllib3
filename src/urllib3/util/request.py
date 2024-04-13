@@ -116,14 +116,14 @@ def make_headers(
         headers["connection"] = "keep-alive"
 
     if basic_auth:
-        headers[
-            "authorization"
-        ] = f"Basic {b64encode(basic_auth.encode('latin-1')).decode()}"
+        headers["authorization"] = (
+            f"Basic {b64encode(basic_auth.encode('latin-1')).decode()}"
+        )
 
     if proxy_basic_auth:
-        headers[
-            "proxy-authorization"
-        ] = f"Basic {b64encode(proxy_basic_auth.encode('latin-1')).decode()}"
+        headers["proxy-authorization"] = (
+            f"Basic {b64encode(proxy_basic_auth.encode('latin-1')).decode()}"
+        )
 
     if disable_cache:
         headers["cache-control"] = "no-cache"
@@ -182,8 +182,66 @@ def rewind_body(body: typing.IO[typing.AnyStr], body_pos: _TYPE_BODY_POSITION) -
 
 
 class ChunksAndContentLength(typing.NamedTuple):
-    chunks: typing.Iterable[bytes] | None
+    chunks: typing.Iterable[bytes]
     content_length: int | None
+
+
+def chunk_readable(body: typing.Any, blocksize: int) -> typing.Iterable[bytes]:
+    encode = isinstance(body, io.TextIOBase)
+    while True:
+        datablock = body.read(blocksize)
+        if not datablock:
+            break
+        if encode:
+            datablock = datablock.encode("iso-8859-1")
+        yield datablock
+
+
+def body_to_bytes(body: typing.Any, blocksize: int) -> ChunksAndContentLength:
+    """Convert body data to sendable bytes and measures the length of it.
+    If body is iterable data then iter whole data and buffer it.
+    """
+
+    if isinstance(body, (str, bytes)):
+        chunks = (to_bytes(body),)
+        content_length = len(chunks[0])
+
+    elif hasattr(body, "read"):
+        chunks = bytearray()
+        for chunk in chunk_readable(body, blocksize):
+            chunks += chunk
+
+        chunks = (chunks,)
+        content_length = len(chunks[0])
+
+    elif hasattr(body, "__next__"):  # check iterator type
+        chunks = bytearray()
+        for chunk in body:
+            try:
+                chunks += chunk
+            except TypeError:
+                # if chunk is not byte
+                raise TypeError(
+                    f"'body' must be a bytes-like object, file-like "
+                    f"object, or iterable. Instead was {body!r}"
+                ) from None
+
+        chunks = (chunks,)
+        content_length = len(chunks[0])
+
+    else:
+        # Otherwise we need to start checking via duck-typing.
+        try:
+            mv = memoryview(body)
+            chunks = (body,)
+            content_length = mv.nbytes
+        except TypeError:
+            raise TypeError(
+                f"'body' must be a bytes-like object, file-like "
+                f"object, or iterable. Instead was {body!r}"
+            ) from None
+
+    return ChunksAndContentLength(chunks=chunks, content_length=content_length)
 
 
 def body_to_chunks(
