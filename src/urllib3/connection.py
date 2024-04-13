@@ -50,7 +50,7 @@ from .exceptions import (
     SystemTimeWarning,
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
-from .util.request import body_to_chunks
+from .util.request import body_to_chunks, body_to_bytes
 from .util.ssl_ import assert_fingerprint as _assert_fingerprint
 from .util.ssl_ import (
     create_urllib3_context,
@@ -66,6 +66,7 @@ from .util.url import Url
 ConnectionError = ConnectionError
 BrokenPipeError = BrokenPipeError
 
+_METHODS_NOT_EXPECTING_BODY = {"GET", "HEAD", "DELETE", "TRACE", "OPTIONS", "CONNECT"}
 
 log = logging.getLogger(__name__)
 
@@ -138,8 +139,9 @@ class HTTPConnection(_HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None
-        | (connection._TYPE_SOCKET_OPTIONS) = default_socket_options,
+        socket_options: None | (
+            connection._TYPE_SOCKET_OPTIONS
+        ) = default_socket_options,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
     ) -> None:
@@ -164,6 +166,10 @@ class HTTPConnection(_HTTPConnection):
     def host(self) -> str:
         """
         Getter method to remove any trailing dots that indicate the hostname is an FQDN.
+
+            google.com.
+
+            gooogle.com
 
         In general, SSL certificates don't include the trailing dot indicating a
         fully-qualified domain name, and thus, they don't validate properly when
@@ -362,45 +368,57 @@ class HTTPConnection(_HTTPConnection):
         self.putrequest(
             method, url, skip_accept_encoding=skip_accept_encoding, skip_host=skip_host
         )
+        # The body is sent by content-length header when chunked is False or
+        # transfer-encoding header doesn't exist.
+        # The sending header is only affected by chunked parameter or header
+        # type of body doesn't affect to header.
+
+        if "content-length" in header_keys:
+            chunked = False
+
+        elif "transfer-encoding" in header_keys:
+            chunked = True
+
+        chunks_and_cl = None
+        content_length = None
 
         # Transform the body into an iterable of sendall()-able chunks
-        # and detect if an explicit Content-Length is doable.
-        chunks_and_cl = body_to_chunks(body, method=method, blocksize=self.blocksize)
-        chunks = chunks_and_cl.chunks
-        content_length = chunks_and_cl.content_length
 
-        # When chunked is explicit set to 'True' we respect that.
-        if chunked:
-            if "transfer-encoding" not in header_keys:
-                self.putheader("Transfer-Encoding", "chunked")
+        # If No body, we need to make a recommendation on 'Content-Length'
+        # based on whether that request method is expected to have
+        # a body or not.
+
+        if body is None:
+            if method.upper() not in _METHODS_NOT_EXPECTING_BODY:
+                content_length = 0
+
+        elif chunked:
+            chunks_and_cl = body_to_chunks(body, self.blocksize)  # use chunking
+
         else:
-            # Detect whether a framing mechanism is already in use. If so
-            # we respect that value, otherwise we pick chunked vs content-length
-            # depending on the type of 'body'.
-            if "content-length" in header_keys:
-                chunked = False
-            elif "transfer-encoding" in header_keys:
-                chunked = True
-
-            # Otherwise we go off the recommendation of 'body_to_chunks()'.
-            else:
-                chunked = False
-                if content_length is None:
-                    if chunks is not None:
-                        chunked = True
-                        self.putheader("Transfer-Encoding", "chunked")
-                else:
-                    self.putheader("Content-Length", str(content_length))
+            chunks_and_cl = body_to_bytes(body, self.blocksize)
+            content_length = chunks_and_cl.content_length
 
         # Now that framing headers are out of the way we send all the other headers.
         if "user-agent" not in header_keys:
             self.putheader("User-Agent", _get_default_user_agent())
+
+        # Detect whether a framing mechanism is already in use. If so we respect that value.
+        if chunked and "transfer-encoding" not in header_keys:
+            self.putheader("Transfer-Encoding", "chunked")
+
+        elif content_length is not None:
+            self.putheader("Content-Length", str(content_length))
+
         for header, value in headers.items():
             self.putheader(header, value)
+
         self.endheaders()
 
-        # If we're given a body we start sending that in chunks.
-        if chunks is not None:
+        if chunks_and_cl:
+            chunks = chunks_and_cl.chunks
+
+            # If we're given a body we start sending that in chunks.
             for chunk in chunks:
                 # Sending empty chunks isn't allowed for TE: chunked
                 # as it indicates the end of the body.
@@ -518,8 +536,9 @@ class HTTPSConnection(HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None
-        | (connection._TYPE_SOCKET_OPTIONS) = HTTPConnection.default_socket_options,
+        socket_options: None | (
+            connection._TYPE_SOCKET_OPTIONS
+        ) = HTTPConnection.default_socket_options,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
         cert_reqs: int | str | None = None,
