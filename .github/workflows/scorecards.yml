@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@cd7d8d697e10461458bc61a30d094dc601a8b017 # v4.0.0
+        uses: actions/checkout@9b4c13b0bfa31b4514c14f74b5a166c2708f43c6 # v4.0.0
         with:
           persist-credentials: false
 
