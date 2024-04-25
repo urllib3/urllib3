@@ -227,8 +227,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
 
         :returns: The body of the HTTP response as a Python object.
         """
-        data = self.data.decode("utf-8")
-        return _json.loads(data)
+        return _json.loads(self.data)
 
     def close(self) -> None:
         if not self._closed:
