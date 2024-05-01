@@ -1,0 +1,1 @@
+Consistently used ``typing.Self`` for return types representing copying actions.
