@@ -1,1 +1,0 @@
-Added support for HTTPResponse.read1() method.

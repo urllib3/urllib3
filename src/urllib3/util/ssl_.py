@@ -78,7 +78,7 @@ def _is_has_never_check_common_name_reliable(
 
 if typing.TYPE_CHECKING:
     from ssl import VerifyMode
-    from typing import Literal, TypedDict
+    from typing import TypedDict
 
     from .ssltransport import SSLTransport as SSLTransportType
 
@@ -365,7 +365,7 @@ def ssl_wrap_socket(
     ca_cert_dir: str | None = ...,
     key_password: str | None = ...,
     ca_cert_data: None | str | bytes = ...,
-    tls_in_tls: Literal[False] = ...,
+    tls_in_tls: typing.Literal[False] = ...,
 ) -> ssl.SSLSocket:
     ...
 

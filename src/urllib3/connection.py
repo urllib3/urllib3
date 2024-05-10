@@ -14,8 +14,6 @@ from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
 
 if typing.TYPE_CHECKING:
-    from typing import Literal
-
     from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
@@ -307,7 +305,7 @@ class HTTPConnection(_HTTPConnection):
             method, url, skip_host=skip_host, skip_accept_encoding=skip_accept_encoding
         )
 
-    def putheader(self, header: str, *values: str) -> None:
+    def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
@@ -524,7 +522,7 @@ class HTTPSConnection(HTTPConnection):
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
         cert_reqs: int | str | None = None,
-        assert_hostname: None | str | Literal[False] = None,
+        assert_hostname: None | str | typing.Literal[False] = None,
         assert_fingerprint: str | None = None,
         server_hostname: str | None = None,
         ssl_context: ssl.SSLContext | None = None,
@@ -578,7 +576,7 @@ class HTTPSConnection(HTTPConnection):
         cert_reqs: int | str | None = None,
         key_password: str | None = None,
         ca_certs: str | None = None,
-        assert_hostname: None | str | Literal[False] = None,
+        assert_hostname: None | str | typing.Literal[False] = None,
         assert_fingerprint: str | None = None,
         ca_cert_dir: str | None = None,
         ca_cert_data: None | str | bytes = None,
@@ -743,7 +741,7 @@ def _ssl_wrap_socket_and_match_hostname(
     ca_certs: str | None,
     ca_cert_dir: str | None,
     ca_cert_data: None | str | bytes,
-    assert_hostname: None | str | Literal[False],
+    assert_hostname: None | str | typing.Literal[False],
     assert_fingerprint: str | None,
     server_hostname: str | None,
     ssl_context: ssl.SSLContext | None,

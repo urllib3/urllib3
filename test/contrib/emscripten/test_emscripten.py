@@ -17,8 +17,8 @@ if sys.version_info < (3, 11):
 # so we don't break non-emscripten pytest running
 pytest_pyodide = pytest.importorskip("pytest_pyodide")
 
-from pytest_pyodide import run_in_pyodide  # type: ignore[import] # noqa: E402
-from pytest_pyodide.decorator import (  # type: ignore[import] # noqa: E402
+from pytest_pyodide import run_in_pyodide  # type: ignore[import-not-found] # noqa: E402
+from pytest_pyodide.decorator import (  # type: ignore[import-not-found] # noqa: E402
     copy_files_to_pyodide,
 )
 
@@ -227,7 +227,7 @@ def test_timeout_warning(
 ) -> None:
     @run_in_pyodide()  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
-        import js  # type: ignore[import]
+        import js  # type: ignore[import-not-found]
 
         import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPConnection
@@ -947,3 +947,28 @@ def test_retries(
         assert count == 6
 
     pyodide_test(selenium_coverage, testserver_http.http_host, find_unused_port())
+
+
+@install_urllib3_wheel()
+def test_insecure_requests_warning(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage, host: str, port: int, https_port: int) -> None:  # type: ignore[no-untyped-def]
+        import warnings
+
+        import urllib3
+        import urllib3.exceptions
+
+        http = urllib3.PoolManager()
+
+        with warnings.catch_warnings(record=True) as w:
+            http.request("GET", f"https://{host}:{https_port}")
+        assert len(w) == 0
+
+    pyodide_test(
+        selenium_coverage,
+        testserver_http.http_host,
+        testserver_http.http_port,
+        testserver_http.https_port,
+    )

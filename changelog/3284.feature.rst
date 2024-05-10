@@ -1,1 +1,0 @@
-Added rudimentary support for HTTP/2 via ``urllib3.contrib.h2`` and ``HTTP2Connection`` class.
