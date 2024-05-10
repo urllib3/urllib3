@@ -195,6 +195,7 @@ class HTTP2Response(BaseHTTPResponse):
             headers=headers,
             # Following CPython, we map HTTP versions to major * 10 + minor integers
             version=20,
+            version_string="HTTP/2",
             # No reason phrase in HTTP/2
             reason=None,
             decode_content=decode_content,
