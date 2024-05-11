@@ -53,15 +53,14 @@ from .util.util import to_str
 
 if typing.TYPE_CHECKING:
     import ssl
-    from typing import Literal
+
+    from typing_extensions import Self
 
     from ._base_connection import BaseHTTPConnection, BaseHTTPSConnection
 
 log = logging.getLogger(__name__)
 
 _TYPE_TIMEOUT = typing.Union[Timeout, float, _TYPE_DEFAULT, None]
-
-_SelfT = typing.TypeVar("_SelfT")
 
 
 # Pool objects
@@ -95,7 +94,7 @@ class ConnectionPool:
     def __str__(self) -> str:
         return f"{type(self).__name__}(host={self.host!r}, port={self.port!r})"
 
-    def __enter__(self: _SelfT) -> _SelfT:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
@@ -103,7 +102,7 @@ class ConnectionPool:
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
-    ) -> Literal[False]:
+    ) -> typing.Literal[False]:
         self.close()
         # Return False to re-raise any potential exceptions
         return False
@@ -1002,7 +1001,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         ssl_version: int | str | None = None,
         ssl_minimum_version: ssl.TLSVersion | None = None,
         ssl_maximum_version: ssl.TLSVersion | None = None,
-        assert_hostname: str | Literal[False] | None = None,
+        assert_hostname: str | typing.Literal[False] | None = None,
         assert_fingerprint: str | None = None,
         ca_cert_dir: str | None = None,
         **conn_kw: typing.Any,

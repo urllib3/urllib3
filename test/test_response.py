@@ -30,7 +30,6 @@ from urllib3.response import (  # type: ignore[attr-defined]
     BytesQueueBuffer,
     HTTPResponse,
     brotli,
-    zstd,
 )
 from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
@@ -218,6 +217,12 @@ class TestResponse:
         assert r.read() == b""
         assert r.read() == b""
 
+    @pytest.mark.parametrize("read_args", ((), (None,), (-1,)))
+    def test_reference_read_until_eof(self, read_args: tuple[typing.Any, ...]) -> None:
+        fp = BytesIO(b"foo")
+        r = HTTPResponse(fp, preload_content=False)
+        assert r.read(*read_args) == b"foo"
+
     def test_reference_read1(self) -> None:
         fp = BytesIO(b"foobar")
         r = HTTPResponse(fp, preload_content=False)
@@ -227,6 +232,14 @@ class TestResponse:
         assert r.read1(2) == b"oo"
         assert r.read1() == b"bar"
         assert r.read1() == b""
+
+    @pytest.mark.parametrize("read1_args", ((), (None,), (-1,)))
+    def test_reference_read1_without_limit(
+        self, read1_args: tuple[typing.Any, ...]
+    ) -> None:
+        fp = BytesIO(b"foo")
+        r = HTTPResponse(fp, preload_content=False)
+        assert r.read1(*read1_args) == b"foo"
 
     def test_reference_read1_nodecode(self) -> None:
         fp = BytesIO(b"foobar")
@@ -389,6 +402,8 @@ class TestResponse:
 
     @onlyZstd()
     def test_decode_zstd(self) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(b"foo")
 
         fp = BytesIO(data)
@@ -397,6 +412,8 @@ class TestResponse:
 
     @onlyZstd()
     def test_decode_multiframe_zstd(self) -> None:
+        import zstandard as zstd
+
         data = (
             # Zstandard frame
             zstd.compress(b"foo")
@@ -416,6 +433,8 @@ class TestResponse:
 
     @onlyZstd()
     def test_chunked_decoding_zstd(self) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(b"foobarbaz")
 
         fp = BytesIO(data)
@@ -447,6 +466,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_preload_content(self, data: bytes) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])
 
@@ -456,6 +477,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_read(self, data: bytes) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])  # shorten the data to trigger DecodeError
 
@@ -471,6 +494,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_read1(self, data: bytes) -> None:
+        import zstandard as zstd
+
         data = zstd.compress(data)
         fp = BytesIO(data[:-1])
 
@@ -489,6 +514,8 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_read1(self, data: bytes) -> None:
+        import zstandard as zstd
+
         encoded_data = zstd.compress(data)
         fp = BytesIO(encoded_data)
 
@@ -1249,7 +1276,10 @@ class TestResponse:
         response = list(resp.read_chunked(2))
         assert expected_response == response
 
-    def test_mock_transfer_encoding_chunked_unlmtd_read(self) -> None:
+    @pytest.mark.parametrize("read_chunked_args", ((), (None,), (-1,)))
+    def test_mock_transfer_encoding_chunked_unlmtd_read(
+        self, read_chunked_args: tuple[typing.Any, ...]
+    ) -> None:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
@@ -1259,7 +1289,7 @@ class TestResponse:
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
-        assert stream == list(resp.read_chunked())
+        assert stream == list(resp.read_chunked(*read_chunked_args))
 
     def test_read_not_chunked_response_as_chunks(self) -> None:
         fp = BytesIO(b"foo")

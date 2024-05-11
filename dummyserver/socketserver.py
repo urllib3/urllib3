@@ -108,6 +108,7 @@ class SocketServerThread(threading.Thread):
         socket_handler: typing.Callable[[socket.socket], None],
         host: str = "localhost",
         ready_event: threading.Event | None = None,
+        quit_event: threading.Event | None = None,
     ) -> None:
         super().__init__()
         self.daemon = True
@@ -115,6 +116,7 @@ class SocketServerThread(threading.Thread):
         self.socket_handler = socket_handler
         self.host = host
         self.ready_event = ready_event
+        self.quit_event = quit_event
 
     def _start_server(self) -> None:
         if self.USE_IPV6:
