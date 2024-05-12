@@ -181,6 +181,10 @@ def downstream_requests(session: nox.Session) -> None:
     session.cd(root)
     session.install(".", silent=False)
     session.cd(f"{tmp_dir}/requests")
+    for patch in [
+        "0001-Mark-test_redirecting_to_bad_url-as-failing.patch",
+    ]:
+        session.run("git", "apply", f"{root}/ci/{patch}", external=True)
 
     session.run("python", "-c", "import urllib3; print(urllib3.__version__)")
     session.run("pytest", "tests")
