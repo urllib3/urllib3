@@ -667,6 +667,17 @@ class TestPoolManager(HypercornDummyServerTestCase):
             "object, or iterable. Instead was <BadBody>"
         )
 
+    def test_authentication_with_url(self) -> None:
+        with PoolManager() as http:
+            url_with_auth = f"http://user:pass@{self.host}:{self.port}"
+            r = http.urlopen("GET", f"{url_with_auth}/headers")
+
+            assert r.status == 200
+
+            data = r.json()
+
+            assert data["Authorization"] == "Basic dXNlcjpwYXNz"
+
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
 class TestIPv6PoolManager(IPv6HypercornDummyServerTestCase):

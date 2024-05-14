@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import functools
 import logging
 import typing
@@ -436,6 +437,12 @@ class PoolManager(RequestMethods):
 
         if "headers" not in kw:
             kw["headers"] = self.headers
+
+        if u.auth is not None:
+            encoded_auth_bytes = base64.b64encode(u.auth.encode())
+            encoded_auth = encoded_auth_bytes.decode("utf-8")
+            authorization_headers = {"authorization": f"Basic {encoded_auth}"}
+            kw["headers"] = authorization_headers
 
         if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, url, **kw)

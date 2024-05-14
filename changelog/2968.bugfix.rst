@@ -1,0 +1,2 @@
+Allowed passing authorization information in url.
+Updated ``urllib3.poolmanager.PoolManager().urlopen()`` to check for the update authorization headers.
