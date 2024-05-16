@@ -6,6 +6,7 @@ import os
 import re
 import socket
 import sys
+import threading
 import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
@@ -509,6 +510,7 @@ class HTTPSConnection(HTTPConnection):
     ssl_minimum_version: int | None = None
     ssl_maximum_version: int | None = None
     assert_fingerprint: str | None = None
+    _connect_callback: typing.Callable[..., None] | None = None
 
     def __init__(
         self,
@@ -569,6 +571,7 @@ class HTTPSConnection(HTTPConnection):
             else:
                 cert_reqs = resolve_cert_reqs(None)
         self.cert_reqs = cert_reqs
+        self._connect_callback = None
 
     def set_cert(
         self,
@@ -641,6 +644,13 @@ class HTTPSConnection(HTTPConnection):
             # the target supports HTTP/2. Don't want to make a probe.
             target_supports_http2 = False
 
+        if self._connect_callback is not None:
+            self._connect_callback(
+                "before connect",
+                thread_id=threading.get_ident(),
+                target_supports_http2=target_supports_http2,
+            )
+
         try:
             sock: socket.socket | ssl.SSLSocket
             self.sock = sock = self._new_conn()
@@ -703,6 +713,13 @@ class HTTPSConnection(HTTPConnection):
         # If an error occurs during connection/handshake we may need to release
         # our lock so another connection can probe the origin.
         except BaseException:
+            if self._connect_callback is not None:
+                self._connect_callback(
+                    "after connect failure",
+                    thread_id=threading.get_ident(),
+                    target_supports_http2=target_supports_http2,
+                )
+
             if target_supports_http2 is None:
                 http2_probe.set_and_release(
                     host=probe_http2_host, port=probe_http2_port, supports_http2=None

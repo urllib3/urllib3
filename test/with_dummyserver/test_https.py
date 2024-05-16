@@ -1041,6 +1041,31 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             urllib3.http2.extract_from_urllib3()
 
     def test_http2_probe_blocked_per_thread(self) -> None:
+        state, current_thread, last_action = None, None, time.monotonic()
+
+        def connect_callback(label: str, thread_id: int, **kwargs: typing.Any) -> None:
+            nonlocal state, current_thread, last_action
+
+            if label in ("before connect", "after connect failure"):
+                # We don't know if the target supports HTTP/2 as connections fail
+                assert kwargs["target_supports_http2"] is None
+
+            # Since we're trying to connect to TARPIST_HOST, all connections will
+            # fail, but they should be tried one after the other
+            now = time.monotonic()
+            assert now > last_action
+            last_action = now
+
+            if label == "before connect":
+                assert state is None
+                state = "connect"
+                assert current_thread != thread_id
+                current_thread = thread_id
+            elif label == "after connect failure":
+                assert state == "connect"
+                assert current_thread == thread_id
+                state = None
+
         assert http2_probe._values() == {}
 
         connect_timeout = LONG_TIMEOUT
@@ -1048,7 +1073,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         urllib3.http2.inject_into_urllib3()
         try:
 
-            def make_request(_: typing.Any) -> tuple[float, float]:
+            def try_connect(_: typing.Any) -> tuple[float, float]:
                 with HTTPSConnectionPool(
                     TARPIT_HOST,
                     self.port,
@@ -1056,24 +1081,16 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                     timeout=connect_timeout,
                 ) as pool:
                     start_time = time.time()
+                    conn = pool._get_conn()
+                    assert isinstance(conn, HTTPSConnection)
+                    conn._connect_callback = connect_callback
                     with pytest.raises(ConnectTimeoutError):
-                        pool.request("GET", "/", retries=False)
+                        conn.connect()
                     end_time = time.time()
                     return start_time, end_time
 
             threadpool = concurrent.futures.ThreadPoolExecutor(total_threads)
-            values = list(threadpool.map(make_request, range(total_threads)))
-
-            # Everything starts at a similar time.
-            min_start_time = min(start_time for start_time, _ in values)
-            max_start_time = max(start_time for start_time, _ in values)
-            assert max_start_time - min_start_time < connect_timeout
-
-            # End times are spaced out. This isn't '* total_threads'
-            # because timers aren't perfect within threads.
-            min_end_time = min(end_time for _, end_time in values)
-            max_end_time = max(end_time for _, end_time in values)
-            assert max_end_time - min_end_time > connect_timeout
+            list(threadpool.map(try_connect, range(total_threads)))
 
             # The probe was inconclusive since an error occurred during connection.
             assert http2_probe._values() == {(TARPIT_HOST, self.port): None}
