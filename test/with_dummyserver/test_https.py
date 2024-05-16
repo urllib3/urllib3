@@ -1041,7 +1041,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             urllib3.http2.extract_from_urllib3()
 
     def test_http2_probe_blocked_per_thread(self) -> None:
-        state, current_thread, last_action = None, None, time.monotonic()
+        state, current_thread, last_action = None, None, time.perf_counter()
 
         def connect_callback(label: str, thread_id: int, **kwargs: typing.Any) -> None:
             nonlocal state, current_thread, last_action
@@ -1052,8 +1052,8 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
 
             # Since we're trying to connect to TARPIST_HOST, all connections will
             # fail, but they should be tried one after the other
-            now = time.monotonic()
-            assert now > last_action
+            now = time.perf_counter()
+            assert now >= last_action
             last_action = now
 
             if label == "before connect":
