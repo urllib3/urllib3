@@ -40,7 +40,7 @@ jobs:
           cd dist && echo "hashes=$(sha256sum * | base64 -w0)" >> $GITHUB_OUTPUT
 
       - name: "Upload dists"
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: "dist"
           path: "dist/"
@@ -57,7 +57,6 @@ jobs:
     with:
       base64-subjects: "${{ needs.build.outputs.hashes }}"
       upload-assets: true
-      compile-generator: true # Workaround for https://github.com/slsa-framework/slsa-github-generator/issues/1163
 
   publish:
     name: "Publish"
@@ -70,7 +69,7 @@ jobs:
 
     steps:
     - name: "Download dists"
-      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
       with:
         name: "dist"
         path: "dist/"
