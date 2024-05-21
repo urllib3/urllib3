@@ -4,6 +4,8 @@ import io
 import typing
 import unittest
 
+import pytest
+
 from urllib3 import filepost
 from urllib3.multipart.encoder import MultipartEncoder, _CustomBytesIO
 
