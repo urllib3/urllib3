@@ -18,8 +18,8 @@ class Part:
         headers: bytes,
         body: typing.BinaryIO | FileWrapper | _CustomBytesIO,
     ) -> None:
-        self.headers: bytes = headers
-        self.body: typing.BinaryIO | FileWrapper | _CustomBytesIO = body
+        self.headers = headers
+        self.body = body
         self.headers_unread = True
         self.len = len(self.headers) + total_len(self.body)
 
@@ -74,6 +74,7 @@ class _CustomBytesIO(io.BytesIO):
     ) -> None:
         if buffer is None:
             buffer = b""
+        # TODO: I don't think typing.BinaryIO works that way
         if isinstance(buffer, typing.BinaryIO):
             bufferbytes = buffer.read()
         else:
@@ -139,11 +140,12 @@ PartTuples = typing.Union[
         typing.Mapping[str, str],
     ],
 ]
+
+FieldValue: typing.TypeAlias = typing.Union[bytes, str, PartTuples, typing.BinaryIO]
+
 Fields = typing.Union[
-    typing.Mapping[str, typing.Union[bytes, str, PartTuples, typing.BinaryIO]],
-    typing.Sequence[
-        typing.Tuple[str, typing.Union[bytes, str, PartTuples, typing.BinaryIO]]
-    ],
+    typing.Mapping[str, FieldValue],
+    typing.Sequence[typing.Tuple[str, FieldValue]],
 ]
 
 
@@ -273,6 +275,9 @@ class MultipartEncoder:
 
     def __len__(self) -> int:
         """Length of the multipart/form-data body."""
+        # TODO: There's a comment in requests-toolbelt about files more than
+        # 4GB, referring to https://github.com/requests/toolbelt/issues/80
+        # Does this apply here?  Can we test this case?
         # If _len isn't already calculated, calculate, return, and set it
         return self._len or self._calculate_length()
 
@@ -285,6 +290,7 @@ class MultipartEncoder:
 
         This returns the calculated length so __len__ can be lazy.
         """
+        # TODO: Is this the length of `\r\n\r\n` or `--{self._boundary}\r\n`?
         boundarycrnl_len = len(self._boundary) + len("\r\n\r\n")
         self._len = sum(total_len(p) for p in self._parts) + (
             boundarycrnl_len * (len(self._parts) + 1)
@@ -335,28 +341,12 @@ class MultipartEncoder:
 
     def _next_part(self) -> Part | None:
         try:
-            p = self._current_part = next(self._iter_parts)
+            return self._current_part = next(self._iter_parts)
         except StopIteration:
             return None
-        return p
 
     def _iter_fields(self) -> typing.Generator[RequestField, None, None]:
-        _fields = self._fields
-        if hasattr(self._fields, "items"):
-            self._fields = typing.cast(
-                typing.Mapping[
-                    str, typing.Union[bytes, str, PartTuples, typing.BinaryIO]
-                ],
-                self._fields,
-            )
-            _fields = list(self._fields.items())
-        _fields = typing.cast(
-            typing.Sequence[
-                typing.Tuple[str, typing.Union[bytes, str, PartTuples, typing.BinaryIO]]
-            ],
-            _fields,
-        )
-        for k, v in _fields:
+        for k, v in to_list(self._fields):
             file_name = None
             file_type = None
             file_headers = None
@@ -381,7 +371,7 @@ class MultipartEncoder:
     def _prepare_parts(self) -> tuple[list[Part], typing.Iterator[Part]]:
         """This uses the fields provided by the user and creates Part objects.
 
-        It populates the `parts` attribute and uses that to create a
+        It returns the new value for the `parts` attribute and creates a
         generator for iteration.
         """
         enc = self._enc
@@ -476,6 +466,7 @@ def readable_data(
     data: typing.AnyStr | typing.BinaryIO, encoding: str
 ) -> typing.BinaryIO | _CustomBytesIO:
     """Coerce the data to an object with a ``read`` method."""
+    # TODO: Again I'm dubious of this
     if hasattr(data, "read"):
         data = typing.cast(typing.BinaryIO, data)
         return data
@@ -483,6 +474,7 @@ def readable_data(
     return _CustomBytesIO(data, encoding)
 
 
+# TODO: Are any of these overloads necessary?
 @typing.overload
 def total_len(o: typing.TextIO) -> int:
     ...
@@ -600,14 +592,9 @@ def coerce_data(
     return data
 
 
-def to_list(
-    fields: Fields,
-) -> list[tuple[str, bytes | str | PartTuples | typing.BinaryIO]]:
+def to_list(fields: Fields) -> list[tuple[str, FieldValue]:
     if hasattr(fields, "items"):
-        fields = typing.cast(
-            typing.Mapping[str, typing.Union[bytes, str, PartTuples, typing.BinaryIO]],
-            fields,
-        )
+        fields = typing.cast(typing.Mapping[str, FieldValue], fields)
         return list(fields.items())
 
     return list(fields)
