@@ -14,8 +14,6 @@ from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
 
 if typing.TYPE_CHECKING:
-    from typing import Literal
-
     from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
@@ -482,6 +480,7 @@ class HTTPConnection(_HTTPConnection):
             headers=headers,
             status=httplib_response.status,
             version=httplib_response.version,
+            version_string=getattr(self, "_http_vsn_str", "HTTP/?"),
             reason=httplib_response.reason,
             preload_content=resp_options.preload_content,
             decode_content=resp_options.decode_content,
@@ -523,7 +522,7 @@ class HTTPSConnection(HTTPConnection):
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
         cert_reqs: int | str | None = None,
-        assert_hostname: None | str | Literal[False] = None,
+        assert_hostname: None | str | typing.Literal[False] = None,
         assert_fingerprint: str | None = None,
         server_hostname: str | None = None,
         ssl_context: ssl.SSLContext | None = None,
@@ -577,7 +576,7 @@ class HTTPSConnection(HTTPConnection):
         cert_reqs: int | str | None = None,
         key_password: str | None = None,
         ca_certs: str | None = None,
-        assert_hostname: None | str | Literal[False] = None,
+        assert_hostname: None | str | typing.Literal[False] = None,
         assert_fingerprint: str | None = None,
         ca_cert_dir: str | None = None,
         ca_cert_data: None | str | bytes = None,
@@ -742,7 +741,7 @@ def _ssl_wrap_socket_and_match_hostname(
     ca_certs: str | None,
     ca_cert_dir: str | None,
     ca_cert_data: None | str | bytes,
-    assert_hostname: None | str | Literal[False],
+    assert_hostname: None | str | typing.Literal[False],
     assert_fingerprint: str | None,
     server_hostname: str | None,
     ssl_context: ssl.SSLContext | None,

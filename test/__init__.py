@@ -44,7 +44,6 @@ except ImportError:
 
 if typing.TYPE_CHECKING:
     import ssl
-    from typing import Literal
 
 
 _RT = typing.TypeVar("_RT")  # return type
@@ -266,7 +265,7 @@ class LogRecorder:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ) -> Literal[False]:
+    ) -> typing.Literal[False]:
         self.uninstall()
         return False
 

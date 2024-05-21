@@ -45,6 +45,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
             status=internal_response.status_code,
             request_url=url,
             version=0,
+            version_string="HTTP/?",
             reason="",
             decode_content=True,
         )

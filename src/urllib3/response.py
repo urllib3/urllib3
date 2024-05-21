@@ -62,8 +62,6 @@ from .util.response import is_fp_closed, is_response_to_head
 from .util.retry import Retry
 
 if typing.TYPE_CHECKING:
-    from typing import Literal
-
     from .connectionpool import HTTPConnectionPool
 
 log = logging.getLogger(__name__)
@@ -320,6 +318,7 @@ class BaseHTTPResponse(io.IOBase):
         headers: typing.Mapping[str, str] | typing.Mapping[bytes, bytes] | None = None,
         status: int,
         version: int,
+        version_string: str,
         reason: str | None,
         decode_content: bool,
         request_url: str | None,
@@ -331,6 +330,7 @@ class BaseHTTPResponse(io.IOBase):
             self.headers = HTTPHeaderDict(headers)  # type: ignore[arg-type]
         self.status = status
         self.version = version
+        self.version_string = version_string
         self.reason = reason
         self.decode_content = decode_content
         self._has_decoded_content = False
@@ -347,7 +347,7 @@ class BaseHTTPResponse(io.IOBase):
         self._decoder: ContentDecoder | None = None
         self.length_remaining: int | None
 
-    def get_redirect_location(self) -> str | None | Literal[False]:
+    def get_redirect_location(self) -> str | None | typing.Literal[False]:
         """
         Should we redirect and where to?
 
@@ -576,6 +576,7 @@ class HTTPResponse(BaseHTTPResponse):
         headers: typing.Mapping[str, str] | typing.Mapping[bytes, bytes] | None = None,
         status: int = 0,
         version: int = 0,
+        version_string: str = "HTTP/?",
         reason: str | None = None,
         preload_content: bool = True,
         decode_content: bool = True,
@@ -593,6 +594,7 @@ class HTTPResponse(BaseHTTPResponse):
             headers=headers,
             status=status,
             version=version,
+            version_string=version_string,
             reason=reason,
             decode_content=decode_content,
             request_url=request_url,
