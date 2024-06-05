@@ -978,21 +978,22 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
     def test_http2_probe_result_is_cached(self, http_version: str) -> None:
         assert http2_probe._values() == {}
 
-        with HTTPSConnectionPool(
-            self.host,
-            self.port,
-            ca_certs=DEFAULT_CA,
-        ) as pool:
-            r = pool.request("GET", "/alpn_protocol", retries=0)
-            assert r.status == 200
+        for i in range(2):  # Do this twice to exercise the cache path
+            with HTTPSConnectionPool(
+                self.host,
+                self.port,
+                ca_certs=DEFAULT_CA,
+            ) as pool:
+                r = pool.request("GET", "/alpn_protocol", retries=0)
+                assert r.status == 200
 
-        if http_version == "h2":
-            # This means the probe was successful.
-            assert http2_probe._values() == {(self.host, self.port): True}
-        else:
-            # This means the probe wasn't attempted, otherwise would have a value.
-            assert http_version == "h11"
-            assert http2_probe._values() == {}
+            if http_version == "h2":
+                # This means the probe was successful.
+                assert http2_probe._values() == {(self.host, self.port): True}
+            else:
+                # This means the probe wasn't attempted, otherwise would have a value.
+                assert http_version == "h11"
+                assert http2_probe._values() == {}
 
     @pytest.mark.xfail(reason="Hypercorn always supports both HTTP/2 and HTTP/1.1")
     def test_http2_probe_result_failed(self, http_version: str) -> None:
