@@ -627,9 +627,6 @@ class HTTPSConnection(HTTPConnection):
             probe_http2_host = self.host
             probe_http2_port = self.port
 
-        if probe_http2_port is None:
-            probe_http2_port = 443
-
         # Check if the target origin supports HTTP/2.
         # If the value comes back as 'None' it means that the current thread
         # is probing for HTTP/2 support. Otherwise, we're waiting for another
