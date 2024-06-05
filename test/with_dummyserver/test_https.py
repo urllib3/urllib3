@@ -41,6 +41,7 @@ from urllib3.exceptions import (
     ConnectTimeoutError,
     InsecureRequestWarning,
     MaxRetryError,
+    NewConnectionError,
     ProtocolError,
     SSLError,
     SystemTimeWarning,
@@ -963,6 +964,16 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             assert (
                 r.data.decode("utf-8") == {"h11": "http/1.1", "h2": "h2"}[http_version]
             )
+
+    def test_http2_probe_default_port(self) -> None:
+        urllib3.http2.inject_into_urllib3()
+        try:
+            conn = HTTPSConnection(self.host, port=None)
+            with pytest.raises(NewConnectionError):
+                conn.connect()
+        finally:
+            assert http2_probe._values() == {("localhost", 443): None}
+            urllib3.http2.extract_from_urllib3()
 
     def test_http2_probe_result_is_cached(self, http_version: str) -> None:
         assert http2_probe._values() == {}
