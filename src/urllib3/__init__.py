@@ -49,7 +49,7 @@ else:
 # If the 'h2' module isn't installed at all that's
 # fine, we only care if the module is installed.
 try:
-    import h2
+    import h2  # type: ignore[import-untyped]
 except ImportError:
     pass
 else:
