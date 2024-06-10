@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import http.cookiejar
 import urllib
-import sys
 import pytest
 from unittest import mock
 
