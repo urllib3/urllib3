@@ -1,0 +1,12 @@
+diff --git a/tests/test_requests.py b/tests/test_requests.py
+index b4e9fe92..b150bb3f 100644
+--- a/tests/test_requests.py
++++ b/tests/test_requests.py
+@@ -914,6 +914,7 @@ class TestRequests:
+     def test_unicode_get(self, httpbin, url, params):
+         requests.get(httpbin(url), params=params)
+ 
++    @pytest.mark.skip(reason="https://github.com/psf/requests/issues/6734#issuecomment-2173121514")
+     def test_unicode_header_name(self, httpbin):
+         requests.put(
+             httpbin("put"),

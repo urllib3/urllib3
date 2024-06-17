@@ -81,7 +81,7 @@ def git_clone(session, git_url):
     session.run("git", "clone", "--depth", "1", git_url, external=True)
 
 
-@nox.session(python=["3.10"])
+@nox.session()
 def downstream_botocore(session):
     root = os.getcwd()
     tmp_dir = session.create_tmp()
@@ -99,7 +99,7 @@ def downstream_botocore(session):
     session.run("python", "scripts/ci/run-tests")
 
 
-@nox.session(python=["3.10"])
+@nox.session()
 def downstream_requests(session):
     root = os.getcwd()
     tmp_dir = session.create_tmp()
@@ -107,6 +107,12 @@ def downstream_requests(session):
     session.cd(tmp_dir)
     git_clone(session, "https://github.com/psf/requests")
     session.chdir("requests")
+
+    # https://github.com/psf/requests/issues/6734#issuecomment-2173121514
+    session.run(
+        "git", "apply", f"{root}/ci/skip-hanging-requests-test.patch", external=True
+    )
+
     session.run("git", "rev-parse", "HEAD", external=True)
     session.install(".[socks]", silent=False)
     session.install("-r", "requirements-dev.txt", silent=False)
