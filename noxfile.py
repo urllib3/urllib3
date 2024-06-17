@@ -109,7 +109,9 @@ def downstream_requests(session):
     session.chdir("requests")
 
     # https://github.com/psf/requests/issues/6734#issuecomment-2173121514
-    session.run("git", "apply", f"{root}/ci/skip-hanging-requests-test.patch", external=True)
+    session.run(
+        "git", "apply", f"{root}/ci/skip-hanging-requests-test.patch", external=True
+    )
 
     session.run("git", "rev-parse", "HEAD", external=True)
     session.install(".[socks]", silent=False)
