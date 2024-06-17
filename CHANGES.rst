@@ -5,6 +5,8 @@ Changes
 ==================
 
 - Added the ``Proxy-Authorization`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+- Fixed handling of OpenSSL 3.2.0 new error message for misconfiguring an HTTP proxy as HTTPS. (`#3405 <https://github.com/urllib3/urllib3/issues/3405>`__)
+
 
 1.26.18 (2023-10-17)
 --------------------
