@@ -142,7 +142,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={"target": "%s/headers" % self.base_url_alt},
-                headers={"Authorization": "foo", "Cookie": "foo=bar"},
+                headers={
+                    "Authorization": "foo",
+                    "Proxy-Authorization": "bar",
+                    "Cookie": "foo=bar",
+                },
             )
 
             assert r.status == 200
@@ -150,13 +154,18 @@ class TestPoolManager(HTTPDummyServerTestCase):
             data = json.loads(r.data.decode("utf-8"))
 
             assert "Authorization" not in data
+            assert "Proxy-Authorization" not in data
             assert "Cookie" not in data
 
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={"target": "%s/headers" % self.base_url_alt},
-                headers={"authorization": "foo", "cookie": "foo=bar"},
+                headers={
+                    "authorization": "foo",
+                    "proxy-authorization": "baz",
+                    "cookie": "foo=bar",
+                },
             )
 
             assert r.status == 200
@@ -165,6 +174,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert "authorization" not in data
             assert "Authorization" not in data
+            assert "proxy-authorization" not in data
+            assert "Proxy-Authorization" not in data
             assert "cookie" not in data
             assert "Cookie" not in data
 
@@ -174,7 +185,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={"target": "%s/headers" % self.base_url_alt},
-                headers={"Authorization": "foo", "Cookie": "foo=bar"},
+                headers={
+                    "Authorization": "foo",
+                    "Proxy-Authorization": "bar",
+                    "Cookie": "foo=bar",
+                },
                 retries=Retry(remove_headers_on_redirect=[]),
             )
 
@@ -183,6 +198,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             data = json.loads(r.data.decode("utf-8"))
 
             assert data["Authorization"] == "foo"
+            assert data["Proxy-Authorization"] == "bar"
             assert data["Cookie"] == "foo=bar"
 
     def test_redirect_cross_host_set_removed_headers(self):
@@ -194,6 +210,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 headers={
                     "X-API-Secret": "foo",
                     "Authorization": "bar",
+                    "Proxy-Authorization": "baz",
                     "Cookie": "foo=bar",
                 },
                 retries=Retry(remove_headers_on_redirect=["X-API-Secret"]),
@@ -205,6 +222,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
+            assert data["Proxy-Authorization"] == "baz"
             assert data["Cookie"] == "foo=bar"
 
             r = http.request(
@@ -213,6 +231,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 fields={"target": "%s/headers" % self.base_url_alt},
                 headers={
                     "x-api-secret": "foo",
+                    "proxy-authorization": "baz",
                     "authorization": "bar",
                     "cookie": "foo=bar",
                 },
@@ -226,6 +245,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert "x-api-secret" not in data
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
+            assert data["Proxy-Authorization"] == "baz"
             assert data["Cookie"] == "foo=bar"
 
     def test_redirect_without_preload_releases_connection(self):
