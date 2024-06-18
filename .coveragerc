@@ -1,6 +1,8 @@
 [run]
 source =
     urllib3
+omit =
+    urllib3/_version.py
 
 [paths]
 source =
@@ -13,7 +15,6 @@ omit =
     src/urllib3/contrib/pyopenssl.py
     src/urllib3/contrib/securetransport.py
     src/urllib3/contrib/_securetransport/*
-    urllib3/_version.py
 
 exclude_lines =
     except ModuleNotFoundError:
