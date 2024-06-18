@@ -13,6 +13,7 @@ omit =
     src/urllib3/contrib/pyopenssl.py
     src/urllib3/contrib/securetransport.py
     src/urllib3/contrib/_securetransport/*
+    src/urllib3/_version.py
 
 exclude_lines =
     except ModuleNotFoundError:
