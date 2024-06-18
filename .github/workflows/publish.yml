@@ -1,6 +1,12 @@
 name: Publish to PyPI
 
-on: push
+on:
+  push:
+    branches:
+      - "1.26.x"
+      - "main"
+    tags:
+      - "*"
 
 permissions:
   contents: read
