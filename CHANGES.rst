@@ -1,3 +1,10 @@
+2.2.2 (2024-06-17)
+==================
+
+- Added the ``Proxy-Authorization`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+- Allowed passing negative integers as ``amt`` to read methods of ``http.client.HTTPResponse`` as an alternative to ``None``. (`#3122 <https://github.com/urllib3/urllib3/issues/3122>`__)
+- Fixed return types representing copying actions to use ``typing.Self``. (`#3363 <https://github.com/urllib3/urllib3/issues/3363>`__)
+
 2.2.1 (2024-02-16)
 ==================
 
