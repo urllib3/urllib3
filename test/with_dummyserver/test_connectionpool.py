@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 import socket
 import time
 import typing
@@ -28,6 +29,7 @@ from urllib3.exceptions import (
     UnrewindableBodyError,
 )
 from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
+from urllib3.multipart import MultipartEncoder
 from urllib3.util import SKIP_HEADER, SKIPPABLE_HEADERS
 from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import _TYPE_TIMEOUT, Timeout
@@ -274,6 +276,25 @@ class TestConnectionPool(HypercornDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200, r.data
+
+    def test_streaming_multipart_upload(self) -> None:
+        with open(__file__, "rb") as fd:
+            upload_size = os.fstat(fd.fileno()).st_size
+            body = MultipartEncoder(
+                {
+                    "upload_param": "myfile",
+                    "upload_filename": "test.py",
+                    "myfile": (
+                        "test.py",
+                        fd,
+                        "text/plain",
+                    ),
+                    "upload_size": f"{upload_size}",
+                }
+            )
+            with HTTPConnectionPool(self.host, self.port) as pool:
+                r = pool.request("POST", "/upload", headers=body.headers, body=body)
+                assert r.status == 200, r.data
 
     def test_nagle(self) -> None:
         """Test that connections have TCP_NODELAY turned on"""

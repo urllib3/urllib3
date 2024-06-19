@@ -77,6 +77,8 @@ def encode_multipart_formdata(
 
         if isinstance(data, str):
             writer(body).write(data)
+        elif isinstance(data, typing.BinaryIO):
+            body.write(data.read())
         else:
             body.write(data)
 
