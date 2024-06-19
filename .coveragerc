@@ -1,8 +1,6 @@
 [run]
 source =
     urllib3
-omit =
-    urllib3/_version.py
 
 [paths]
 source =
