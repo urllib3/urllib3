@@ -104,6 +104,8 @@ jobs:
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+        with:
+          fetch-depth: 0 # Needed to fetch the version from git
 
       - name: "Setup Python ${{ matrix.python-version }}"
         uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
@@ -159,6 +161,7 @@ jobs:
 
       - name: "Combine & check coverage"
         run: |
+          python -m build
           python -m coverage combine
           python -m coverage html --skip-covered --skip-empty
           python -m coverage report --ignore-errors --show-missing --fail-under=100

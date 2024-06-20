@@ -220,6 +220,12 @@ Fixed
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
 * Fixed ``urllib3.contrib.pyopenssl.WrappedSocket`` and ``urllib3.contrib.securetransport.WrappedSocket`` close methods (`#2970 <https://github.com/urllib3/urllib3/issues/2970>`__)
 
+1.26.19 (2024-06-17)
+====================
+
+* Added the ``Proxy-Authorization`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+* Fixed handling of OpenSSL 3.2.0 new error message for misconfiguring an HTTP proxy as HTTPS. (`#3405 <https://github.com/urllib3/urllib3/issues/3405>`__)
+
 1.26.18 (2023-10-17)
 ====================
 
