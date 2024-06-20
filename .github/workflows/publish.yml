@@ -2,6 +2,9 @@ name: Publish to PyPI
 
 on:
   push:
+    branches:
+      - "1.26.x"
+      - "main"
     tags:
       - "*"
 
@@ -10,10 +13,8 @@ permissions:
 
 jobs:
   build:
-    name: "Build dists"
+    name: "Build distribution 📦"
     runs-on: "ubuntu-latest"
-    environment:
-      name: "publish"
     outputs:
       hashes: ${{ steps.hash.outputs.hashes }}
 
@@ -61,14 +62,16 @@ jobs:
       upload-assets: true
       compile-generator: true # Workaround for https://github.com/slsa-framework/slsa-github-generator/issues/1163
 
-  publish:
-    name: "Publish"
+  publish-to-pypi-and-github:
+    name: "Publish to PyPI"
     if: startsWith(github.ref, 'refs/tags/')
     needs: ["build", "provenance"]
     permissions:
-      contents: write
+      contents: write # Needed for making GitHub releases
       id-token: write # Needed for trusted publishing to PyPI.
     runs-on: "ubuntu-latest"
+    environment:
+      name: "publish"
 
     steps:
     - name: "Download dists"
@@ -85,3 +88,24 @@ jobs:
 
     - name: "Publish dists to PyPI"
       uses: pypa/gh-action-pypi-publish@ec4db0b4ddc65acdf4bff5fa45ac92d78b56bdf0 # v1.9.0
+
+  publish-to-test-pypi:
+    name: "Publish to Test PyPI"
+    needs: ["build", "provenance"]
+    permissions:
+      id-token: write # Needed for trusted publishing to PyPI.
+    runs-on: "ubuntu-latest"
+    environment:
+      name: "testpypi"
+
+    steps:
+    - name: "Download dists"
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+      with:
+        name: "dist"
+        path: "dist/"
+
+    - name: "Publish dists to Test PyPI"
+      uses: pypa/gh-action-pypi-publish@ec4db0b4ddc65acdf4bff5fa45ac92d78b56bdf0 # v1.9.0
+      with:
+        repository-url: https://test.pypi.org/legacy/
