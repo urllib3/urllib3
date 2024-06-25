@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import http.cookiejar
+import importlib
+import sys
 import urllib
+from unittest import mock
+
+import pytest
 
 from urllib3.response import HTTPResponse
 
@@ -20,3 +25,27 @@ class TestCookiejar:
             response.headers.add("set-cookie", c)
         cookiejar.extract_cookies(response, request)  # type: ignore[arg-type]
         assert len(cookiejar) == len(cookies)
+
+
+class TestInitialization:
+    def test_h2_version_check(self) -> None:
+        with mock.patch.dict("sys.modules", {}):
+            importlib.reload(sys.modules["urllib3"])
+
+        mock_h2 = mock.Mock()
+
+        mock_h2.__version__ = "4.1.0"
+        with mock.patch.dict("sys.modules", {"h2": mock_h2}):
+            importlib.reload(sys.modules["urllib3"])
+
+        mock_h2.__version__ = "3.9.9"
+        with mock.patch.dict("sys.modules", {"h2": mock_h2}):
+            with pytest.raises(ImportError) as excinfo:
+                importlib.reload(sys.modules["urllib3"])
+            assert "h2 version 4.x.x" in str(excinfo.value)
+
+        mock_h2.__version__ = "5.0.0"
+        with mock.patch.dict("sys.modules", {"h2": mock_h2}):
+            with pytest.raises(ImportError) as excinfo:
+                importlib.reload(sys.modules["urllib3"])
+            assert "h2 version 4.x.x" in str(excinfo.value)
