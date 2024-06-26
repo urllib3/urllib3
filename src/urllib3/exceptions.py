@@ -82,6 +82,13 @@ ConnectionError = ProtocolError
 # Leaf Exceptions
 
 
+class MaxRetryWaitExceededError(HTTPError):
+    def __init__(self, retry_after_header_value: float) -> None:
+        self.retry_after_header_value = retry_after_header_value
+
+        super().__init__()
+
+
 class MaxRetryError(RequestError):
     """Raised when the maximum number of retries is exceeded.
 
