@@ -63,7 +63,13 @@ def testserver_http(
 
 
 @pytest.fixture()
-def selenium_coverage(selenium: Any) -> Generator[Any, None, None]:
+def selenium_coverage(selenium_jspi: Any) -> Generator[Any, None, None]:
+    def enable_jspi(self: Any, jspi: bool):
+        code = f"""
+                 import urllib3.contrib.emscripten.fetch
+                 urllib3.contrib.emscripten.fetch.has_jspi = lambda : {jspi}"""
+        self.run(code)
+
     def _install_coverage(self: Any) -> None:
         self.run_js(
             """
@@ -76,15 +82,22 @@ _coverage.start()
         )
 
     setattr(
-        selenium,
+        selenium_jspi,
         "_install_coverage",
-        _install_coverage.__get__(selenium, selenium.__class__),
+        _install_coverage.__get__(selenium_jspi, selenium_jspi.__class__),
     )
-    selenium._install_coverage()
-    yield selenium
+
+    setattr(
+        selenium_jspi,
+        "enable_jspi",
+        enable_jspi.__get__(selenium_jspi, selenium_jspi.__class__),
+    )
+
+    selenium_jspi._install_coverage()
+    yield selenium_jspi
     # on teardown, save _coverage output
     coverage_out_binary = bytes(
-        selenium.run_js(
+        selenium_jspi.run_js(
             """
 return await pyodide.runPythonAsync(`
 _coverage.stop()
@@ -104,16 +117,33 @@ _coverage_js.Array.from_(_coverage_outdata)
         outfile.write(coverage_out_binary)
 
 
+@pytest.fixture(params=[False, True])
+def has_jspi(request, selenium_coverage, monkeypatch) -> Generator[bool, None, None]:
+    yield request.param
+
+
 class ServerRunnerInfo:
     def __init__(self, host: str, port: int, selenium: Any) -> None:
         self.host = host
         self.port = port
         self.selenium = selenium
 
-    def run_webworker(self, code: str) -> Any:
+    def run_webworker(self, code: str, *, has_jspi=True) -> Any:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
+            if has_jspi == False:
+                # disable jspi in this code
+                code = (
+                    textwrap.dedent(
+                        """
+                 import urllib3.contrib.emscripten.fetch
+                 urllib3.contrib.emscripten.fetch.has_jspi = lambda : False
+                 """
+                    )
+                    + code
+                )
+
             # add coverage collection to this code
             code = (
                 textwrap.dedent(

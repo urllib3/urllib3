@@ -288,6 +288,75 @@ class _StreamingFetcher:
             )
 
 
+class _JSPIReadStream(io.RawIOBase):
+    def __init__(
+        self,
+        read_stream_js: object,
+        timeout: float,
+        request: EmscriptenRequest,        
+    ):
+        self.read_stream_js = read_stream_js
+        self.timeout = int(1000 * timeout) if timeout > 0 else None
+        self.is_live = True
+        self._is_closed = False
+        self._is_done = False
+        self.request: EmscriptenRequest | None = request
+        self.current_buffer = None
+        self.current_buffer_pos = 0
+
+    def __del__(self) -> None:
+        self.close()
+
+    # this is compatible with _base_connection
+    def is_closed(self) -> bool:
+        return self._is_closed
+
+    # for compatibility with RawIOBase
+    @property
+    def closed(self) -> bool:
+        return self.is_closed()
+
+    def close(self) -> None:
+        if not self.is_closed():
+            self.read_len = 0
+            self.read_pos = 0
+            self.read_stream_js = None
+            self._is_closed = True
+            self._is_done = True
+            self.request = None
+            super().close()
+
+    def readable(self) -> bool:
+        return True
+
+    def writable(self) -> bool:
+        return False
+
+    def seekable(self) -> bool:
+        return False
+
+    def _get_next_buffer(self):
+        from pyodide.ffi import run_sync,JsException
+        result_js = run_sync(self.read_stream_js.read())
+        if result_js.done:
+            self._is_done = True
+            return False
+        else:
+            self.current_buffer = result_js.value.to_py()
+            self.current_buffer_pos = 0
+            return True
+
+    def readinto(self, byte_obj: Buffer) -> int:
+        if self.current_buffer is None:
+            if not self._get_next_buffer():
+                return 0
+        ret_length = min(len(byte_obj),len(self.current_buffer)-self.current_buffer_pos)
+        byte_obj[0:ret_length] = self.current_buffer[self.current_buffer_pos:self.current_buffer_pos+ret_length]
+        self.current_buffer_pos += ret_length
+        if self.current_buffer_pos == len(self.current_buffer):
+            self.current_buffer=None
+        return ret_length
+
 # check if we are in a worker or not
 def is_in_browser_main_thread() -> bool:
     return hasattr(js, "window") and hasattr(js, "self") and js.self == js.window
@@ -322,6 +391,9 @@ else:
 
 
 def send_streaming_request(request: EmscriptenRequest) -> EmscriptenResponse | None:
+    if has_jspi():
+        return send_jspi_request(request,True)
+
     if _fetcher and streaming_ready():
         return _fetcher.send(request)
     else:
@@ -363,6 +435,8 @@ is working, you need to call: 'await urllib3.contrib.emscripten.fetch.wait_for_s
 
 
 def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
+    if has_jspi():
+        return send_jspi_request(request,False)
     try:
         js_xhr = js.XMLHttpRequest.new()
 
@@ -402,6 +476,63 @@ def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
             # general http error
             raise _RequestError(err.message, request=request)
 
+def send_jspi_request(request: EmscriptenRequest,streaming: bool) -> EmscriptenResponse:
+    """Send a request using Webassembly Javascript Promise Integration (experimental)
+       to wrap the asynchronous javascript fetch api. 
+
+    Args:
+        request (EmscriptenRequest): Request to send
+        streaming : Whether to stream response
+    """
+    # this import is inline here because it is currently 
+    # experimental and we don't want to break older pyodide versions.
+    from pyodide.ffi import run_sync,JsException
+    from js import fetch
+
+    headers = {
+        k: v for k, v in request.headers.items() if k not in HEADERS_TO_IGNORE
+    }
+    body = request.body
+    fetch_data = {"headers": headers, "body": to_js(body), "method": request.method}
+    fetcher_promise_js = fetch(request.url, _obj_from_dict(fetch_data))
+    # TODO timeout: https://dmitripavlutin.com/timeout-fetch-request/
+    try:
+        response_js = run_sync(fetcher_promise_js)
+        headers = {}
+        header_iter = response_js.headers.entries()
+        while True:
+            iter_value_js = header_iter.next()
+            if getattr(iter_value_js,"done",False):
+                break
+            else:
+                headers[str(iter_value_js.value[0])] = str(iter_value_js.value[1])
+        status_code = response_js.status
+        body = None
+        if streaming:
+            # get via inputstream
+            if response_js.body is not None:
+                body_stream_js = response_js.body.getReader()
+                body = _JSPIReadStream(body_stream_js,request.timeout,request)
+                js.console.log(body_stream_js)
+        else:
+            # get directly via arraybuffer
+            body = run_sync(response_js.arrayBuffer()).to_py()
+        return EmscriptenResponse(
+            status_code=status_code, headers=headers, body=body, request=request
+        )
+    except JsException as err:
+        raise _StreamingError(
+            f"Exception thrown in fetch: {err.message}",
+            request=request,
+            response=None,
+        )
+
+def has_jspi() -> bool:
+    try:
+        from pyodide.ffi import run_sync
+        return hasattr(js.WebAssembly,"Suspending")
+    except:
+        return False
 
 def streaming_ready() -> bool | None:
     if _fetcher:

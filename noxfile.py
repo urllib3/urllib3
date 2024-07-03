@@ -219,7 +219,7 @@ def pyodideconsole(session: nox.Session) -> None:
 # loading pyodide, but there is currently no nice way to do this with pytest-pyodide
 # because you can't override the test runner properties easily - see
 # https://github.com/pyodide/pytest-pyodide/issues/118 for more
-@nox.session(python="3.11")
+@nox.session(python="3.12")
 @nox.parametrize("runner", ["firefox", "chrome"])
 def emscripten(session: nox.Session, runner: str) -> None:
     """Test on Emscripten with Pyodide & Chrome / Firefox"""
@@ -269,18 +269,6 @@ def emscripten(session: nox.Session, runner: str) -> None:
     assert dist_dir is not None
     assert dist_dir.exists()
     if runner == "chrome":
-        # install chrome webdriver and add it to path
-        driver = typing.cast(
-            str,
-            session.run(
-                "python",
-                "-c",
-                "from webdriver_manager.chrome import ChromeDriverManager;print(ChromeDriverManager().install())",
-                silent=True,
-            ),
-        ).strip()
-        session.env["PATH"] = f"{Path(driver).parent}:{session.env['PATH']}"
-
         tests_impl(
             session,
             pytest_extra_args=[
@@ -292,17 +280,6 @@ def emscripten(session: nox.Session, runner: str) -> None:
             ],
         )
     elif runner == "firefox":
-        driver = typing.cast(
-            str,
-            session.run(
-                "python",
-                "-c",
-                "from webdriver_manager.firefox import GeckoDriverManager;print(GeckoDriverManager().install())",
-                silent=True,
-            ),
-        ).strip()
-        session.env["PATH"] = f"{Path(driver).parent}:{session.env['PATH']}"
-
         tests_impl(
             session,
             pytest_extra_args=[
