@@ -94,7 +94,7 @@ def test_pool_requests(
         assert len(http.pools) == 1
 
         resp3 = http.request("GET", f"https://{host}:{https_port}/")
-        assert resp2.data.decode("utf-8") == "Dummy server!"
+        assert resp3.data.decode("utf-8") == "Dummy server!"
 
         # one http pool + one https pool
         assert len(http.pools) == 2
@@ -237,9 +237,9 @@ def test_404(
 # support timeout in async mode if globalThis == Window
 @install_urllib3_wheel()
 def test_timeout_warning(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, 
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
+    selenium_coverage.enable_jspi(False)
 
     @run_in_pyodide()  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
@@ -532,6 +532,8 @@ def test_streaming_close(
             assert(body_internal.writable() is False)
             assert(body_internal.seekable() is False)
             assert(body_internal.readable() is True)
+            assert(urllib3.contrib.emscripten.fetch.has_jspi() == {has_jspi})
+
             response.drain_conn()
             x=response.read()
             assert(not x)
@@ -862,7 +864,6 @@ def test_break_worker_streaming(
             body_internal.worker.postMessage = ignore_message
             data=response.read()
         body_internal.worker.postMessage = old_pm
-
 """
     run_from_server.run_webworker(worker_code, has_jspi=False)
 

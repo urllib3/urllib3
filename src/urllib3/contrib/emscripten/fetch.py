@@ -297,7 +297,6 @@ class _JSPIReadStream(io.RawIOBase):
     ):
         self.read_stream_js = read_stream_js
         self.timeout = int(1000 * timeout) if timeout > 0 else None
-        self.is_live = True
         self._is_closed = False
         self._is_done = False
         self.request: EmscriptenRequest | None = request
@@ -336,7 +335,7 @@ class _JSPIReadStream(io.RawIOBase):
         return False
 
     def _get_next_buffer(self):
-        from pyodide.ffi import run_sync,JsException
+        from pyodide.ffi import run_sync
         result_js = run_sync(self.read_stream_js.read())
         if result_js.done:
             self._is_done = True
@@ -349,6 +348,7 @@ class _JSPIReadStream(io.RawIOBase):
     def readinto(self, byte_obj: Buffer) -> int:
         if self.current_buffer is None:
             if not self._get_next_buffer():
+                self.close()
                 return 0
         ret_length = min(len(byte_obj),len(self.current_buffer)-self.current_buffer_pos)
         byte_obj[0:ret_length] = self.current_buffer[self.current_buffer_pos:self.current_buffer_pos+ret_length]
