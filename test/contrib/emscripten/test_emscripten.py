@@ -278,18 +278,29 @@ def test_timeout_in_worker_non_streaming(
     has_jspi: bool,
 ) -> None:
     worker_code = f"""
+        # uncomment these lines and the jspi test works
+        # because it is being called via the webloop
+        #import urllib3.contrib.emscripten.fetch
+        #await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
         from urllib3.exceptions import TimeoutError
         from urllib3.connection import HTTPConnection
+        from pyodide.ffi import JsException
+        from http.client import HTTPException as HTTPException
         conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port},timeout=1.0)
         result=-1
         try:
-            conn.request("GET","/slow")
+            conn.request("GET","/slow",preload_content = True)
             _response = conn.getresponse()
             result=-3
         except TimeoutError as e:
             result=1 # we've got the correct exception
+        except HTTPException as e:
+            result=-3
         except BaseException as e:
             result=-2
+            raise BaseException(str(result)+":"+str(type(e))+str(e.args) )
+        except JsException as e:
+            result=-4
         assert result == 1
 """
     run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
@@ -1030,3 +1041,63 @@ def test_has_jspi(
         assert urllib3.contrib.emscripten.fetch.has_jspi() == has_jspi
 
     pyodide_test(selenium_coverage, has_jspi)
+
+
+@install_urllib3_wheel()
+def test_timeout_jspi(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    selenium_coverage.enable_jspi(True)
+
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium, host, port):
+        import pytest
+        from urllib3.exceptions import TimeoutError
+        from urllib3.connection import HTTPConnection
+
+        conn = HTTPConnection(host, port, timeout=1.0)
+        with pytest.raises(TimeoutError):
+            conn.request("GET", "/slow")
+            _response = conn.getresponse()
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
+
+
+@install_urllib3_wheel()
+def test_streaming_jspi(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    selenium_coverage.enable_jspi(True)
+    bigfile_url = (
+        f"http://{testserver_http.http_host}:{testserver_http.http_port}/dripfeed"
+    )
+
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium, host, port, bigfile_url):
+        import time
+        from urllib3.response import BaseHTTPResponse
+        from urllib3.connection import HTTPConnection
+
+        conn = HTTPConnection(host, port)
+        start_time = time.time()
+        conn.request("GET", bigfile_url, preload_content=False)
+        response = conn.getresponse()
+        assert isinstance(response, BaseHTTPResponse)
+        # first data should be received before the timeout
+        # on the server
+        first_data = response.read(32768)
+        assert time.time() - start_time < 2
+        all_data = first_data + response.read()
+        # make sure that the timeout on server side really happened
+        # by checking that it took greater than the timeout
+        assert time.time() - start_time > 2        
+
+    x = pyodide_test(
+        selenium_coverage,
+        testserver_http.http_host,
+        testserver_http.http_port,
+        bigfile_url,
+    )
+

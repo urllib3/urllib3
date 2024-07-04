@@ -316,6 +316,20 @@ async def slow() -> ResponseReturnValue:
     return await make_response("TEN SECONDS LATER", 200)
 
 
+@pyodide_testing_app.route("/dripfeed")
+async def dripfeed() -> ResponseReturnValue:
+    # great big text file which streams half the file
+    # then pauses for 5 seconds and streams the rest
+    async def generate():
+        for x in range(8):
+            if x == 4:
+                await trio.sleep(2)
+            yield b"WOOO YAY BOOYAKAH"*131072
+    response = await make_response(generate(),200)
+    response.timeout=None
+    return response
+
+
 @pyodide_testing_app.route("/bigfile")
 async def bigfile() -> ResponseReturnValue:
     # great big text file, should force streaming
