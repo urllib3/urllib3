@@ -5,6 +5,7 @@ import contextlib
 import datetime
 import email.utils
 import gzip
+import json
 import mimetypes
 import zlib
 from io import BytesIO
@@ -355,11 +356,25 @@ async def pyodide_upload() -> ResponseReturnValue:
 
 @pyodide_testing_app.route("/pyodide/<py_file>")
 async def pyodide(py_file: str) -> ResponseReturnValue:
+    import sys
+
+    sys.__stderr__.write(py_file + "\n")
     file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
     if file_path.exists():
         mime_type, encoding = mimetypes.guess_type(file_path)
         if not mime_type:
             mime_type = "text/plain"
+        if py_file == "pyodide-lock.json":
+            # remove any urllib wheels from pyodide-lock.json so that they don't
+            # override our wheel
+            json_data = json.loads(file_path.read_text())
+            if "urllib3" in json_data["packages"]:
+                del json_data["packages"]["urllib3"]
+            return await make_response(
+                json.dumps(json_data).encode("utf-8"),
+                200,
+                [("Content-Type", mime_type)],
+            )
         return await make_response(
             file_path.read_bytes(), 200, [("Content-Type", mime_type)]
         )
@@ -370,12 +385,16 @@ async def pyodide(py_file: str) -> ResponseReturnValue:
 @pyodide_testing_app.route("/wheel/dist.whl")
 async def wheel() -> ResponseReturnValue:
     # serve our wheel
+    import sys
+
+    sys.__stderr__.write("dist.whl\n")
     wheel_folder = Path(__file__).parent.parent / "dist"
     wheels = list(wheel_folder.glob("*.whl"))
     if len(wheels) > 0:
         wheel = wheels[0]
         headers = [("Content-Disposition", f"inline; filename='{wheel.name}'")]
         resp = await make_response(wheel.read_bytes(), 200, headers)
+
         return resp
     else:
         return await make_response(f"NO WHEEL IN {wheel_folder}", 404)

@@ -530,7 +530,7 @@ def send_jspi_request(request: EmscriptenRequest,streaming: bool) -> EmscriptenR
 def has_jspi() -> bool:
     try:
         from pyodide.ffi import run_sync
-        return hasattr(js.WebAssembly,"Suspending")
+        return hasattr(js.WebAssembly,"Suspending") or hasattr(js.WebAssembly,"Suspender")
     except:
         return False
 

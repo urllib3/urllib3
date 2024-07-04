@@ -132,43 +132,49 @@ class ServerRunnerInfo:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
-            if has_jspi == False:
-                # disable jspi in this code
-                code = (
-                    textwrap.dedent(
-                        """
-                 import urllib3.contrib.emscripten.fetch
-                 urllib3.contrib.emscripten.fetch.has_jspi = lambda : False
-                 """
-                    )
-                    + code
-                )
+        init_code = textwrap.dedent(
+            f"""
+            import pyodide_js as pjs
+            await pjs.loadPackage('/wheel/dist.whl',deps=False)
+            """
+        )
 
-            # add coverage collection to this code
+        if has_jspi == False:
+            # disable jspi in this code
             code = (
                 textwrap.dedent(
                     """
-            import coverage
-            _coverage= coverage.Coverage(source_pkgs=['urllib3'])
-            _coverage.start()
-            """
+                import urllib3.contrib.emscripten.fetch
+                urllib3.contrib.emscripten.fetch.has_jspi = lambda : False
+                """
                 )
                 + code
             )
-            code += textwrap.dedent(
+        # add coverage collection to this code
+        code = (
+            init_code
+            + textwrap.dedent(
                 """
-            _coverage.stop()
-            _coverage.save()
-            _coverage_datafile = open(".coverage","rb")
-            _coverage_outdata = _coverage_datafile.read()
-            # avoid polluting main namespace too much
-            import js as _coverage_js
-            # convert to js Array (as default conversion is TypedArray which does
-            # bad things in firefox)
-            _coverage_js.Array.from_(_coverage_outdata)
-            """
+        import coverage
+        _coverage= coverage.Coverage(source_pkgs=['urllib3'])
+        _coverage.start()
+        """
             )
-
+            + code
+        )
+        code += textwrap.dedent(
+            """
+        _coverage.stop()
+        _coverage.save()
+        _coverage_datafile = open(".coverage","rb")
+        _coverage_outdata = _coverage_datafile.read()
+        # avoid polluting main namespace too much
+        import js as _coverage_js
+        # convert to js Array (as default conversion is TypedArray which does
+        # bad things in firefox)
+        _coverage_js.Array.from_(_coverage_outdata)
+        """
+        )
         coverage_out_binary = bytes(
             self.selenium.run_js(
                 f"""
@@ -212,8 +218,8 @@ def run_from_server(
     selenium_coverage.restore_state()
     # install the wheel, which is served at /wheel/*
     selenium_coverage.run_js(
-        """
-await pyodide.loadPackage('/wheel/dist.whl')
+        f"""
+await pyodide.loadPackage('https://{testserver_http.http_host}:{testserver_http.https_port}/wheel/dist.whl')
 """
     )
     selenium_coverage._install_coverage()

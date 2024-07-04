@@ -237,7 +237,8 @@ def test_404(
 # support timeout in async mode if globalThis == Window
 @install_urllib3_wheel()
 def test_timeout_warning(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, 
+    selenium_coverage: typing.Any,
+    testserver_http: PyodideServerInfo,
 ) -> None:
     selenium_coverage.enable_jspi(False)
 
@@ -270,7 +271,6 @@ def test_timeout_warning(
     )
 
 
-@install_urllib3_wheel()
 def test_timeout_in_worker_non_streaming(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
@@ -278,8 +278,6 @@ def test_timeout_in_worker_non_streaming(
     has_jspi: bool,
 ) -> None:
     worker_code = f"""
-        import pyodide_js as pjs
-        await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
         from urllib3.exceptions import TimeoutError
         from urllib3.connection import HTTPConnection
         conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port},timeout=1.0)
@@ -297,7 +295,6 @@ def test_timeout_in_worker_non_streaming(
     run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
 
 
-@install_urllib3_wheel()
 def test_timeout_in_worker_streaming(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
@@ -305,8 +302,6 @@ def test_timeout_in_worker_streaming(
     has_jspi: bool,
 ) -> None:
     worker_code = f"""
-        import pyodide_js as pjs
-        await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
         import urllib3.contrib.emscripten.fetch
         await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
         from urllib3.exceptions import TimeoutError
@@ -481,9 +476,6 @@ def test_streaming_download(
         f"http://{testserver_http.http_host}:{testserver_http.http_port}/bigfile"
     )
     worker_code = f"""
-            import pyodide_js as pjs
-            await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
-
             import urllib3.contrib.emscripten.fetch
             await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
             from urllib3.response import BaseHTTPResponse
@@ -500,7 +492,6 @@ def test_streaming_download(
     run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
 
 
-@install_urllib3_wheel()
 def test_streaming_close(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
@@ -514,9 +505,6 @@ def test_streaming_close(
     # should not log any warning about falling back
     url = f"http://{testserver_http.http_host}:{testserver_http.http_port}/"
     worker_code = f"""
-            import pyodide_js as pjs
-            await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
-
             import urllib3.contrib.emscripten.fetch
             await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
             from urllib3.response import BaseHTTPResponse
@@ -548,7 +536,6 @@ def test_streaming_close(
     run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
 
 
-@install_urllib3_wheel()
 def test_streaming_bad_url(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
@@ -562,8 +549,6 @@ def test_streaming_bad_url(
     # as you can't do it on main thread
     worker_code = f"""
             import pytest
-            import pyodide_js as pjs
-            await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
             import http.client
             import urllib3.contrib.emscripten.fetch
             await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
@@ -577,7 +562,6 @@ def test_streaming_bad_url(
     run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
 
 
-@install_urllib3_wheel()
 def test_streaming_bad_method(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
@@ -592,8 +576,6 @@ def test_streaming_bad_method(
     worker_code = f"""
             import pytest
             import http.client
-            import pyodide_js as pjs
-            await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
 
             import urllib3.contrib.emscripten.fetch
             await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
@@ -608,7 +590,6 @@ def test_streaming_bad_method(
     run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
 
 
-@install_urllib3_wheel()
 def test_streaming_notready_warning(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
@@ -620,8 +601,6 @@ def test_streaming_notready_warning(
     # and log a warning
     file_url = f"http://{testserver_http.http_host}:{testserver_http.http_port}/"
     worker_code = f"""
-        import pyodide_js as pjs
-        await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
         import js
         import urllib3
         from urllib3.response import BaseHTTPResponse
@@ -791,15 +770,12 @@ def test_open_close(
 # check that various ways that the worker may be broken
 # throw exceptions nicely, by deliberately breaking things
 # this is for coverage
-@install_urllib3_wheel()
 def test_break_worker_streaming(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
 ) -> None:
     worker_code = f"""
-        import pyodide_js as pjs
-        await pjs.loadPackage('http://{testserver_http.http_host}:{testserver_http.http_port}/wheel/dist.whl',deps=False)
         import pytest
         import urllib3.contrib.emscripten.fetch
         import js
@@ -1025,6 +1001,20 @@ def test_insecure_requests_warning(
         testserver_http.http_port,
         testserver_http.https_port,
     )
+
+
+def test_has_jspi_worker(
+    selenium_coverage: typing.Any,
+    testserver_http: PyodideServerInfo,
+    run_from_server: ServerRunnerInfo,
+    has_jspi: bool,
+) -> None:
+    worker_code = f"""
+    import urllib3.contrib.emscripten.fetch
+    assert(urllib3.contrib.emscripten.fetch.has_jspi() == {has_jspi})
+    """
+
+    run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
 
 
 @install_urllib3_wheel()
