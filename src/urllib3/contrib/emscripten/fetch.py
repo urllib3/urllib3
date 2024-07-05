@@ -503,12 +503,8 @@ def send_jspi_request(
         request (EmscriptenRequest): Request to send
         streaming : Whether to stream response
     """
-    # this import is inline here because it is currently
-    # experimental and we don't want to break older pyodide versions.
-    from js import fetch, AbortController
-
     timeout = request.timeout
-    abort_controller = AbortController.new()
+    abort_controller = js.AbortController.new()
     headers = {k: v for k, v in request.headers.items() if k not in HEADERS_TO_IGNORE}
     body = request.body
     fetch_data = {
@@ -518,7 +514,7 @@ def send_jspi_request(
         "signal": abort_controller.signal,
     }
     try:
-        fetcher_promise_js = fetch(request.url, _obj_from_dict(fetch_data))
+        fetcher_promise_js = js.fetch(request.url, _obj_from_dict(fetch_data))
         response_js = _run_sync_with_timeout(
             fetcher_promise_js,
             timeout,
