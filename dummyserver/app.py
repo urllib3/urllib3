@@ -5,6 +5,7 @@ import contextlib
 import datetime
 import email.utils
 import gzip
+import hashlib
 import json
 import mimetypes
 import zlib
@@ -324,9 +325,10 @@ async def dripfeed() -> ResponseReturnValue:
         for x in range(8):
             if x == 4:
                 await trio.sleep(2)
-            yield b"WOOO YAY BOOYAKAH"*131072
-    response = await make_response(generate(),200)
-    response.timeout=None
+            yield b"WOOO YAY BOOYAKAH" * 131072
+
+    response = await make_response(generate(), 200)
+    response.timeout = None
     return response
 
 
@@ -368,47 +370,49 @@ async def pyodide_upload() -> ResponseReturnValue:
     return await make_response("Uploaded file correct", 200)
 
 
-@pyodide_testing_app.route("/pyodide/<py_file>")
-async def pyodide(py_file: str) -> ResponseReturnValue:
-    import sys
-
-    sys.__stderr__.write(py_file + "\n")
-    file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
-    if file_path.exists():
-        mime_type, encoding = mimetypes.guess_type(file_path)
-        if not mime_type:
-            mime_type = "text/plain"
-        if py_file == "pyodide-lock.json":
-            # remove any urllib wheels from pyodide-lock.json so that they don't
-            # override our wheel
-            json_data = json.loads(file_path.read_text())
-            if "urllib3" in json_data["packages"]:
-                del json_data["packages"]["urllib3"]
-            return await make_response(
-                json.dumps(json_data).encode("utf-8"),
-                200,
-                [("Content-Type", mime_type)],
-            )
-        return await make_response(
-            file_path.read_bytes(), 200, [("Content-Type", mime_type)]
-        )
-    else:
-        return await make_response("", 404)
-
-
-@pyodide_testing_app.route("/wheel/dist.whl")
-async def wheel() -> ResponseReturnValue:
-    # serve our wheel
-    import sys
-
-    sys.__stderr__.write("dist.whl\n")
+def _find_built_wheel():
     wheel_folder = Path(__file__).parent.parent / "dist"
     wheels = list(wheel_folder.glob("*.whl"))
+    wheels = sorted(wheels, key=lambda w: w.stat().st_mtime)
     if len(wheels) > 0:
-        wheel = wheels[0]
-        headers = [("Content-Disposition", f"inline; filename='{wheel.name}'")]
-        resp = await make_response(wheel.read_bytes(), 200, headers)
-
-        return resp
+        return wheels[-1]  # newest wheel
     else:
-        return await make_response(f"NO WHEEL IN {wheel_folder}", 404)
+        return None
+
+
+def _rewrite_pyodide_lock():
+    file_path = Path(
+        pyodide_testing_app.config["pyodide_dist_dir"], "pyodide-lock.json"
+    )
+    wheel_sha256 = hashlib.sha256(_find_built_wheel().read_bytes()).hexdigest()
+    pyodide_json = json.loads(file_path.read_text())
+    pyodide_json["packages"]["urllib3"]["sha256"] = wheel_sha256
+    out_data = json.dumps(pyodide_json).encode("utf-8")
+    print(wheel_sha256)
+    return out_data
+
+
+@pyodide_testing_app.route("/pyodide/<py_file>")
+async def pyodide(py_file: str) -> ResponseReturnValue:
+    if py_file == "pyodide-lock.json":
+        out_data = _rewrite_pyodide_lock()
+        return await make_response(out_data, 200, [("Content-Type", "text/json")])
+    if py_file.startswith("urllib3") and py_file.endswith(".whl"):
+        file_path = _find_built_wheel()
+    else:
+        file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
+    if file_path and file_path.exists():
+        if py_file.endswith(".whl"):
+            mime_type = "application/x-wheel"
+            headers = [
+                ("Content-Disposition", f"inline; filename='{file_path.name}'"),
+                ("Content-Type", mime_type),
+            ]
+        else:
+            mime_type, _encoding = mimetypes.guess_type(file_path)
+            if not mime_type:
+                mime_type = "text/plain"
+            headers = [("Content-Type", mime_type)]
+        return await make_response(file_path.read_bytes(), 200, headers)
+    else:
+        return await make_response("", 404)
