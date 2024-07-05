@@ -1013,17 +1013,20 @@ def test_has_jspi(
 
 
 def test_timeout_jspi(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, run_from_server: ServerRunnerInfo,
 ) -> None:
     selenium_coverage.enable_jspi(True)
 
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium, host, port):
+        import urllib3.contrib.emscripten.fetch
+        
         import pytest
         from urllib3.exceptions import TimeoutError
         from urllib3.connection import HTTPConnection
 
-        conn = HTTPConnection(host, port, timeout=1.0)
+        conn = HTTPConnection(host, port, timeout=0.1)
+        assert(urllib3.contrib.emscripten.fetch.has_jspi() == True)
         with pytest.raises(TimeoutError):
             conn.request("GET", "/slow")
             _response = conn.getresponse()
