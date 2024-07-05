@@ -28,18 +28,6 @@ from .conftest import PyodideServerInfo, ServerRunnerInfo  # noqa: E402
 pytest_pyodide.runner.CHROME_FLAGS.append("ignore-certificate-errors")
 
 
-# copy our wheel file to pyodide and install it
-def install_urllib3_wheel() -> (
-    typing.Callable[
-        [typing.Callable[..., typing.Any]], typing.Callable[..., typing.Any]
-    ]
-):
-    return copy_files_to_pyodide(  # type: ignore[no-any-return]
-        file_list=[("dist/*.whl", "/tmp")], install_wheels=True
-    )
-
-
-@install_urllib3_wheel()
 def test_index(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -72,7 +60,6 @@ def test_index(
     )
 
 
-@install_urllib3_wheel()
 def test_pool_requests(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -140,7 +127,8 @@ def test_pool_requests(
 
 
 # wrong protocol / protocol error etc. should raise an exception of http.client.HTTPException
-@install_urllib3_wheel()
+
+
 def test_wrong_protocol(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -164,13 +152,12 @@ def test_wrong_protocol(
 
 
 # wrong protocol / protocol error etc. should raise an exception of http.client.HTTPException
-@install_urllib3_wheel()
 def test_bad_method(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
     selenium_coverage.enable_jspi(has_jspi)
 
-    @run_in_pyodide(packages=("pytest",))  # type: ignore[misc]
+    @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import http.client
 
@@ -188,13 +175,14 @@ def test_bad_method(
 
 
 # no connection - should raise
-@install_urllib3_wheel()
+
+
 def test_no_response(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
     selenium_coverage.enable_jspi(has_jspi)
 
-    @run_in_pyodide(packages=("pytest",))  # type: ignore[misc]
+    @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import http.client
 
@@ -210,7 +198,6 @@ def test_no_response(
     pyodide_test(selenium_coverage, testserver_http.http_host, find_unused_port())
 
 
-@install_urllib3_wheel()
 def test_404(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -235,7 +222,8 @@ def test_404(
 # setting timeout should show a warning to js console
 # if we're on the ui thread, because XMLHttpRequest doesn't
 # support timeout in async mode if globalThis == Window
-@install_urllib3_wheel()
+
+
 def test_timeout_warning(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
@@ -278,10 +266,6 @@ def test_timeout_in_worker_non_streaming(
     has_jspi: bool,
 ) -> None:
     worker_code = f"""
-        # uncomment these lines and the jspi test works
-        # because it is being called via the webloop
-        #import urllib3.contrib.emscripten.fetch
-        #await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
         from urllib3.exceptions import TimeoutError
         from urllib3.connection import HTTPConnection
         from pyodide.ffi import JsException
@@ -332,7 +316,6 @@ def test_timeout_in_worker_streaming(
     run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
 
 
-@install_urllib3_wheel()
 def test_index_https(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -355,7 +338,6 @@ def test_index_https(
     )
 
 
-@install_urllib3_wheel()
 def test_non_streaming_no_fallback_warning(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
@@ -398,7 +380,6 @@ def test_non_streaming_no_fallback_warning(
     )
 
 
-@install_urllib3_wheel()
 def test_streaming_fallback_warning(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
@@ -445,7 +426,6 @@ def test_streaming_fallback_warning(
     )
 
 
-@install_urllib3_wheel()
 def test_specific_method(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
@@ -471,7 +451,6 @@ def test_specific_method(
     )
 
 
-@install_urllib3_wheel()
 def test_streaming_download(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
@@ -497,6 +476,7 @@ def test_streaming_download(
             response = conn.getresponse()
             assert isinstance(response, BaseHTTPResponse)
             assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==False
+            assert(urllib3.contrib.emscripten.fetch.has_jspi() == {has_jspi})
             data=response.data.decode('utf-8')
             assert len(data) == 17825792
 """
@@ -636,7 +616,6 @@ def test_streaming_notready_warning(
     run_from_server.run_webworker(worker_code, has_jspi=False)
 
 
-@install_urllib3_wheel()
 def test_post_receive_json(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -670,7 +649,6 @@ def test_post_receive_json(
     )
 
 
-@install_urllib3_wheel()
 def test_upload(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -696,7 +674,6 @@ def test_upload(
     )
 
 
-@install_urllib3_wheel()
 def test_streaming_not_ready_in_browser(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
@@ -713,12 +690,11 @@ def test_streaming_not_ready_in_browser(
     )
 
 
-@install_urllib3_wheel()
 def test_requests_with_micropip(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
     selenium_coverage.enable_jspi(has_jspi)
-    # this can't be @run_in_pyodide because of the async code
+    # this can't be @run_in_pyodide(packages=['urllib3']) because of the async code
     selenium_coverage.run_async(
         f"""
         import micropip
@@ -737,7 +713,6 @@ def test_requests_with_micropip(
     )
 
 
-@install_urllib3_wheel()
 def test_open_close(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -855,7 +830,6 @@ def test_break_worker_streaming(
     run_from_server.run_webworker(worker_code, has_jspi=False)
 
 
-@install_urllib3_wheel()
 def test_response_init_length(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -902,7 +876,6 @@ def test_response_init_length(
     )
 
 
-@install_urllib3_wheel()
 def test_response_close_connection(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -925,7 +898,6 @@ def test_response_close_connection(
     )
 
 
-@install_urllib3_wheel()
 def test_read_chunked(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -949,7 +921,6 @@ def test_read_chunked(
     )
 
 
-@install_urllib3_wheel()
 def test_retries(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -987,7 +958,6 @@ def test_retries(
     pyodide_test(selenium_coverage, testserver_http.http_host, find_unused_port())
 
 
-@install_urllib3_wheel()
 def test_insecure_requests_warning(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -1028,7 +998,6 @@ def test_has_jspi_worker(
     run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
 
 
-@install_urllib3_wheel()
 def test_has_jspi(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -1043,7 +1012,6 @@ def test_has_jspi(
     pyodide_test(selenium_coverage, has_jspi)
 
 
-@install_urllib3_wheel()
 def test_timeout_jspi(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
@@ -1065,7 +1033,6 @@ def test_timeout_jspi(
     )
 
 
-@install_urllib3_wheel()
 def test_streaming_jspi(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
@@ -1092,12 +1059,11 @@ def test_streaming_jspi(
         all_data = first_data + response.read()
         # make sure that the timeout on server side really happened
         # by checking that it took greater than the timeout
-        assert time.time() - start_time > 2        
+        assert time.time() - start_time > 2
 
-    x = pyodide_test(
+    pyodide_test(
         selenium_coverage,
         testserver_http.http_host,
         testserver_http.http_port,
         bigfile_url,
     )
-

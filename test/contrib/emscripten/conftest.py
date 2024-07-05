@@ -73,6 +73,7 @@ def selenium_coverage(selenium_jspi: Any) -> Generator[Any, None, None]:
     def _install_coverage(self: Any) -> None:
         self.run_js(
             """
+            await pyodide.loadPackage("urllib3")
             await pyodide.loadPackage("coverage")
             await pyodide.runPythonAsync(`import coverage
 _coverage= coverage.Coverage(source_pkgs=['urllib3'])
@@ -132,12 +133,6 @@ class ServerRunnerInfo:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
-        init_code = textwrap.dedent(
-            f"""
-            import pyodide_js as pjs
-            await pjs.loadPackage('/wheel/dist.whl',deps=False)
-            """
-        )
 
         if has_jspi == False:
             # disable jspi in this code
@@ -152,8 +147,7 @@ class ServerRunnerInfo:
             )
         # add coverage collection to this code
         code = (
-            init_code
-            + textwrap.dedent(
+            textwrap.dedent(
                 """
         import coverage
         _coverage= coverage.Coverage(source_pkgs=['urllib3'])
@@ -216,12 +210,6 @@ def run_from_server(
     selenium_coverage.initialize_pyodide()
     selenium_coverage.save_state()
     selenium_coverage.restore_state()
-    # install the wheel, which is served at /wheel/*
-    selenium_coverage.run_js(
-        f"""
-await pyodide.loadPackage('https://{testserver_http.http_host}:{testserver_http.https_port}/wheel/dist.whl')
-"""
-    )
     selenium_coverage._install_coverage()
     yield ServerRunnerInfo(
         testserver_http.http_host, testserver_http.https_port, selenium_coverage
