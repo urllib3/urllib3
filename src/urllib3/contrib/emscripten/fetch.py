@@ -198,7 +198,7 @@ class _StreamingFetcher:
         self.streaming_ready = False
 
         js_data_blob = js.Blob.new(
-            [_STREAMING_WORKER_CODE], _obj_from_dict({"type": "application/javascript"})
+            to_js([_STREAMING_WORKER_CODE],create_pyproxies=False), _obj_from_dict({"type": "application/javascript"})
         )
 
         def promise_resolver(js_resolve_fn: JsProxy, js_reject_fn: JsProxy) -> None:
@@ -597,12 +597,23 @@ def _run_sync_with_timeout(
 
 
 def has_jspi() -> bool:
+    """Return true if jspi can be used.
+
+    This requires both browser support and also webassembly
+    to be in the correct state - i.e. that the javascript
+    call into python was async not sync."""
     try:
         from pyodide.ffi import run_sync
 
-        return hasattr(js.WebAssembly, "Suspending") or hasattr(
-            js.WebAssembly, "Suspender"
-        )
+        try:
+            from pyodide.ffi import can_run_sync
+        except ImportError:
+            from pyodide_js._module import validSuspender
+
+            def can_run_sync():
+                return bool(validSuspender.value)
+
+        return can_run_sync()
     except:
         return False
 
