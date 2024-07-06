@@ -144,7 +144,31 @@ class TestHTTP2Connection:
         )
         conn._h2_conn._obj.end_stream.assert_called_with(1)
 
-    def test_send_file(self) -> None:
+    def test_send_file_str(self) -> None:
+        conn = HTTP2Connection("example.com")
+        mock_open = mock.mock_open(read_data="foo\r\nbar\r\n")
+        with mock.patch("builtins.open", mock_open):
+            conn.sock = mock.MagicMock(
+                sendall=mock.Mock(return_value=None),
+            )
+            conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")
+            conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
+            conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
+            conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
+
+            with open("foo") as body:
+                conn.putrequest("GET", "/")
+                conn.endheaders(message_body=body)
+                conn.send(body)
+
+                conn._h2_conn._obj.data_to_send.assert_called_with()
+                conn.sock.sendall.assert_called_with(b"foo")
+                conn._h2_conn._obj.send_data.assert_called_with(
+                    1, b"foo\r\nbar\r\n", end_stream=False
+                )
+                conn._h2_conn._obj.end_stream.assert_called_with(1)
+
+    def test_send_file_bytes(self) -> None:
         conn = HTTP2Connection("example.com")
         mock_open = mock.mock_open(read_data=b"foo\r\nbar\r\n")
         with mock.patch("builtins.open", mock_open):
@@ -156,14 +180,13 @@ class TestHTTP2Connection:
             conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
             conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
 
-            body = open("test.txt", "rb")
+            body = open("foo", "rb")
             conn.putrequest("GET", "/")
             conn.endheaders(message_body=body)
             conn.send(body)
 
             conn._h2_conn._obj.data_to_send.assert_called_with()
             conn.sock.sendall.assert_called_with(b"foo")
-
             conn._h2_conn._obj.send_data.assert_called_with(
                 1, b"foo\r\nbar\r\n", end_stream=False
             )

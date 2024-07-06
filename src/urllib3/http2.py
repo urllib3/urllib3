@@ -161,7 +161,7 @@ class HTTP2Connection(HTTPSConnection):
                     if not chunk:
                         break
                     if isinstance(chunk, str):
-                        chunk = chunk.encode()
+                        chunk = chunk.encode()  # pragma: no cover
                     conn.send_data(self._h2_stream, chunk, end_stream=False)
                     if data_to_send := conn.data_to_send():
                         self.sock.sendall(data_to_send)
