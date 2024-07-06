@@ -257,7 +257,7 @@ class HTTP2Connection(HTTPSConnection):
         for k, v in headers.items():
             self.putheader(k, v)
 
-        if b"user-agent" not in self._headers:
+        if b"user-agent" not in dict(self._headers):
             self.putheader(b"user-agent", _get_default_user_agent())
 
         if body:
@@ -272,7 +272,7 @@ class HTTP2Connection(HTTPSConnection):
                 conn.close_connection()
                 if data := conn.data_to_send():
                     self.sock.sendall(data)
-            except Exception:
+            except Exception:  # pragma: no cover
                 pass
 
         # Reset all our HTTP/2 connection state.
