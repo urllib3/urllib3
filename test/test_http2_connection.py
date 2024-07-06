@@ -47,51 +47,51 @@ class TestHTTP2Connection:
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn.conn._obj.send_data = mock.Mock(return_value=None)
-        conn.conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-        conn.conn._obj.end_stream = mock.Mock(return_value=None)
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
+        conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
 
         conn.putrequest("GET", "/")
         conn.endheaders()
         conn.send(b"foo")
 
-        conn.conn._obj.send_data.assert_called_with(1, b"foo", end_stream=True)
+        conn._h2_conn._obj.send_data.assert_called_with(1, b"foo", end_stream=True)
 
     def test_send_str(self) -> None:
         conn = HTTP2Connection("example.com")
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn.conn._obj.send_data = mock.Mock(return_value=None)
-        conn.conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-        conn.conn._obj.end_stream = mock.Mock(return_value=None)
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
+        conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
 
         conn.putrequest("GET", "/")
         conn.endheaders(message_body=b"foo")
         conn.send("foo")
 
-        conn.conn._obj.send_data.assert_called_with(1, b"foo", end_stream=True)
+        conn._h2_conn._obj.send_data.assert_called_with(1, b"foo", end_stream=True)
 
     def test_send_iter(self) -> None:
         conn = HTTP2Connection("example.com")
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn.conn._obj.send_data = mock.Mock(return_value=None)
-        conn.conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-        conn.conn._obj.end_stream = mock.Mock(return_value=None)
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
+        conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
 
         conn.putrequest("GET", "/")
         conn.endheaders(message_body=[b"foo", b"bar"])
         conn.send([b"foo", b"bar"])
 
-        conn.conn._obj.send_data.assert_has_calls(
+        conn._h2_conn._obj.send_data.assert_has_calls(
             [
                 mock.call(1, b"foo", end_stream=False),
                 mock.call(1, b"bar", end_stream=False),
             ]
         )
-        conn.conn._obj.end_stream.assert_called_with(1)
+        conn._h2_conn._obj.end_stream.assert_called_with(1)
 
     def test_send_file(self) -> None:
         conn = HTTP2Connection("example.com")
@@ -100,35 +100,29 @@ class TestHTTP2Connection:
             conn.sock = mock.MagicMock(
                 sendall=mock.Mock(return_value=None),
             )
-            conn.conn._obj.send_data = mock.Mock(return_value=None)
-            conn.conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-            conn.conn._obj.end_stream = mock.Mock(return_value=None)
+            conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
+            conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
+            conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
 
             body = open("test.txt", "rb")
             conn.putrequest("GET", "/")
             conn.endheaders(message_body=body)
             conn.send(body)
 
-            conn.conn._obj.send_data.assert_called_with(
+            conn._h2_conn._obj.send_data.assert_called_with(
                 1, b"foo\r\nbar\r\n", end_stream=False
             )
-            conn.conn._obj.end_stream.assert_called_with(1)
-
-    def test__has_header(self) -> None:
-        conn = HTTP2Connection("example.com")
-        conn._headers = [(b"foo", b"bar")]
-        assert conn._has_header("foo")
-        assert not conn._has_header("bar")
+            conn._h2_conn._obj.end_stream.assert_called_with(1)
 
     def test_request_GET(self) -> None:
         conn = HTTP2Connection("example.com")
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn.conn._obj.send_headers = send_headers = mock.Mock(return_value=None)
-        conn.conn._obj.send_data = mock.Mock(return_value=None)
-        conn.conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-        conn.conn._obj.close_connection = close_connection = mock.Mock(
+        conn._h2_conn._obj.send_headers = send_headers = mock.Mock(return_value=None)
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
+        conn._h2_conn._obj.close_connection = close_connection = mock.Mock(
             return_value=None
         )
 
@@ -153,10 +147,10 @@ class TestHTTP2Connection:
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn.conn._obj.send_headers = send_headers = mock.Mock(return_value=None)
-        conn.conn._obj.send_data = send_data = mock.Mock(return_value=None)
-        conn.conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-        conn.conn._obj.close_connection = close_connection = mock.Mock(
+        conn._h2_conn._obj.send_headers = send_headers = mock.Mock(return_value=None)
+        conn._h2_conn._obj.send_data = send_data = mock.Mock(return_value=None)
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
+        conn._h2_conn._obj.close_connection = close_connection = mock.Mock(
             return_value=None
         )
 

@@ -65,8 +65,8 @@ class HTTP2Connection(HTTPSConnection):
     def __init__(
         self, host: str, port: int | None = None, **kwargs: typing.Any
     ) -> None:
-        self.conn = self._new_h2_conn()
-        self.stream: int | None = None
+        self._h2_conn = self._new_h2_conn()
+        self._h2_stream: int | None = None
         self._headers: list[tuple[bytes, bytes]] = []
 
         if "proxy" in kwargs or "proxy_config" in kwargs:  # Defensive:
@@ -80,7 +80,7 @@ class HTTP2Connection(HTTPSConnection):
 
     def connect(self) -> None:
         super().connect()
-        with self.conn as conn:
+        with self._h2_conn as conn:
             conn.initiate_connection()
             if data_to_send := conn.data_to_send():
                 self.sock.sendall(data_to_send)
@@ -108,18 +108,13 @@ class HTTP2Connection(HTTPSConnection):
         else:
             authority = f"{self.host}:{self.port or 443}"
 
-        self.putheader(b":scheme", b"https")
-        self.putheader(b":method", method)
-        self.putheader(b":authority", authority)
-        self.putheader(b":path", url)
+        self._headers.append((b":scheme", b"https"))
+        self._headers.append((b":method", method.encode()))
+        self._headers.append((b":authority", authority.encode()))
+        self._headers.append((b":path", url.encode()))
 
-        with self.conn as conn:
-            self.stream = conn.get_next_available_stream_id()
-
-    def _has_header(self, key: str | bytes) -> bool:
-        if isinstance(key, str):
-            key = key.encode()
-        return any(x[0] == key for x in self._headers)
+        with self._h2_conn as conn:
+            self._h2_stream = conn.get_next_available_stream_id()
 
     def putheader(self, header: str | bytes, *values: str | bytes) -> None:
         # TODO SKIPPABLE_HEADERS from urllib3 are ignored.
@@ -135,12 +130,12 @@ class HTTP2Connection(HTTPSConnection):
             self._headers.append((header, value))
 
     def endheaders(self, message_body: typing.Any = None) -> None:  # type: ignore[override]
-        if self.stream is None:
+        if self._h2_stream is None:
             raise ConnectionError("Must call `putrequest` first.")
 
-        with self.conn as conn:
+        with self._h2_conn as conn:
             conn.send_headers(
-                stream_id=self.stream,
+                stream_id=self._h2_stream,
                 headers=self._headers,
                 end_stream=(message_body is None),
             )
@@ -153,10 +148,10 @@ class HTTP2Connection(HTTPSConnection):
         `data` can be: `str`, `bytes`, an iterable, or file-like objects
         that support a .read() method.
         """
-        if self.stream is None:
+        if self._h2_stream is None:
             raise ConnectionError("Must call `putrequest` first.")
 
-        with self.conn as conn:
+        with self._h2_conn as conn:
             if data_to_send := conn.data_to_send():
                 self.sock.sendall(data_to_send)
 
@@ -166,27 +161,27 @@ class HTTP2Connection(HTTPSConnection):
                     if not chunk:
                         break
                     if isinstance(chunk, str):
-                        chunk = self._encode_request(chunk)
-                    conn.send_data(self.stream, chunk, end_stream=False)
+                        chunk = chunk.encode()
+                    conn.send_data(self._h2_stream, chunk, end_stream=False)
                     if data_to_send := conn.data_to_send():
                         self.sock.sendall(data_to_send)
-                conn.end_stream(self.stream)
+                conn.end_stream(self._h2_stream)
                 return
 
             if isinstance(data, str):  # str -> bytes
-                data = self._encode_request(data)
+                data = data.encode()
 
             try:
                 if isinstance(data, bytes):
-                    conn.send_data(self.stream, data, end_stream=True)
+                    conn.send_data(self._h2_stream, data, end_stream=True)
                     if data_to_send := conn.data_to_send():
                         self.sock.sendall(data_to_send)
                 else:
                     for chunk in data:
-                        conn.send_data(self.stream, chunk, end_stream=False)
+                        conn.send_data(self._h2_stream, chunk, end_stream=False)
                         if data_to_send := conn.data_to_send():
                             self.sock.sendall(data_to_send)
-                    conn.end_stream(self.stream)
+                    conn.end_stream(self._h2_stream)
             except TypeError:
                 raise TypeError(
                     "`data` should be str, bytes, iterable, or file. got %r"
@@ -198,7 +193,7 @@ class HTTP2Connection(HTTPSConnection):
     ) -> HTTP2Response:
         status = None
         data = bytearray()
-        with self.conn as conn:
+        with self._h2_conn as conn:
             end_stream = False
             while not end_stream:
                 # TODO: Arbitrary read value.
@@ -262,7 +257,7 @@ class HTTP2Connection(HTTPSConnection):
         for k, v in headers.items():
             self.putheader(k, v)
 
-        if not self._has_header(b"user-agent"):
+        if b"user-agent" not in self._headers:
             self.putheader(b"user-agent", _get_default_user_agent())
 
         if body:
@@ -271,13 +266,8 @@ class HTTP2Connection(HTTPSConnection):
         else:
             self.endheaders()
 
-    def _encode_request(self, request: str | bytes) -> bytes:
-        if isinstance(request, str):
-            request = request.encode("utf-8")
-        return request
-
     def close(self) -> None:
-        with self.conn as conn:
+        with self._h2_conn as conn:
             try:
                 conn.close_connection()
                 if data := conn.data_to_send():
@@ -286,8 +276,8 @@ class HTTP2Connection(HTTPSConnection):
                 pass
 
         # Reset all our HTTP/2 connection state.
-        self.conn = self._new_h2_conn()
-        self.stream = None
+        self._h2_conn = self._new_h2_conn()
+        self._h2_stream = None
         self._headers = []
 
         super().close()
