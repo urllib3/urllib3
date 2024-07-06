@@ -50,7 +50,7 @@ class TestHTTP2Connection:
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn.putheader = mock.MagicMock(return_value=None)  # type: ignore
+        conn.putheader = mock.MagicMock(return_value=None)  # type: ignore[method-assign]
         conn.request("GET", "/", headers={"foo": "bar"})
         conn.putheader.assert_has_calls(
             [
