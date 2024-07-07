@@ -26,11 +26,32 @@ T = typing.TypeVar("T")
 
 log = logging.getLogger(__name__)
 
-_is_legal_header_name = re.compile(rb"^:?[a-z0-9!#$%&\'*+\-.^_`|~]+$").match
-RE_IS_ILLEGAL_HEADER_VALUE = re.compile(rb"[\x00\x0b\x0c]|\n(?![ \t])|\r(?![ \t\n])")
+RE_IS_LEGAL_HEADER_NAME = re.compile(rb"^[!#$%&'*+\-.^_`|~0-9a-z]+$")
+RE_IS_ILLEGAL_HEADER_VALUE = re.compile(rb"[\0\x00\x0a\x0d\r\n]|^[ \r\n\t]|[ \r\n\t]$")
+
+
+def _is_legal_header_name(name: bytes) -> bool:
+    """
+    "An implementation that validates fields according to the definitions in Sections
+    5.1 and 5.5 of [HTTP] only needs an additional check that field names do not
+    include uppercase characters." (https://httpwg.org/specs/rfc9113.html#n-field-validity)
+
+    `http.client._is_legal_header_name` does not validate the field name according to the
+    HTTP 1.1 spec, so we do that here, in addition to checking for uppercase characters.
+
+    This does not allow for the `:` character in the header name, so should not
+    be used to validate pseudo-headers.
+    """
+    return bool(RE_IS_LEGAL_HEADER_NAME.match(name))
 
 
 def _is_illegal_header_value(value: bytes) -> bool:
+    """
+    "A field value MUST NOT contain the zero value (ASCII NUL, 0x00), line feed
+    (ASCII LF, 0x0a), or carriage return (ASCII CR, 0x0d) at any position. A field
+    value MUST NOT start or end with an ASCII whitespace character (ASCII SP or HTAB,
+    0x20 or 0x09)." (https://httpwg.org/specs/rfc9113.html#n-field-validity)
+    """
     return bool(RE_IS_ILLEGAL_HEADER_VALUE.search(value))
 
 

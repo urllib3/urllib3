@@ -13,27 +13,67 @@ from urllib3.http2 import (
     _is_legal_header_name,
 )
 
+# [1] https://httpwg.org/specs/rfc9113.html#n-field-validity
+
 
 class TestHTTP2Connection:
     def test__is_legal_header_name(self) -> None:
-        assert _is_legal_header_name(b":foo")
-        assert _is_legal_header_name(b"foo")
-        assert _is_legal_header_name(b"foo-bar")
-        assert not _is_legal_header_name(b"foo bar")
-        assert not _is_legal_header_name(b"foo:bar")
-        assert not _is_legal_header_name(b"foo\nbar")
-        assert not _is_legal_header_name(b"foo\tbar")
+        assert _is_legal_header_name(b"foo"), "foo"
+        assert _is_legal_header_name(b"foo-bar"), "foo-bar"
+        assert _is_legal_header_name(b"foo-bar-baz"), "foo-bar-baz"
+
+        # A field name MUST NOT contain characters in the ranges 0x00-0x20,
+        # 0x41-0x5a, or 0x7f-0xff (all ranges inclusive). [1]
+        for i in range(0x00, 0x20):
+            assert not _is_legal_header_name(
+                f"foo{chr(i)}bar".encode()
+            ), f"foo\\x{i}bar"
+        for i in range(0x41, 0x5A):
+            assert not _is_legal_header_name(
+                f"foo{chr(i)}bar".encode()
+            ), f"foo\\x{i}bar"
+        for i in range(0x7F, 0xFF):
+            assert not _is_legal_header_name(
+                f"foo{chr(i)}bar".encode()
+            ), f"foo\\x{i}bar"
+
+        # This specifically excludes all non-visible ASCII characters, ASCII SP
+        # (0x20), and uppercase characters ('A' to 'Z', ASCII 0x41 to 0x5a). [1]
+        assert not _is_legal_header_name(b"foo bar"), "foo bar"
+        assert not _is_legal_header_name(b"foo\x20bar"), "foo\\x20bar"
+        assert not _is_legal_header_name(b"Foo-Bar"), "Foo-Bar"
+
+        # With the exception of pseudo-header fields (Section 8.3), which have a
+        # name that starts with a single colon, field names MUST NOT include a
+        # colon (ASCII COLON, 0x3a). [1]
+        assert not _is_legal_header_name(b":foo"), ":foo"
+        assert not _is_legal_header_name(b"foo:bar"), "foo:bar"
+        assert not _is_legal_header_name(b"foo:"), "foo:"
 
     def test__is_illegal_header_value(self) -> None:
-        assert not _is_illegal_header_value(b"foo")
-        assert not _is_illegal_header_value(b"foo bar")
-        assert not _is_illegal_header_value(b"foo\tbar")
-        assert _is_illegal_header_value(b"foo\0bar")  # null byte
-        assert _is_illegal_header_value(b"foo\x00bar")  # null byte
-        assert _is_illegal_header_value(b"foo\x0bbar")  # vertical tab
-        assert _is_illegal_header_value(b"foo\x0cbar")  # form feed
-        assert _is_illegal_header_value(b"foo\rbar")
-        assert _is_illegal_header_value(b"foo\nbar")
+        assert not _is_illegal_header_value(b"foo"), "foo"
+        assert not _is_illegal_header_value(b"foo bar"), "foo bar"
+        assert not _is_illegal_header_value(b"foo\tbar"), "foo\\tbar"
+
+        # A field value MUST NOT contain the zero value (ASCII NUL, 0x00), line
+        # feed (ASCII LF, 0x0a), or carriage return (ASCII CR, 0x0d) at any
+        # position. [1]
+        assert _is_illegal_header_value(b"foo\0bar"), "foo\\0bar"
+        assert _is_illegal_header_value(b"foo\x00bar"), "foo\\x00bar"
+        assert _is_illegal_header_value(b"foo\x0abar"), "foo\\x0abar"
+        assert _is_illegal_header_value(b"foo\x0dbar"), "foo\\x0dbar"
+        assert _is_illegal_header_value(b"foo\rbar"), "foo\\rbar"
+        assert _is_illegal_header_value(b"foo\nbar"), "foo\\nbar"
+        assert _is_illegal_header_value(b"foo\r\nbar"), "foo\\r\\nbar"
+
+        # A field value MUST NOT start or end with an ASCII whitespace character
+        # (ASCII SP or HTAB, 0x20 or 0x09). [1]
+        assert _is_illegal_header_value(b" foo"), " foo"
+        assert _is_illegal_header_value(b"foo "), "foo "
+        assert _is_illegal_header_value(b"foo\x20"), "foo\\x20"
+        assert _is_illegal_header_value(b"\tfoo"), "\\tfoo"
+        assert _is_illegal_header_value(b"foo\t"), "foo\\t"
+        assert _is_illegal_header_value(b"foo\x09"), "foo\\x09"
 
     def test_default_socket_options(self) -> None:
         conn = HTTP2Connection("example.com")
