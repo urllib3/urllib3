@@ -272,7 +272,7 @@ class HTTP2Connection(HTTPSConnection):
                 conn.close_connection()
                 if data := conn.data_to_send():
                     self.sock.sendall(data)
-            except Exception:  # pragma: no cover
+            except Exception:
                 pass
 
         # Reset all our HTTP/2 connection state.

@@ -263,3 +263,25 @@ class TestHTTP2Connection:
         )
         send_data.assert_called_with(1, b"foo", end_stream=True)
         close_connection.assert_called_with()
+
+    def test_close(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(side_effect=Exception("foo")),
+        )
+        sendall = conn.sock.sendall
+        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")
+        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(
+            return_value=None
+        )
+
+        try:
+            conn.close()
+        except Exception:
+            assert False, "Exception was raised"
+
+        close_connection.assert_called_with()
+        data_to_send.assert_called_with()
+        sendall.assert_called_with(b"foo")
+        assert conn._h2_stream is None
+        assert conn._headers is []
