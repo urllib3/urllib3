@@ -284,4 +284,4 @@ class TestHTTP2Connection:
         data_to_send.assert_called_with()
         sendall.assert_called_with(b"foo")
         assert conn._h2_stream is None
-        assert conn._headers is []
+        assert conn._headers == []
