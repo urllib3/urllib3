@@ -123,7 +123,7 @@ def test_pool_requests(
         testserver_http.http_host,
         testserver_http.http_port,
         testserver_http.https_port,
-        has_jspi
+        has_jspi,
     )
 
 
@@ -223,6 +223,7 @@ def test_404(
 # setting timeout should show a warning to js console
 # if we're on the ui thread, because XMLHttpRequest doesn't
 # support timeout in async mode if globalThis == Window
+
 
 @pytest.mark.without_jspi
 def test_timeout_warning(
@@ -1037,17 +1038,17 @@ def test_timeout_jspi(
 
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium, host, port):
-        import urllib3.contrib.emscripten.fetch
-
         import pytest
-        from urllib3.exceptions import TimeoutError
+
+        import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPConnection
+        from urllib3.exceptions import TimeoutError
 
         conn = HTTPConnection(host, port, timeout=0.1)
-        assert urllib3.contrib.emscripten.fetch.has_jspi() == True
+        assert urllib3.contrib.emscripten.fetch.has_jspi() is True
         with pytest.raises(TimeoutError):
             conn.request("GET", "/slow")
-            _response = conn.getresponse()
+            conn.getresponse()
 
     pyodide_test(
         selenium_coverage, testserver_http.http_host, testserver_http.http_port
@@ -1066,8 +1067,9 @@ def test_streaming_jspi(
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium, host, port, bigfile_url):
         import time
-        from urllib3.response import BaseHTTPResponse
+
         from urllib3.connection import HTTPConnection
+        from urllib3.response import BaseHTTPResponse
 
         conn = HTTPConnection(host, port)
         start_time = time.time()
@@ -1082,6 +1084,7 @@ def test_streaming_jspi(
         # make sure that the timeout on server side really happened
         # by checking that it took greater than the timeout
         assert time.time() - start_time > 2
+        assert len(all_data.encode("utf-8")) == 17825792
 
     pyodide_test(
         selenium_coverage,

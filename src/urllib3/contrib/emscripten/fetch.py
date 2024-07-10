@@ -616,7 +616,7 @@ def has_jspi() -> bool:
     to be in the correct state - i.e. that the javascript
     call into python was async not sync."""
     try:
-        from pyodide.ffi import run_sync
+        from pyodide.ffi import run_sync  # noqa: F401
 
         try:
             from pyodide.ffi import can_run_sync
@@ -627,7 +627,7 @@ def has_jspi() -> bool:
                 return bool(validSuspender.value)
 
         return can_run_sync()
-    except:
+    except BaseException:
         return False
 
 

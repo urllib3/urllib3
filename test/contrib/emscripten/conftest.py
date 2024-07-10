@@ -167,7 +167,7 @@ class ServerRunnerInfo:
             + code
         )
 
-        if has_jspi == False:
+        if has_jspi is False:
             # disable jspi in this code
             code = (
                 textwrap.dedent(
@@ -290,41 +290,41 @@ def pytest_configure(config):
 
 
 def pytest_runtest_setup(item):
-    """ Configure various markers to mark tests which use behaviour which is 
-        browser / node.js specific. """
-    if item.get_closest_marker('without_jspi'):
-        if item.config.getoption("--runtime") == 'node':
+    """Configure various markers to mark tests which use behaviour which is
+    browser / node.js specific."""
+    if item.get_closest_marker("without_jspi"):
+        if item.config.getoption("--runtime") == "node":
             pytest.skip("Node.js doesn't support non jspi tests")
 
-    if item.get_closest_marker('with_jspi'):
-        if item.config.getoption("--runtime") == 'firefox':
+    if item.get_closest_marker("with_jspi"):
+        if item.config.getoption("--runtime") == "firefox":
             pytest.skip("Firefox doesn't support jspi tests")
 
-    if item.get_closest_marker('in_webbrowser'):
-        if item.config.getoption("--runtime") == 'node':
+    if item.get_closest_marker("in_webbrowser"):
+        if item.config.getoption("--runtime") == "node":
             pytest.skip("Skipping web browser test in Node.js")
 
-    if item.get_closest_marker('webworkers'):
-        if item.config.getoption("--runtime") == 'node':
+    if item.get_closest_marker("webworkers"):
+        if item.config.getoption("--runtime") == "node":
             pytest.skip("Skipping webworker test in Node.js")
 
 
 def pytest_generate_tests(metafunc):
-    """ Generate Webassembly Javascript Promise Integration based tests 
-        only for platforms that support it. 
+    """Generate Webassembly Javascript Promise Integration based tests
+    only for platforms that support it.
 
-        Currently: 
-        1) node.js only supports use of JSPI because it doesn't support
-        synchronous XMLHttpRequest
+    Currently:
+    1) node.js only supports use of JSPI because it doesn't support
+    synchronous XMLHttpRequest
 
-        2) firefox doesn't support JSPI
+    2) firefox doesn't support JSPI
 
-        3) Chrome supports JSPI on or off.
+    3) Chrome supports JSPI on or off.
     """
-    if 'has_jspi' in metafunc.fixturenames:
-        if metafunc.config.getoption("--runtime") == 'node':
+    if "has_jspi" in metafunc.fixturenames:
+        if metafunc.config.getoption("--runtime") == "node":
             metafunc.parametrize("has_jspi", [True])
-        elif metafunc.config.getoption("--runtime") == 'firefox':
+        elif metafunc.config.getoption("--runtime") == "firefox":
             metafunc.parametrize("has_jspi", [False])
         else:
-            metafunc.parametrize("has_jspi", [True,False])
+            metafunc.parametrize("has_jspi", [True, False])

@@ -417,6 +417,7 @@ async def pyodide(py_file: str) -> ResponseReturnValue:
     else:
         return await make_response("", 404)
 
+
 @pyodide_testing_app.route("/dist/urllib3.whl")
 async def wheel() -> ResponseReturnValue:
     file_path = _find_built_wheel()
