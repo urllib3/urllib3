@@ -308,13 +308,22 @@ class _JSPIReadStream(io.RawIOBase):
 
     def __init__(
         self,
-        read_stream_js: object,
+        js_read_stream: Any,
         timeout: float,
         request: EmscriptenRequest,
         response: EmscriptenResponse,
-        js_abort_controller: any,  # javascript AbortController for timeouts
+        js_abort_controller: Any,  # javascript AbortController for timeouts
     ):
-        self.read_stream_js = read_stream_js
+        """Stream to read data from a Javascript fetch response
+
+        Args:
+            js_read_stream (Any): The Javascript stream reader
+            timeout (float): Timeout in seconds
+            request (EmscriptenRequest): The request we're handling
+            response (EmscriptenResponse): The response this stream is in
+            js_abort_controller (Any): A javascript AbortController object
+        """
+        self.js_read_stream = js_read_stream
         self.timeout = timeout
         self._is_closed = False
         self._is_done = False
@@ -340,7 +349,7 @@ class _JSPIReadStream(io.RawIOBase):
         if not self.is_closed():
             self.read_len = 0
             self.read_pos = 0
-            self.read_stream_js = None
+            self.js_read_stream = None
             self._is_closed = True
             self._is_done = True
             self.request = None
@@ -356,9 +365,9 @@ class _JSPIReadStream(io.RawIOBase):
     def seekable(self) -> bool:
         return False
 
-    def _get_next_buffer(self):
+    def _get_next_buffer(self) -> bool:
         result_js = _run_sync_with_timeout(
-            self.read_stream_js.read(),
+            self.js_read_stream.read(),
             self.timeout,
             self.js_abort_controller,
             request=self.request,
@@ -374,7 +383,7 @@ class _JSPIReadStream(io.RawIOBase):
 
     def readinto(self, byte_obj: Buffer) -> int:
         if self.current_buffer is None:
-            if not self._get_next_buffer():
+            if not self._get_next_buffer() or self.current_buffer is None:
                 self.close()
                 return 0
         ret_length = min(
@@ -538,10 +547,10 @@ def send_jspi_request(
     timeout = request.timeout
     js_abort_controller = js.AbortController.new()
     headers = {k: v for k, v in request.headers.items() if k not in HEADERS_TO_IGNORE}
-    body = request.body
+    req_body = request.body
     fetch_data = {
         "headers": headers,
-        "body": to_js(body),
+        "body": to_js(req_body),
         "method": request.method,
         "signal": js_abort_controller.signal,
     }
@@ -566,7 +575,7 @@ def send_jspi_request(
             else:
                 headers[str(iter_value_js.value[0])] = str(iter_value_js.value[1])
         status_code = response_js.status
-        body = b""
+        body: bytes | io.RawIOBase = b""
 
         response = EmscriptenResponse(
             status_code=status_code, headers=headers, body=b"", request=request
@@ -601,9 +610,9 @@ def send_jspi_request(
 
 
 def _run_sync_with_timeout(
-    promise: any,
+    promise: Any,
     timeout: float,
-    js_abort_controller: any,
+    js_abort_controller: Any,
     request: EmscriptenRequest | None,
     response: EmscriptenResponse | None,
 ) -> Any:
@@ -611,9 +620,9 @@ def _run_sync_with_timeout(
        AbortController
 
     Args:
-        promise (any): Javascript promise to await
+        promise (Any): Javascript promise to await
         timeout (float): Timeout in seconds
-        js_abort_controller (any): A javascript AbortController object, used on timeout
+        js_abort_controller (Any): A javascript AbortController object, used on timeout
         request (EmscriptenRequest | None): The request we're currently handling
         response (EmscriptenResponse | None): Response we're handling if it exists yet.
 
@@ -660,12 +669,14 @@ def has_jspi() -> bool:
         try:
             from pyodide.ffi import can_run_sync
         except ImportError:
-            from pyodide_js._module import validSuspender
+            from pyodide_js._module import (
+                validSuspender,  # type: ignore[import-not-found]
+            )
 
-            def can_run_sync():
+            def can_run_sync() -> bool:
                 return bool(validSuspender.value)
 
-        return can_run_sync()
+        return bool(can_run_sync())
     except BaseException:
         return False
 

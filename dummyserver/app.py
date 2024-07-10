@@ -11,7 +11,7 @@ import mimetypes
 import zlib
 from io import BytesIO
 from pathlib import Path
-from typing import Iterator
+from typing import AsyncGenerator, Iterator
 
 import trio
 from quart import Response, make_response, request
@@ -321,14 +321,15 @@ async def slow() -> ResponseReturnValue:
 async def dripfeed() -> ResponseReturnValue:
     # great big text file which streams half the file
     # then pauses for 5 seconds and streams the rest
-    async def generate():
+    async def generate() -> AsyncGenerator[bytes, None]:
         for x in range(8):
             if x == 4:
                 await trio.sleep(2)
             yield b"WOOO YAY BOOYAKAH" * 131072
 
     response = await make_response(generate(), 200)
-    response.timeout = None
+    if hasattr(response, "timeout"):
+        response.timeout = None
     return response
 
 
@@ -370,7 +371,7 @@ async def pyodide_upload() -> ResponseReturnValue:
     return await make_response("Uploaded file correct", 200)
 
 
-def _find_built_wheel():
+def _find_built_wheel() -> Path | None:
     wheel_folder = Path(__file__).parent.parent / "dist"
     wheels = list(wheel_folder.glob("*.whl"))
     wheels = sorted(wheels, key=lambda w: w.stat().st_mtime)
@@ -380,11 +381,14 @@ def _find_built_wheel():
         return None
 
 
-def _rewrite_pyodide_lock():
+def _rewrite_pyodide_lock() -> bytes | None:
     file_path = Path(
         pyodide_testing_app.config["pyodide_dist_dir"], "pyodide-lock.json"
     )
-    wheel_sha256 = hashlib.sha256(_find_built_wheel().read_bytes()).hexdigest()
+    wheel_path = _find_built_wheel()
+    if wheel_path is None:
+        return None
+    wheel_sha256 = hashlib.sha256(wheel_path.read_bytes()).hexdigest()
     pyodide_json = json.loads(file_path.read_text())
     pyodide_json["packages"]["urllib3"]["sha256"] = wheel_sha256
     out_data = json.dumps(pyodide_json).encode("utf-8")
@@ -396,14 +400,17 @@ def _rewrite_pyodide_lock():
 async def pyodide(py_file: str) -> ResponseReturnValue:
     if py_file == "pyodide-lock.json":
         out_data = _rewrite_pyodide_lock()
-        return await make_response(out_data, 200, [("Content-Type", "text/json")])
+        if out_data is None:
+            return await make_response("", 404)
+        else:
+            return await make_response(out_data, 200, [("Content-Type", "text/json")])
     if py_file.startswith("urllib3") and py_file.endswith(".whl"):
         file_path = _find_built_wheel()
     else:
         file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
-    if file_path and file_path.exists():
+    if file_path is not None and file_path.exists():
         if py_file.endswith(".whl"):
-            mime_type = "application/x-wheel"
+            mime_type: str | None = "application/x-wheel"
             headers = [
                 ("Content-Disposition", f"inline; filename='{file_path.name}'"),
                 ("Content-Type", mime_type),
@@ -421,6 +428,9 @@ async def pyodide(py_file: str) -> ResponseReturnValue:
 @pyodide_testing_app.route("/dist/urllib3.whl")
 async def wheel() -> ResponseReturnValue:
     file_path = _find_built_wheel()
+    if not file_path:
+        return await make_response("", 404)
+
     mime_type = "application/x-wheel"
     headers = [
         ("Content-Disposition", f"inline; filename='{file_path.name}'"),

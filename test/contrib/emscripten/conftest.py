@@ -75,7 +75,7 @@ class PyodideServerInfo:
 def selenium_coverage(
     selenium_jspi: Any, testserver_http: PyodideServerInfo
 ) -> Generator[Any, None, None]:
-    def enable_jspi(self: Any, jspi: bool):
+    def enable_jspi(self: Any, jspi: bool) -> None:
         code = f"""
                  import urllib3.contrib.emscripten.fetch
                  urllib3.contrib.emscripten.fetch.has_jspi = lambda : {jspi}"""
@@ -152,7 +152,7 @@ class ServerRunnerInfo:
         self.selenium = selenium
         self.dist_dir = dist_dir
 
-    def run_webworker(self, code: str, *, has_jspi=True) -> Any:
+    def run_webworker(self, code: str, *, has_jspi: bool = True) -> Any:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
@@ -204,7 +204,7 @@ class ServerRunnerInfo:
         )
 
         if self.selenium.browser == "node":
-            worker_path = self.dist_dir / "webworker_dev.js"
+            worker_path = str(self.dist_dir / "webworker_dev.js")
             self.selenium.run_js(
                 f"""const {{
                     Worker, isMainThread, parentPort, workerData,
@@ -269,7 +269,7 @@ def run_from_server(
     )
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     # register an additional marker
     config.addinivalue_line(
         "markers",
@@ -289,7 +289,7 @@ def pytest_configure(config):
     )
 
 
-def pytest_runtest_setup(item):
+def pytest_runtest_setup(item: pytest.Item) -> None:
     """Configure various markers to mark tests which use behaviour which is
     browser / node.js specific."""
     if item.get_closest_marker("without_jspi"):
@@ -309,7 +309,7 @@ def pytest_runtest_setup(item):
             pytest.skip("Skipping webworker test in Node.js")
 
 
-def pytest_generate_tests(metafunc):
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     """Generate Webassembly Javascript Promise Integration based tests
     only for platforms that support it.
 
