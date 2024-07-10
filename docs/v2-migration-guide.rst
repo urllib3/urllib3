@@ -53,6 +53,7 @@ Here's a short summary of which changes in urllib3 v2.0 are most important:
 - Deprecated the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``, will be removed in v2.1.0.
 - Deprecated URLs without a scheme (ie 'https://') and will be raising an error in a future version of urllib3.
 - Changed the default minimum TLS version to TLS 1.2 (previously was TLS 1.0).
+- Changed the default request body encoding from 'ISO-8859-1' to 'UTF-8'.
 - Removed support for verifying certificate hostnames via ``commonName``, now only ``subjectAltName`` is used.
 - Removed the default set of TLS ciphers, instead now urllib3 uses the list of ciphers configured by the system.
 
