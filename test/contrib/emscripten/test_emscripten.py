@@ -63,12 +63,12 @@ def test_pool_requests(
     selenium_coverage.enable_jspi(has_jspi)
 
     @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium_coverage, host: str, port: int, https_port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int, https_port: int, has_jspi: bool) -> None:  # type: ignore[no-untyped-def]
         # first with PoolManager
         import urllib3
         import urllib3.contrib.emscripten.fetch
 
-        assert urllib3.contrib.emscripten.fetch.has_jspi() == True
+        assert urllib3.contrib.emscripten.fetch.has_jspi() == has_jspi
 
         http = urllib3.PoolManager()
         resp = http.request("GET", f"http://{host}:{port}/")
@@ -80,49 +80,50 @@ def test_pool_requests(
         # should all have come from one pool
         assert len(http.pools) == 1
 
-        # resp3 = http.request("GET", f"https://{host}:{https_port}/")
-        # assert resp3.data.decode("utf-8") == "Dummy server!"
+        resp3 = http.request("GET", f"https://{host}:{https_port}/")
+        assert resp3.data.decode("utf-8") == "Dummy server!"
 
-        # # one http pool + one https pool
-        # assert len(http.pools) == 2
+        # one http pool + one https pool
+        assert len(http.pools) == 2
 
-        # # now with ConnectionPool
-        # # because block == True, this will fail if the connection isn't
-        # # returned to the pool correctly after the first request
-        # pool = urllib3.HTTPConnectionPool(host, port, maxsize=1, block=True)
-        # resp3 = pool.urlopen("GET", "/index")
-        # assert resp3.data.decode("utf-8") == "Dummy server!"
+        # now with ConnectionPool
+        # because block == True, this will fail if the connection isn't
+        # returned to the pool correctly after the first request
+        pool = urllib3.HTTPConnectionPool(host, port, maxsize=1, block=True)
+        resp3 = pool.urlopen("GET", "/index")
+        assert resp3.data.decode("utf-8") == "Dummy server!"
 
-        # resp4 = pool.urlopen("GET", "/")
-        # assert resp4.data.decode("utf-8") == "Dummy server!"
+        resp4 = pool.urlopen("GET", "/")
+        assert resp4.data.decode("utf-8") == "Dummy server!"
 
-        # # now with manual release of connection
-        # # first - connection should be released once all
-        # # data is read
-        # pool2 = urllib3.HTTPConnectionPool(host, port, maxsize=1, block=True)
+        # now with manual release of connection
+        # first - connection should be released once all
+        # data is read
+        pool2 = urllib3.HTTPConnectionPool(host, port, maxsize=1, block=True)
 
-        # resp5 = pool2.urlopen("GET", "/index", preload_content=False)
-        # assert pool2.pool is not None
-        # # at this point, the connection should not be in the pool
-        # assert pool2.pool.qsize() == 0
-        # assert resp5.data.decode("utf-8") == "Dummy server!"
-        # # now we've read all the data, connection should be back to the pool
-        # assert pool2.pool.qsize() == 1
-        # resp6 = pool2.urlopen("GET", "/index", preload_content=False)
-        # assert pool2.pool.qsize() == 0
-        # # force it back to the pool
-        # resp6.release_conn()
-        # assert pool2.pool.qsize() == 1
-        # read_str = resp6.read()
-        # # for consistency with urllib3, this still returns the correct data even though
-        # # we are in theory not using the connection any more
-        # assert read_str.decode("utf-8") == "Dummy server!"
+        resp5 = pool2.urlopen("GET", "/index", preload_content=False)
+        assert pool2.pool is not None
+        # at this point, the connection should not be in the pool
+        assert pool2.pool.qsize() == 0
+        assert resp5.data.decode("utf-8") == "Dummy server!"
+        # now we've read all the data, connection should be back to the pool
+        assert pool2.pool.qsize() == 1
+        resp6 = pool2.urlopen("GET", "/index", preload_content=False)
+        assert pool2.pool.qsize() == 0
+        # force it back to the pool
+        resp6.release_conn()
+        assert pool2.pool.qsize() == 1
+        read_str = resp6.read()
+        # for consistency with urllib3, this still returns the correct data even though
+        # we are in theory not using the connection any more
+        assert read_str.decode("utf-8") == "Dummy server!"
 
     pyodide_test(
         selenium_coverage,
         testserver_http.http_host,
         testserver_http.http_port,
         testserver_http.https_port,
+        has_jspi
     )
 
 
