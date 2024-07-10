@@ -198,7 +198,8 @@ class _StreamingFetcher:
         self.streaming_ready = False
 
         js_data_blob = js.Blob.new(
-            to_js([_STREAMING_WORKER_CODE],create_pyproxies=False), _obj_from_dict({"type": "application/javascript"})
+            to_js([_STREAMING_WORKER_CODE], create_pyproxies=False),
+            _obj_from_dict({"type": "application/javascript"}),
         )
 
         def promise_resolver(js_resolve_fn: JsProxy, js_reject_fn: JsProxy) -> None:
@@ -409,6 +410,14 @@ else:
 def send_streaming_request(request: EmscriptenRequest) -> EmscriptenResponse | None:
     if has_jspi():
         return send_jspi_request(request, True)
+    elif is_in_node():
+        raise _RequestError(
+            message="urllib3 only works in node.js with pyodide.runPythonAsync"
+            " and requires the flag --experimental-wasm-stack-switching in "
+            " versions of node <24",
+            request=request,
+            response=None,
+        )
 
     if _fetcher and streaming_ready():
         return _fetcher.send(request)
@@ -453,6 +462,14 @@ is working, you need to call: 'await urllib3.contrib.emscripten.fetch.wait_for_s
 def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
     if has_jspi():
         return send_jspi_request(request, False)
+    elif is_in_node():
+        raise _RequestError(
+            message="urllib3 only works in node.js with pyodide.runPythonAsync"
+            " and requires the flag --experimental-wasm-stack-switching in "
+            " versions of node <24.",
+            request=request,
+            response=None,
+        )
     try:
         js_xhr = js.XMLHttpRequest.new()
 

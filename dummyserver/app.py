@@ -416,3 +416,13 @@ async def pyodide(py_file: str) -> ResponseReturnValue:
         return await make_response(file_path.read_bytes(), 200, headers)
     else:
         return await make_response("", 404)
+
+@pyodide_testing_app.route("/dist/urllib3.whl")
+async def wheel() -> ResponseReturnValue:
+    file_path = _find_built_wheel()
+    mime_type = "application/x-wheel"
+    headers = [
+        ("Content-Disposition", f"inline; filename='{file_path.name}'"),
+        ("Content-Type", mime_type),
+    ]
+    return await make_response(file_path.read_bytes(), 200, headers)

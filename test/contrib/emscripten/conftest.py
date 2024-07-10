@@ -58,22 +58,39 @@ def testserver_http(
             http_host=http_host,
             http_port=http_port,
             https_port=https_port,
+            pyodide_dist_dir=pyodide_dist_dir,
         )
         print("Server teardown")
 
 
+@dataclass
+class PyodideServerInfo:
+    http_port: int
+    https_port: int
+    http_host: str
+    pyodide_dist_dir: Path
+
+
 @pytest.fixture()
-def selenium_coverage(selenium_jspi: Any) -> Generator[Any, None, None]:
+def selenium_coverage(
+    selenium_jspi: Any, testserver_http: PyodideServerInfo
+) -> Generator[Any, None, None]:
     def enable_jspi(self: Any, jspi: bool):
         code = f"""
                  import urllib3.contrib.emscripten.fetch
                  urllib3.contrib.emscripten.fetch.has_jspi = lambda : {jspi}"""
         self.run(code)
 
-    def _install_coverage(self: Any) -> None:
+    def _install_packages(self: Any) -> None:
+        if self.browser == "node":
+            # stop node.js checking our https certificates
+            self.run_js('process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;')
+        # install urllib3 from our test server, rather than from existing package
+        self.run_js(
+            f'await pyodide.loadPackage("http://{testserver_http.http_host}:{testserver_http.http_port}/dist/urllib3.whl")'
+        )
         self.run_js(
             """
-            await pyodide.loadPackage("urllib3")
             await pyodide.loadPackage("coverage")
             await pyodide.runPythonAsync(`import coverage
 _coverage= coverage.Coverage(source_pkgs=['urllib3'])
@@ -84,8 +101,8 @@ _coverage.start()
 
     setattr(
         selenium_jspi,
-        "_install_coverage",
-        _install_coverage.__get__(selenium_jspi, selenium_jspi.__class__),
+        "_install_packages",
+        _install_packages.__get__(selenium_jspi, selenium_jspi.__class__),
     )
 
     setattr(
@@ -94,7 +111,7 @@ _coverage.start()
         enable_jspi.__get__(selenium_jspi, selenium_jspi.__class__),
     )
 
-    selenium_jspi._install_coverage()
+    selenium_jspi._install_packages()
     yield selenium_jspi
     # on teardown, save _coverage output
     coverage_out_binary = bytes(
@@ -118,21 +135,37 @@ _coverage_js.Array.from_(_coverage_outdata)
         outfile.write(coverage_out_binary)
 
 
-@pytest.fixture(params=[False, True])
-def has_jspi(request, selenium_coverage, monkeypatch) -> Generator[bool, None, None]:
-    yield request.param
+# @pytest.fixture(params=[False, True])
+# def has_jspi(request) -> Generator[bool, None, None]:
+#     browser = request.config.getoption("--runtime")
+#     if browser == "node" and request.param == False:
+#         pytest.skip("Node doesn't support non jspi requests")
+#     elif browser == "firefox" and request.param == True:
+#         pytest.skip("Firefox doesn't support Javascript Promise Integration")
+#     yield request.param
 
 
 class ServerRunnerInfo:
-    def __init__(self, host: str, port: int, selenium: Any) -> None:
+    def __init__(self, host: str, port: int, selenium: Any, dist_dir: Path) -> None:
         self.host = host
         self.port = port
         self.selenium = selenium
+        self.dist_dir = dist_dir
 
     def run_webworker(self, code: str, *, has_jspi=True) -> Any:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
+        # make sure any import of urllib comes from our package
+        code = (
+            textwrap.dedent(
+                f"""
+                import pyodide_js as _pjs
+                await _pjs.loadPackage('https://{self.host}:{self.port}/dist/urllib3.whl')
+                """
+            )
+            + code
+        )
 
         if has_jspi == False:
             # disable jspi in this code
@@ -169,10 +202,23 @@ class ServerRunnerInfo:
         _coverage_js.Array.from_(_coverage_outdata)
         """
         )
+
+        if self.selenium.browser == "node":
+            worker_path = self.dist_dir / "webworker_dev.js"
+            self.selenium.run_js(
+                f"""const {{
+                    Worker, isMainThread, parentPort, workerData,
+                }} = require('node:worker_threads');
+                globalThis.Worker= Worker;
+                process.chdir('{self.dist_dir}');
+                """
+            )
+        else:
+            worker_path = f"https://{self.host}:{self.port}/pyodide/webworker_dev.js"
         coverage_out_binary = bytes(
             self.selenium.run_js(
                 f"""
-            let worker = new Worker('https://{self.host}:{self.port}/pyodide/webworker_dev.js');
+            let worker = new Worker('{worker_path}');
             let p = new Promise((res, rej) => {{
                 worker.onmessageerror = e => rej(e);
                 worker.onerror = e => rej(e);
@@ -203,21 +249,82 @@ class ServerRunnerInfo:
 def run_from_server(
     selenium_coverage: Any, testserver_http: PyodideServerInfo
 ) -> Generator[ServerRunnerInfo, None, None]:
-    addr = f"https://{testserver_http.http_host}:{testserver_http.https_port}/pyodide/test.html"
-    selenium_coverage.goto(addr)
-    selenium_coverage.javascript_setup()
-    selenium_coverage.load_pyodide()
-    selenium_coverage.initialize_pyodide()
-    selenium_coverage.save_state()
-    selenium_coverage.restore_state()
-    selenium_coverage._install_coverage()
+    if selenium_coverage.browser != "node":
+        # on node, we don't need to be on the same origin
+        # so we can ignore all this
+        addr = f"https://{testserver_http.http_host}:{testserver_http.https_port}/pyodide/test.html"
+        selenium_coverage.goto(addr)
+        selenium_coverage.javascript_setup()
+        selenium_coverage.load_pyodide()
+        selenium_coverage.initialize_pyodide()
+        selenium_coverage.save_state()
+        selenium_coverage.restore_state()
+        selenium_coverage._install_packages()
+    dist_dir = testserver_http.pyodide_dist_dir
     yield ServerRunnerInfo(
-        testserver_http.http_host, testserver_http.https_port, selenium_coverage
+        testserver_http.http_host,
+        testserver_http.https_port,
+        selenium_coverage,
+        dist_dir,
     )
 
 
-@dataclass
-class PyodideServerInfo:
-    http_port: int
-    https_port: int
-    http_host: str
+def pytest_configure(config):
+    # register an additional marker
+    config.addinivalue_line(
+        "markers",
+        "in_webbrowser: mark test to run only in browser (not in node.js)",
+    )
+    config.addinivalue_line(
+        "markers",
+        "with_jspi: mark test to run only if Webassembly Javascript Promise Integration is supported",
+    )
+    config.addinivalue_line(
+        "markers",
+        "without_jspi: mark test to run only if this platform works without  Webassembly Javascript Promise Integration",
+    )
+    config.addinivalue_line(
+        "markers",
+        "webworkers: mark test to run only if this platform can test web workers",
+    )
+
+
+def pytest_runtest_setup(item):
+    """ Configure various markers to mark tests which use behaviour which is 
+        browser / node.js specific. """
+    if item.get_closest_marker('without_jspi'):
+        if item.config.getoption("--runtime") == 'node':
+            pytest.skip("Node.js doesn't support non jspi tests")
+
+    if item.get_closest_marker('with_jspi'):
+        if item.config.getoption("--runtime") == 'firefox':
+            pytest.skip("Firefox doesn't support jspi tests")
+
+    if item.get_closest_marker('in_webbrowser'):
+        if item.config.getoption("--runtime") == 'node':
+            pytest.skip("Skipping web browser test in Node.js")
+
+    if item.get_closest_marker('webworkers'):
+        if item.config.getoption("--runtime") == 'node':
+            pytest.skip("Skipping webworker test in Node.js")
+
+
+def pytest_generate_tests(metafunc):
+    """ Generate Webassembly Javascript Promise Integration based tests 
+        only for platforms that support it. 
+
+        Currently: 
+        1) node.js only supports use of JSPI because it doesn't support
+        synchronous XMLHttpRequest
+
+        2) firefox doesn't support JSPI
+
+        3) Chrome supports JSPI on or off.
+    """
+    if 'has_jspi' in metafunc.fixturenames:
+        if metafunc.config.getoption("--runtime") == 'node':
+            metafunc.parametrize("has_jspi", [True])
+        elif metafunc.config.getoption("--runtime") == 'firefox':
+            metafunc.parametrize("has_jspi", [False])
+        else:
+            metafunc.parametrize("has_jspi", [True,False])
