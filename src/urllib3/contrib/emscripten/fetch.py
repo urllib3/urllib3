@@ -669,8 +669,8 @@ def has_jspi() -> bool:
         try:
             from pyodide.ffi import can_run_sync
         except ImportError:
-            from pyodide_js._module import (
-                validSuspender,  # type: ignore[import-not-found]
+            from pyodide_js._module import (  # type: ignore[import-not-found]
+                validSuspender,
             )
 
             def can_run_sync() -> bool:
