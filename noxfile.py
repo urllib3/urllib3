@@ -38,8 +38,10 @@ def tests_impl(
 
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
-    session.install(f".[{extras}]")
-
+    if len(extras) > 0:
+        session.install(f".[{extras}]")
+    else:
+        session.install(".")
     # Show the pip version.
     session.run("pip", "--version")
     # Print the Python version and bytesize.
@@ -200,7 +202,7 @@ def lint(session: nox.Session) -> None:
     mypy(session)
 
 
-@nox.session(python="3.11")
+@nox.session(python="3.12")
 def pyodideconsole(session: nox.Session) -> None:
     # build wheel into dist folder
     session.install("build")
@@ -220,9 +222,14 @@ def pyodideconsole(session: nox.Session) -> None:
 # because you can't override the test runner properties easily - see
 # https://github.com/pyodide/pytest-pyodide/issues/118 for more
 @nox.session(python="3.12")
-@nox.parametrize("runner", ["firefox", "chrome"])
+@nox.parametrize("runner", ["node", "firefox", "chrome"])
 def emscripten(session: nox.Session, runner: str) -> None:
-    """Test on Emscripten with Pyodide & Chrome / Firefox"""
+    """Test on Emscripten with Pyodide & Chrome / Firefox / node.js"""
+    if runner == "node":
+        print(
+            "Node version:",
+            session.run("node", "--version", silent=True, external=True),
+        )
     session.install("-r", "emscripten-requirements.txt")
     # build wheel into dist folder
     session.run("python", "-m", "build")
@@ -268,30 +275,18 @@ def emscripten(session: nox.Session, runner: str) -> None:
         dist_dir = pyodide_artifacts_path
     assert dist_dir is not None
     assert dist_dir.exists()
-    if runner == "chrome":
-        tests_impl(
-            session,
-            pytest_extra_args=[
-                "--rt",
-                "chrome-no-host",
-                "--dist-dir",
-                str(dist_dir),
-                "test",
-            ],
-        )
-    elif runner == "firefox":
-        tests_impl(
-            session,
-            pytest_extra_args=[
-                "--rt",
-                "firefox-no-host",
-                "--dist-dir",
-                str(dist_dir),
-                "test",
-            ],
-        )
-    else:
-        raise ValueError(f"Unknown runner: {runner}")
+    tests_impl(
+        session,
+        extras="",
+        pytest_extra_args=[
+            "-x",
+            "--runtime",
+            f"{runner}-no-host",
+            "--dist-dir",
+            str(dist_dir),
+            "test/contrib/emscripten",
+        ],
+    )
 
 
 @nox.session(python="3.12")

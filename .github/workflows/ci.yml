@@ -85,7 +85,7 @@ jobs:
             os: ubuntu-20.04  # CPython 3.9.2 is not available for ubuntu-22.04.
             experimental: false
             nox-session: test-3.9
-          - python-version: "3.11"
+          - python-version: "3.12"
             os: ubuntu-latest
             nox-session: emscripten
             experimental: true
@@ -122,6 +122,11 @@ jobs:
       - name: "Install Firefox"
         uses: browser-actions/setup-firefox@233224b712fc07910ded8c15fb95a555c86da76f # v1.5.0
         if: ${{ matrix.nox-session == 'emscripten' }}
+      - name: "Install node.js"
+        uses: actions/setup-node@v4
+        if: ${{ matrix.nox-session == 'emscripten' }}
+        with:
+          node-version: 22
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
         run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}

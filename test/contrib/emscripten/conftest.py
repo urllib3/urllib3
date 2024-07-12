@@ -135,16 +135,6 @@ _coverage_js.Array.from_(_coverage_outdata)
         outfile.write(coverage_out_binary)
 
 
-# @pytest.fixture(params=[False, True])
-# def has_jspi(request) -> Generator[bool, None, None]:
-#     browser = request.config.getoption("--runtime")
-#     if browser == "node" and request.param == False:
-#         pytest.skip("Node doesn't support non jspi requests")
-#     elif browser == "firefox" and request.param == True:
-#         pytest.skip("Firefox doesn't support Javascript Promise Integration")
-#     yield request.param
-
-
 class ServerRunnerInfo:
     def __init__(self, host: str, port: int, selenium: Any, dist_dir: Path) -> None:
         self.host = host
@@ -293,19 +283,19 @@ def pytest_runtest_setup(item: pytest.Item) -> None:
     """Configure various markers to mark tests which use behaviour which is
     browser / node.js specific."""
     if item.get_closest_marker("without_jspi"):
-        if item.config.getoption("--runtime") == "node":
+        if item.config.getoption("--runtime").startswith("node"):
             pytest.skip("Node.js doesn't support non jspi tests")
 
     if item.get_closest_marker("with_jspi"):
-        if item.config.getoption("--runtime") == "firefox":
+        if item.config.getoption("--runtime").startswith("firefox"):
             pytest.skip("Firefox doesn't support jspi tests")
 
     if item.get_closest_marker("in_webbrowser"):
-        if item.config.getoption("--runtime") == "node":
+        if item.config.getoption("--runtime").startswith("node"):
             pytest.skip("Skipping web browser test in Node.js")
 
     if item.get_closest_marker("webworkers"):
-        if item.config.getoption("--runtime") == "node":
+        if item.config.getoption("--runtime").startswith("node"):
             pytest.skip("Skipping webworker test in Node.js")
 
 
@@ -322,9 +312,9 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     3) Chrome supports JSPI on or off.
     """
     if "has_jspi" in metafunc.fixturenames:
-        if metafunc.config.getoption("--runtime") == "node":
+        if metafunc.config.getoption("--runtime").startswith("node"):
             metafunc.parametrize("has_jspi", [True])
-        elif metafunc.config.getoption("--runtime") == "firefox":
+        elif metafunc.config.getoption("--runtime").startswith("firefox"):
             metafunc.parametrize("has_jspi", [False])
         else:
             metafunc.parametrize("has_jspi", [True, False])
