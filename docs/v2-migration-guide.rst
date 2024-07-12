@@ -56,6 +56,7 @@ Here's a short summary of which changes in urllib3 v2.0 are most important:
 - Changed the default request body encoding from 'ISO-8859-1' to 'UTF-8'.
 - Removed support for verifying certificate hostnames via ``commonName``, now only ``subjectAltName`` is used.
 - Removed the default set of TLS ciphers, instead now urllib3 uses the list of ciphers configured by the system.
+- Changed the default encoding for string bodies to ``utf-8``.
 
 For a full list of changes you can look at `the changelog <https://github.com/urllib3/urllib3/blob/main/CHANGES.rst>`_.
 
