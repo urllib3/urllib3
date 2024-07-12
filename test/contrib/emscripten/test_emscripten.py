@@ -1092,3 +1092,105 @@ def test_streaming_jspi(
         testserver_http.http_port,
         bigfile_url,
     )
+
+
+@pytest.mark.with_jspi
+def test_non_jspi_fail_in_node(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    selenium_coverage.enable_jspi(False)
+    if selenium_coverage.browser != "node":
+        pytest.skip("node only test")
+
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import http.client
+
+        import pytest
+
+        from urllib3.connection import HTTPConnection
+
+        conn = HTTPConnection(host, port)
+        url = f"http://{host}:{port}/"
+        # check streaming and non-streaming requests both fail
+        with pytest.raises(http.client.HTTPException):
+            conn.request("GET", url)
+            conn.getresponse()
+        with pytest.raises(http.client.HTTPException):
+            conn.request("GET", url, preload_content=False)
+            conn.getresponse()
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
+
+
+@pytest.mark.with_jspi
+def test_jspi_fetch_error(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    selenium_coverage.enable_jspi(True)
+
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import http.client
+
+        import pytest
+
+        from urllib3.connection import HTTPConnection
+
+        conn = HTTPConnection(host, port)
+        url = f"sdfsdfsffhttp://{host}:{port}/"
+        with pytest.raises(http.client.HTTPException):
+            conn.request("GET", url)
+            conn.getresponse()
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
+
+
+@pytest.mark.with_jspi
+def test_jspi_readstream_errors(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    selenium_coverage.enable_jspi(True)
+
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import io
+        from http.client import HTTPException
+
+        import pytest
+
+        import urllib3.contrib.emscripten.fetch
+        from urllib3.connection import HTTPConnection
+        from urllib3.exceptions import TimeoutError
+
+        conn = HTTPConnection(host, port)
+        url = f"http://{host}:{port}/"
+        conn.request("GET", url, preload_content=False)
+        response = conn.getresponse()
+        assert isinstance(response._response.body, io.RawIOBase)
+        old_run_sync = urllib3.contrib.emscripten.fetch._run_sync_with_timeout
+        with pytest.raises(TimeoutError):
+
+            def raise_timeout(*args, **argv):
+                raise urllib3.contrib.emscripten.fetch._TimeoutError()
+
+            urllib3.contrib.emscripten.fetch._run_sync_with_timeout = raise_timeout
+            response.read()
+        urllib3.contrib.emscripten.fetch._run_sync_with_timeout = old_run_sync
+        conn.request("GET", url, preload_content=False)
+        response = conn.getresponse()
+        with pytest.raises(HTTPException):
+
+            def raise_error(*args, **argv):
+                raise urllib3.contrib.emscripten.fetch._RequestError()
+
+            urllib3.contrib.emscripten.fetch._run_sync_with_timeout = raise_error
+            response.read()
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
