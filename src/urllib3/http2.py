@@ -264,10 +264,8 @@ class HTTP2Connection(HTTPSConnection):
         **kwargs: typing.Any,
     ) -> None:
         """Send an HTTP/2 request"""
-        if "chunked" in kwargs:
-            # TODO this is often present from upstream.
-            # raise NotImplementedError("`chunked` isn't supported with HTTP/2")
-            pass
+        if kwargs.get("chunked", False):
+            raise NotImplementedError("`chunked` isn't supported with HTTP/2")
 
         if self.sock is not None:
             self.sock.settimeout(self.timeout)
