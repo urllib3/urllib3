@@ -1194,3 +1194,66 @@ def test_jspi_readstream_errors(
     pyodide_test(
         selenium_coverage, testserver_http.http_host, testserver_http.http_port
     )
+
+
+@pytest.mark.with_jspi
+def test_jspi_bad_fetch_error(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    selenium_coverage.enable_jspi(True)
+
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        import pytest
+
+        from urllib3.contrib.emscripten.fetch import _RequestError, send_jspi_request
+        from urllib3.contrib.emscripten.request import EmscriptenRequest
+
+        with pytest.raises(_RequestError):
+            r = EmscriptenRequest(method="BAD", url="sadfsadfasdf://shouldfail")
+            send_jspi_request(r, False)
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
+
+
+@pytest.mark.with_jspi
+def test_has_jspi_exception(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    selenium_coverage.enable_jspi(True)
+
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        try:
+            from unittest.mock import patch
+
+            import pyodide.ffi
+
+            if hasattr(pyodide.ffi, "can_run_sync"):
+
+                @patch("pyodide.ffi.can_run_sync")
+                def should_return_false(func):
+                    func.return_value = (20, False)
+                    func.side_effect = Exception("WOO")
+                    from urllib3.contrib.emscripten.fetch import has_jspi
+
+                    assert has_jspi() is False
+
+                should_return_false()
+            else:
+                from unittest.mock import patch
+
+                @patch("pyodide_js._module", None)
+                def should_return_false():
+                    from urllib3.contrib.emscripten.fetch import has_jspi
+
+                    assert has_jspi() is False
+
+        except Exception as e:
+            return str((e, type(e)))
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
