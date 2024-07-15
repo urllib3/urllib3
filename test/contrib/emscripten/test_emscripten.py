@@ -1171,11 +1171,11 @@ def test_jspi_readstream_errors(
         url = f"http://{host}:{port}/"
         conn.request("GET", url, preload_content=False)
         response = conn.getresponse()
-        assert isinstance(response._response.body, io.RawIOBase)
+        assert isinstance(response._response.body, io.RawIOBase)  # type: ignore[attr-defined]
         old_run_sync = urllib3.contrib.emscripten.fetch._run_sync_with_timeout
         with pytest.raises(TimeoutError):
 
-            def raise_timeout(*args, **argv):
+            def raise_timeout(*args, **argv):  # type: ignore[no-untyped-def]
                 raise urllib3.contrib.emscripten.fetch._TimeoutError()
 
             urllib3.contrib.emscripten.fetch._run_sync_with_timeout = raise_timeout
@@ -1185,7 +1185,7 @@ def test_jspi_readstream_errors(
         response = conn.getresponse()
         with pytest.raises(HTTPException):
 
-            def raise_error(*args, **argv):
+            def raise_error(*args, **argv):  # type: ignore[no-untyped-def]
                 raise urllib3.contrib.emscripten.fetch._RequestError()
 
             urllib3.contrib.emscripten.fetch._run_sync_with_timeout = raise_error
@@ -1226,33 +1226,29 @@ def test_has_jspi_exception(
 
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
-        try:
+        from unittest.mock import patch
+
+        import pyodide.ffi  # type: ignore[import-not-found]
+
+        if hasattr(pyodide.ffi, "can_run_sync"):
+
+            @patch("pyodide.ffi.can_run_sync")
+            def should_return_false(func):  # type: ignore[no-untyped-def]
+                func.return_value = (20, False)
+                func.side_effect = Exception("WOO")
+                from urllib3.contrib.emscripten.fetch import has_jspi
+
+                assert has_jspi() is False
+
+            should_return_false()
+        else:
             from unittest.mock import patch
 
-            import pyodide.ffi
+            @patch("pyodide_js._module", None)
+            def should_return_false():  # type: ignore[no-untyped-def]
+                from urllib3.contrib.emscripten.fetch import has_jspi
 
-            if hasattr(pyodide.ffi, "can_run_sync"):
-
-                @patch("pyodide.ffi.can_run_sync")
-                def should_return_false(func):
-                    func.return_value = (20, False)
-                    func.side_effect = Exception("WOO")
-                    from urllib3.contrib.emscripten.fetch import has_jspi
-
-                    assert has_jspi() is False
-
-                should_return_false()
-            else:
-                from unittest.mock import patch
-
-                @patch("pyodide_js._module", None)
-                def should_return_false():
-                    from urllib3.contrib.emscripten.fetch import has_jspi
-
-                    assert has_jspi() is False
-
-        except Exception as e:
-            return str((e, type(e)))
+                assert has_jspi() is False
 
     pyodide_test(
         selenium_coverage, testserver_http.http_host, testserver_http.http_port
