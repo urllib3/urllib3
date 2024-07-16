@@ -77,9 +77,12 @@ def selenium_with_jspi_if_possible(
 ) -> Generator[Any, None, None]:
     if runtime.startswith("firefox"):
         fixture_name = "selenium"
+        with_jspi = False
     else:
         fixture_name = "selenium_jspi"
+        with_jspi = True
     selenium_obj = request.getfixturevalue(fixture_name)
+    selenium_obj.with_jspi = with_jspi
     yield selenium_obj
 
 
@@ -88,7 +91,7 @@ def selenium_coverage(
     selenium_with_jspi_if_possible: Any, testserver_http: PyodideServerInfo
 ) -> Generator[Any, None, None]:
     def enable_jspi(self: Any, jspi: bool) -> None:
-        if jspi is False:
+        if jspi is False and selenium_with_jspi_if_possible.with_jspi:
             code = f"""
                     import urllib3.contrib.emscripten.fetch
                     urllib3.contrib.emscripten.fetch.has_jspi = lambda : {jspi}"""
