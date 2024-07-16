@@ -544,7 +544,7 @@ def test_streaming_bad_url(
 ) -> None:
     # this should cause an error
     # because the protocol is bad
-    bad_url = f"hsffsdfttp://{testserver_http.http_host}:{testserver_http.http_port}/"
+    bad_url = f"hsffsdft://{testserver_http.http_host}:{testserver_http.http_port}/"
     # this must be in a webworker
     # as you can't do it on main thread
     worker_code = f"""

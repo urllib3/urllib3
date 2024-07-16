@@ -212,7 +212,9 @@ class ServerRunnerInfo:
         _coverage_js.Array.from_(_coverage_outdata)
         """
         )
-
+        if self.selenium.browser == "firefox":
+            # running in worker is SLOW on firefox
+            self.selenium.set_script_timeout(30)
         if self.selenium.browser == "node":
             worker_path = str(self.dist_dir / "webworker_dev.js")
             self.selenium.run_js(
