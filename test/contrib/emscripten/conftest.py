@@ -72,8 +72,10 @@ class PyodideServerInfo:
 
 
 @pytest.fixture()
-def selenium_with_jspi_if_possible(request, runtime):
-    if request.config.getoption("--runtime").startswith("firefox"):
+def selenium_with_jspi_if_possible(
+    request: pytest.FixtureRequest, runtime: str
+) -> Generator[Any, None, None]:
+    if runtime.startswith("firefox"):
         fixture_name = "selenium"
     else:
         fixture_name = "selenium_jspi"
