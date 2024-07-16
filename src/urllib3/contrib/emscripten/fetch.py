@@ -554,59 +554,51 @@ def send_jspi_request(
         "method": request.method,
         "signal": js_abort_controller.signal,
     }
-    try:
-        # Call javascript fetch (async api, returns a promise)
-        fetcher_promise_js = js.fetch(request.url, _obj_from_dict(fetch_data))
-        # Now suspend webassembly until we resolve that promise
-        # or time out.
-        response_js = _run_sync_with_timeout(
-            fetcher_promise_js,
+    # Call javascript fetch (async api, returns a promise)
+    fetcher_promise_js = js.fetch(request.url, _obj_from_dict(fetch_data))
+    # Now suspend webassembly until we resolve that promise
+    # or time out.
+    response_js = _run_sync_with_timeout(
+        fetcher_promise_js,
+        timeout,
+        js_abort_controller,
+        request=request,
+        response=None,
+    )
+    headers = {}
+    header_iter = response_js.headers.entries()
+    while True:
+        iter_value_js = header_iter.next()
+        if getattr(iter_value_js, "done", False):
+            break
+        else:
+            headers[str(iter_value_js.value[0])] = str(iter_value_js.value[1])
+    status_code = response_js.status
+    body: bytes | io.RawIOBase = b""
+
+    response = EmscriptenResponse(
+        status_code=status_code, headers=headers, body=b"", request=request
+    )
+    if streaming:
+        # get via inputstream
+        if response_js.body is not None:
+            # get a reader from the fetch response
+            body_stream_js = response_js.body.getReader()
+            body = _JSPIReadStream(
+                body_stream_js, timeout, request, response, js_abort_controller
+            )
+    else:
+        # get directly via arraybuffer
+        # n.b. this is another async Javascript call.
+        body = _run_sync_with_timeout(
+            response_js.arrayBuffer(),
             timeout,
             js_abort_controller,
             request=request,
-            response=None,
-        )
-        headers = {}
-        header_iter = response_js.headers.entries()
-        while True:
-            iter_value_js = header_iter.next()
-            if getattr(iter_value_js, "done", False):
-                break
-            else:
-                headers[str(iter_value_js.value[0])] = str(iter_value_js.value[1])
-        status_code = response_js.status
-        body: bytes | io.RawIOBase = b""
-
-        response = EmscriptenResponse(
-            status_code=status_code, headers=headers, body=b"", request=request
-        )
-        if streaming:
-            # get via inputstream
-            if response_js.body is not None:
-                # get a reader from the fetch response
-                body_stream_js = response_js.body.getReader()
-                body = _JSPIReadStream(
-                    body_stream_js, timeout, request, response, js_abort_controller
-                )
-        else:
-            # get directly via arraybuffer
-            # n.b. this is another async Javascript call.
-            body = _run_sync_with_timeout(
-                response_js.arrayBuffer(),
-                timeout,
-                js_abort_controller,
-                request=request,
-                response=response,
-            ).to_py()
-        response.body = body
-        return response
-
-    except JsException as err:
-        raise _StreamingError(
-            f"Exception thrown in fetch: {err.message}",
-            request=request,
-            response=None,
-        )
+            response=response,
+        ).to_py()
+    response.body = body
+    return response
 
 
 def _run_sync_with_timeout(

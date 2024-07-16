@@ -72,14 +72,25 @@ class PyodideServerInfo:
 
 
 @pytest.fixture()
+def selenium_with_jspi_if_possible(request, runtime):
+    if request.config.getoption("--runtime").startswith("firefox"):
+        fixture_name = "selenium"
+    else:
+        fixture_name = "selenium_jspi"
+    selenium_obj = request.getfixturevalue(fixture_name)
+    yield selenium_obj
+
+
+@pytest.fixture()
 def selenium_coverage(
-    selenium_jspi: Any, testserver_http: PyodideServerInfo
+    selenium_with_jspi_if_possible: Any, testserver_http: PyodideServerInfo
 ) -> Generator[Any, None, None]:
     def enable_jspi(self: Any, jspi: bool) -> None:
-        code = f"""
-                 import urllib3.contrib.emscripten.fetch
-                 urllib3.contrib.emscripten.fetch.has_jspi = lambda : {jspi}"""
-        self.run(code)
+        if jspi is False:
+            code = f"""
+                    import urllib3.contrib.emscripten.fetch
+                    urllib3.contrib.emscripten.fetch.has_jspi = lambda : {jspi}"""
+            self.run(code)
 
     def _install_packages(self: Any) -> None:
         if self.browser == "node":
@@ -100,22 +111,26 @@ _coverage.start()
         )
 
     setattr(
-        selenium_jspi,
+        selenium_with_jspi_if_possible,
         "_install_packages",
-        _install_packages.__get__(selenium_jspi, selenium_jspi.__class__),
+        _install_packages.__get__(
+            selenium_with_jspi_if_possible, selenium_with_jspi_if_possible.__class__
+        ),
     )
 
     setattr(
-        selenium_jspi,
+        selenium_with_jspi_if_possible,
         "enable_jspi",
-        enable_jspi.__get__(selenium_jspi, selenium_jspi.__class__),
+        enable_jspi.__get__(
+            selenium_with_jspi_if_possible, selenium_with_jspi_if_possible.__class__
+        ),
     )
 
-    selenium_jspi._install_packages()
-    yield selenium_jspi
+    selenium_with_jspi_if_possible._install_packages()
+    yield selenium_with_jspi_if_possible
     # on teardown, save _coverage output
     coverage_out_binary = bytes(
-        selenium_jspi.run_js(
+        selenium_with_jspi_if_possible.run_js(
             """
 return await pyodide.runPythonAsync(`
 _coverage.stop()
