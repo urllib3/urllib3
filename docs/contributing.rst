@@ -193,7 +193,6 @@ A release candidate can be created by any contributor.
   changes.
 - Run ``towncrier build`` to update ``CHANGES.rst`` with the release notes, adjust as
   necessary.
-- Update ``urllib3/__init__.py`` with the proper version number
 - Commit the changes to a ``release-X.Y.Z`` branch.
 - Create a pull request and append ``&expand=1&template=release.md`` to the URL before
   submitting in order to include our release checklist in the pull request description.

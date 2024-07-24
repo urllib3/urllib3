@@ -334,7 +334,11 @@ class TestRetry:
     def test_retry_default_remove_headers_on_redirect(self) -> None:
         retry = Retry()
 
-        assert retry.remove_headers_on_redirect == {"authorization", "cookie"}
+        assert retry.remove_headers_on_redirect == {
+            "authorization",
+            "proxy-authorization",
+            "cookie",
+        }
 
     def test_retry_set_remove_headers_on_redirect(self) -> None:
         retry = Retry(remove_headers_on_redirect=["X-API-Secret"])
