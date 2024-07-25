@@ -59,7 +59,7 @@ class _HTTP2ProbeCache:
             if supports_http2 is None and self._cache_values[key] is not None:
                 raise ValueError(
                     "Cannot reset HTTP/2 support for origin after value has been set."
-                )
+                )  # Defensive: not expected in normal usage
 
         self._cache_values[key] = supports_http2
         key_lock.release()

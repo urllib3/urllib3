@@ -1055,7 +1055,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 # We don't know if the target supports HTTP/2 as connections fail
                 assert kwargs["target_supports_http2"] is None
 
-            # Since we're trying to connect to TARPIST_HOST, all connections will
+            # Since we're trying to connect to TARPIT_HOST, all connections will
             # fail, but they should be tried one after the other
             now = time.perf_counter()
             assert now >= last_action
