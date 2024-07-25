@@ -1,0 +1,2 @@
+Fixed the default encoding of chunked request bodies to be UTF-8 instead of ISO-8859-1.
+All other methods of supplying a request body already use UTF-8 starting in urllib3 v2.0.
