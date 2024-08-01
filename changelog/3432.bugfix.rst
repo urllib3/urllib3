@@ -1,12 +1,1 @@
-util/ssl: make code resilient to missing hash functions
-
-In certain environments such as in a FIPS enabled system,
-certain algorithms such as md5 may be unavailable. Due
-to the importing of such a module on a system where it
-is unavailable, urllib will crash and is unusable.
-
-This change makes the code more resilient by deferring the
-usage of the hash function module unless they are required.
-If the hash function is unavailable but required, an SSLError
-is raised indicating the same. If the hash function is unavailable
-but not required, urllib functions instead of crashing.
+Fixed a crash where certain standard library hash functions were absent in restricted environments.
