@@ -11,4 +11,4 @@ if [[ -z "$NOX_SESSION" ]]; then
     cat /etc/hosts
     NOX_SESSION=test-${PYTHON_VERSION%-dev}
 fi
-nox -s $NOX_SESSION --error-on-missing-interpreters
+nox -s $NOX_SESSION --error-on-missing-interpreters -- "$@"
