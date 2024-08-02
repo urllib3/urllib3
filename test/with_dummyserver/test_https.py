@@ -990,6 +990,26 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         assert ctx.minimum_version == self.tls_version()
         assert ctx.maximum_version == self.tls_version()
 
+    def test_assert_missing_hashfunc(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        fingerprint = "55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
+        with HTTPSConnectionPool(
+            "localhost",
+            self.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=DEFAULT_CA,
+            assert_fingerprint=(fingerprint),
+            ssl_minimum_version=self.tls_version(),
+        ) as https_pool:
+            digest_length = len(fingerprint.replace(":", "").lower())
+            monkeypatch.setitem(urllib3.util.ssl_.HASHFUNC_MAP, digest_length, None)
+            with pytest.raises(MaxRetryError) as cm:
+                https_pool.request("GET", "/", retries=0)
+            assert type(cm.value.reason) is SSLError
+            assert (
+                f"Hash function implementation unavailable for fingerprint length: {digest_length}"
+                == str(cm.value.reason)
+            )
+
 
 @pytest.mark.usefixtures("requires_tlsv1")
 class TestHTTPS_TLSv1(BaseTestHTTPS):
