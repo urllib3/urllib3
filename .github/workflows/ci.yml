@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
         os: [macos-12, windows-latest, ubuntu-latest]
         experimental: [false]
         nox-session: ['']
@@ -74,10 +74,10 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: app_engine
-          - python-version: 3.11-dev
+          - python-version: 3.13
             os: ubuntu-latest
             experimental: true
-            nox-session: test-3.11
+            nox-session: ''
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-12":"macOS","windows-latest":"Windows","ubuntu-20.04":"Ubuntu 20.04","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
@@ -91,6 +91,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
 
       # Unfortunately, actions/setup-python does not support CPython 2.7.
       - name: Set Up Python - 2.7
