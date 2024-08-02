@@ -29,9 +29,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         os: [macos-12, windows-latest, ubuntu-latest]
-        experimental: [false]
         nox-session: ['']
         exclude:
           # actions/setup-python dropped support for 3.6 in Ubuntu 22.04
@@ -42,6 +41,7 @@ jobs:
           - python-version: "3.7"
             os: ubuntu-latest
         include:
+          - experimental: false
           - python-version: "2.7"
             os: ubuntu-latest
             experimental: false
@@ -75,9 +75,7 @@ jobs:
             experimental: false
             nox-session: app_engine
           - python-version: 3.13
-            os: ubuntu-latest
             experimental: true
-            nox-session: ''
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-12":"macOS","windows-latest":"Windows","ubuntu-20.04":"Ubuntu 20.04","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
