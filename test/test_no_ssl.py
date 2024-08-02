@@ -5,6 +5,7 @@ Test what happens if Python was built without SSL
 * HTTPS requests must fail with an error that points at the ssl module
 """
 
+import importlib
 import sys
 
 import pytest
@@ -28,6 +29,12 @@ class ImportBlocker(object):
 
     def load_module(self, fullname):
         raise ImportError("import of {0} is blocked".format(fullname))
+
+    def find_spec(self, fullname, path, target):
+        loader = self.find_module(fullname, path)
+        if loader is None:
+            return None
+        return importlib.util.spec_from_loader(fullname, loader)
 
 
 class ModuleStash(object):
