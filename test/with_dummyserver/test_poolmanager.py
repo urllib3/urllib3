@@ -688,6 +688,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
             "object, or iterable. Instead was <BadBody>"
         )
 
+    def test_key_idle_timeout(self) -> None:
+        with PoolManager(idle_timeout=5) as http:
+            http.request("GET", f"{self.base_url}/")
+
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
 class TestIPv6PoolManager(IPv6HypercornDummyServerTestCase):
