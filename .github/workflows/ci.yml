@@ -117,7 +117,8 @@ jobs:
         run: python -m pip install --upgrade pip setuptools nox
 
       - name: Run Tests
-        run: ./ci/run_tests.sh
+        # `test_requesting_large_resources_via_ssl` is run separately to avoid timeouts.
+        run: ./ci/run_tests.sh ${{ matrix.nox-session != 'app_engine' && 'test/ -k "not requesting_large_resources_via_ssl"' || '' }} -vv
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
           NOX_SESSION: ${{ matrix.nox-session }}
@@ -130,11 +131,44 @@ jobs:
           path: ".coverage.*"
           if-no-files-found: error
 
+  # A slow test that needs to be run separatelly to avoid timeouts.
+  test_requesting_large_resources_via_ssl:
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.8 and 3.9 have a known issue with large SSL requests that we work around:
+        # https://github.com/urllib3/urllib3/pull/3181#issuecomment-1794830698
+        python-version: ["3.7", "3.8", "3.9", "3.12"]
+    runs-on: ubuntu-latest
+    name: Ubuntu ${{ matrix.python-version }} requesting_large_resources_via_ssl
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Python - ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Dependencies
+        run: python -m pip install --upgrade pip setuptools nox
+
+      - name: Run Tests
+        run: ./ci/run_tests.sh test/ -k "requesting_large_resources_via_ssl" -vv
+        env:
+          PYTHON_VERSION: ${{ matrix.python-version }}
+
+      - name: Upload Coverage
+        uses: "actions/upload-artifact@v2"
+        with:
+          name: coverage-data
+          path: ".coverage.*"
+          if-no-files-found: error
 
   coverage:
     if: always()
     runs-on: "ubuntu-latest"
-    needs: test
+    needs: [test, test_requesting_large_resources_via_ssl]
     steps:
       - uses: actions/checkout@v2
       - name: "Use latest Python so it understands all syntax"
