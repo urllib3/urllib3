@@ -41,7 +41,10 @@ def tests_impl(session, extras="socks,secure,brotli"):
         "--tb=native",
         "--no-success-flaky-report",
         *(session.posargs or ("test/",)),
-        env={"PYTHONWARNINGS": "always::DeprecationWarning"},
+        env={
+            "PYTHONWARNINGS": "always::DeprecationWarning",
+            "COVERAGE_CORE": "sysmon",
+        },
     )
 
 
