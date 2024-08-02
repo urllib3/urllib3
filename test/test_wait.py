@@ -154,8 +154,11 @@ def test_eintr_zero_timeout(wfs, spair):
             signal.setitimer(signal.ITIMER_REAL, 0.001, 0.001)
             # Hammer the system call for a while to trigger the
             # race.
+            end = monotonic() + 5
             for i in range(100000):
                 wfs(a, read=True, timeout=0)
+                if monotonic() >= end:
+                    break
         finally:
             # Stop delivering SIGALRM
             signal.setitimer(signal.ITIMER_REAL, 0)
