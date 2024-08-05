@@ -325,3 +325,36 @@ class TestHTTP2Connection:
         sendall.assert_called_with(b"foo")
         assert conn._h2_stream is None
         assert conn._headers == []
+
+    def test_request_ignore_chunked(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
+        sendall = conn.sock.sendall
+        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")
+        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
+        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(
+            return_value=None
+        )
+
+        conn.request("GET", "/", headers={"Transfer-Encoding": "chunked"}, chunked=True)
+        conn.close()
+
+        data_to_send.assert_called_with()
+        sendall.assert_called_with(b"foo")
+        send_headers.assert_called_with(
+            stream_id=1,
+            headers=[
+                (b":scheme", b"https"),
+                (b":method", b"GET"),
+                (b":authority", b"example.com:443"),
+                (b":path", b"/"),
+                (b"user-agent", _get_default_user_agent().encode()),
+            ],
+            end_stream=True,
+        )
+
+        close_connection.assert_called_with()
