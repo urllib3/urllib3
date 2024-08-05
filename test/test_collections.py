@@ -133,14 +133,14 @@ class TestLRUContainer:
 
 
 class NonMappingHeaderContainer:
-    def __init__(self, **kwargs: str) -> None:
+    def __init__(self, **kwargs: str | bytes) -> None:
         self._data = {}
         self._data.update(kwargs)
 
     def keys(self) -> typing.Iterator[str]:
         return iter(self._data)
 
-    def __getitem__(self, key: str) -> str:
+    def __getitem__(self, key: str) -> str | bytes:
         return self._data[key]
 
 
@@ -218,6 +218,8 @@ class TestHTTPHeaderDict:
         assert d["cookie"] == "bar"
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
+        d["rawcookie"] = b"foo, bar"
+        assert d["rawcookie"] == b"foo, bar"
 
     def test_update(self, d: HTTPHeaderDict) -> None:
         d.update(dict(Cookie="foo"))
@@ -290,6 +292,16 @@ class TestHTTPHeaderDict:
         other_dict.extend(d)
         assert list(other_dict.items()) == expected_results
 
+        d.add("rawcookie", b"foo")
+        d.add("rawcookie", b"bar", combine=True)
+        assert list(d.items()) == [
+            ("Cookie", "foo"),
+            ("Cookie", "bar"),
+            ("other-header", "hello"),
+            ("other-header", "world, !"),
+            ("rawcookie", b"foo, bar"),
+        ]
+
     def test_extend_from_headerdict(self, d: HTTPHeaderDict) -> None:
         h = HTTPHeaderDict(Cookie="foo", e="foofoo")
         d.extend(h)
@@ -322,18 +334,22 @@ class TestHTTPHeaderDict:
         assert d.getlist("cookie") == HTTPHeaderDict(d).getlist("cookie")
 
     def test_equal(self, d: HTTPHeaderDict) -> None:
-        b = HTTPHeaderDict(cookie="foo, bar")
-        c = NonMappingHeaderContainer(cookie="foo, bar")
-        e = [("cookie", "foo, bar")]
+        d["rawcookie"] = b"foo"
+        d.add("rawcookie", b"bar")
+        b = HTTPHeaderDict(cookie="foo, bar", rawcookie=b"foo, bar")
+        c = NonMappingHeaderContainer(cookie="foo, bar", rawcookie=b"foo, bar")
+        e = [("cookie", "foo, bar"), ("rawcookie", b"foo, bar")]
         assert d == b
         assert d == c
         assert d == e
         assert d != 2
 
     def test_not_equal(self, d: HTTPHeaderDict) -> None:
-        b = HTTPHeaderDict(cookie="foo, bar")
-        c = NonMappingHeaderContainer(cookie="foo, bar")
-        e = [("cookie", "foo, bar")]
+        d["rawcookie"] = b"foo"
+        d.add("rawcookie", b"bar")
+        b = HTTPHeaderDict(cookie="foo, bar", rawcookie=b"foo, bar")
+        c = NonMappingHeaderContainer(cookie="foo, bar", rawcookie=b"foo, bar")
+        e = [("cookie", "foo, bar"), ("rawcookie", b"foo, bar")]
         assert not (d != b)
         assert not (d != c)
         assert not (d != e)
@@ -379,6 +395,10 @@ class TestHTTPHeaderDict:
         assert ("Cookie", "not_present") not in items
         assert ("Cookie", 1) not in items  # type: ignore[comparison-overlap]
         assert "Cookie" not in items  # type: ignore[comparison-overlap]
+
+        d["rawcookie"] = b"foo, bar"
+        assert ("rawcookie", b"foo, bar") in d.items()
+        assert ("rawcookie", b"foo") not in d.items()
 
     def test_dict_conversion(self, d: HTTPHeaderDict) -> None:
         # Also tested in connectionpool, needs to preserve case
@@ -452,3 +472,9 @@ class TestHTTPHeaderDict:
     def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
         with pytest.raises(TypeError, match="unsupported operand type.*'NoneType'"):
             d |= None
+
+    def test_raises_mixed_type_header_vals(self, d: HTTPHeaderDict) -> None:
+        with pytest.raises(
+            TypeError, match="Can not mix strings and bytes in header values"
+        ):
+            d.add("Cookie", b"foo")

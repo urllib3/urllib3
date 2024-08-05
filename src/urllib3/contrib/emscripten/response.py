@@ -101,7 +101,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
 
     def _init_length(self, request_method: str | None) -> int | None:
         length: int | None
-        content_length: str | None = self.headers.get("content-length")
+        content_length: str | None = self.headers.get("content-length")  # type: ignore[assignment]
 
         if content_length is not None:
             try:
