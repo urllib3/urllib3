@@ -95,6 +95,9 @@ class HTTP2Connection(HTTPSConnection):
 
         super().__init__(host, port, **kwargs)
 
+        if self._tunnel_host is not None:
+            raise NotImplementedError("Tunneling isn't supported with HTTP/2")
+
     def _new_h2_conn(self) -> _LockedObject[h2.connection.H2Connection]:
         config = h2.config.H2Configuration(client_side=True)
         return _LockedObject(h2.connection.H2Connection(config=config))
@@ -208,6 +211,17 @@ class HTTP2Connection(HTTPSConnection):
                     "`data` should be str, bytes, iterable, or file. got %r"
                     % type(data)
                 )
+
+    def set_tunnel(
+        self,
+        host: str,
+        port: int | None = None,
+        headers: typing.Mapping[str, str] | None = None,
+        scheme: str = "http",
+    ) -> None:
+        raise NotImplementedError(
+            "HTTP/2 does not support setting up a tunnel through a proxy"
+        )
 
     def getresponse(  # type: ignore[override]
         self,
