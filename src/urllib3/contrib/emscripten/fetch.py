@@ -3,6 +3,16 @@ Support for streaming http requests in emscripten.
 
 A few caveats -
 
+If your browser (or node.js) has WebAssembly Javascript Promise Integration enabled
+https://github.com/WebAssembly/js-promise-integration/blob/main/proposals/js-promise-integration/Overview.md
+*and* you launch pyodide using `pyodide.runPythonAsync`, this will fetch data using the
+Javascript asynchronous fetch api (wrapped via `pyodide.ffi.call_sync`). In this case
+timeouts and streaming should just work.
+
+Otherwise, it uses a combination of XMLHttpRequest and a web-worker for streaming.
+
+This approach has several caveats:
+
 Firstly, you can't do streaming http in the main UI thread, because atomics.wait isn't allowed.
 Streaming only works if you're running pyodide in a web worker.
 
@@ -23,6 +33,7 @@ control is returned to javascript. Call `await wait_for_streaming_ready()` to wa
 NB: in this code, there are a lot of javascript objects. They are named js_*
 to make it clear what type of object they are.
 """
+
 from __future__ import annotations
 
 import io
@@ -197,7 +208,8 @@ class _StreamingFetcher:
         self.streaming_ready = False
 
         js_data_blob = js.Blob.new(
-            [_STREAMING_WORKER_CODE], _obj_from_dict({"type": "application/javascript"})
+            to_js([_STREAMING_WORKER_CODE], create_pyproxies=False),
+            _obj_from_dict({"type": "application/javascript"}),
         )
 
         def promise_resolver(js_resolve_fn: JsProxy, js_reject_fn: JsProxy) -> None:
@@ -288,6 +300,104 @@ class _StreamingFetcher:
             )
 
 
+class _JSPIReadStream(io.RawIOBase):
+    """A read stream that uses pyodide.ffi.run_sync to read from a Javascript fetch
+    response. This requires support for WebAssembly Javascript Promise Integration
+    in the containing browser, and for pyodide to be launched via runPythonAsync.
+    """
+
+    def __init__(
+        self,
+        js_read_stream: Any,
+        timeout: float,
+        request: EmscriptenRequest,
+        response: EmscriptenResponse,
+        js_abort_controller: Any,  # javascript AbortController for timeouts
+    ):
+        """Stream to read data from a Javascript fetch response
+
+        Args:
+            js_read_stream (Any): The Javascript stream reader
+            timeout (float): Timeout in seconds
+            request (EmscriptenRequest): The request we're handling
+            response (EmscriptenResponse): The response this stream is in
+            js_abort_controller (Any): A javascript AbortController object
+        """
+        self.js_read_stream = js_read_stream
+        self.timeout = timeout
+        self._is_closed = False
+        self._is_done = False
+        self.request: EmscriptenRequest | None = request
+        self.response: EmscriptenResponse | None = response
+        self.current_buffer = None
+        self.current_buffer_pos = 0
+        self.js_abort_controller = js_abort_controller
+
+    def __del__(self) -> None:
+        self.close()
+
+    # this is compatible with _base_connection
+    def is_closed(self) -> bool:
+        return self._is_closed
+
+    # for compatibility with RawIOBase
+    @property
+    def closed(self) -> bool:
+        return self.is_closed()
+
+    def close(self) -> None:
+        if not self.is_closed():
+            self.read_len = 0
+            self.read_pos = 0
+            self.js_read_stream = None
+            self._is_closed = True
+            self._is_done = True
+            self.request = None
+            self.response = None
+            super().close()
+
+    def readable(self) -> bool:
+        return True
+
+    def writable(self) -> bool:
+        return False
+
+    def seekable(self) -> bool:
+        return False
+
+    def _get_next_buffer(self) -> bool:
+        result_js = _run_sync_with_timeout(
+            self.js_read_stream.read(),
+            self.timeout,
+            self.js_abort_controller,
+            request=self.request,
+            response=self.response,
+        )
+        if result_js.done:
+            self._is_done = True
+            return False
+        else:
+            self.current_buffer = result_js.value.to_py()
+            self.current_buffer_pos = 0
+            return True
+
+    def readinto(self, byte_obj: Buffer) -> int:
+        if self.current_buffer is None:
+            if not self._get_next_buffer() or self.current_buffer is None:
+                self.close()
+                return 0
+        ret_length = min(
+            len(byte_obj), len(self.current_buffer) - self.current_buffer_pos
+        )
+        byte_obj[0:ret_length] = self.current_buffer[
+            self.current_buffer_pos : self.current_buffer_pos + ret_length
+        ]
+        self.current_buffer_pos += ret_length
+        if self.current_buffer_pos == len(self.current_buffer):
+            self.current_buffer = None
+        return ret_length
+
+
 # check if we are in a worker or not
 def is_in_browser_main_thread() -> bool:
     return hasattr(js, "window") and hasattr(js, "self") and js.self == js.window
@@ -322,6 +432,17 @@ else:
 
 
 def send_streaming_request(request: EmscriptenRequest) -> EmscriptenResponse | None:
+    if has_jspi():
+        return send_jspi_request(request, True)
+    elif is_in_node():
+        raise _RequestError(
+            message="urllib3 only works in node.js with pyodide.runPythonAsync"
+            " and requires the flag --experimental-wasm-stack-switching in "
+            " versions of node <24",
+            request=request,
+            response=None,
+        )
+
     if _fetcher and streaming_ready():
         return _fetcher.send(request)
     else:
@@ -363,6 +484,16 @@ is working, you need to call: 'await urllib3.contrib.emscripten.fetch.wait_for_s
 
 
 def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
+    if has_jspi():
+        return send_jspi_request(request, False)
+    elif is_in_node():
+        raise _RequestError(
+            message="urllib3 only works in node.js with pyodide.runPythonAsync"
+            " and requires the flag --experimental-wasm-stack-switching in "
+            " versions of node <24.",
+            request=request,
+            response=None,
+        )
     try:
         js_xhr = js.XMLHttpRequest.new()
 
@@ -401,6 +532,145 @@ def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
         else:
             # general http error
             raise _RequestError(err.message, request=request)
+
+
+def send_jspi_request(
+    request: EmscriptenRequest, streaming: bool
+) -> EmscriptenResponse:
+    """Send a request using Webassembly Javascript Promise Integration (experimental)
+       to wrap the asynchronous javascript fetch api.
+
+    Args:
+        request (EmscriptenRequest): Request to send
+        streaming : Whether to stream response
+    """
+    timeout = request.timeout
+    js_abort_controller = js.AbortController.new()
+    headers = {k: v for k, v in request.headers.items() if k not in HEADERS_TO_IGNORE}
+    req_body = request.body
+    fetch_data = {
+        "headers": headers,
+        "body": to_js(req_body),
+        "method": request.method,
+        "signal": js_abort_controller.signal,
+    }
+    # Call javascript fetch (async api, returns a promise)
+    fetcher_promise_js = js.fetch(request.url, _obj_from_dict(fetch_data))
+    # Now suspend webassembly until we resolve that promise
+    # or time out.
+    response_js = _run_sync_with_timeout(
+        fetcher_promise_js,
+        timeout,
+        js_abort_controller,
+        request=request,
+        response=None,
+    )
+    headers = {}
+    header_iter = response_js.headers.entries()
+    while True:
+        iter_value_js = header_iter.next()
+        if getattr(iter_value_js, "done", False):
+            break
+        else:
+            headers[str(iter_value_js.value[0])] = str(iter_value_js.value[1])
+    status_code = response_js.status
+    body: bytes | io.RawIOBase = b""
+
+    response = EmscriptenResponse(
+        status_code=status_code, headers=headers, body=b"", request=request
+    )
+    if streaming:
+        # get via inputstream
+        if response_js.body is not None:
+            # get a reader from the fetch response
+            body_stream_js = response_js.body.getReader()
+            body = _JSPIReadStream(
+                body_stream_js, timeout, request, response, js_abort_controller
+            )
+    else:
+        # get directly via arraybuffer
+        # n.b. this is another async Javascript call.
+        body = _run_sync_with_timeout(
+            response_js.arrayBuffer(),
+            timeout,
+            js_abort_controller,
+            request=request,
+            response=response,
+        ).to_py()
+    response.body = body
+    return response
+
+
+def _run_sync_with_timeout(
+    promise: Any,
+    timeout: float,
+    js_abort_controller: Any,
+    request: EmscriptenRequest | None,
+    response: EmscriptenResponse | None,
+) -> Any:
+    """await a javascript promise synchronously with a timeout set via the
+       AbortController
+
+    Args:
+        promise (Any): Javascript promise to await
+        timeout (float): Timeout in seconds
+        js_abort_controller (Any): A javascript AbortController object, used on timeout
+        request (EmscriptenRequest | None): The request we're currently handling
+        response (EmscriptenResponse | None): Response we're handling if it exists yet.
+
+    Raises:
+        _TimeoutError: If the request times out
+        _RequestError: If the request raises a Javascript exception
+
+    Returns:
+        _type_: The result of awaiting the promise.
+    """
+    timer_id = None
+    if timeout > 0:
+        timer_id = js.setTimeout(
+            js_abort_controller.abort.bind(js_abort_controller), int(timeout * 1000)
+        )
+    try:
+        from pyodide.ffi import run_sync
+
+        # run_sync here uses WebAssembly Javascript Promise Integration to
+        # suspend python until the Javascript promise resolves.
+        return run_sync(promise)
+    except JsException as err:
+        if err.name == "AbortError":
+            raise _TimeoutError(
+                message="Request timed out", request=request, response=response
+            )
+        else:
+            raise _RequestError(message=err.message, request=request, response=response)
+        # raise (something)
+    finally:
+        if timer_id is not None:
+            js.clearTimeout(timer_id)
+
+
+def has_jspi() -> bool:
+    """Return true if jspi can be used.
+
+    This requires both browser support and also webassembly
+    to be in the correct state - i.e. that the javascript
+    call into python was async not sync."""
+    try:
+        from pyodide.ffi import run_sync  # noqa: F401
+
+        try:
+            from pyodide.ffi import can_run_sync
+        except ImportError:
+            from pyodide_js._module import (  # type: ignore[import-not-found]
+                validSuspender,
+            )
+
+            def can_run_sync() -> bool:
+                return bool(validSuspender.value)
+
+        return bool(can_run_sync())
+    except BaseException:
+        return False
 
 
 def streaming_ready() -> bool | None:
