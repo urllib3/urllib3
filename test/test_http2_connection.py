@@ -7,7 +7,7 @@ import pytest
 
 from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import ConnectionError
-from urllib3.http2 import (
+from urllib3.http2.connection import (
     HTTP2Connection,
     _is_illegal_header_value,
     _is_legal_header_name,

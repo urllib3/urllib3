@@ -10,15 +10,11 @@ import h2.config  # type: ignore[import-untyped]
 import h2.connection  # type: ignore[import-untyped]
 import h2.events  # type: ignore[import-untyped]
 
-import urllib3.connection
-import urllib3.util.ssl_
-
-from ._base_connection import _TYPE_BODY
-from ._collections import HTTPHeaderDict
-from .connection import HTTPSConnection, _get_default_user_agent
-from .connectionpool import HTTPSConnectionPool
-from .exceptions import ConnectionError
-from .response import BaseHTTPResponse
+from .._base_connection import _TYPE_BODY
+from .._collections import HTTPHeaderDict
+from ..connection import HTTPSConnection, _get_default_user_agent
+from ..exceptions import ConnectionError
+from ..response import BaseHTTPResponse
 
 orig_HTTPSConnection = HTTPSConnection
 
@@ -58,12 +54,16 @@ def _is_illegal_header_value(value: bytes) -> bool:
 class _LockedObject(typing.Generic[T]):
     """
     A wrapper class that hides a specific object behind a lock.
-
     The goal here is to provide a simple way to protect access to an object
     that cannot safely be simultaneously accessed from multiple threads. The
     intended use of this class is simple: take hold of it with a context
     manager, which returns the protected object.
     """
+
+    __slots__ = (
+        "lock",
+        "_obj",
+    )
 
     def __init__(self, obj: T):
         self.lock = threading.RLock()
@@ -337,18 +337,3 @@ class HTTP2Response(BaseHTTPResponse):
 
     def close(self) -> None:
         pass
-
-
-def inject_into_urllib3() -> None:
-    HTTPSConnectionPool.ConnectionCls = HTTP2Connection
-    urllib3.connection.HTTPSConnection = HTTP2Connection  # type: ignore[misc]
-
-    # TODO: Offer 'http/1.1' as well, but for testing purposes this is handy.
-    urllib3.util.ssl_.ALPN_PROTOCOLS = ["h2"]
-
-
-def extract_from_urllib3() -> None:
-    HTTPSConnectionPool.ConnectionCls = orig_HTTPSConnection
-    urllib3.connection.HTTPSConnection = orig_HTTPSConnection  # type: ignore[misc]
-
-    urllib3.util.ssl_.ALPN_PROTOCOLS = ["http/1.1"]
