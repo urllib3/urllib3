@@ -41,11 +41,9 @@ class _HTTP2ProbeCache:
             value = self._cache_values[key]
 
         # In case an exception like KeyboardInterrupt is raised here.
-        # KeyError shouldn't be possible.
-        except BaseException as e:
-            assert not isinstance(e, KeyError)
-            if value is not None:
-                key_lock.release()
+        except BaseException as e:  # Defensive:
+            assert not isinstance(e, KeyError)  # KeyError shouldn't be possible.
+            key_lock.release()
             raise
 
         return value
