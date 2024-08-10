@@ -164,7 +164,7 @@ class RequestMethods:
             The URL to perform the request on.
 
         :param fields:
-            Data to encode and send in the request body.
+            Data to encode and send in the URL.
 
         :param headers:
             Dictionary of custom headers to send, such as User-Agent,
