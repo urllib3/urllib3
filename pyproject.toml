@@ -1,7 +1,7 @@
 # This file is protected via CODEOWNERS
 
 [build-system]
-requires = ["hatchling>=1.6.0,<2"]
+requires = ["hatchling>=1.6.0,<2", "hatch-vcs==0.4.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -49,6 +49,9 @@ zstd = [
 socks = [
   "PySocks>=1.5.6,<2.0,!=1.5.7",
 ]
+h2 = [
+  "h2>=4,<5"
+]
 
 [project.urls]
 "Changelog" = "https://github.com/urllib3/urllib3/blob/main/CHANGES.rst"
@@ -57,7 +60,11 @@ socks = [
 "Issue tracker" = "https://github.com/urllib3/urllib3/issues"
 
 [tool.hatch.version]
-path = "src/urllib3/_version.py"
+source = "vcs"
+[tool.hatch.version.raw-options]
+local_scheme = "no-local-version"
+[tool.hatch.build.hooks.vcs]
+version-file = "src/urllib3/_version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [

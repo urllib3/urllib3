@@ -20,7 +20,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 
 from urllib3.exceptions import HTTPWarning
-from urllib3.util import ALPN_PROTOCOLS, resolve_cert_reqs, resolve_ssl_version
+from urllib3.util import resolve_cert_reqs, resolve_ssl_version
 
 if typing.TYPE_CHECKING:
     from typing_extensions import ParamSpec
@@ -35,7 +35,7 @@ DEFAULT_CERTS: dict[str, typing.Any] = {
     "keyfile": os.path.join(CERTS_PATH, "server.key"),
     "cert_reqs": ssl.CERT_OPTIONAL,
     "ca_certs": os.path.join(CERTS_PATH, "cacert.pem"),
-    "alpn_protocols": ALPN_PROTOCOLS,
+    "alpn_protocols": ["h2", "http/1.1"],
 }
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
@@ -108,6 +108,7 @@ class SocketServerThread(threading.Thread):
         socket_handler: typing.Callable[[socket.socket], None],
         host: str = "localhost",
         ready_event: threading.Event | None = None,
+        quit_event: threading.Event | None = None,
     ) -> None:
         super().__init__()
         self.daemon = True
@@ -115,6 +116,7 @@ class SocketServerThread(threading.Thread):
         self.socket_handler = socket_handler
         self.host = host
         self.ready_event = ready_event
+        self.quit_event = quit_event
 
     def _start_server(self) -> None:
         if self.USE_IPV6:

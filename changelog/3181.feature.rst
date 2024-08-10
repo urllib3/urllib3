@@ -1,4 +1,0 @@
-Note to redistributors: the urllib3 test suite has been separated in
-two. To run integration tests, you now need to run the tests a second
-time with the `--integration` pytest flag, as in this example: `nox
--rs test-3.12 -- --integration`.

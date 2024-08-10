@@ -10,6 +10,8 @@ import hypercorn
 import pytest
 import trustme
 
+import urllib3.http2
+import urllib3.http2.probe as http2_probe
 from dummyserver.app import hypercorn_app
 from dummyserver.asgi_proxy import ProxyApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
@@ -369,3 +371,23 @@ def requires_tlsv1_3(supported_tls_versions: typing.AbstractSet[str]) -> None:
         or "TLSv1.3" not in supported_tls_versions
     ):
         pytest.skip("Test requires TLSv1.3")
+
+
+@pytest.fixture(params=["h11", "h2"])
+def http_version(request: pytest.FixtureRequest) -> typing.Generator[str, None, None]:
+    if request.param == "h2":
+        urllib3.http2.inject_into_urllib3()
+    try:
+        yield request.param
+    finally:
+        if request.param == "h2":
+            urllib3.http2.extract_from_urllib3()
+
+
+@pytest.fixture(autouse=True, scope="function")
+def reset_http2_probe_cache() -> typing.Generator[None, None, None]:
+    # Always reset the HTTP/2 probe cache per test case.
+    try:
+        yield
+    finally:
+        http2_probe._reset()

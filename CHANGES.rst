@@ -1,19 +1,45 @@
-2.1.0 (2023-11-13)
+2.2.2 (2024-06-17)
 ==================
 
-Read the `v2 migration guide <https://urllib3.readthedocs.io/en/latest/v2-migration-guide.html>`__ for help upgrading to the latest version of urllib3.
+- Added the ``Proxy-Authorization`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+- Allowed passing negative integers as ``amt`` to read methods of ``http.client.HTTPResponse`` as an alternative to ``None``. (`#3122 <https://github.com/urllib3/urllib3/issues/3122>`__)
+- Fixed return types representing copying actions to use ``typing.Self``. (`#3363 <https://github.com/urllib3/urllib3/issues/3363>`__)
 
-Removals
---------
+2.2.1 (2024-02-16)
+==================
+
+- Fixed issue where ``InsecureRequestWarning`` was emitted for HTTPS connections when using Emscripten. (`#3331 <https://github.com/urllib3/urllib3/issues/3331>`__)
+- Fixed ``HTTPConnectionPool.urlopen`` to stop automatically casting non-proxy headers to ``HTTPHeaderDict``. This change was premature as it did not apply to proxy headers and ``HTTPHeaderDict`` does not handle byte header values correctly yet. (`#3343 <https://github.com/urllib3/urllib3/issues/3343>`__)
+- Changed ``InvalidChunkLength`` to ``ProtocolError`` when response terminates before the chunk length is sent. (`#2860 <https://github.com/urllib3/urllib3/issues/2860>`__)
+- Changed ``ProtocolError`` to be more verbose on incomplete reads with excess content. (`#3261 <https://github.com/urllib3/urllib3/issues/3261>`__)
+
+
+2.2.0 (2024-01-30)
+==================
+
+- Added support for `Emscripten and Pyodide <https://urllib3.readthedocs.io/en/latest/reference/contrib/emscripten.html>`__, including streaming support in cross-origin isolated browser environments where threading is enabled. (`#2951 <https://github.com/urllib3/urllib3/issues/2951>`__)
+- Added support for ``HTTPResponse.read1()`` method. (`#3186 <https://github.com/urllib3/urllib3/issues/3186>`__)
+- Added rudimentary support for HTTP/2. (`#3284 <https://github.com/urllib3/urllib3/issues/3284>`__)
+- Fixed issue where requests against urls with trailing dots were failing due to SSL errors
+  when using proxy. (`#2244 <https://github.com/urllib3/urllib3/issues/2244>`__)
+- Fixed ``HTTPConnection.proxy_is_verified`` and ``HTTPSConnection.proxy_is_verified``
+  to be always set to a boolean after connecting to a proxy. It could be
+  ``None`` in some cases previously. (`#3130 <https://github.com/urllib3/urllib3/issues/3130>`__)
+- Fixed an issue where ``headers`` passed in a request with ``json=`` would be mutated (`#3203 <https://github.com/urllib3/urllib3/issues/3203>`__)
+- Fixed ``HTTPSConnection.is_verified`` to be set to ``False`` when connecting
+  from a HTTPS proxy to an HTTP target. It was set to ``True`` previously. (`#3267 <https://github.com/urllib3/urllib3/issues/3267>`__)
+- Fixed handling of new error message from OpenSSL 3.2.0 when configuring an HTTP proxy as HTTPS (`#3268 <https://github.com/urllib3/urllib3/issues/3268>`__)
+- Fixed TLS 1.3 post-handshake auth when the server certificate validation is disabled (`#3325 <https://github.com/urllib3/urllib3/issues/3325>`__)
+- Note for downstream distributors: To run integration tests, you now need to run the tests a second
+  time with the ``--integration`` pytest flag. (`#3181 <https://github.com/urllib3/urllib3/issues/3181>`__)
+
+
+2.1.0 (2023-11-13)
+==================
 
 - Removed support for the deprecated urllib3[secure] extra. (`#2680 <https://github.com/urllib3/urllib3/issues/2680>`__)
 - Removed support for the deprecated SecureTransport TLS implementation. (`#2681 <https://github.com/urllib3/urllib3/issues/2681>`__)
 - Removed support for the end-of-life Python 3.7. (`#3143 <https://github.com/urllib3/urllib3/issues/3143>`__)
-
-
-Bugfixes
---------
-
 - Allowed loading CA certificates from memory for proxies. (`#3065 <https://github.com/urllib3/urllib3/issues/3065>`__)
 - Fixed decoding Gzip-encoded responses which specified ``x-gzip`` content-encoding. (`#3174 <https://github.com/urllib3/urllib3/issues/3174>`__)
 
@@ -23,10 +49,12 @@ Bugfixes
 
 * Made body stripped from HTTP requests changing the request method to GET after HTTP 303 "See Other" redirect responses.
 
+
 2.0.6 (2023-10-02)
 ==================
 
 * Added the ``Cookie`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+
 
 2.0.5 (2023-09-20)
 ==================
@@ -191,6 +219,12 @@ Fixed
 * Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()`` (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__).
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
 * Fixed ``urllib3.contrib.pyopenssl.WrappedSocket`` and ``urllib3.contrib.securetransport.WrappedSocket`` close methods (`#2970 <https://github.com/urllib3/urllib3/issues/2970>`__)
+
+1.26.19 (2024-06-17)
+====================
+
+* Added the ``Proxy-Authorization`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+* Fixed handling of OpenSSL 3.2.0 new error message for misconfiguring an HTTP proxy as HTTPS. (`#3405 <https://github.com/urllib3/urllib3/issues/3405>`__)
 
 1.26.18 (2023-10-17)
 ====================

@@ -40,7 +40,7 @@ like this:
 
 from __future__ import annotations
 
-import OpenSSL.SSL  # type: ignore[import]
+import OpenSSL.SSL  # type: ignore[import-untyped]
 from cryptography import x509
 
 try:
@@ -61,13 +61,13 @@ from socket import timeout
 from .. import util
 
 if typing.TYPE_CHECKING:
-    from OpenSSL.crypto import X509  # type: ignore[import]
+    from OpenSSL.crypto import X509  # type: ignore[import-untyped]
 
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
-_openssl_versions = {
+_openssl_versions: dict[int, int] = {
     util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
     util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
@@ -399,6 +399,10 @@ class WrappedSocket:
 
     def version(self) -> str:
         return self.connection.get_protocol_version_name()  # type: ignore[no-any-return]
+
+    def selected_alpn_protocol(self) -> str | None:
+        alpn_proto = self.connection.get_alpn_proto_negotiated()
+        return alpn_proto.decode() if alpn_proto else None
 
 
 WrappedSocket.makefile = socket_cls.makefile  # type: ignore[attr-defined]
