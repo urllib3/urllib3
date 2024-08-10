@@ -947,3 +947,28 @@ def test_retries(
         assert count == 6
 
     pyodide_test(selenium_coverage, testserver_http.http_host, find_unused_port())
+
+
+@install_urllib3_wheel()
+def test_insecure_requests_warning(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage, host: str, port: int, https_port: int) -> None:  # type: ignore[no-untyped-def]
+        import warnings
+
+        import urllib3
+        import urllib3.exceptions
+
+        http = urllib3.PoolManager()
+
+        with warnings.catch_warnings(record=True) as w:
+            http.request("GET", f"https://{host}:{https_port}")
+        assert len(w) == 0
+
+    pyodide_test(
+        selenium_coverage,
+        testserver_http.http_host,
+        testserver_http.http_port,
+        testserver_http.https_port,
+    )

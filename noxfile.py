@@ -88,6 +88,9 @@ def tests_impl(
         "--durations=10",
         "--strict-config",
         "--strict-markers",
+        "--disable-socket",
+        "--allow-unix-socket",
+        "--allow-hosts=localhost,::1,127.0.0.0,240.0.0.0",  # See `TARPIT_HOST`
         *pytest_extra_args,
         *(session.posargs or ("test/",)),
         env=pytest_session_envvars,
@@ -174,9 +177,6 @@ def downstream_requests(session: nox.Session) -> None:
     session.run("git", "rev-parse", "HEAD", external=True)
     session.install(".[socks]", silent=False)
     session.install("-r", "requirements-dev.txt", silent=False)
-
-    # Workaround until https://github.com/psf/httpbin/pull/29 gets released
-    session.install("flask<3", "werkzeug<3", silent=False)
 
     session.cd(root)
     session.install(".", silent=False)
