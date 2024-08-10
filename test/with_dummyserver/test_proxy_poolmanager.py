@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import binascii
+import contextlib
 import hashlib
 import ipaddress
 import os.path
@@ -16,11 +17,11 @@ import pytest
 import trustme
 
 import urllib3.exceptions
+from dummyserver.socketserver import DEFAULT_CA, HAS_IPV6, get_unreachable_address
 from dummyserver.testcase import (
     HypercornDummyProxyTestCase,
     IPv6HypercornDummyProxyTestCase,
 )
-from dummyserver.tornadoserver import DEFAULT_CA, HAS_IPV6, get_unreachable_address
 from urllib3 import HTTPResponse
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import VerifiedHTTPSConnection
@@ -40,6 +41,16 @@ from urllib3.util.ssl_ import create_urllib3_context
 from urllib3.util.timeout import Timeout
 
 from .. import TARPIT_HOST, requires_network
+
+
+def assert_is_verified(pm: ProxyManager, *, proxy: bool, target: bool) -> None:
+    pool = list(pm.pools._container.values())[-1]  # retrieve last pool entry
+    connection = (
+        pool.pool.queue[-1] if pool.pool is not None else None
+    )  # retrieve last connection entry
+
+    assert connection.proxy_is_verified is proxy
+    assert connection.is_verified is target
 
 
 class TestHTTPProxyManager(HypercornDummyProxyTestCase):
@@ -81,6 +92,30 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
 
             r = https.request("GET", f"{self.http_url}/")
             assert r.status == 200
+
+    def test_is_verified_http_proxy_to_http_target(self) -> None:
+        with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
+            r = http.request("GET", f"{self.http_url}/")
+            assert r.status == 200
+            assert_is_verified(http, proxy=False, target=False)
+
+    def test_is_verified_http_proxy_to_https_target(self) -> None:
+        with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
+            r = http.request("GET", f"{self.https_url}/")
+            assert r.status == 200
+            assert_is_verified(http, proxy=False, target=True)
+
+    def test_is_verified_https_proxy_to_http_target(self) -> None:
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            r = https.request("GET", f"{self.http_url}/")
+            assert r.status == 200
+            assert_is_verified(https, proxy=True, target=False)
+
+    def test_is_verified_https_proxy_to_https_target(self) -> None:
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            r = https.request("GET", f"{self.https_url}/")
+            assert r.status == 200
+            assert_is_verified(https, proxy=True, target=True)
 
     def test_http_and_https_kwarg_ca_cert_data_proxy(self) -> None:
         with open(DEFAULT_CA) as pem_file:
@@ -187,9 +222,11 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
         with proxy_from_url(
             self.proxy_url, cert_reqs="REQUIRED", ca_certs=self.bad_ca_path
         ) as http:
-            https_pool = http._new_pool("https", self.https_host, self.https_port)
-            with pytest.raises(MaxRetryError) as e:
-                https_pool.request("GET", "/", retries=0)
+            with http._new_pool(
+                "https", self.https_host, self.https_port
+            ) as https_pool:
+                with pytest.raises(MaxRetryError) as e:
+                    https_pool.request("GET", "/", retries=0)
             assert isinstance(e.value.reason, SSLError)
             assert (
                 "certificate verify failed" in str(e.value.reason)
@@ -200,22 +237,26 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             http = proxy_from_url(
                 self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
             )
-            https_pool = http._new_pool("https", self.https_host, self.https_port)
-
-            conn = https_pool._new_conn()
-            assert conn.__class__ == VerifiedHTTPSConnection
-            https_pool.request("GET", "/")  # Should succeed without exceptions.
+            with http._new_pool(
+                "https", self.https_host, self.https_port
+            ) as https_pool2:
+                with contextlib.closing(https_pool._new_conn()) as conn:
+                    assert conn.__class__ == VerifiedHTTPSConnection
+                    https_pool2.request(
+                        "GET", "/"
+                    )  # Should succeed without exceptions.
 
             http = proxy_from_url(
                 self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
             )
-            https_fail_pool = http._new_pool("https", "127.0.0.1", self.https_port)
-
-            with pytest.raises(
-                MaxRetryError, match="doesn't match|IP address mismatch"
-            ) as e:
-                https_fail_pool.request("GET", "/", retries=0)
-            assert isinstance(e.value.reason, SSLError)
+            with http._new_pool(
+                "https", "127.0.0.1", self.https_port
+            ) as https_fail_pool:
+                with pytest.raises(
+                    MaxRetryError, match="doesn't match|IP address mismatch"
+                ) as e:
+                    https_fail_pool.request("GET", "/", retries=0)
+                assert isinstance(e.value.reason, SSLError)
 
     def test_redirect(self) -> None:
         with proxy_from_url(self.proxy_url) as http:
@@ -488,6 +529,9 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             # target so we put the blame on the target.
             assert isinstance(e.value.reason, ReadTimeoutError)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme"], [("http", "https"), ("https", "https")]
@@ -508,6 +552,9 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
 
             assert isinstance(e.value.reason, ReadTimeoutError)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme", "use_forwarding_for_https"],
@@ -536,6 +583,9 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert isinstance(e.value.reason, ProxyError)
             assert isinstance(e.value.reason.original_error, ConnectTimeoutError)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme"], [("http", "https"), ("https", "https")]
@@ -555,6 +605,9 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert isinstance(e.value.reason, ProxyError)
             assert isinstance(e.value.reason.original_error, ConnectTimeoutError)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     @requires_network()
     @pytest.mark.parametrize(
         ["target_scheme", "use_forwarding_for_https"],
@@ -579,6 +632,9 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert isinstance(e.value.reason, ProxyError)
             assert isinstance(e.value.reason.original_error, SSLError)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "use_forwarding_for_https"],
@@ -609,6 +665,9 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
                 proxy.request("GET", self.https_url)
             assert isinstance(e.value.reason, SSLError)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_scheme_host_case_insensitive(self) -> None:
         """Assert that upper-case schemes and hosts are normalized."""
         with proxy_from_url(self.proxy_url.upper(), ca_certs=DEFAULT_CA) as http:
@@ -635,6 +694,9 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             ),
         ],
     )
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_invalid_schema(self, url: str, error_msg: str) -> None:
         with pytest.raises(ProxySchemeUnknown, match=error_msg):
             proxy_from_url(url)
@@ -651,6 +713,9 @@ class TestIPv6HTTPProxyManager(IPv6HypercornDummyProxyTestCase):
         cls.https_url_alt = f"https://{cls.https_host_alt}:{int(cls.https_port)}"
         cls.proxy_url = f"http://[{cls.proxy_host}]:{int(cls.proxy_port)}"
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_basic_ipv6_proxy(self) -> None:
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
             r = http.request("GET", f"{self.http_url}/")
@@ -682,6 +747,9 @@ class TestHTTPSProxyVerification:
         # Transform ipv6 like '::1' to 0:0:0:0:0:0:0:1 via '0000:0000:0000:0000:0000:0000:0000:0001'
         return addr.exploded.replace("0000", "0").replace("000", "")
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_assert_fingerprint_md5(
         self, no_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
@@ -697,6 +765,9 @@ class TestHTTPSProxyVerification:
         ) as https:
             https.request("GET", destination_url)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_assert_fingerprint_md5_non_matching(
         self, no_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
@@ -718,6 +789,9 @@ class TestHTTPSProxyVerification:
 
             assert "Fingerprints did not match" in str(e)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_assert_hostname(
         self, san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
@@ -729,6 +803,9 @@ class TestHTTPSProxyVerification:
         ) as https:
             https.request("GET", destination_url)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_assert_hostname_non_matching(
         self, san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:
@@ -748,6 +825,9 @@ class TestHTTPSProxyVerification:
             msg = f"hostname \\'{proxy_hostname}\\' doesn\\'t match \\'{proxy_host}\\'"
             assert msg in str(e)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_hostname_verification(
         self, no_localhost_san_server: ServerConfig
     ) -> None:
@@ -777,6 +857,9 @@ class TestHTTPSProxyVerification:
                 ssl_error
             ) or "Hostname mismatch" in str(ssl_error)
 
+    # stdlib http.client.HTTPConnection._tunnel() causes a ResourceWarning
+    # see https://github.com/python/cpython/issues/103472
+    @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_https_proxy_ipv4_san(
         self, ipv4_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
     ) -> None:

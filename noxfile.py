@@ -8,16 +8,34 @@ from pathlib import Path
 
 import nox
 
+nox.options.error_on_missing_interpreters = True
+
 
 def tests_impl(
     session: nox.Session,
-    extras: str = "socks,brotli,zstd",
+    extras: str = "socks,brotli,zstd,h2",
     # hypercorn dependency h2 compares bytes and strings
     # https://github.com/python-hyper/h2/issues/1236
     byte_string_comparisons: bool = False,
     integration: bool = False,
     pytest_extra_args: list[str] = [],
 ) -> None:
+    # Retrieve sys info from the Python implementation under test
+    # to avoid enabling memray when nox runs under CPython but tests PyPy
+    session_python_info = session.run(
+        "python",
+        "-c",
+        "import sys; print(sys.implementation.name, sys.version_info.releaselevel)",
+        silent=True,
+    ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
+    implementation_name, release_level = session_python_info.split(" ")
+
+    # zstd cannot be installed on CPython 3.13 yet because it pins
+    # an incompatible CFFI version.
+    # https://github.com/indygreg/python-zstandard/issues/210
+    if release_level != "final":
+        extras = extras.replace(",zstd", "")
+
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
     session.install(f".[{extras}]")
@@ -31,10 +49,24 @@ def tests_impl(
     session.run("python", "-m", "OpenSSL.debug")
 
     memray_supported = True
-    if sys.implementation.name != "cpython" or sys.version_info.releaselevel != "final":
+    if implementation_name != "cpython" or release_level != "final":
         memray_supported = False  # pytest-memray requires CPython 3.8+
     elif sys.platform == "win32":
         memray_supported = False
+
+    # Environment variables being passed to the pytest run.
+    pytest_session_envvars = {
+        "PYTHONWARNINGS": "always::DeprecationWarning",
+    }
+
+    # In coverage 7.4.0 we can only set the setting for Python 3.12+
+    # Future versions of coverage will use sys.monitoring based on availability.
+    if (
+        isinstance(session.python, str)
+        and "." in session.python
+        and int(session.python.split(".")[1]) >= 12
+    ):
+        pytest_session_envvars["COVERAGE_CORE"] = "sysmon"
 
     # Inspired from https://hynek.me/articles/ditch-codecov-python/
     # We use parallel mode and then combine in a later CI step
@@ -56,13 +88,28 @@ def tests_impl(
         "--durations=10",
         "--strict-config",
         "--strict-markers",
+        "--disable-socket",
+        "--allow-unix-socket",
+        "--allow-hosts=localhost,::1,127.0.0.0,240.0.0.0",  # See `TARPIT_HOST`
         *pytest_extra_args,
         *(session.posargs or ("test/",)),
-        env={"PYTHONWARNINGS": "always::DeprecationWarning"},
+        env=pytest_session_envvars,
     )
 
 
-@nox.session(python=["3.8", "3.9", "3.10", "3.11", "3.12", "pypy"])
+@nox.session(
+    python=[
+        "3.8",
+        "3.9",
+        "3.10",
+        "3.11",
+        "3.12",
+        "3.13",
+        "pypy3.8",
+        "pypy3.9",
+        "pypy3.10",
+    ]
+)
 def test(session: nox.Session) -> None:
     tests_impl(session)
 
@@ -131,9 +178,6 @@ def downstream_requests(session: nox.Session) -> None:
     session.install(".[socks]", silent=False)
     session.install("-r", "requirements-dev.txt", silent=False)
 
-    # Workaround until https://github.com/psf/httpbin/pull/29 gets released
-    session.install("flask<3", "werkzeug<3", silent=False)
-
     session.cd(root)
     session.install(".", silent=False)
     session.cd(f"{tmp_dir}/requests")
@@ -154,6 +198,21 @@ def lint(session: nox.Session) -> None:
     session.run("pre-commit", "run", "--all-files")
 
     mypy(session)
+
+
+@nox.session(python="3.11")
+def pyodideconsole(session: nox.Session) -> None:
+    # build wheel into dist folder
+    session.install("build")
+    session.run("python", "-m", "build")
+    session.run(
+        "cp",
+        "test/contrib/emscripten/templates/pyodide-console.html",
+        "dist/index.html",
+        external=True,
+    )
+    session.cd("dist")
+    session.run("python", "-m", "http.server")
 
 
 # TODO: node support is not tested yet - it should work if you require('xmlhttprequest') before
@@ -265,9 +324,13 @@ def mypy(session: nox.Session) -> None:
     session.run("mypy", "--version")
     session.run(
         "mypy",
+        "-p",
         "dummyserver",
-        "noxfile.py",
-        "src/urllib3",
+        "-m",
+        "noxfile",
+        "-p",
+        "urllib3",
+        "-p",
         "test",
     )
 

@@ -19,16 +19,18 @@ import pytest
 
 try:
     try:
-        import brotlicffi as brotli  # type: ignore[import]
+        import brotlicffi as brotli  # type: ignore[import-not-found]
     except ImportError:
-        import brotli  # type: ignore[import]
+        import brotli  # type: ignore[import-not-found]
 except ImportError:
     brotli = None
 
 try:
-    import zstandard as zstd  # type: ignore[import]
+    import zstandard as _unused_module_zstd  # noqa: F401
 except ImportError:
-    zstd = None
+    HAS_ZSTD = False
+else:
+    HAS_ZSTD = True
 
 from urllib3 import util
 from urllib3.connectionpool import ConnectionPool
@@ -42,7 +44,6 @@ except ImportError:
 
 if typing.TYPE_CHECKING:
     import ssl
-    from typing import Literal
 
 
 _RT = typing.TypeVar("_RT")  # return type
@@ -144,13 +145,13 @@ def notBrotli() -> typing.Callable[[_TestFuncT], _TestFuncT]:
 
 def onlyZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
-        zstd is None, reason="only run if a python-zstandard library is installed"
+        not HAS_ZSTD, reason="only run if a python-zstandard library is installed"
     )
 
 
 def notZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
-        zstd is not None,
+        HAS_ZSTD,
         reason="only run if a python-zstandard library is not installed",
     )
 
@@ -264,7 +265,7 @@ class LogRecorder:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ) -> Literal[False]:
+    ) -> typing.Literal[False]:
         self.uninstall()
         return False
 

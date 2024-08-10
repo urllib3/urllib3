@@ -33,17 +33,19 @@ def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
 @pytest.mark.skipif(not hasattr(sys, "audit"), reason="requires python 3.8+")
 @mock.patch("urllib3.connection.sys.audit")
 def test_audit_event(audit_mock: mock.Mock, pool: HTTPConnectionPool) -> None:
-    conn = pool._get_conn()
-    conn.request("GET", "/")
-    audit_mock.assert_any_call("http.client.connect", conn, conn.host, conn.port)
-    # Ensure the event is raised only once.
-    connect_events = [
-        call for call in audit_mock.mock_calls if call.args[0] == "http.client.connect"
-    ]
-    assert len(connect_events) == 1
+    with contextlib.closing(pool._get_conn()) as conn:
+        conn.request("GET", "/")
+        audit_mock.assert_any_call("http.client.connect", conn, conn.host, conn.port)
+        # Ensure the event is raised only once.
+        connect_events = [
+            call
+            for call in audit_mock.mock_calls
+            if call.args[0] == "http.client.connect"
+        ]
+        assert len(connect_events) == 1
 
 
-def test_does_not_release_conn(pool: HTTPConnectionPool) -> None:
+def test_does_not_release_conn(pool: HTTPConnectionPool, http_version: str) -> None:
     with contextlib.closing(pool._get_conn()) as conn:
         conn.request("GET", "/")
         response = conn.getresponse()
@@ -52,7 +54,7 @@ def test_does_not_release_conn(pool: HTTPConnectionPool) -> None:
         assert pool.pool.qsize() == 0  # type: ignore[union-attr]
 
 
-def test_releases_conn(pool: HTTPConnectionPool) -> None:
+def test_releases_conn(pool: HTTPConnectionPool, http_version: str) -> None:
     with contextlib.closing(pool._get_conn()) as conn:
         conn.request("GET", "/")
         response = conn.getresponse()
@@ -67,7 +69,7 @@ def test_releases_conn(pool: HTTPConnectionPool) -> None:
         assert pool.pool.qsize() == 1  # type: ignore[union-attr]
 
 
-def test_double_getresponse(pool: HTTPConnectionPool) -> None:
+def test_double_getresponse(pool: HTTPConnectionPool, http_version: str) -> None:
     with contextlib.closing(pool._get_conn()) as conn:
         conn.request("GET", "/")
         _ = conn.getresponse()
@@ -77,7 +79,9 @@ def test_double_getresponse(pool: HTTPConnectionPool) -> None:
             conn.getresponse()
 
 
-def test_connection_state_properties(pool: HTTPConnectionPool) -> None:
+def test_connection_state_properties(
+    pool: HTTPConnectionPool, http_version: str
+) -> None:
     conn = pool._get_conn()
 
     assert conn.is_closed is True
@@ -107,7 +111,7 @@ def test_connection_state_properties(pool: HTTPConnectionPool) -> None:
     assert conn.proxy_is_verified is None
 
 
-def test_set_tunnel_is_reset(pool: HTTPConnectionPool) -> None:
+def test_set_tunnel_is_reset(pool: HTTPConnectionPool, http_version: str) -> None:
     conn = pool._get_conn()
 
     assert conn.is_closed is True
@@ -129,7 +133,7 @@ def test_set_tunnel_is_reset(pool: HTTPConnectionPool) -> None:
     assert conn._tunnel_scheme is None  # type: ignore[attr-defined]
 
 
-def test_invalid_tunnel_scheme(pool: HTTPConnectionPool) -> None:
+def test_invalid_tunnel_scheme(pool: HTTPConnectionPool, http_version: str) -> None:
     conn = pool._get_conn()
 
     with pytest.raises(ValueError) as e:

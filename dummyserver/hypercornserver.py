@@ -66,7 +66,7 @@ def run_hypercorn_in_thread(
     ) as executor:
         future = executor.submit(
             trio.run,
-            _start_server,  # type: ignore[arg-type]
+            _start_server,
             config,
             app,
             ready_event,
@@ -76,10 +76,11 @@ def run_hypercorn_in_thread(
         if not ready_event.is_set():
             raise Exception("most likely failed to start server")
 
-        yield typing.cast(int, parse_url(config.bind[0]).port)
-
-        shutdown_event.set()
-        future.result()
+        try:
+            yield typing.cast(int, parse_url(config.bind[0]).port)
+        finally:
+            shutdown_event.set()
+            future.result()
 
 
 def main() -> int:

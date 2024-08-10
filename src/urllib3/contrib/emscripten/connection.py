@@ -67,6 +67,7 @@ class EmscriptenHTTPConnection:
         self.blocksize = blocksize
         self.source_address = None
         self.socket_options = None
+        self.is_verified = False
 
     def set_tunnel(
         self,
@@ -116,9 +117,9 @@ class EmscriptenHTTPConnection:
             if self._response is None:
                 self._response = send_request(request)
         except _TimeoutError as e:
-            raise TimeoutError(e.message)
+            raise TimeoutError(e.message) from e
         except _RequestError as e:
-            raise HTTPException(e.message)
+            raise HTTPException(e.message) from e
 
     def getresponse(self) -> BaseHTTPResponse:
         if self._response is not None:
@@ -227,6 +228,10 @@ class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
         self.ca_cert_data = ca_cert_data
 
         self.cert_reqs = None
+
+        # The browser will automatically verify all requests.
+        # We have no control over that setting.
+        self.is_verified = True
 
     def set_cert(
         self,
