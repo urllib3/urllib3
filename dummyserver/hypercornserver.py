@@ -52,7 +52,7 @@ def run_hypercorn_in_thread(
         config.keyfile = certs["keyfile"]
         if "cert_reqs" in certs:
             config.verify_mode = certs["cert_reqs"]
-        if "cacerts" in certs:
+        if "ca_certs" in certs:
             config.ca_certs = certs["ca_certs"]
         if "alpn_protocols" in certs:
             config.alpn_protocols = certs["alpn_protocols"]
