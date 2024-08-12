@@ -34,11 +34,15 @@ class TestInitialization:
             urllib3.http2.inject_into_urllib3()
 
             mock_version.return_value = "3.9.9"
-            with pytest.raises(ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"):
+            with pytest.raises(
+                ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"
+            ):
                 urllib3.http2.inject_into_urllib3()
 
             mock_version.return_value = "5.0.0"
-            with pytest.raises(ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"):
+            with pytest.raises(
+                ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"
+            ):
                 urllib3.http2.inject_into_urllib3()
         finally:
             urllib3.http2.extract_from_urllib3()
