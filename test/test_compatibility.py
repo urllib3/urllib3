@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import http.cookiejar
-import importlib
-import sys
 import urllib
 from unittest import mock
 
 import pytest
 
+import urllib3.http2
 from urllib3.response import HTTPResponse
 
 
@@ -28,24 +27,15 @@ class TestCookiejar:
 
 
 class TestInitialization:
-    def test_h2_version_check(self) -> None:
-        with mock.patch.dict("sys.modules", {}):
-            importlib.reload(sys.modules["urllib3"])
+    @mock.patch("urllib3.http2.version")
+    def test_h2_version_check(self, mock_version: mock.MagicMock) -> None:
+        mock_version.return_value = "4.1.0"
+        urllib3.http2.inject_into_urllib3()
 
-        mock_h2 = mock.Mock()
+        mock_version.return_value = "3.9.9"
+        with pytest.raises(ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"):
+            urllib3.http2.inject_into_urllib3()
 
-        mock_h2.__version__ = "4.1.0"
-        with mock.patch.dict("sys.modules", {"h2": mock_h2}):
-            importlib.reload(sys.modules["urllib3"])
-
-        mock_h2.__version__ = "3.9.9"
-        with mock.patch.dict("sys.modules", {"h2": mock_h2}):
-            with pytest.raises(ImportError) as excinfo:
-                importlib.reload(sys.modules["urllib3"])
-            assert "h2 version 4.x.x" in str(excinfo.value)
-
-        mock_h2.__version__ = "5.0.0"
-        with mock.patch.dict("sys.modules", {"h2": mock_h2}):
-            with pytest.raises(ImportError) as excinfo:
-                importlib.reload(sys.modules["urllib3"])
-            assert "h2 version 4.x.x" in str(excinfo.value)
+        mock_version.return_value = "5.0.0"
+        with pytest.raises(ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"):
+            urllib3.http2.inject_into_urllib3()

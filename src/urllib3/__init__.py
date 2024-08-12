@@ -45,20 +45,6 @@ else:
             "See: https://github.com/urllib3/urllib3/issues/2168"
         )
 
-# Ensure that Python is compiled with h2>=4.0.0 and <5.0.0
-# If the 'h2' module isn't installed at all that's
-# fine, we only care if the module is installed.
-try:
-    import h2  # type: ignore[import-untyped]
-except ImportError:
-    pass
-else:
-    if not (h2.__version__ >= "4.0.0" and h2.__version__ < "5.0.0"):
-        raise ImportError(
-            "urllib3 v2 supports h2 version 4.x.x, currently "
-            f"the 'h2' module is compiled with {h2.__version__!r}. "
-            "See: https://github.com/urllib3/urllib3/issues/3290"
-        )
 
 __author__ = "Andrey Petrov (andrey.petrov@shazow.net)"
 __license__ = "MIT"
