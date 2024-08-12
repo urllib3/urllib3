@@ -15,7 +15,7 @@ orig_HTTPSConnection: typing.Any = None
 def inject_into_urllib3() -> None:
     # First check if h2 version is valid
     h2_version = version("h2")
-    if not h2_version.startswith("4"):
+    if not h2_version.startswith("4."):
         raise ImportError(
             "urllib3 v2 supports h2 version 4.x.x, currently "
             f"the 'h2' module is compiled with {h2_version!r}. "
