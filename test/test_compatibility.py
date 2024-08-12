@@ -29,13 +29,16 @@ class TestCookiejar:
 class TestInitialization:
     @mock.patch("urllib3.http2.version")
     def test_h2_version_check(self, mock_version: mock.MagicMock) -> None:
-        mock_version.return_value = "4.1.0"
-        urllib3.http2.inject_into_urllib3()
-
-        mock_version.return_value = "3.9.9"
-        with pytest.raises(ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"):
+        try:
+            mock_version.return_value = "4.1.0"
             urllib3.http2.inject_into_urllib3()
 
-        mock_version.return_value = "5.0.0"
-        with pytest.raises(ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"):
-            urllib3.http2.inject_into_urllib3()
+            mock_version.return_value = "3.9.9"
+            with pytest.raises(ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"):
+                urllib3.http2.inject_into_urllib3()
+
+            mock_version.return_value = "5.0.0"
+            with pytest.raises(ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"):
+                urllib3.http2.inject_into_urllib3()
+        finally:
+            urllib3.http2.extract_from_urllib3()
