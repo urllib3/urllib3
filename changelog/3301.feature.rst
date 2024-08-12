@@ -1,0 +1,2 @@
+Added a probing mechanism for determining whether a given target origin
+supports HTTP/2 via ALPN.

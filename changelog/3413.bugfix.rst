@@ -1,0 +1,1 @@
+Adjust tolerance for floating-point comparison on Windows to avoid flakiness in CI
