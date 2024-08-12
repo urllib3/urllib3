@@ -77,7 +77,9 @@ def run_hypercorn_in_thread(
             raise Exception("most likely failed to start server")
 
         try:
-            yield typing.cast(int, parse_url(config.bind[0]).port)
+            port = parse_url(config.bind[0]).port
+            assert port is not None
+            yield port
         finally:
             shutdown_event.set()
             future.result()
