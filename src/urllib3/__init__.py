@@ -45,7 +45,6 @@ else:
             "See: https://github.com/urllib3/urllib3/issues/2168"
         )
 
-
 __author__ = "Andrey Petrov (andrey.petrov@shazow.net)"
 __license__ = "MIT"
 __version__ = __version__
