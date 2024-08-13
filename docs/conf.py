@@ -110,7 +110,6 @@ nitpick_ignore = [
     ("py:class", "_HttplibHTTPResponse"),
     ("py:class", "_HttplibHTTPMessage"),
     ("py:class", "TracebackType"),
-    ("py:class", "Literal"),
     ("py:class", "email.errors.MessageDefect"),
     ("py:class", "MessageDefect"),
     ("py:class", "http.client.HTTPMessage"),

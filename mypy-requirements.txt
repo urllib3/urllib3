@@ -11,3 +11,4 @@ httpx==0.25.2
 types-backports
 types-requests
 nox
+zstandard
