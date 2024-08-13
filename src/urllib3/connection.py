@@ -707,7 +707,7 @@ class HTTPSConnection(HTTPConnection):
                 # If we're tunneling it means we're connected to our proxy.
                 self._has_connected_to_proxy = True
 
-                self._tunnel()  # type: ignore[attr-defined]
+                self._tunnel()
                 # Override the host with the one we're requesting data from.
                 server_hostname = self._tunnel_host
 
