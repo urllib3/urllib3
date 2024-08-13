@@ -43,6 +43,16 @@ from urllib3.util.timeout import Timeout
 from .. import TARPIT_HOST, requires_network
 
 
+def assert_is_verified(pm: ProxyManager, *, proxy: bool, target: bool) -> None:
+    pool = list(pm.pools._container.values())[-1]  # retrieve last pool entry
+    connection = (
+        pool.pool.queue[-1] if pool.pool is not None else None
+    )  # retrieve last connection entry
+
+    assert connection.proxy_is_verified is proxy
+    assert connection.is_verified is target
+
+
 class TestHTTPProxyManager(HypercornDummyProxyTestCase):
     @classmethod
     def setup_class(cls) -> None:
@@ -82,6 +92,30 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
 
             r = https.request("GET", f"{self.http_url}/")
             assert r.status == 200
+
+    def test_is_verified_http_proxy_to_http_target(self) -> None:
+        with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
+            r = http.request("GET", f"{self.http_url}/")
+            assert r.status == 200
+            assert_is_verified(http, proxy=False, target=False)
+
+    def test_is_verified_http_proxy_to_https_target(self) -> None:
+        with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
+            r = http.request("GET", f"{self.https_url}/")
+            assert r.status == 200
+            assert_is_verified(http, proxy=False, target=True)
+
+    def test_is_verified_https_proxy_to_http_target(self) -> None:
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            r = https.request("GET", f"{self.http_url}/")
+            assert r.status == 200
+            assert_is_verified(https, proxy=True, target=False)
+
+    def test_is_verified_https_proxy_to_https_target(self) -> None:
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            r = https.request("GET", f"{self.https_url}/")
+            assert r.status == 200
+            assert_is_verified(https, proxy=True, target=True)
 
     def test_http_and_https_kwarg_ca_cert_data_proxy(self) -> None:
         with open(DEFAULT_CA) as pem_file:

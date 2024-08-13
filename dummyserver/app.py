@@ -12,10 +12,8 @@ from pathlib import Path
 from typing import Iterator
 
 import trio
-from quart import make_response, request
-
-# TODO switch to Response if https://github.com/pallets/quart/issues/288 is fixed
-from quart.typing import ResponseTypes
+from quart import Response, make_response, request
+from quart.typing import ResponseReturnValue
 from quart_trio import QuartTrio
 
 hypercorn_app = QuartTrio(__name__)
@@ -39,19 +37,19 @@ DEFAULT_HEADERS = [
 @hypercorn_app.route("/")
 @pyodide_testing_app.route("/")
 @pyodide_testing_app.route("/index")
-async def index() -> ResponseTypes:
+async def index() -> ResponseReturnValue:
     return await make_response("Dummy server!")
 
 
 @hypercorn_app.route("/alpn_protocol")
-async def alpn_protocol() -> ResponseTypes:
+async def alpn_protocol() -> ResponseReturnValue:
     """Return the requester's certificate."""
     alpn_protocol = request.scope["extensions"]["tls"]["alpn_protocol"]
     return await make_response(alpn_protocol)
 
 
 @hypercorn_app.route("/certificate")
-async def certificate() -> ResponseTypes:
+async def certificate() -> ResponseReturnValue:
     """Return the requester's certificate."""
     print("scope", request.scope)
     subject = request.scope["extensions"]["tls"]["client_cert_name"]
@@ -61,7 +59,7 @@ async def certificate() -> ResponseTypes:
 
 @hypercorn_app.route("/specific_method", methods=["GET", "POST", "PUT"])
 @pyodide_testing_app.route("/specific_method", methods=["GET", "POST", "PUT"])
-async def specific_method() -> ResponseTypes:
+async def specific_method() -> ResponseReturnValue:
     "Confirm that the request matches the desired method type"
     method_param = (await request.values).get("method", "")
 
@@ -74,7 +72,7 @@ async def specific_method() -> ResponseTypes:
 
 
 @hypercorn_app.route("/upload", methods=["POST"])
-async def upload() -> ResponseTypes:
+async def upload() -> ResponseReturnValue:
     "Confirm that the uploaded file conforms to specification"
     params = await request.form
     param = params.get("upload_param")
@@ -105,7 +103,7 @@ async def upload() -> ResponseTypes:
 
 
 @hypercorn_app.route("/chunked")
-async def chunked() -> ResponseTypes:
+async def chunked() -> ResponseReturnValue:
     def generate() -> Iterator[str]:
         for _ in range(4):
             yield "123"
@@ -114,7 +112,7 @@ async def chunked() -> ResponseTypes:
 
 
 @hypercorn_app.route("/chunked_gzip")
-async def chunked_gzip() -> ResponseTypes:
+async def chunked_gzip() -> ResponseReturnValue:
     def generate() -> Iterator[bytes]:
         compressor = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
 
@@ -126,7 +124,7 @@ async def chunked_gzip() -> ResponseTypes:
 
 
 @hypercorn_app.route("/keepalive")
-async def keepalive() -> ResponseTypes:
+async def keepalive() -> ResponseReturnValue:
     if request.args.get("close", b"0") == b"1":
         headers = [("Connection", "close")]
         return await make_response("Closing", 200, headers)
@@ -136,7 +134,7 @@ async def keepalive() -> ResponseTypes:
 
 
 @hypercorn_app.route("/echo", methods=["GET", "POST", "PUT"])
-async def echo() -> ResponseTypes:
+async def echo() -> ResponseReturnValue:
     "Echo back the params"
     if request.method == "GET":
         return await make_response(request.query_string)
@@ -146,7 +144,7 @@ async def echo() -> ResponseTypes:
 
 @hypercorn_app.route("/echo_json", methods=["POST"])
 @pyodide_testing_app.route("/echo_json", methods=["POST", "OPTIONS"])
-async def echo_json() -> ResponseTypes:
+async def echo_json() -> ResponseReturnValue:
     "Echo back the JSON"
     if request.method == "OPTIONS":
         return await make_response("", 200)
@@ -156,14 +154,14 @@ async def echo_json() -> ResponseTypes:
 
 @hypercorn_app.route("/echo_uri/<path:rest>")
 @hypercorn_app.route("/echo_uri", defaults={"rest": ""})
-async def echo_uri(rest: str) -> ResponseTypes:
+async def echo_uri(rest: str) -> ResponseReturnValue:
     "Echo back the requested URI"
     assert request.full_path is not None
     return await make_response(request.full_path)
 
 
 @hypercorn_app.route("/echo_params")
-async def echo_params() -> ResponseTypes:
+async def echo_params() -> ResponseReturnValue:
     "Echo back the query parameters"
     await request.get_data()
     echod = sorted((k, v) for k, v in request.args.items())
@@ -171,12 +169,12 @@ async def echo_params() -> ResponseTypes:
 
 
 @hypercorn_app.route("/headers", methods=["GET", "POST"])
-async def headers() -> ResponseTypes:
+async def headers() -> ResponseReturnValue:
     return await make_response(dict(request.headers.items()))
 
 
 @hypercorn_app.route("/headers_and_params")
-async def headers_and_params() -> ResponseTypes:
+async def headers_and_params() -> ResponseReturnValue:
     return await make_response(
         {
             "headers": dict(request.headers),
@@ -186,12 +184,12 @@ async def headers_and_params() -> ResponseTypes:
 
 
 @hypercorn_app.route("/multi_headers", methods=["GET", "POST"])
-async def multi_headers() -> ResponseTypes:
+async def multi_headers() -> ResponseReturnValue:
     return await make_response({"headers": list(request.headers)})
 
 
 @hypercorn_app.route("/multi_redirect")
-async def multi_redirect() -> ResponseTypes:
+async def multi_redirect() -> ResponseReturnValue:
     "Performs a redirect chain based on ``redirect_codes``"
     params = request.args
     codes = params.get("redirect_codes", "200")
@@ -206,7 +204,7 @@ async def multi_redirect() -> ResponseTypes:
 
 
 @hypercorn_app.route("/encodingrequest")
-async def encodingrequest() -> ResponseTypes:
+async def encodingrequest() -> ResponseReturnValue:
     "Check for UA accepting gzip/deflate encoding"
     data = b"hello, world!"
     encoding = request.headers.get("Accept-Encoding", "")
@@ -230,7 +228,7 @@ async def encodingrequest() -> ResponseTypes:
 
 
 @hypercorn_app.route("/redirect", methods=["GET", "POST", "PUT"])
-async def redirect() -> ResponseTypes:
+async def redirect() -> ResponseReturnValue:
     "Perform a redirect to ``target``"
     values = await request.values
     target = values.get("target", "/")
@@ -242,7 +240,7 @@ async def redirect() -> ResponseTypes:
 
 
 @hypercorn_app.route("/redirect_after")
-async def redirect_after() -> ResponseTypes:
+async def redirect_after() -> ResponseReturnValue:
     "Perform a redirect to ``target``"
     params = request.args
     date = params.get("date")
@@ -258,7 +256,7 @@ async def redirect_after() -> ResponseTypes:
 
 
 @hypercorn_app.route("/retry_after")
-async def retry_after() -> ResponseTypes:
+async def retry_after() -> ResponseReturnValue:
     global LAST_RETRY_AFTER_REQ
     params = request.args
     if datetime.datetime.now() - LAST_RETRY_AFTER_REQ < datetime.timedelta(seconds=1):
@@ -273,7 +271,7 @@ async def retry_after() -> ResponseTypes:
 
 @hypercorn_app.route("/status")
 @pyodide_testing_app.route("/status")
-async def status() -> ResponseTypes:
+async def status() -> ResponseReturnValue:
     values = await request.values
     status = values.get("status", "200 OK")
     status_code = status.split(" ")[0]
@@ -281,13 +279,13 @@ async def status() -> ResponseTypes:
 
 
 @hypercorn_app.route("/source_address")
-async def source_address() -> ResponseTypes:
+async def source_address() -> ResponseReturnValue:
     """Return the requester's IP address."""
     return await make_response(request.remote_addr)
 
 
 @hypercorn_app.route("/successful_retry", methods=["GET", "PUT"])
-async def successful_retry() -> ResponseTypes:
+async def successful_retry() -> ResponseReturnValue:
     """First return an error and then success
 
     It's not currently very flexible as the number of retries is hard-coded.
@@ -305,20 +303,20 @@ async def successful_retry() -> ResponseTypes:
 
 
 @pyodide_testing_app.after_request
-def apply_caching(response: ResponseTypes) -> ResponseTypes:
+def apply_caching(response: Response) -> ResponseReturnValue:
     for header, value in DEFAULT_HEADERS:
         response.headers[header] = value
     return response
 
 
 @pyodide_testing_app.route("/slow")
-async def slow() -> ResponseTypes:
+async def slow() -> ResponseReturnValue:
     await trio.sleep(10)
     return await make_response("TEN SECONDS LATER", 200)
 
 
 @pyodide_testing_app.route("/bigfile")
-async def bigfile() -> ResponseTypes:
+async def bigfile() -> ResponseReturnValue:
     # great big text file, should force streaming
     # if supported
     bigdata = 1048576 * b"WOOO YAY BOOYAKAH"
@@ -326,14 +324,14 @@ async def bigfile() -> ResponseTypes:
 
 
 @pyodide_testing_app.route("/mediumfile")
-async def mediumfile() -> ResponseTypes:
+async def mediumfile() -> ResponseReturnValue:
     # quite big file
     bigdata = 1024 * b"WOOO YAY BOOYAKAH"
     return await make_response(bigdata, 200)
 
 
 @pyodide_testing_app.route("/upload", methods=["POST", "OPTIONS"])
-async def pyodide_upload() -> ResponseTypes:
+async def pyodide_upload() -> ResponseReturnValue:
     if request.method == "OPTIONS":
         return await make_response("", 200)
     spare_data = await request.get_data(parse_form_data=True)
@@ -356,7 +354,7 @@ async def pyodide_upload() -> ResponseTypes:
 
 
 @pyodide_testing_app.route("/pyodide/<py_file>")
-async def pyodide(py_file: str) -> ResponseTypes:
+async def pyodide(py_file: str) -> ResponseReturnValue:
     file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
     if file_path.exists():
         mime_type, encoding = mimetypes.guess_type(file_path)
@@ -370,7 +368,7 @@ async def pyodide(py_file: str) -> ResponseTypes:
 
 
 @pyodide_testing_app.route("/wheel/dist.whl")
-async def wheel() -> ResponseTypes:
+async def wheel() -> ResponseReturnValue:
     # serve our wheel
     wheel_folder = Path(__file__).parent.parent / "dist"
     wheels = list(wheel_folder.glob("*.whl"))

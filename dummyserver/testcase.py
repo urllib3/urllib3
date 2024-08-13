@@ -5,8 +5,8 @@ import socket
 import ssl
 import threading
 import typing
+from test import LONG_TIMEOUT
 
-import hypercorn
 import pytest
 
 from dummyserver.app import hypercorn_app
@@ -15,15 +15,22 @@ from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.socketserver import DEFAULT_CERTS, HAS_IPV6, SocketServerThread
 from urllib3.connection import HTTPConnection
 from urllib3.util.ssltransport import SSLTransport
-from urllib3.util.url import parse_url
 
 
 def consume_socket(
-    sock: SSLTransport | socket.socket, chunks: int = 65536
+    sock: SSLTransport | socket.socket,
+    chunks: int = 65536,
+    quit_event: threading.Event | None = None,
 ) -> bytearray:
     consumed = bytearray()
+    sock.settimeout(LONG_TIMEOUT)
     while True:
-        b = sock.recv(chunks)
+        if quit_event and quit_event.is_set():
+            break
+        try:
+            b = sock.recv(chunks)
+        except (TimeoutError, socket.timeout):
+            continue
         assert isinstance(b, bytes)
         consumed += b
         if b.endswith(b"\r\n\r\n"):
@@ -57,11 +64,16 @@ class SocketDummyServerTestCase:
 
     @classmethod
     def _start_server(
-        cls, socket_handler: typing.Callable[[socket.socket], None]
+        cls,
+        socket_handler: typing.Callable[[socket.socket], None],
+        quit_event: threading.Event | None = None,
     ) -> None:
         ready_event = threading.Event()
         cls.server_thread = SocketServerThread(
-            socket_handler=socket_handler, ready_event=ready_event, host=cls.host
+            socket_handler=socket_handler,
+            ready_event=ready_event,
+            host=cls.host,
+            quit_event=quit_event,
         )
         cls.server_thread.start()
         ready_event.wait(5)
@@ -71,23 +83,41 @@ class SocketDummyServerTestCase:
 
     @classmethod
     def start_response_handler(
-        cls, response: bytes, num: int = 1, block_send: threading.Event | None = None
+        cls,
+        response: bytes,
+        num: int = 1,
+        block_send: threading.Event | None = None,
     ) -> threading.Event:
         ready_event = threading.Event()
+        quit_event = threading.Event()
 
         def socket_handler(listener: socket.socket) -> None:
             for _ in range(num):
                 ready_event.set()
 
-                sock = listener.accept()[0]
-                consume_socket(sock)
+                listener.settimeout(LONG_TIMEOUT)
+                while True:
+                    if quit_event.is_set():
+                        return
+                    try:
+                        sock = listener.accept()[0]
+                        break
+                    except (TimeoutError, socket.timeout):
+                        continue
+                consume_socket(sock, quit_event=quit_event)
+                if quit_event.is_set():
+                    sock.close()
+                    return
                 if block_send:
-                    block_send.wait()
+                    while not block_send.wait(LONG_TIMEOUT):
+                        if quit_event.is_set():
+                            sock.close()
+                            return
                     block_send.clear()
                 sock.send(response)
                 sock.close()
 
-        cls._start_server(socket_handler)
+        cls._start_server(socket_handler, quit_event=quit_event)
         return ready_event
 
     @classmethod
@@ -100,10 +130,25 @@ class SocketDummyServerTestCase:
             block_send,
         )
 
+    @staticmethod
+    def quit_server_thread(server_thread: SocketServerThread) -> None:
+        if server_thread.quit_event:
+            server_thread.quit_event.set()
+        # in principle the maximum time that the thread can take to notice
+        # the quit_event is LONG_TIMEOUT and the thread should terminate
+        # shortly after that, we give 5 seconds leeway just in case
+        server_thread.join(LONG_TIMEOUT * 2 + 5.0)
+        if server_thread.is_alive():
+            raise Exception("server_thread did not exit")
+
     @classmethod
     def teardown_class(cls) -> None:
         if hasattr(cls, "server_thread"):
-            cls.server_thread.join(0.1)
+            cls.quit_server_thread(cls.server_thread)
+
+    def teardown_method(self) -> None:
+        if hasattr(self, "server_thread"):
+            self.quit_server_thread(self.server_thread)
 
     def assert_header_received(
         self,
@@ -128,11 +173,16 @@ class SocketDummyServerTestCase:
 class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
     @classmethod
     def _start_server(
-        cls, socket_handler: typing.Callable[[socket.socket], None]
+        cls,
+        socket_handler: typing.Callable[[socket.socket], None],
+        quit_event: threading.Event | None = None,
     ) -> None:
         ready_event = threading.Event()
         cls.server_thread = SocketServerThread(
-            socket_handler=socket_handler, ready_event=ready_event, host=cls.host
+            socket_handler=socket_handler,
+            ready_event=ready_event,
+            host=cls.host,
+            quit_event=quit_event,
         )
         cls.server_thread.USE_IPV6 = False
         cls.server_thread.start()
@@ -155,17 +205,10 @@ class HypercornDummyServerTestCase:
     @classmethod
     def setup_class(cls) -> None:
         with contextlib.ExitStack() as stack:
-            config = hypercorn.Config()
-            if cls.certs:
-                config.certfile = cls.certs["certfile"]
-                config.keyfile = cls.certs["keyfile"]
-                config.verify_mode = cls.certs["cert_reqs"]
-                config.ca_certs = cls.certs["ca_certs"]
-                config.alpn_protocols = cls.certs["alpn_protocols"]
-            config.bind = [f"{cls.host}:0"]
-            stack.enter_context(run_hypercorn_in_thread(config, hypercorn_app))
+            cls.port = stack.enter_context(
+                run_hypercorn_in_thread(cls.host, cls.certs, hypercorn_app)
+            )
             cls._stack = stack.pop_all()
-            cls.port = typing.cast(int, parse_url(config.bind[0]).port)
 
     @classmethod
     def teardown_class(cls) -> None:
@@ -211,47 +254,21 @@ class HypercornDummyProxyTestCase:
     @classmethod
     def setup_class(cls) -> None:
         with contextlib.ExitStack() as stack:
-            http_server_config = hypercorn.Config()
-            http_server_config.bind = [f"{cls.http_host}:0"]
-            stack.enter_context(
-                run_hypercorn_in_thread(http_server_config, hypercorn_app)
+            cls.http_port = stack.enter_context(
+                run_hypercorn_in_thread(cls.http_host, None, hypercorn_app)
             )
-            cls.http_port = typing.cast(int, parse_url(http_server_config.bind[0]).port)
-
-            https_server_config = hypercorn.Config()
-            https_server_config.certfile = cls.https_certs["certfile"]
-            https_server_config.keyfile = cls.https_certs["keyfile"]
-            https_server_config.verify_mode = cls.https_certs["cert_reqs"]
-            https_server_config.ca_certs = cls.https_certs["ca_certs"]
-            https_server_config.alpn_protocols = cls.https_certs["alpn_protocols"]
-            https_server_config.bind = [f"{cls.https_host}:0"]
-            stack.enter_context(
-                run_hypercorn_in_thread(https_server_config, hypercorn_app)
+            cls.https_port = stack.enter_context(
+                run_hypercorn_in_thread(cls.https_host, cls.https_certs, hypercorn_app)
             )
-            cls.https_port = typing.cast(
-                int, parse_url(https_server_config.bind[0]).port
+            cls.proxy_port = stack.enter_context(
+                run_hypercorn_in_thread(cls.proxy_host, None, ProxyApp())
             )
-
-            http_proxy_config = hypercorn.Config()
-            http_proxy_config.bind = [f"{cls.proxy_host}:0"]
-            stack.enter_context(run_hypercorn_in_thread(http_proxy_config, ProxyApp()))
-            cls.proxy_port = typing.cast(int, parse_url(http_proxy_config.bind[0]).port)
-
-            https_proxy_config = hypercorn.Config()
-            https_proxy_config.certfile = cls.https_certs["certfile"]
-            https_proxy_config.keyfile = cls.https_certs["keyfile"]
-            https_proxy_config.verify_mode = cls.https_certs["cert_reqs"]
-            https_proxy_config.ca_certs = cls.https_certs["ca_certs"]
-            https_proxy_config.alpn_protocols = cls.https_certs["alpn_protocols"]
-            https_proxy_config.bind = [f"{cls.proxy_host}:0"]
             upstream_ca_certs = cls.https_certs.get("ca_certs")
-            stack.enter_context(
-                run_hypercorn_in_thread(https_proxy_config, ProxyApp(upstream_ca_certs))
+            cls.https_proxy_port = stack.enter_context(
+                run_hypercorn_in_thread(
+                    cls.proxy_host, cls.https_certs, ProxyApp(upstream_ca_certs)
+                )
             )
-            cls.https_proxy_port = typing.cast(
-                int, parse_url(https_proxy_config.bind[0]).port
-            )
-
             cls._stack = stack.pop_all()
 
     @classmethod

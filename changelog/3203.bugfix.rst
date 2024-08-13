@@ -1,1 +1,0 @@
-Stopped updating passed HTTP-header dicts during requests with JSON.
