@@ -1,2 +1,1 @@
-backport https://github.com/python/cpython/issues/103472 for 3.11.3 and older to prevent
-a ResourceWarning when using a CONNECT proxy
+Fixed ResourceWarning on CONNECT with Python < 3.11.4 by backporting https://github.com/python/cpython/issues/103472.
