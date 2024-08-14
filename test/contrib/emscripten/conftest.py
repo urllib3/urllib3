@@ -4,18 +4,15 @@ import contextlib
 import os
 import random
 import textwrap
-import typing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generator
 
-import hypercorn
 import pytest
 
 from dummyserver.app import pyodide_testing_app
 from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.socketserver import DEFAULT_CERTS
-from urllib3.util.url import parse_url
 
 _coverage_count = 0
 
@@ -35,24 +32,12 @@ def testserver_http(
     pyodide_testing_app.config["pyodide_dist_dir"] = str(pyodide_dist_dir)
     http_host = "localhost"
     with contextlib.ExitStack() as stack:
-        http_server_config = hypercorn.Config()
-        http_server_config.bind = [f"{http_host}:0"]
-        stack.enter_context(
-            run_hypercorn_in_thread(http_server_config, pyodide_testing_app)
+        http_port = stack.enter_context(
+            run_hypercorn_in_thread(http_host, None, pyodide_testing_app)
         )
-        http_port = typing.cast(int, parse_url(http_server_config.bind[0]).port)
-
-        https_server_config = hypercorn.Config()
-        https_server_config.certfile = DEFAULT_CERTS["certfile"]
-        https_server_config.keyfile = DEFAULT_CERTS["keyfile"]
-        https_server_config.verify_mode = DEFAULT_CERTS["cert_reqs"]
-        https_server_config.ca_certs = DEFAULT_CERTS["ca_certs"]
-        https_server_config.alpn_protocols = DEFAULT_CERTS["alpn_protocols"]
-        https_server_config.bind = [f"{http_host}:0"]
-        stack.enter_context(
-            run_hypercorn_in_thread(https_server_config, pyodide_testing_app)
+        https_port = stack.enter_context(
+            run_hypercorn_in_thread(http_host, DEFAULT_CERTS, pyodide_testing_app)
         )
-        https_port = typing.cast(int, parse_url(https_server_config.bind[0]).port)
 
         yield PyodideServerInfo(
             http_host=http_host,
