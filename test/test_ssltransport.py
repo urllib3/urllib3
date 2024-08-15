@@ -230,9 +230,8 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             cipher = ssock.cipher()
             assert type(cipher) is tuple
 
-            # No chosen protocol through ALPN or NPN.
+            # No chosen protocol.
             assert ssock.selected_alpn_protocol() is None
-            assert ssock.selected_npn_protocol() is None
 
             shared_ciphers = ssock.shared_ciphers()
             # SSLContext.shared_ciphers() changed behavior completely in a patch version.
