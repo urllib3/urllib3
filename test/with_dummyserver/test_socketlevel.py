@@ -1140,33 +1140,26 @@ class TestProxyManager(SocketDummyServerTestCase):
                     retries=False,
                 )
 
-    def test_alpn_protocol_in_first_request_packet(self) -> None:
+    def test_tunnel_sets_http_11_alpn(self) -> None:
+        done_receiving = Event()
         self.buf = b""
 
-        def echo_socket_handler(listener: socket.socket) -> None:
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
-            self.buf = b""
-            while not self.buf.endswith(b"\r\n\r\n"):
-                self.buf += sock.recv(65536)
 
-            sock.send(
-                (
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Content-Length: %d\r\n"
-                    "\r\n"
-                    "%s" % (len(self.buf), self.buf.decode("utf-8"))
-                ).encode("utf-8")
-            )
+            self.buf = sock.recv(65536)  # We only accept one packet
+            done_receiving.set()  # let the test know it can proceed
             sock.close()
 
-        self._start_server(echo_socket_handler)
-        base_url = f"http://{self.host}:{self.port}"
+        self._start_server(socket_handler)
+        base_url = f"https://{self.host}:{self.port}"
         with proxy_from_url(base_url) as proxy:
-            r = proxy.request("GET", "http://google.com/")
-            assert r.status == 200
-            assert b"HTTP/1.1" in self.buf
-            assert b"h2" not in self.buf
+            with pytest.raises(MaxRetryError) as excinfo:
+                proxy.request("GET", "https://localhost/")
+
+        done_receiving.wait()
+        assert b"http/1.1" in self.buf
+        assert b"h2" not in self.buf
 
     def test_connect_reconn(self) -> None:
         def proxy_ssl_one(listener: socket.socket) -> None:
