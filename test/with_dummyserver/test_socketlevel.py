@@ -1155,7 +1155,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         self._start_server(socket_handler)
         base_url = f"https://{self.host}:{self.port}"
         with proxy_from_url(base_url) as proxy:
-            with pytest.raises(MaxRetryError) as excinfo:
+            with pytest.raises(MaxRetryError):
                 proxy.request("GET", "https://localhost/")
 
         done_receiving.wait()
