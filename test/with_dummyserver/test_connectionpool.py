@@ -452,7 +452,6 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             )
 
     def test_tunnel(self, http_version: str) -> None:
-        # note the actual httplib.py has no tests for this functionality
         timeout = Timeout(total=None)
         with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
             conn = pool._get_conn()
