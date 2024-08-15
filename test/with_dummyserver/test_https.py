@@ -48,8 +48,6 @@ from urllib3.exceptions import (
 from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import Timeout
 
-from .. import has_alpn
-
 TLSv1_CERTS = DEFAULT_CERTS.copy()
 TLSv1_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1", None)
 
@@ -953,8 +951,6 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
 
     def test_alpn_default(self, http_version: str) -> None:
         """Default ALPN protocols are sent by default."""
-        if not has_alpn() or not has_alpn(ssl.SSLContext):
-            pytest.skip("ALPN-support not available")
         with HTTPSConnectionPool(
             self.host,
             self.port,
