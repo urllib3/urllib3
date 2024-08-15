@@ -359,14 +359,33 @@ def requires_tlsv1_3(supported_tls_versions: typing.AbstractSet[str]) -> None:
         pytest.skip("Test requires TLSv1.3")
 
 
+class ErroringHTTPConnection:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any):
+        raise ValueError(
+            "HTTP/2 support currently only applies to HTTPS, don't use http_version for HTTP tests"
+        )
+
+
 @pytest.fixture(params=["h11", "h2"])
 def http_version(request: pytest.FixtureRequest) -> typing.Generator[str, None, None]:
+    orig_HTTPConnection: typing.Any = None
+
     if request.param == "h2":
         urllib3.http2.inject_into_urllib3()
+
+        from urllib3 import connection as urllib3_connection
+        from urllib3.connectionpool import HTTPConnectionPool
+
+        orig_HTTPConnection = urllib3_connection.HTTPConnection
+        urllib3_connection.HTTPConnection = ErroringHTTPConnection  # type: ignore[misc,assignment]
+        HTTPConnectionPool.ConnectionCls = ErroringHTTPConnection  # type: ignore[assignment]
     try:
         yield request.param
     finally:
         if request.param == "h2":
+            urllib3_connection.HTTPConnection = orig_HTTPConnection  # type: ignore[misc]
+            HTTPConnectionPool.ConnectionCls = orig_HTTPConnection
+
             urllib3.http2.extract_from_urllib3()
 
 

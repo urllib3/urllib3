@@ -45,7 +45,7 @@ def test_audit_event(audit_mock: mock.Mock, pool: HTTPConnectionPool) -> None:
         assert len(connect_events) == 1
 
 
-def test_does_not_release_conn(pool: HTTPConnectionPool, http_version: str) -> None:
+def test_does_not_release_conn(pool: HTTPConnectionPool) -> None:
     with contextlib.closing(pool._get_conn()) as conn:
         conn.request("GET", "/")
         response = conn.getresponse()
@@ -54,7 +54,7 @@ def test_does_not_release_conn(pool: HTTPConnectionPool, http_version: str) -> N
         assert pool.pool.qsize() == 0  # type: ignore[union-attr]
 
 
-def test_releases_conn(pool: HTTPConnectionPool, http_version: str) -> None:
+def test_releases_conn(pool: HTTPConnectionPool) -> None:
     with contextlib.closing(pool._get_conn()) as conn:
         conn.request("GET", "/")
         response = conn.getresponse()
@@ -69,7 +69,7 @@ def test_releases_conn(pool: HTTPConnectionPool, http_version: str) -> None:
         assert pool.pool.qsize() == 1  # type: ignore[union-attr]
 
 
-def test_double_getresponse(pool: HTTPConnectionPool, http_version: str) -> None:
+def test_double_getresponse(pool: HTTPConnectionPool) -> None:
     with contextlib.closing(pool._get_conn()) as conn:
         conn.request("GET", "/")
         _ = conn.getresponse()
@@ -79,9 +79,7 @@ def test_double_getresponse(pool: HTTPConnectionPool, http_version: str) -> None
             conn.getresponse()
 
 
-def test_connection_state_properties(
-    pool: HTTPConnectionPool, http_version: str
-) -> None:
+def test_connection_state_properties(pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
 
     assert conn.is_closed is True
@@ -111,7 +109,7 @@ def test_connection_state_properties(
     assert conn.proxy_is_verified is None
 
 
-def test_set_tunnel_is_reset(pool: HTTPConnectionPool, http_version: str) -> None:
+def test_set_tunnel_is_reset(pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
 
     assert conn.is_closed is True
@@ -133,7 +131,7 @@ def test_set_tunnel_is_reset(pool: HTTPConnectionPool, http_version: str) -> Non
     assert conn._tunnel_scheme is None  # type: ignore[attr-defined]
 
 
-def test_invalid_tunnel_scheme(pool: HTTPConnectionPool, http_version: str) -> None:
+def test_invalid_tunnel_scheme(pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
 
     with pytest.raises(ValueError) as e:
