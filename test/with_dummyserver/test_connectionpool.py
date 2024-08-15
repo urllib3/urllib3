@@ -355,7 +355,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             try:
                 # Update the default socket options
                 assert conn.socket_options is not None
-                conn.socket_options += [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]  # type: ignore[operator]
+                conn.socket_options += [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
                 s = conn._new_conn()  # type: ignore[attr-defined]
                 nagle_disabled = (
                     s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) > 0
