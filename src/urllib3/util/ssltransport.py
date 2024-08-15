@@ -193,9 +193,6 @@ class SSLTransport:
     def selected_alpn_protocol(self) -> str | None:
         return self.sslobj.selected_alpn_protocol()
 
-    def selected_npn_protocol(self) -> str | None:
-        return self.sslobj.selected_npn_protocol()
-
     def shared_ciphers(self) -> list[tuple[str, str, int]] | None:
         return self.sslobj.shared_ciphers()
 

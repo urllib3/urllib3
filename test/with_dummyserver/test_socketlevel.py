@@ -49,7 +49,7 @@ from urllib3.util import ssl_, ssl_wrap_socket
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 
-from .. import LogRecorder, has_alpn
+from .. import LogRecorder
 
 if typing.TYPE_CHECKING:
     from _typeshed import StrOrBytesPath
@@ -108,9 +108,6 @@ class TestSNI(SocketDummyServerTestCase):
 
 class TestALPN(SocketDummyServerTestCase):
     def test_alpn_protocol_in_first_request_packet(self) -> None:
-        if not has_alpn():
-            pytest.skip("ALPN-support not available")
-
         done_receiving = Event()
         self.buf = b""
 
