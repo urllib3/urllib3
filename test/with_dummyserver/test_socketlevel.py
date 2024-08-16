@@ -32,7 +32,7 @@ from dummyserver.socketserver import (
     get_unreachable_address,
 )
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
+from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.connectionpool import _url_from_pool
@@ -126,7 +126,7 @@ class TestALPN(SocketDummyServerTestCase):
                 pass
             successful = done_receiving.wait(LONG_TIMEOUT)
             assert successful, "Timed out waiting for connection accept"
-            for protocol in util.ALPN_PROTOCOLS:
+            for protocol in ssl_.ALPN_PROTOCOLS:
                 assert (
                     protocol.encode("ascii") in self.buf
                 ), "missing ALPN protocol in SSL handshake"

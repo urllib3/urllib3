@@ -6,7 +6,6 @@ from .request import SKIP_HEADER, SKIPPABLE_HEADERS, make_headers
 from .response import is_fp_closed
 from .retry import Retry
 from .ssl_ import (
-    ALPN_PROTOCOLS,
     IS_PYOPENSSL,
     SSLContext,
     assert_fingerprint,
@@ -22,7 +21,6 @@ from .wait import wait_for_read, wait_for_write
 __all__ = (
     "IS_PYOPENSSL",
     "SSLContext",
-    "ALPN_PROTOCOLS",
     "Retry",
     "Timeout",
     "Url",
