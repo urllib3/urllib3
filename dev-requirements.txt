@@ -14,8 +14,7 @@ cryptography==42.0.4
 backports.zoneinfo==0.2.1;python_version<"3.9"
 towncrier==23.6.0
 pytest-memray==1.5.0;python_version<"3.13" and sys_platform!="win32" and implementation_name=="cpython"
-attrs==23.2.0  # https://github.com/python-trio/trio/issues/3053
-trio==0.26.0
+trio==0.26.2
 Quart==0.19.4
 quart-trio==0.11.1
 # https://github.com/pgjones/hypercorn/issues/62
