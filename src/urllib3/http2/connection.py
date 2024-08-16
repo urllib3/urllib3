@@ -10,15 +10,11 @@ import h2.config  # type: ignore[import-untyped]
 import h2.connection  # type: ignore[import-untyped]
 import h2.events  # type: ignore[import-untyped]
 
-import urllib3.connection
-import urllib3.util.ssl_
-
-from ._base_connection import _TYPE_BODY
-from ._collections import HTTPHeaderDict
-from .connection import HTTPSConnection, _get_default_user_agent
-from .connectionpool import HTTPSConnectionPool
-from .exceptions import ConnectionError
-from .response import BaseHTTPResponse
+from .._base_connection import _TYPE_BODY
+from .._collections import HTTPHeaderDict
+from ..connection import HTTPSConnection, _get_default_user_agent
+from ..exceptions import ConnectionError
+from ..response import BaseHTTPResponse
 
 orig_HTTPSConnection = HTTPSConnection
 
@@ -58,12 +54,16 @@ def _is_illegal_header_value(value: bytes) -> bool:
 class _LockedObject(typing.Generic[T]):
     """
     A wrapper class that hides a specific object behind a lock.
-
     The goal here is to provide a simple way to protect access to an object
     that cannot safely be simultaneously accessed from multiple threads. The
     intended use of this class is simple: take hold of it with a context
     manager, which returns the protected object.
     """
+
+    __slots__ = (
+        "lock",
+        "_obj",
+    )
 
     def __init__(self, obj: T):
         self.lock = threading.RLock()
@@ -94,6 +94,9 @@ class HTTP2Connection(HTTPSConnection):
             raise NotImplementedError("Proxies aren't supported with HTTP/2")
 
         super().__init__(host, port, **kwargs)
+
+        if self._tunnel_host is not None:
+            raise NotImplementedError("Tunneling isn't supported with HTTP/2")
 
     def _new_h2_conn(self) -> _LockedObject[h2.connection.H2Connection]:
         config = h2.config.H2Configuration(client_side=True)
@@ -209,6 +212,17 @@ class HTTP2Connection(HTTPSConnection):
                     % type(data)
                 )
 
+    def set_tunnel(
+        self,
+        host: str,
+        port: int | None = None,
+        headers: typing.Mapping[str, str] | None = None,
+        scheme: str = "http",
+    ) -> None:
+        raise NotImplementedError(
+            "HTTP/2 does not support setting up a tunnel through a proxy"
+        )
+
     def getresponse(  # type: ignore[override]
         self,
     ) -> HTTP2Response:
@@ -276,7 +290,10 @@ class HTTP2Connection(HTTPSConnection):
 
         headers = headers or {}
         for k, v in headers.items():
-            self.putheader(k, v)
+            if k.lower() == "transfer-encoding" and v == "chunked":
+                continue
+            else:
+                self.putheader(k, v)
 
         if b"user-agent" not in dict(self._headers):
             self.putheader(b"user-agent", _get_default_user_agent())
@@ -337,18 +354,3 @@ class HTTP2Response(BaseHTTPResponse):
 
     def close(self) -> None:
         pass
-
-
-def inject_into_urllib3() -> None:
-    HTTPSConnectionPool.ConnectionCls = HTTP2Connection
-    urllib3.connection.HTTPSConnection = HTTP2Connection  # type: ignore[misc]
-
-    # TODO: Offer 'http/1.1' as well, but for testing purposes this is handy.
-    urllib3.util.ssl_.ALPN_PROTOCOLS = ["h2"]
-
-
-def extract_from_urllib3() -> None:
-    HTTPSConnectionPool.ConnectionCls = orig_HTTPSConnection
-    urllib3.connection.HTTPSConnection = orig_HTTPSConnection  # type: ignore[misc]
-
-    urllib3.util.ssl_.ALPN_PROTOCOLS = ["http/1.1"]

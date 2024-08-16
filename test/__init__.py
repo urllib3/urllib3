@@ -32,18 +32,13 @@ except ImportError:
 else:
     HAS_ZSTD = True
 
-from urllib3 import util
 from urllib3.connectionpool import ConnectionPool
 from urllib3.exceptions import HTTPWarning
-from urllib3.util import ssl_
 
 try:
     import urllib3.contrib.pyopenssl as pyopenssl
 except ImportError:
     pyopenssl = None  # type: ignore[assignment]
-
-if typing.TYPE_CHECKING:
-    import ssl
 
 
 _RT = typing.TypeVar("_RT")  # return type
@@ -88,19 +83,6 @@ def _can_resolve(host: str) -> bool:
         return True
     except socket.gaierror:
         return False
-
-
-def has_alpn(ctx_cls: type[ssl.SSLContext] | None = None) -> bool:
-    """Detect if ALPN support is enabled."""
-    ctx_cls = ctx_cls or util.SSLContext
-    ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)  # type: ignore[misc, attr-defined]
-    try:
-        if hasattr(ctx, "set_alpn_protocols"):
-            ctx.set_alpn_protocols(ssl_.ALPN_PROTOCOLS)
-            return True
-    except NotImplementedError:
-        pass
-    return False
 
 
 # Some systems might not resolve "localhost." correctly.

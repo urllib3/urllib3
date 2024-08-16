@@ -7,7 +7,6 @@ import threading
 import typing
 from test import LONG_TIMEOUT
 
-import hypercorn
 import pytest
 
 from dummyserver.app import hypercorn_app
@@ -16,7 +15,6 @@ from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.socketserver import DEFAULT_CERTS, HAS_IPV6, SocketServerThread
 from urllib3.connection import HTTPConnection
 from urllib3.util.ssltransport import SSLTransport
-from urllib3.util.url import parse_url
 
 
 def consume_socket(
@@ -207,17 +205,10 @@ class HypercornDummyServerTestCase:
     @classmethod
     def setup_class(cls) -> None:
         with contextlib.ExitStack() as stack:
-            config = hypercorn.Config()
-            if cls.certs:
-                config.certfile = cls.certs["certfile"]
-                config.keyfile = cls.certs["keyfile"]
-                config.verify_mode = cls.certs["cert_reqs"]
-                config.ca_certs = cls.certs["ca_certs"]
-                config.alpn_protocols = cls.certs["alpn_protocols"]
-            config.bind = [f"{cls.host}:0"]
-            stack.enter_context(run_hypercorn_in_thread(config, hypercorn_app))
+            cls.port = stack.enter_context(
+                run_hypercorn_in_thread(cls.host, cls.certs, hypercorn_app)
+            )
             cls._stack = stack.pop_all()
-            cls.port = typing.cast(int, parse_url(config.bind[0]).port)
 
     @classmethod
     def teardown_class(cls) -> None:
@@ -263,47 +254,21 @@ class HypercornDummyProxyTestCase:
     @classmethod
     def setup_class(cls) -> None:
         with contextlib.ExitStack() as stack:
-            http_server_config = hypercorn.Config()
-            http_server_config.bind = [f"{cls.http_host}:0"]
-            stack.enter_context(
-                run_hypercorn_in_thread(http_server_config, hypercorn_app)
+            cls.http_port = stack.enter_context(
+                run_hypercorn_in_thread(cls.http_host, None, hypercorn_app)
             )
-            cls.http_port = typing.cast(int, parse_url(http_server_config.bind[0]).port)
-
-            https_server_config = hypercorn.Config()
-            https_server_config.certfile = cls.https_certs["certfile"]
-            https_server_config.keyfile = cls.https_certs["keyfile"]
-            https_server_config.verify_mode = cls.https_certs["cert_reqs"]
-            https_server_config.ca_certs = cls.https_certs["ca_certs"]
-            https_server_config.alpn_protocols = cls.https_certs["alpn_protocols"]
-            https_server_config.bind = [f"{cls.https_host}:0"]
-            stack.enter_context(
-                run_hypercorn_in_thread(https_server_config, hypercorn_app)
+            cls.https_port = stack.enter_context(
+                run_hypercorn_in_thread(cls.https_host, cls.https_certs, hypercorn_app)
             )
-            cls.https_port = typing.cast(
-                int, parse_url(https_server_config.bind[0]).port
+            cls.proxy_port = stack.enter_context(
+                run_hypercorn_in_thread(cls.proxy_host, None, ProxyApp())
             )
-
-            http_proxy_config = hypercorn.Config()
-            http_proxy_config.bind = [f"{cls.proxy_host}:0"]
-            stack.enter_context(run_hypercorn_in_thread(http_proxy_config, ProxyApp()))
-            cls.proxy_port = typing.cast(int, parse_url(http_proxy_config.bind[0]).port)
-
-            https_proxy_config = hypercorn.Config()
-            https_proxy_config.certfile = cls.https_certs["certfile"]
-            https_proxy_config.keyfile = cls.https_certs["keyfile"]
-            https_proxy_config.verify_mode = cls.https_certs["cert_reqs"]
-            https_proxy_config.ca_certs = cls.https_certs["ca_certs"]
-            https_proxy_config.alpn_protocols = cls.https_certs["alpn_protocols"]
-            https_proxy_config.bind = [f"{cls.proxy_host}:0"]
             upstream_ca_certs = cls.https_certs.get("ca_certs")
-            stack.enter_context(
-                run_hypercorn_in_thread(https_proxy_config, ProxyApp(upstream_ca_certs))
+            cls.https_proxy_port = stack.enter_context(
+                run_hypercorn_in_thread(
+                    cls.proxy_host, cls.https_certs, ProxyApp(upstream_ca_certs)
+                )
             )
-            cls.https_proxy_port = typing.cast(
-                int, parse_url(https_proxy_config.bind[0]).port
-            )
-
             cls._stack = stack.pop_all()
 
     @classmethod

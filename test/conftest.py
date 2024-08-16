@@ -6,18 +6,17 @@ import ssl
 import typing
 from pathlib import Path
 
-import hypercorn
 import pytest
 import trustme
 
 import urllib3.http2
+import urllib3.http2.probe as http2_probe
 from dummyserver.app import hypercorn_app
 from dummyserver.asgi_proxy import ProxyApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.socketserver import HAS_IPV6
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
 from urllib3.util import ssl_
-from urllib3.util.url import parse_url
 
 from .tz_stub import stub_timezone_ctx
 
@@ -81,12 +80,7 @@ def run_server_in_thread(
     ca.cert_pem.write_to_path(ca_cert_path)
     server_certs = _write_cert_to_dir(server_cert, tmpdir)
 
-    config = hypercorn.Config()
-    config.certfile = server_certs["certfile"]
-    config.keyfile = server_certs["keyfile"]
-    config.bind = [f"{host}:0"]
-    with run_hypercorn_in_thread(config, hypercorn_app):
-        port = typing.cast(int, parse_url(config.bind[0]).port)
+    with run_hypercorn_in_thread(host, server_certs, hypercorn_app) as port:
         yield ServerConfig(scheme, host, port, ca_cert_path)
 
 
@@ -106,19 +100,12 @@ def run_server_and_proxy_in_thread(
     proxy_certs = _write_cert_to_dir(proxy_cert, tmpdir, "proxy")
 
     with contextlib.ExitStack() as stack:
-        server_config = hypercorn.Config()
-        server_config.certfile = server_certs["certfile"]
-        server_config.keyfile = server_certs["keyfile"]
-        server_config.bind = ["localhost:0"]
-        stack.enter_context(run_hypercorn_in_thread(server_config, hypercorn_app))
-        port = typing.cast(int, parse_url(server_config.bind[0]).port)
-
-        proxy_config = hypercorn.Config()
-        proxy_config.certfile = proxy_certs["certfile"]
-        proxy_config.keyfile = proxy_certs["keyfile"]
-        proxy_config.bind = [f"{proxy_host}:0"]
-        stack.enter_context(run_hypercorn_in_thread(proxy_config, ProxyApp()))
-        proxy_port = typing.cast(int, parse_url(proxy_config.bind[0]).port)
+        port = stack.enter_context(
+            run_hypercorn_in_thread("localhost", server_certs, hypercorn_app)
+        )
+        proxy_port = stack.enter_context(
+            run_hypercorn_in_thread(proxy_host, proxy_certs, ProxyApp())
+        )
 
         yield (
             ServerConfig(proxy_scheme, proxy_host, proxy_port, ca_cert_path),
@@ -372,12 +359,40 @@ def requires_tlsv1_3(supported_tls_versions: typing.AbstractSet[str]) -> None:
         pytest.skip("Test requires TLSv1.3")
 
 
+class ErroringHTTPConnection:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any):
+        raise ValueError(
+            "HTTP/2 support currently only applies to HTTPS, don't use http_version for HTTP tests"
+        )
+
+
 @pytest.fixture(params=["h11", "h2"])
 def http_version(request: pytest.FixtureRequest) -> typing.Generator[str, None, None]:
+    orig_HTTPConnection: typing.Any = None
+
     if request.param == "h2":
         urllib3.http2.inject_into_urllib3()
 
-    yield request.param
+        from urllib3 import connection as urllib3_connection
+        from urllib3.connectionpool import HTTPConnectionPool
 
-    if request.param == "h2":
-        urllib3.http2.extract_from_urllib3()
+        orig_HTTPConnection = urllib3_connection.HTTPConnection
+        urllib3_connection.HTTPConnection = ErroringHTTPConnection  # type: ignore[misc,assignment]
+        HTTPConnectionPool.ConnectionCls = ErroringHTTPConnection  # type: ignore[assignment]
+    try:
+        yield request.param
+    finally:
+        if request.param == "h2":
+            urllib3_connection.HTTPConnection = orig_HTTPConnection  # type: ignore[misc]
+            HTTPConnectionPool.ConnectionCls = orig_HTTPConnection
+
+            urllib3.http2.extract_from_urllib3()
+
+
+@pytest.fixture(autouse=True, scope="function")
+def reset_http2_probe_cache() -> typing.Generator[None, None, None]:
+    # Always reset the HTTP/2 probe cache per test case.
+    try:
+        yield
+    finally:
+        http2_probe._reset()
