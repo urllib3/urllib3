@@ -244,7 +244,12 @@ def _encode_invalid_chars(
 
     uri_bytes = component.encode("utf-8", "surrogatepass")
     is_percent_encoded = percent_encodings == uri_bytes.count(b"%")
-    encoded_component = bytearray()
+    # pre-allocate a bytearray that is at least as big as the uri
+    # this reduces the number of times that the bytearray needs to
+    # be increased in size, which reduces the number of memory allocations
+    # required
+    encoded_component = bytearray(len(uri_bytes))
+    index = 0
 
     for i in range(0, len(uri_bytes)):
         # Will return a single character bytestring
@@ -253,10 +258,39 @@ def _encode_invalid_chars(
         if (is_percent_encoded and byte == b"%") or (
             byte_ord < 128 and byte.decode() in allowed_chars
         ):
-            encoded_component += byte
+            if index == len(encoded_component):
+                # the bytearray must be expanded, append
+                encoded_component += byte
+            else:
+                # overwrite value in the bytearray
+                encoded_component[index] = byte_ord
+            index += 1
             continue
-        encoded_component.extend(b"%" + (hex(byte_ord)[2:].encode().zfill(2).upper()))
 
+        to_add = b"%" + (hex(byte_ord)[2:].encode().zfill(2).upper())
+        to_add_len = len(to_add)
+        encoded_component_len = len(encoded_component)
+        if index == len(encoded_component):
+            # the bytearray must be expanded, extend
+            encoded_component.extend(to_add)
+            index += to_add_len
+        elif index + to_add_len >= encoded_component_len:
+            # in this case, some of the values can be inserted, but the
+            # bytearray must increase in size for the remaining bytes
+            for value in to_add:
+                if index == encoded_component_len:
+                    encoded_component.extend(to_add)
+                    index += len(to_add)
+                    break
+                encoded_component[index] = value
+                # reduce the size of to_add by the number of
+                to_add = to_add[1:]
+                index += 1
+        else:
+            # overwrite values in the bytearray
+            for value in to_add:
+                encoded_component[index] = value
+                index += 1
     return encoded_component.decode()
 
 

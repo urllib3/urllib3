@@ -1,0 +1,1 @@
+Optimized _encode_invalid_chars for faster execution.
