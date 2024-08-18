@@ -20,9 +20,7 @@ ALPN_PROTOCOLS = ["http/1.1"]
 OP_NO_COMPRESSION = 0
 OP_NO_RENEGOTIATION = 0
 
-# based on [1]https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/[1]
-# and cpython ssl module [2]https://github.com/python/cpython/blob/35d8ac7cd7ed6cd3d84af721dce970da59bd5f68/Modules/_ssl.c#L164
-HTTP2_DEFAULT_CIPHERS = "@SECLEVEL=2:ECDHE+AESGCM:ECDHE+CHACHA20:ECDHE+AES256:ECDHE+AES128:!aNULL:!eNULL:!aDSS:!SHA1:!AESCCM"
+HTTP2_DEFAULT_CIPHERS = "@SECLEVEL=2:ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!eNULL:!aDSS:!SHA1"
 
 _TYPE_VERSION_INFO = typing.Tuple[int, int, int, str, int]
 
