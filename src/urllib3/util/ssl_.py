@@ -130,6 +130,8 @@ try:  # Do we have ssl at all?
     ):
         HAS_NEVER_CHECK_COMMON_NAME = False
 
+    from .ssltransport import SSLTransport  # type: ignore[assignment]
+
     # NOTE: Flags are imported separately because they may raise ImportError
     from ssl import (
         OP_NO_COMPRESSION,
@@ -142,8 +144,6 @@ try:  # Do we have ssl at all?
     )
 
     PROTOCOL_SSLv23 = PROTOCOL_TLS
-
-    from .ssltransport import SSLTransport  # type: ignore[assignment]
 except ImportError:
     OP_NO_COMPRESSION = 0x20000
     OP_NO_TICKET = 0x4000  # type: ignore[assignment]
