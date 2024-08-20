@@ -103,20 +103,21 @@ try:  # Do we have ssl at all?
     from ssl import (  # type: ignore[assignment]
         CERT_REQUIRED,
         HAS_NEVER_CHECK_COMMON_NAME,
-        OP_NO_COMPRESSION,
-        OP_NO_RENEGOTIATION,
-        OP_NO_TICKET,
         OPENSSL_VERSION,
         OPENSSL_VERSION_NUMBER,
-        PROTOCOL_TLS,
-        PROTOCOL_TLS_CLIENT,
-        OP_NO_SSLv2,
-        OP_NO_SSLv3,
         SSLContext,
         TLSVersion,
     )
 
-    PROTOCOL_SSLv23 = PROTOCOL_TLS
+    # Need to be careful here in case old TLS versions get
+    # removed in future 'ssl' module implementations.
+    for attr in ("TLSv1", "TLSv1_1", "TLSv1_2"):
+        try:
+            _SSL_VERSION_TO_TLS_VERSION[getattr(ssl, f"PROTOCOL_{attr}")] = getattr(
+                TLSVersion, attr
+            )
+        except AttributeError:  # Defensive:
+            continue
 
     # Setting SSLContext.hostname_checks_common_name = False didn't work before CPython
     # 3.8.9, 3.9.3, and 3.10 (but OK on PyPy) or OpenSSL 1.1.1l+
@@ -129,15 +130,18 @@ try:  # Do we have ssl at all?
     ):
         HAS_NEVER_CHECK_COMMON_NAME = False
 
-    # Need to be careful here in case old TLS versions get
-    # removed in future 'ssl' module implementations.
-    for attr in ("TLSv1", "TLSv1_1", "TLSv1_2"):
-        try:
-            _SSL_VERSION_TO_TLS_VERSION[getattr(ssl, f"PROTOCOL_{attr}")] = getattr(
-                TLSVersion, attr
-            )
-        except AttributeError:  # Defensive:
-            continue
+    # NOTE: Flags are imported separately because they may raise ImportError
+    from ssl import (
+        OP_NO_COMPRESSION,
+        OP_NO_RENEGOTIATION,
+        OP_NO_TICKET,
+        PROTOCOL_TLS,
+        PROTOCOL_TLS_CLIENT,
+        OP_NO_SSLv2,
+        OP_NO_SSLv3,
+    )
+
+    PROTOCOL_SSLv23 = PROTOCOL_TLS
 
     from .ssltransport import SSLTransport  # type: ignore[assignment]
 except ImportError:
