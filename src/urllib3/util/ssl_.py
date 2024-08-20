@@ -109,6 +109,8 @@ try:  # Do we have ssl at all?
         TLSVersion,
     )
 
+    from .ssltransport import SSLTransport  # type: ignore[assignment]
+
     # Need to be careful here in case old TLS versions get
     # removed in future 'ssl' module implementations.
     for attr in ("TLSv1", "TLSv1_1", "TLSv1_2"):
@@ -129,8 +131,6 @@ try:  # Do we have ssl at all?
         sys.pypy_version_info if sys.implementation.name == "pypy" else None,  # type: ignore[attr-defined]
     ):
         HAS_NEVER_CHECK_COMMON_NAME = False
-
-    from .ssltransport import SSLTransport  # type: ignore[assignment]
 
     # NOTE: Flags are imported separately because they may raise ImportError
     from ssl import (
