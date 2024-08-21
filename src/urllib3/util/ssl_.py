@@ -19,8 +19,11 @@ IS_PYOPENSSL = False
 ALPN_PROTOCOLS = ["http/1.1"]
 OP_NO_COMPRESSION = 0
 OP_NO_RENEGOTIATION = 0
+OP_NO_TICKET = 0
 
-HTTP2_DEFAULT_CIPHERS = "@SECLEVEL=2:ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!eNULL:!aDSS:!SHA1"
+HTTP2_DEFAULT_CIPHERS = (
+    "@SECLEVEL=2:ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aDSS"
+)
 
 _TYPE_VERSION_INFO = typing.Tuple[int, int, int, str, int]
 
@@ -146,7 +149,7 @@ try:  # Do we have ssl at all?
     PROTOCOL_SSLv23 = PROTOCOL_TLS
 except ImportError:
     OP_NO_COMPRESSION = 0x20000
-    OP_NO_TICKET = 0x4000  # type: ignore[assignment]
+    OP_NO_TICKET = 0x4000
     OP_NO_RENEGOTIATION = 0x40000000
     OP_NO_SSLv2 = 0x1000000  # type: ignore[assignment]
     OP_NO_SSLv3 = 0x2000000  # type: ignore[assignment]
