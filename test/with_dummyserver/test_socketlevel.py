@@ -49,7 +49,7 @@ from urllib3.util import ssl_, ssl_wrap_socket
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 
-from .. import LogRecorder, has_alpn
+from .. import LogRecorder
 
 if typing.TYPE_CHECKING:
     from _typeshed import StrOrBytesPath
@@ -108,9 +108,6 @@ class TestSNI(SocketDummyServerTestCase):
 
 class TestALPN(SocketDummyServerTestCase):
     def test_alpn_protocol_in_first_request_packet(self) -> None:
-        if not has_alpn():
-            pytest.skip("ALPN-support not available")
-
         done_receiving = Event()
         self.buf = b""
 
@@ -1140,6 +1137,27 @@ class TestProxyManager(SocketDummyServerTestCase):
                     assert_same_host=False,
                     retries=False,
                 )
+
+    def test_tunnel_sets_http_11_alpn(self) -> None:
+        done_receiving = Event()
+        self.buf = b""
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            self.buf = sock.recv(65536)  # We only accept one packet
+            done_receiving.set()  # let the test know it can proceed
+            sock.close()
+
+        self._start_server(socket_handler)
+        base_url = f"https://{self.host}:{self.port}"
+        with proxy_from_url(base_url) as proxy:
+            with pytest.raises(MaxRetryError):
+                proxy.request("GET", "https://localhost/")
+
+        done_receiving.wait()
+        assert b"http/1.1" in self.buf
+        assert b"h2" not in self.buf
 
     def test_connect_reconn(self) -> None:
         def proxy_ssl_one(listener: socket.socket) -> None:
