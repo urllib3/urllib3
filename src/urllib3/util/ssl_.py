@@ -17,6 +17,11 @@ SSLTransport = None
 HAS_NEVER_CHECK_COMMON_NAME = False
 IS_PYOPENSSL = False
 ALPN_PROTOCOLS = ["http/1.1"]
+OP_NO_COMPRESSION = 0
+OP_NO_RENEGOTIATION = 0
+OP_NO_TICKET = 0
+
+HTTP2_DEFAULT_CIPHERS = "@SECLEVEL=2:ECDHE+AESGCM:ECDHE+CHACHA20:!aDSS"
 
 _TYPE_VERSION_INFO = typing.Tuple[int, int, int, str, int]
 
@@ -99,19 +104,23 @@ try:  # Do we have ssl at all?
     from ssl import (  # type: ignore[assignment]
         CERT_REQUIRED,
         HAS_NEVER_CHECK_COMMON_NAME,
-        OP_NO_COMPRESSION,
-        OP_NO_TICKET,
         OPENSSL_VERSION,
         OPENSSL_VERSION_NUMBER,
-        PROTOCOL_TLS,
-        PROTOCOL_TLS_CLIENT,
-        OP_NO_SSLv2,
-        OP_NO_SSLv3,
         SSLContext,
         TLSVersion,
     )
 
-    PROTOCOL_SSLv23 = PROTOCOL_TLS
+    from .ssltransport import SSLTransport  # type: ignore[assignment]
+
+    # Need to be careful here in case old TLS versions get
+    # removed in future 'ssl' module implementations.
+    for attr in ("TLSv1", "TLSv1_1", "TLSv1_2"):
+        try:
+            _SSL_VERSION_TO_TLS_VERSION[getattr(ssl, f"PROTOCOL_{attr}")] = getattr(
+                TLSVersion, attr
+            )
+        except AttributeError:  # Defensive:
+            continue
 
     # Setting SSLContext.hostname_checks_common_name = False didn't work before CPython
     # 3.8.9, 3.9.3, and 3.10 (but OK on PyPy) or OpenSSL 1.1.1l+
@@ -124,20 +133,22 @@ try:  # Do we have ssl at all?
     ):
         HAS_NEVER_CHECK_COMMON_NAME = False
 
-    # Need to be careful here in case old TLS versions get
-    # removed in future 'ssl' module implementations.
-    for attr in ("TLSv1", "TLSv1_1", "TLSv1_2"):
-        try:
-            _SSL_VERSION_TO_TLS_VERSION[getattr(ssl, f"PROTOCOL_{attr}")] = getattr(
-                TLSVersion, attr
-            )
-        except AttributeError:  # Defensive:
-            continue
+    # NOTE: Flags are imported separately because they may raise ImportError
+    from ssl import (
+        OP_NO_COMPRESSION,
+        OP_NO_RENEGOTIATION,
+        OP_NO_TICKET,
+        PROTOCOL_TLS,
+        PROTOCOL_TLS_CLIENT,
+        OP_NO_SSLv2,
+        OP_NO_SSLv3,
+    )
 
-    from .ssltransport import SSLTransport  # type: ignore[assignment]
+    PROTOCOL_SSLv23 = PROTOCOL_TLS
 except ImportError:
-    OP_NO_COMPRESSION = 0x20000  # type: ignore[assignment]
-    OP_NO_TICKET = 0x4000  # type: ignore[assignment]
+    OP_NO_COMPRESSION = 0x20000
+    OP_NO_TICKET = 0x4000
+    OP_NO_RENEGOTIATION = 0x40000000
     OP_NO_SSLv2 = 0x1000000  # type: ignore[assignment]
     OP_NO_SSLv3 = 0x2000000  # type: ignore[assignment]
     PROTOCOL_SSLv23 = PROTOCOL_TLS = 2  # type: ignore[assignment]
@@ -227,6 +238,7 @@ def create_urllib3_context(
     ciphers: str | None = None,
     ssl_minimum_version: int | None = None,
     ssl_maximum_version: int | None = None,
+    http2: bool = False,
 ) -> ssl.SSLContext:
     """Creates and configures an :class:`ssl.SSLContext` instance for use with urllib3.
 
@@ -303,6 +315,8 @@ def create_urllib3_context(
     # the case of OpenSSL 1.1.1+ or use our own secure default ciphers.
     if ciphers:
         context.set_ciphers(ciphers)
+    elif http2:
+        context.set_ciphers(HTTP2_DEFAULT_CIPHERS)
 
     # Setting the default here, as we may have no ssl module on import
     cert_reqs = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
@@ -315,12 +329,16 @@ def create_urllib3_context(
         options |= OP_NO_SSLv3
         # Disable compression to prevent CRIME attacks for OpenSSL 1.0+
         # (issue #309)
+        # Also, HTTP2 (RFC 9113 9.2.1) requires compression to be disabled
         options |= OP_NO_COMPRESSION
         # TLSv1.2 only. Unless set explicitly, do not request tickets.
         # This may save some bandwidth on wire, and although the ticket is encrypted,
         # there is a risk associated with it being on wire,
         # if the server is not rotating its ticketing keys properly.
         options |= OP_NO_TICKET
+        if http2:
+            # HTTP2 (RFC 9113 9.2.1) requires renegotiation to be disabled
+            options |= OP_NO_RENEGOTIATION
 
     context.options |= options
 
@@ -328,8 +346,9 @@ def create_urllib3_context(
     # necessary for conditional client cert authentication with TLS 1.3.
     # The attribute is None for OpenSSL <= 1.1.0 or does not exist when using
     # an SSLContext created by pyOpenSSL.
+    # Disable for HTTP/2: RFC 9113 9.2.3 prohibits post_handshake_auth with HTTP2
     if getattr(context, "post_handshake_auth", None) is not None:
-        context.post_handshake_auth = True
+        context.post_handshake_auth = not http2
 
     # The order of the below lines setting verify_mode and check_hostname
     # matter due to safe-guards SSLContext has to prevent an SSLContext with
