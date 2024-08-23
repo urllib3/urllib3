@@ -12,6 +12,7 @@ keywords = ["urllib", "httplib", "threadsafe", "filepost", "http", "https", "ssl
 authors = [
   {name = "Andrey Petrov", email = "andrey.petrov@shazow.net"}
 ]
+license = { text = "MIT" }
 maintainers = [
   {name = "Seth Michael Larson", email="sethmichaellarson@gmail.com"},
   {name = "Quentin Pradet", email="quentin@pradet.me"},
