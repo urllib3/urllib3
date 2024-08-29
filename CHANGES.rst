@@ -1,11 +1,27 @@
 Changes
 =======
 
+1.26.20 (2024-08-29)
+--------------------
+
+* Fixed a crash where certain standard library hash functions were absent in
+  restricted environments.
+  (`#3432 <https://github.com/urllib3/urllib3/issues/3432>`__)
+* Replaced deprecated dash-separated setuptools entries in ``setup.cfg``.
+  (`#3461 <https://github.com/urllib3/urllib3/pull/3461>`__)
+* Took into account macOS setting ``ECONNRESET`` instead of ``EPROTOTYPE`` in
+  its newer versions.
+  (`#3416 <https://github.com/urllib3/urllib3/pull/3416>`__)
+* Backported changes to our tests and CI configuration from v2.x to support
+  testing with CPython 3.12 and 3.13.
+  (`#3436 <https://github.com/urllib3/urllib3/pull/3436>`__)
+
+
 1.26.19 (2024-06-17)
 --------------------
 
-- Added the ``Proxy-Authorization`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
-- Fixed handling of OpenSSL 3.2.0 new error message for misconfiguring an HTTP proxy as HTTPS. (`#3405 <https://github.com/urllib3/urllib3/issues/3405>`__)
+* Added the ``Proxy-Authorization`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+* Fixed handling of OpenSSL 3.2.0 new error message for misconfiguring an HTTP proxy as HTTPS. (`#3405 <https://github.com/urllib3/urllib3/issues/3405>`__)
 
 
 1.26.18 (2023-10-17)
