@@ -5,7 +5,7 @@ Changes
 --------------------
 
 * Fixed a crash where certain standard library hash functions were absent in
-  restricted environments.
+  FIPS-compliant environments.
   (`#3432 <https://github.com/urllib3/urllib3/issues/3432>`__)
 * Replaced deprecated dash-separated setuptools entries in ``setup.cfg``.
   (`#3461 <https://github.com/urllib3/urllib3/pull/3461>`__)
@@ -196,7 +196,7 @@ Changes
 
 * Added default ``User-Agent`` header to every request (Pull #1750)
 
-* Added ``urllib3.util.SKIP_HEADER`` for skipping ``User-Agent``, ``Accept-Encoding``, 
+* Added ``urllib3.util.SKIP_HEADER`` for skipping ``User-Agent``, ``Accept-Encoding``,
   and ``Host`` headers from being automatically emitted with requests (Pull #2018)
 
 * Collapse ``transfer-encoding: chunked`` request data and framing into
