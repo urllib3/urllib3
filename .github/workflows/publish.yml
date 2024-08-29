@@ -3,7 +3,9 @@ name: Publish to PyPI
 on:
   push:
     branches:
-      - "1.26.x"
+      # We don't publish to Test PyPI on pushes to 1.26.x yet because there is
+      # no mechanism to get a dynamic version number in the branch yet.
+      # - "1.26.x"
       - "main"
     tags:
       - "*"

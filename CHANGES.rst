@@ -220,6 +220,21 @@ Fixed
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
 * Fixed ``urllib3.contrib.pyopenssl.WrappedSocket`` and ``urllib3.contrib.securetransport.WrappedSocket`` close methods (`#2970 <https://github.com/urllib3/urllib3/issues/2970>`__)
 
+1.26.20 (2024-08-29)
+====================
+
+* Fixed a crash where certain standard library hash functions were absent in
+  FIPS-compliant environments.
+  (`#3432 <https://github.com/urllib3/urllib3/issues/3432>`__)
+* Replaced deprecated dash-separated setuptools entries in ``setup.cfg``.
+  (`#3461 <https://github.com/urllib3/urllib3/pull/3461>`__)
+* Took into account macOS setting ``ECONNRESET`` instead of ``EPROTOTYPE`` in
+  its newer versions.
+  (`#3416 <https://github.com/urllib3/urllib3/pull/3416>`__)
+* Backported changes to our tests and CI configuration from v2.x to support
+  testing with CPython 3.12 and 3.13.
+  (`#3436 <https://github.com/urllib3/urllib3/pull/3436>`__)
+
 1.26.19 (2024-06-17)
 ====================
 
