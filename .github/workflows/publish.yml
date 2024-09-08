@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   build:
+    if: github.repository_owner == 'urllib3'
     name: "Build distribution 📦"
     runs-on: "ubuntu-latest"
     outputs:
