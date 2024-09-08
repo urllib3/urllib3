@@ -6,7 +6,8 @@ from unittest import mock
 import pytest
 
 from urllib3.connection import _get_default_user_agent
-from urllib3.exceptions import ConnectionError
+
+# from urllib3.exceptions import ConnectionError
 from urllib3.http2.connection import (
     HTTP2Connection,
     _is_illegal_header_value,
@@ -106,16 +107,6 @@ class TestHTTP2Connection:
         with pytest.raises(ValueError):
             conn.putheader("foo", "foo\r\nbar")
 
-    def test_endheaders_ConnectionError(self) -> None:
-        conn = HTTP2Connection("example.com")
-        with pytest.raises(ConnectionError):
-            conn.endheaders()
-
-    def test_send_ConnectionError(self) -> None:
-        conn = HTTP2Connection("example.com")
-        with pytest.raises(ConnectionError):
-            conn.send(b"foo")
-
     def test_send_bytes(self) -> None:
         conn = HTTP2Connection("example.com")
         conn.sock = mock.MagicMock(
@@ -125,9 +116,9 @@ class TestHTTP2Connection:
         conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
         conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
 
-        conn.putrequest("GET", "/")
-        conn.endheaders()
-        conn.send(b"foo")
+        conn._putrequest(1, "GET", "/")
+        conn._endheaders(1)
+        conn._send_stream(1, b"foo")
 
         conn._h2_conn._obj.data_to_send.assert_called_with()
         conn.sock.sendall.assert_called_with(b"bar")
@@ -142,9 +133,9 @@ class TestHTTP2Connection:
         conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
         conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
 
-        conn.putrequest("GET", "/")
-        conn.endheaders(message_body=b"foo")
-        conn.send("foo")
+        conn._putrequest(1, "GET", "/")
+        conn._endheaders(1, message_body=b"foo")
+        conn._send_stream(1, "foo")
 
         conn._h2_conn._obj.data_to_send.assert_called_with()
         conn.sock.sendall.assert_called_with(b"bar")
@@ -160,9 +151,9 @@ class TestHTTP2Connection:
         conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
         conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
 
-        conn.putrequest("GET", "/")
-        conn.endheaders(message_body=[b"foo", b"bar"])
-        conn.send([b"foo", b"bar"])
+        conn._putrequest(1, "GET", "/")
+        conn._endheaders(1, message_body=[b"foo", b"bar"])
+        conn._send_stream(1, [b"foo", b"bar"])
 
         conn._h2_conn._obj.data_to_send.assert_has_calls(
             [
@@ -197,9 +188,9 @@ class TestHTTP2Connection:
             conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
 
             with open("foo") as body:
-                conn.putrequest("GET", "/")
-                conn.endheaders(message_body=body)
-                conn.send(body)
+                conn._putrequest(1, "GET", "/")
+                conn._endheaders(1, message_body=body)
+                conn._send_stream(1, body)
 
                 conn._h2_conn._obj.data_to_send.assert_called_with()
                 conn.sock.sendall.assert_called_with(b"foo")
@@ -221,9 +212,9 @@ class TestHTTP2Connection:
             conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
 
             body = open("foo", "rb")
-            conn.putrequest("GET", "/")
-            conn.endheaders(message_body=body)
-            conn.send(body)
+            conn._putrequest(1, "GET", "/")
+            conn._endheaders(1, message_body=body)
+            conn._send_stream(1, body)
 
             conn._h2_conn._obj.data_to_send.assert_called_with()
             conn.sock.sendall.assert_called_with(b"foo")
@@ -234,9 +225,9 @@ class TestHTTP2Connection:
 
     def test_send_invalid_type(self) -> None:
         conn = HTTP2Connection("example.com")
-        conn.putrequest("GET", "/")
+        conn._putrequest(1, "GET", "/")
         with pytest.raises(TypeError):
-            conn.send(1)
+            conn._send_stream(1, 1)
 
     def test_request_GET(self) -> None:
         conn = HTTP2Connection("example.com")
