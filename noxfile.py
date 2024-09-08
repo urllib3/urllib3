@@ -30,12 +30,6 @@ def tests_impl(
     ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
     implementation_name, release_level = session_python_info.split(" ")
 
-    # zstd cannot be installed on CPython 3.13 yet because it pins
-    # an incompatible CFFI version.
-    # https://github.com/indygreg/python-zstandard/issues/210
-    if release_level != "final":
-        extras = extras.replace(",zstd", "")
-
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
     session.install(f".[{extras}]")

@@ -89,8 +89,6 @@ jobs:
             os: ubuntu-latest
             nox-session: emscripten
             experimental: true
-          - python-version: "3.13"
-            experimental: true
         exclude:
           # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
           # https://github.com/python/cpython/issues/83001
