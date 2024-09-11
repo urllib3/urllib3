@@ -1,3 +1,0 @@
-Added version checking for ``h2`` (https://pypi.org/project/h2/) usage.
-
-Now only accepting supported h2 major version 4.x.x.
