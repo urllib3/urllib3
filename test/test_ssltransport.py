@@ -284,7 +284,7 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
     def start_proxy_handler(self) -> None:
         """
         Socket handler for the proxy. Terminates the first TLS layer and tunnels
-        any bytes needed for client <-> server communicatin.
+        any bytes needed for client <-> server communication.
         """
 
         def proxy_handler(listener: socket.socket) -> None:
