@@ -1111,7 +1111,7 @@ Fixed
 
 * Pools can be used as context managers. (Issue #545)
 
-* Don't re-use connections which experienced an SSLError. (Issue #529)
+* Don't reuse connections which experienced an SSLError. (Issue #529)
 
 * Don't fail when gzip decoding an empty stream. (Issue #535)
 

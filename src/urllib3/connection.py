@@ -658,7 +658,7 @@ class HTTPSConnection(HTTPConnection):
     def connect(self) -> None:
         # Today we don't need to be doing this step before the /actual/ socket
         # connection, however in the future we'll need to decide whether to
-        # create a new socket or re-use an existing "shared" socket as a part
+        # create a new socket or reuse an existing "shared" socket as a part
         # of the HTTP/2 handshake dance.
         if self._tunnel_host is not None and self._tunnel_port is not None:
             probe_http2_host = self._tunnel_host

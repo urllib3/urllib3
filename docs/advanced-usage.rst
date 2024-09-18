@@ -24,7 +24,7 @@ However, keep in mind that this does increase memory and socket consumption.
 Similarly, the :class:`~connectionpool.ConnectionPool` class keeps a pool
 of individual :class:`~connection.HTTPConnection` instances. These connections
 are used during an individual request and returned to the pool when the request
-is complete. By default only one connection will be saved for re-use. If you
+is complete. By default only one connection will be saved for reuse. If you
 are making many requests to the same host simultaneously it might improve
 performance to increase this number.
 
