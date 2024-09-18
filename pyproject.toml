@@ -134,4 +134,4 @@ enable_error_code = [
 skip = '.git*,*.svg'
 check-hidden = true
 # ignore-regex = ''
-# ignore-words-list = ''
+ignore-words-list = 'fo,te'
