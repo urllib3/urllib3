@@ -128,3 +128,10 @@ warn_unused_ignores = true
 enable_error_code = [
   "ignore-without-code",
 ]
+
+[tool.codespell]
+# Ref: https://github.com/codespell-project/codespell#using-a-config-file
+skip = '.git*,*.svg'
+check-hidden = true
+# ignore-regex = ''
+# ignore-words-list = ''
