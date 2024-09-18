@@ -32,3 +32,10 @@ repos:
     hooks:
       - id: eslint
         args: ["--fix"]
+  - repo: https://github.com/codespell-project/codespell
+    # Configuration for codespell is in pyproject.toml
+    rev: v2.3.0
+    hooks:
+    - id: codespell
+      additional_dependencies:
+      - tomli
