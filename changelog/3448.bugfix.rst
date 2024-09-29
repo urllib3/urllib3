@@ -1,1 +1,0 @@
-Fixed mypy error when adding to ``HTTPConnection.default_socket_options``.

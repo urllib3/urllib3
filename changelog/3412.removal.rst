@@ -1,1 +1,0 @@
-Note for downstream distributors: the ``_version.py`` file has been removed and is now created at build time by hatch-vcs.
