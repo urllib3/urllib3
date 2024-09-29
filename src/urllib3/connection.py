@@ -717,7 +717,7 @@ class HTTPSConnection(HTTPConnection):
 
                 self._tunnel()
                 # Override the host with the one we're requesting data from.
-                server_hostname = self._tunnel_host  # type: ignore[assignment]
+                server_hostname = typing.cast(str, self._tunnel_host)
 
             if self.server_hostname is not None:
                 server_hostname = self.server_hostname
