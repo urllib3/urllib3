@@ -1,1 +1,1 @@
- Add `HTTPSConnection.proxy_is_tunneling` property.
+Add `HTTPSConnection.proxy_is_tunneling` property to connections.
