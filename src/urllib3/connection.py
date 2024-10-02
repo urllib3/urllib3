@@ -318,7 +318,6 @@ class HTTPConnection(_HTTPConnection):
         """
         Return True if a tunneling proxy is configured, else return False
         """
-
         return self._tunnel_host is not None
 
     def close(self) -> None:
