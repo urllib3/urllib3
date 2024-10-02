@@ -313,6 +313,13 @@ class HTTPConnection(_HTTPConnection):
         """
         return bool(self.proxy) and self._tunnel_host is None
 
+    @property
+    def proxy_is_tunneling(self) -> bool:
+        """
+        Return True if a tunneling proxy is configured, else return False
+        """
+        return self._tunnel_host is not None
+
     def close(self) -> None:
         try:
             super().close()
@@ -695,7 +702,7 @@ class HTTPSConnection(HTTPConnection):
             tls_in_tls = False
 
             # Do we need to establish a tunnel?
-            if self._tunnel_host is not None:
+            if self.proxy_is_tunneling:
                 # We're tunneling to an HTTPS origin so need to do TLS-in-TLS.
                 if self._tunnel_scheme == "https":
                     # _connect_tls_proxy will verify and assign proxy_is_verified
@@ -709,7 +716,7 @@ class HTTPSConnection(HTTPConnection):
 
                 self._tunnel()
                 # Override the host with the one we're requesting data from.
-                server_hostname = self._tunnel_host
+                server_hostname = typing.cast(str, self._tunnel_host)
 
             if self.server_hostname is not None:
                 server_hostname = self.server_hostname
