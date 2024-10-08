@@ -108,6 +108,7 @@ jobs:
 
       - name: "Install Chrome"
         uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
+        id: setup-chrome
         if: ${{ matrix.nox-session == 'emscripten' }}
         with:
           chrome-version: 120
