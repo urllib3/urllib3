@@ -115,8 +115,8 @@ jobs:
           install-chromedriver: true
       - name: Force override system chrome
         run: |
-          sudo rm /usr/bin/google-chrome
-          sudo rm /usr/bin/chrome
+          sudo rm -f /usr/bin/google-chrome
+          sudo rm -f /usr/bin/chrome
           sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/google-chrome
           sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/chrome
           google-chrome --version
