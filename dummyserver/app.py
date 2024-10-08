@@ -320,7 +320,7 @@ async def slow() -> ResponseReturnValue:
 @pyodide_testing_app.route("/dripfeed")
 async def dripfeed() -> ResponseReturnValue:
     # great big text file which streams half the file
-    # then pauses for 5 seconds and streams the rest
+    # then pauses for 2 seconds and streams the rest
     async def generate() -> AsyncGenerator[bytes, None]:
         for x in range(8):
             if x == 4:
