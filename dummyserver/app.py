@@ -5,8 +5,6 @@ import contextlib
 import datetime
 import email.utils
 import gzip
-import hashlib
-import json
 import mimetypes
 import zlib
 from io import BytesIO
@@ -381,24 +379,18 @@ def _find_built_wheel() -> Path | None:
         return None
 
 
-def _rewrite_pyodide_lock() -> bytes | None:
-    file_path = Path(
-        pyodide_testing_app.config["pyodide_dist_dir"], "pyodide-lock.json"
-    )
-    wheel_path = _find_built_wheel()
-    if wheel_path is None:
-        return None
-    wheel_sha256 = hashlib.sha256(wheel_path.read_bytes()).hexdigest()
-    pyodide_json = json.loads(file_path.read_text())
-    pyodide_json["packages"]["urllib3"]["sha256"] = wheel_sha256
-    out_data = json.dumps(pyodide_json).encode("utf-8")
-    print(wheel_sha256)
-    return out_data
-
-
 @pyodide_testing_app.route("/pyodide/<py_file>")
 async def pyodide(py_file: str) -> ResponseReturnValue:
-    file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
+    # in newer versions of pyodide, testing bootstrap files
+    # are not in the distribution, so we have to serve them from
+    # pytest_pyodide instead
+    import pytest_pyodide
+
+    pytest_pyodide_template_path = Path(pytest_pyodide.__file__).parent / "_templates"
+    file_path = Path(pytest_pyodide_template_path, py_file)
+    if not file_path.exists():
+        file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
+
     if file_path is not None and file_path.exists():
         if py_file.endswith(".whl"):
             mime_type: str | None = "application/x-wheel"
