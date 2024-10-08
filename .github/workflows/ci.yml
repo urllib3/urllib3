@@ -113,9 +113,11 @@ jobs:
         with:
           chrome-version: 120
           install-chromedriver: true
-      - run: |
-          ${{ steps.setup-chrome.outputs.chrome-path }} --version 
-          chrome --version
+      - name: Force override system chrome
+        run: |
+          sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/google-chrome
+          sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/chrome
+          google-chrome --version
         if: ${{ matrix.nox-session == 'emscripten' }}
       - name: "Install Firefox"
         uses: browser-actions/setup-firefox@233224b712fc07910ded8c15fb95a555c86da76f # v1.5.0

@@ -213,8 +213,6 @@ def pyodideconsole(session: nox.Session) -> None:
 @nox.parametrize("runner", ["node", "firefox", "chrome"])
 def emscripten(session: nox.Session, runner: str) -> None:
     """Test on Emscripten with Pyodide & Chrome / Firefox / Node.js"""
-    # TODO DEBUG REMOVE ME
-    print(list(os.environ.keys()))
     if runner == "node":
         print(
             "Node version:",
