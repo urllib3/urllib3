@@ -3,7 +3,9 @@ name: Publish to PyPI
 on:
   push:
     branches:
-      - "1.26.x"
+      # We don't publish to Test PyPI on pushes to 1.26.x yet because there is
+      # no mechanism to get a dynamic version number in the branch yet.
+      # - "1.26.x"
       - "main"
     tags:
       - "*"
@@ -13,6 +15,7 @@ permissions:
 
 jobs:
   build:
+    if: github.repository_owner == 'urllib3'
     name: "Build distribution 📦"
     runs-on: "ubuntu-latest"
     outputs:
@@ -25,7 +28,7 @@ jobs:
           fetch-depth: 0 # Needed to fetch the version from git
 
       - name: "Setup Python"
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
         with:
           python-version: "3.x"
 
@@ -86,7 +89,9 @@ jobs:
         gh release upload ${{ github.ref_name }} dist/* --repo ${{ github.repository }}
 
     - name: "Publish dists to PyPI"
-      uses: pypa/gh-action-pypi-publish@ec4db0b4ddc65acdf4bff5fa45ac92d78b56bdf0 # v1.9.0
+      uses: pypa/gh-action-pypi-publish@0ab0b79471669eb3a4d647e625009c62f9f3b241 # v1.10.1
+      with:
+        attestations: true
 
   publish-to-test-pypi:
     name: "Publish to Test PyPI"
@@ -105,6 +110,7 @@ jobs:
         path: "dist/"
 
     - name: "Publish dists to Test PyPI"
-      uses: pypa/gh-action-pypi-publish@ec4db0b4ddc65acdf4bff5fa45ac92d78b56bdf0 # v1.9.0
+      uses: pypa/gh-action-pypi-publish@0ab0b79471669eb3a4d647e625009c62f9f3b241 # v1.10.1
       with:
         repository-url: https://test.pypi.org/legacy/
+        attestations: true
