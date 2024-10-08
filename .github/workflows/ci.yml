@@ -115,6 +115,7 @@ jobs:
           install-chromedriver: true
       - run: |
           ${{ steps.setup-chrome.outputs.chrome-path }} --version 
+          chrome --version
         if: ${{ matrix.nox-session == 'emscripten' }}
       - name: "Install Firefox"
         uses: browser-actions/setup-firefox@233224b712fc07910ded8c15fb95a555c86da76f # v1.5.0
