@@ -384,7 +384,7 @@ async def pyodide(py_file: str) -> ResponseReturnValue:
     # in newer versions of pyodide, testing bootstrap files
     # are not in the distribution, so we have to serve them from
     # pytest_pyodide instead
-    import pytest_pyodide
+    import pytest_pyodide  # type: ignore[import-not-found]
 
     pytest_pyodide_template_path = Path(pytest_pyodide.__file__).parent / "_templates"
     file_path = Path(pytest_pyodide_template_path, py_file)
