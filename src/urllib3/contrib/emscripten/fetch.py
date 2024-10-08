@@ -3,10 +3,10 @@ Support for streaming http requests in emscripten.
 
 A few caveats -
 
-If your browser (or node.js) has WebAssembly Javascript Promise Integration enabled
+If your browser (or Node.js) has WebAssembly JavaScript Promise Integration enabled
 https://github.com/WebAssembly/js-promise-integration/blob/main/proposals/js-promise-integration/Overview.md
 *and* you launch pyodide using `pyodide.runPythonAsync`, this will fetch data using the
-Javascript asynchronous fetch api (wrapped via `pyodide.ffi.call_sync`). In this case
+JavaScript asynchronous fetch api (wrapped via `pyodide.ffi.call_sync`). In this case
 timeouts and streaming should just work.
 
 Otherwise, it uses a combination of XMLHttpRequest and a web-worker for streaming.
@@ -24,13 +24,13 @@ operation, so it requires that you have crossOriginIsolation enabled, by serving
     Cross-Origin-Embedder-Policy: require-corp
 
 You can tell if cross origin isolation is successfully enabled by looking at the global crossOriginIsolated variable in
-javascript console. If it isn't, streaming requests will fallback to XMLHttpRequest, i.e. getting the whole
-request into a buffer and then returning it. it shows a warning in the javascript console in this case.
+JavaScript console. If it isn't, streaming requests will fallback to XMLHttpRequest, i.e. getting the whole
+request into a buffer and then returning it. it shows a warning in the JavaScript console in this case.
 
 Finally, the webworker which does the streaming fetch is created on initial import, but will only be started once
 control is returned to javascript. Call `await wait_for_streaming_ready()` to wait for streaming fetch.
 
-NB: in this code, there are a lot of javascript objects. They are named js_*
+NB: in this code, there are a lot of JavaScript objects. They are named js_*
 to make it clear what type of object they are.
 """
 
@@ -301,8 +301,8 @@ class _StreamingFetcher:
 
 
 class _JSPIReadStream(io.RawIOBase):
-    """A read stream that uses pyodide.ffi.run_sync to read from a Javascript fetch
-    response. This requires support for WebAssembly Javascript Promise Integration
+    """A read stream that uses pyodide.ffi.run_sync to read from a JavaScript fetch
+    response. This requires support for WebAssembly JavaScript Promise Integration
     in the containing browser, and for pyodide to be launched via runPythonAsync.
     """
 
@@ -312,16 +312,16 @@ class _JSPIReadStream(io.RawIOBase):
         timeout: float,
         request: EmscriptenRequest,
         response: EmscriptenResponse,
-        js_abort_controller: Any,  # javascript AbortController for timeouts
+        js_abort_controller: Any,  # JavaScript AbortController for timeouts
     ):
-        """Stream to read data from a Javascript fetch response
+        """Stream to read data from a JavaScript fetch response
 
         Args:
-            js_read_stream (Any): The Javascript stream reader
+            js_read_stream (Any): The JavaScript stream reader
             timeout (float): Timeout in seconds
             request (EmscriptenRequest): The request we're handling
             response (EmscriptenResponse): The response this stream is in
-            js_abort_controller (Any): A javascript AbortController object
+            js_abort_controller (Any): A JavaScript AbortController object
         """
         self.js_read_stream = js_read_stream
         self.timeout = timeout
@@ -436,7 +436,7 @@ def send_streaming_request(request: EmscriptenRequest) -> EmscriptenResponse | N
         return send_jspi_request(request, True)
     elif is_in_node():
         raise _RequestError(
-            message="urllib3 only works in node.js with pyodide.runPythonAsync"
+            message="urllib3 only works in Node.js with pyodide.runPythonAsync"
             " and requires the flag --experimental-wasm-stack-switching in "
             " versions of node <24",
             request=request,
@@ -488,7 +488,7 @@ def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
         return send_jspi_request(request, False)
     elif is_in_node():
         raise _RequestError(
-            message="urllib3 only works in node.js with pyodide.runPythonAsync"
+            message="urllib3 only works in Node.js with pyodide.runPythonAsync"
             " and requires the flag --experimental-wasm-stack-switching in "
             " versions of node <24.",
             request=request,
@@ -537,8 +537,8 @@ def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
 def send_jspi_request(
     request: EmscriptenRequest, streaming: bool
 ) -> EmscriptenResponse:
-    """Send a request using Webassembly Javascript Promise Integration (experimental)
-       to wrap the asynchronous javascript fetch api.
+    """Send a request using WebAssembly JavaScript Promise Integration (experimental)
+       to wrap the asynchronous JavaScript fetch api.
 
     Args:
         request (EmscriptenRequest): Request to send
@@ -554,9 +554,9 @@ def send_jspi_request(
         "method": request.method,
         "signal": js_abort_controller.signal,
     }
-    # Call javascript fetch (async api, returns a promise)
+    # Call JavaScript fetch (async api, returns a promise)
     fetcher_promise_js = js.fetch(request.url, _obj_from_dict(fetch_data))
-    # Now suspend webassembly until we resolve that promise
+    # Now suspend WebAssembly until we resolve that promise
     # or time out.
     response_js = _run_sync_with_timeout(
         fetcher_promise_js,
@@ -589,7 +589,7 @@ def send_jspi_request(
             )
     else:
         # get directly via arraybuffer
-        # n.b. this is another async Javascript call.
+        # n.b. this is another async JavaScript call.
         body = _run_sync_with_timeout(
             response_js.arrayBuffer(),
             timeout,
@@ -608,19 +608,19 @@ def _run_sync_with_timeout(
     request: EmscriptenRequest | None,
     response: EmscriptenResponse | None,
 ) -> Any:
-    """await a javascript promise synchronously with a timeout set via the
+    """await a JavaScript promise synchronously with a timeout set via the
        AbortController
 
     Args:
-        promise (Any): Javascript promise to await
+        promise (Any): JavaScript promise to await
         timeout (float): Timeout in seconds
-        js_abort_controller (Any): A javascript AbortController object, used on timeout
+        js_abort_controller (Any): A JavaScript AbortController object, used on timeout
         request (EmscriptenRequest | None): The request we're currently handling
         response (EmscriptenResponse | None): Response we're handling if it exists yet.
 
     Raises:
         _TimeoutError: If the request times out
-        _RequestError: If the request raises a Javascript exception
+        _RequestError: If the request raises a JavaScript exception
 
     Returns:
         _type_: The result of awaiting the promise.
@@ -633,8 +633,8 @@ def _run_sync_with_timeout(
     try:
         from pyodide.ffi import run_sync
 
-        # run_sync here uses WebAssembly Javascript Promise Integration to
-        # suspend python until the Javascript promise resolves.
+        # run_sync here uses WebAssembly JavaScript Promise Integration to
+        # suspend python until the JavaScript promise resolves.
         return run_sync(promise)
     except JsException as err:
         if err.name == "AbortError":
@@ -652,7 +652,7 @@ def _run_sync_with_timeout(
 def has_jspi() -> bool:
     """Return true if jspi can be used.
 
-    This requires both browser support and also webassembly
+    This requires both browser support and also WebAssembly
     to be in the correct state - i.e. that the javascript
     call into python was async not sync."""
     try:

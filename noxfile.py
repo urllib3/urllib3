@@ -217,14 +217,10 @@ def pyodideconsole(session: nox.Session) -> None:
     session.run("python", "-m", "http.server")
 
 
-# TODO: node support is not tested yet - it should work if you require('xmlhttprequest') before
-# loading pyodide, but there is currently no nice way to do this with pytest-pyodide
-# because you can't override the test runner properties easily - see
-# https://github.com/pyodide/pytest-pyodide/issues/118 for more
 @nox.session(python="3.12")
 @nox.parametrize("runner", ["node", "firefox", "chrome"])
 def emscripten(session: nox.Session, runner: str) -> None:
-    """Test on Emscripten with Pyodide & Chrome / Firefox / node.js"""
+    """Test on Emscripten with Pyodide & Chrome / Firefox / Node.js"""
     if runner == "node":
         print(
             "Node version:",

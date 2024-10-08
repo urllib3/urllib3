@@ -84,6 +84,6 @@ You can verify whether a given environment is cross-origin isolated by evaluatin
 
 Node.js support
 ---------------
-Node.js support uses a relatively new feature in webassembly known as Javascript Promise Integration. 
-To use urllib3 in Node.js, you are likely to need to call node.js with the ``--experimental-wasm-stack-switching`` 
-command line parameter.
+Node.js support uses a relatively new feature in WebAssembly known as JavaScript Promise Integration. 
+To use urllib3 in Node.js, you need to use Node.js version 20 or newer and may need to call Node.js with
+the ``--experimental-wasm-stack-switching`` command line parameter.

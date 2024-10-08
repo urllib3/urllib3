@@ -99,7 +99,7 @@ def selenium_coverage(
 
     def _install_packages(self: Any) -> None:
         if self.browser == "node":
-            # stop node.js checking our https certificates
+            # stop Node.js checking our https certificates
             self.run_js('process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;')
         # install urllib3 from our test server, rather than from existing package
         self.run_js(
@@ -285,15 +285,15 @@ def pytest_configure(config: pytest.Config) -> None:
     # register an additional marker
     config.addinivalue_line(
         "markers",
-        "in_webbrowser: mark test to run only in browser (not in node.js)",
+        "in_webbrowser: mark test to run only in browser (not in Node.js)",
     )
     config.addinivalue_line(
         "markers",
-        "with_jspi: mark test to run only if Webassembly Javascript Promise Integration is supported",
+        "with_jspi: mark test to run only if WebAssembly JavaScript Promise Integration is supported",
     )
     config.addinivalue_line(
         "markers",
-        "without_jspi: mark test to run only if this platform works without  Webassembly Javascript Promise Integration",
+        "without_jspi: mark test to run only if this platform works without  WebAssembly JavaScript Promise Integration",
     )
     config.addinivalue_line(
         "markers",
@@ -303,7 +303,7 @@ def pytest_configure(config: pytest.Config) -> None:
 
 def pytest_runtest_setup(item: pytest.Item) -> None:
     """Configure various markers to mark tests which use behaviour which is
-    browser / node.js specific."""
+    browser / Node.js specific."""
     if item.get_closest_marker("without_jspi"):
         if item.config.getoption("--runtime").startswith("node"):
             pytest.skip("Node.js doesn't support non jspi tests")
@@ -322,11 +322,11 @@ def pytest_runtest_setup(item: pytest.Item) -> None:
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    """Generate Webassembly Javascript Promise Integration based tests
+    """Generate WebAssembly JavaScript Promise Integration based tests
     only for platforms that support it.
 
     Currently:
-    1) node.js only supports use of JSPI because it doesn't support
+    1) Node.js only supports use of JSPI because it doesn't support
     synchronous XMLHttpRequest
 
     2) firefox doesn't support JSPI
