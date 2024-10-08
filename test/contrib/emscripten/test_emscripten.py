@@ -31,10 +31,12 @@ def test_index(
     selenium_coverage.enable_jspi(has_jspi)
 
     @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+    def pyodide_test(selenium_coverage, host: str, port: int, has_jspi: bool) -> None:  # type: ignore[no-untyped-def]
+        import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPConnection
         from urllib3.response import BaseHTTPResponse
 
+        assert urllib3.contrib.emscripten.fetch.has_jspi() == has_jspi
         conn = HTTPConnection(host, port)
         url = f"http://{host}:{port}/"
         conn.request("GET", url)
@@ -53,7 +55,10 @@ def test_index(
         assert decoded1 == decoded2 == "Dummy server!"
 
     pyodide_test(
-        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+        selenium_coverage,
+        testserver_http.http_host,
+        testserver_http.http_port,
+        has_jspi,
     )
 
 
