@@ -656,20 +656,10 @@ def has_jspi() -> bool:
     to be in the correct state - i.e. that the javascript
     call into python was async not sync."""
     try:
-        from pyodide.ffi import run_sync  # noqa: F401
-
-        try:
-            from pyodide.ffi import can_run_sync
-        except ImportError:
-            from pyodide_js._module import (  # type: ignore[import-not-found]
-                validSuspender,
-            )
-
-            def can_run_sync() -> bool:
-                return bool(validSuspender.value)
+        from pyodide.ffi import can_run_sync, run_sync  # noqa: F401
 
         return bool(can_run_sync())
-    except BaseException:
+    except ImportError:
         return False
 
 

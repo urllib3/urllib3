@@ -76,7 +76,7 @@ def selenium_coverage(
     selenium_with_jspi_if_possible: Any, testserver_http: PyodideServerInfo
 ) -> Generator[Any, None, None]:
     def enable_jspi(self: Any, jspi: bool) -> None:
-        if jspi is False and selenium_with_jspi_if_possible.with_jspi:
+        if not jspi and selenium_with_jspi_if_possible.with_jspi:
             code = f"""
                     import urllib3.contrib.emscripten.fetch
                     urllib3.contrib.emscripten.fetch.has_jspi = lambda : {jspi}"""
@@ -162,7 +162,7 @@ class ServerRunnerInfo:
             + code
         )
 
-        if has_jspi is False:
+        if not has_jspi:
             # disable jspi in this code
             code = (
                 textwrap.dedent(

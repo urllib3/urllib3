@@ -86,13 +86,13 @@ def tests_impl(
         "-ra",
         *(("--integration",) if integration else ()),
         f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
-        "--tb=native",
-        "--durations=10",
-        "--strict-config",
-        "--strict-markers",
-        "--disable-socket",
-        "--allow-unix-socket",
-        "--allow-hosts=localhost,::1,127.0.0.0,240.0.0.0",  # See `TARPIT_HOST`
+        #        "--tb=native",
+        #        "--durations=10",
+        #        "--strict-config",
+        #        "--strict-markers",
+        #        "--disable-socket",
+        #        "--allow-unix-socket",
+        #        "--allow-hosts=localhost,127.0.0.1,::1,127.0.0.0,240.0.0.0",  # See `TARPIT_HOST`
         *pytest_extra_args,
         *(session.posargs or ("test/",)),
         env=pytest_session_envvars,
@@ -229,6 +229,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
     session.install("-r", "emscripten-requirements.txt")
     # build wheel into dist folder
     session.run("python", "-m", "build")
+    session.run("bash")
     # make sure we have a dist dir for pyodide
     dist_dir = None
     if "PYODIDE_ROOT" in os.environ:
@@ -256,6 +257,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
                 f"https://github.com/pyodide/pyodide/releases/download/{pyodide_version}/pyodide-{pyodide_version}.tar.bz2",
                 "-O",
                 f"{pyodide_artifacts_path}.tar.bz2",
+                external=True,
             )
             pyodide_artifacts_path.mkdir(parents=True)
             session.run(
@@ -266,6 +268,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
                 str(pyodide_artifacts_path),
                 "--strip-components",
                 "1",
+                external=True,
             )
 
         dist_dir = pyodide_artifacts_path
@@ -281,6 +284,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
             "--dist-dir",
             str(dist_dir),
             "test/contrib/emscripten",
+            "-v",
         ],
     )
 
