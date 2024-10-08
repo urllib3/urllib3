@@ -221,7 +221,6 @@ def emscripten(session: nox.Session, runner: str) -> None:
     session.install("-r", "emscripten-requirements.txt")
     # build wheel into dist folder
     session.run("python", "-m", "build")
-    session.run("bash")
     # make sure we have a dist dir for pyodide
     dist_dir = None
     if "PYODIDE_ROOT" in os.environ:
@@ -240,6 +239,10 @@ def emscripten(session: nox.Session, runner: str) -> None:
                 silent=True,
             ),
         ).strip()
+        # use a pre-release version of pyodide to workaround browser
+        # changes that weren't supported in 0.26.1
+        if pyodide_version == "0.27.0":
+            pyodide_version = "0.27.0a2"
 
         pyodide_artifacts_path = Path(session.cache_dir) / f"pyodide-{pyodide_version}"
         if not pyodide_artifacts_path.exists():

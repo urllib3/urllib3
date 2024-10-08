@@ -398,16 +398,7 @@ def _rewrite_pyodide_lock() -> bytes | None:
 
 @pyodide_testing_app.route("/pyodide/<py_file>")
 async def pyodide(py_file: str) -> ResponseReturnValue:
-    if py_file == "pyodide-lock.json":
-        out_data = _rewrite_pyodide_lock()
-        if out_data is None:
-            return await make_response("", 404)
-        else:
-            return await make_response(out_data, 200, [("Content-Type", "text/json")])
-    if py_file.startswith("urllib3") and py_file.endswith(".whl"):
-        file_path = _find_built_wheel()
-    else:
-        file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
+    file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
     if file_path is not None and file_path.exists():
         if py_file.endswith(".whl"):
             mime_type: str | None = "application/x-wheel"

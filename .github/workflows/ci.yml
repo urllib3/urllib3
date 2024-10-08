@@ -109,6 +109,9 @@ jobs:
       - name: "Install Chrome"
         uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
         if: ${{ matrix.nox-session == 'emscripten' }}
+        with:
+          chrome-version: 120
+          install-chromedriver: true
       - name: "Install Firefox"
         uses: browser-actions/setup-firefox@233224b712fc07910ded8c15fb95a555c86da76f # v1.5.0
         if: ${{ matrix.nox-session == 'emscripten' }}

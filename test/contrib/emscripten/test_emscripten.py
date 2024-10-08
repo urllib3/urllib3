@@ -1214,7 +1214,7 @@ def test_has_jspi_exception(
             @patch("pyodide.ffi.can_run_sync")
             def should_return_false(func):  # type: ignore[no-untyped-def]
                 func.return_value = (20, False)
-                func.side_effect = Exception("WOO")
+                func.side_effect = ImportError()
                 from urllib3.contrib.emscripten.fetch import has_jspi
 
                 assert has_jspi() is False
