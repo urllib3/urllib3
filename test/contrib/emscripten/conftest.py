@@ -151,16 +151,6 @@ class ServerRunnerInfo:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
-        # make sure any import of urllib comes from our package
-        code = (
-            textwrap.dedent(
-                f"""
-                import pyodide_js as _pjs
-                await _pjs.loadPackage('https://{self.host}:{self.port}/dist/urllib3.whl')
-                """
-            )
-            + code
-        )
 
         if not has_jspi:
             # disable jspi in this code
@@ -173,6 +163,18 @@ class ServerRunnerInfo:
                 )
                 + code
             )
+
+        # make sure any import of urllib comes from our package
+        code = (
+            textwrap.dedent(
+                f"""
+                import pyodide_js as _pjs
+                await _pjs.loadPackage('https://{self.host}:{self.port}/dist/urllib3.whl')
+                """
+            )
+            + code
+        )
+
         # add coverage collection to this code
         code = (
             textwrap.dedent(
