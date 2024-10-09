@@ -53,7 +53,6 @@ async def alpn_protocol() -> ResponseReturnValue:
 @hypercorn_app.route("/certificate")
 async def certificate() -> ResponseReturnValue:
     """Return the requester's certificate."""
-    print("scope", request.scope)
     subject = request.scope["extensions"]["tls"]["client_cert_name"]
     subject_as_dict = dict(part.split("=") for part in subject.split(", "))
     return await make_response(subject_as_dict)
@@ -381,13 +380,19 @@ def _find_built_wheel() -> Path | None:
         return None
 
 
-def _rewrite_pyodide_lock():
+def _rewrite_pyodide_lock() -> bytes:
+    # rewrite the pyodide-lock.json file and serve our wheel instead
+    # of the one in the package. This is because in the situation of
+    # webworker testing we can't run code before pyodide loads packages,
+    # so we need to make the default package loading return our wheel.
     file_path = Path(
         pyodide_testing_app.config["pyodide_dist_dir"], "pyodide-lock.json"
     )
-    wheel_sha256 = hashlib.sha256(_find_built_wheel().read_bytes()).hexdigest()
     pyodide_json = json.loads(file_path.read_text())
-    pyodide_json["packages"]["urllib3"]["sha256"] = wheel_sha256
+    wheel_path = _find_built_wheel()
+    if wheel_path is not None:
+        wheel_sha256 = hashlib.sha256(wheel_path.read_bytes()).hexdigest()
+        pyodide_json["packages"]["urllib3"]["sha256"] = wheel_sha256
     out_data = json.dumps(pyodide_json).encode("utf-8")
     return out_data
 
@@ -397,23 +402,19 @@ async def pyodide(py_file: str) -> ResponseReturnValue:
     # in newer versions of pyodide, testing bootstrap files
     # are not in the distribution, so we have to serve them from
     # pytest_pyodide instead
-    import pytest_pyodide
+    import pytest_pyodide  # type: ignore[import-not-found]
 
-    print("WOOOOOOOOOOOO:", py_file)
     pytest_pyodide_template_path = Path(pytest_pyodide.__file__).parent / "_templates"
 
     if py_file == "pyodide-lock.json":
         out_data = _rewrite_pyodide_lock()
         return await make_response(out_data, 200, [("Content-Type", "text/json")])
     if py_file.startswith("urllib3") and py_file.endswith(".whl"):
-        print("Wheel")
         file_path = _find_built_wheel()
     else:
         file_path = Path(pytest_pyodide_template_path, py_file)
-        print("Template file", file_path)
         if not file_path.exists():
             file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
-            print("Dist file", file_path)
 
     if file_path is not None and file_path.exists():
         if py_file.endswith(".whl"):
