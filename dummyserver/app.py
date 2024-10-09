@@ -5,6 +5,7 @@ import contextlib
 import datetime
 import email.utils
 import gzip
+import hashlib
 import json
 import mimetypes
 import zlib
@@ -380,13 +381,14 @@ def _find_built_wheel() -> Path | None:
         return None
 
 
-def _rewrite_pyodide_lock(file_path: Path):
-    # make sure that we never load the version of urllib3 built to pyodide.
-    # (e.g. in web workers, where things may do pyodide.loadPackagesFromImports
-    # before we get a chance to call pyodide.loadPackage)
+def _rewrite_pyodide_lock():
+    file_path = Path(
+        pyodide_testing_app.config["pyodide_dist_dir"], "pyodide-lock.json"
+    )
+    wheel_sha256 = hashlib.sha256(_find_built_wheel().read_bytes()).hexdigest()
     pyodide_json = json.loads(file_path.read_text())
-    del pyodide_json["packages"]["urllib3"]
-    out_data = json.dumps(pyodide_json)
+    pyodide_json["packages"]["urllib3"]["sha256"] = wheel_sha256
+    out_data = json.dumps(pyodide_json).encode("utf-8")
     return out_data
 
 
@@ -395,16 +397,25 @@ async def pyodide(py_file: str) -> ResponseReturnValue:
     # in newer versions of pyodide, testing bootstrap files
     # are not in the distribution, so we have to serve them from
     # pytest_pyodide instead
-    import pytest_pyodide  # type: ignore[import-not-found]
+    import pytest_pyodide
 
+    print("WOOOOOOOOOOOO:", py_file)
     pytest_pyodide_template_path = Path(pytest_pyodide.__file__).parent / "_templates"
-    file_path = Path(pytest_pyodide_template_path, py_file)
-    if not file_path.exists():
-        file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
-    if file_path.name == "pyodide-lock.json":
-        headers = [("Content-Type", "text/json")]
-        return await make_response(_rewrite_pyodide_lock(file_path), 200, headers)
-    elif file_path is not None and file_path.exists():
+
+    if py_file == "pyodide-lock.json":
+        out_data = _rewrite_pyodide_lock()
+        return await make_response(out_data, 200, [("Content-Type", "text/json")])
+    if py_file.startswith("urllib3") and py_file.endswith(".whl"):
+        print("Wheel")
+        file_path = _find_built_wheel()
+    else:
+        file_path = Path(pytest_pyodide_template_path, py_file)
+        print("Template file", file_path)
+        if not file_path.exists():
+            file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
+            print("Dist file", file_path)
+
+    if file_path is not None and file_path.exists():
         if py_file.endswith(".whl"):
             mime_type: str | None = "application/x-wheel"
             headers = [
