@@ -283,7 +283,7 @@ def test_timeout_in_worker_non_streaming(
         from urllib3.exceptions import TimeoutError
         from urllib3.connection import HTTPConnection
         from pyodide.ffi import JsException
-        from http.client import HTTPException as HTTPException
+        from http.client import HTTPException
         conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port},timeout=1.0)
         result=-1
         try:

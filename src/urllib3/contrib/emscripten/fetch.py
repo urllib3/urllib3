@@ -301,9 +301,25 @@ class _StreamingFetcher:
 
 
 class _JSPIReadStream(io.RawIOBase):
-    """A read stream that uses pyodide.ffi.run_sync to read from a JavaScript fetch
+    """
+    A read stream that uses pyodide.ffi.run_sync to read from a JavaScript fetch
     response. This requires support for WebAssembly JavaScript Promise Integration
     in the containing browser, and for pyodide to be launched via runPythonAsync.
+
+    :param js_read_stream:
+        The JavaScript stream reader
+
+    :param timeout:
+        Timeout in seconds
+
+    :param request:
+        The request we're handling
+
+    :param response:
+        The response this stream relates to
+
+    :param js_abort_controller:
+        A JavaScript AbortController object, used for timeouts
     """
 
     def __init__(
@@ -314,15 +330,6 @@ class _JSPIReadStream(io.RawIOBase):
         response: EmscriptenResponse,
         js_abort_controller: Any,  # JavaScript AbortController for timeouts
     ):
-        """Stream to read data from a JavaScript fetch response
-
-        Args:
-            js_read_stream (Any): The JavaScript stream reader
-            timeout (float): Timeout in seconds
-            request (EmscriptenRequest): The request we're handling
-            response (EmscriptenResponse): The response this stream is in
-            js_abort_controller (Any): A JavaScript AbortController object
-        """
         self.js_read_stream = js_read_stream
         self.timeout = timeout
         self._is_closed = False
@@ -537,12 +544,18 @@ def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
 def send_jspi_request(
     request: EmscriptenRequest, streaming: bool
 ) -> EmscriptenResponse:
-    """Send a request using WebAssembly JavaScript Promise Integration (experimental)
-       to wrap the asynchronous JavaScript fetch api.
+    """
+    Send a request using WebAssembly JavaScript Promise Integration
+    to wrap the asynchronous JavaScript fetch api (experimental).
 
-    Args:
-        request (EmscriptenRequest): Request to send
-        streaming : Whether to stream response
+    :param request:
+        Request to send
+
+    :param streaming:
+        Whether to stream the response
+
+    :return: The response object
+    :rtype: EmscriptenResponse
     """
     timeout = request.timeout
     js_abort_controller = js.AbortController.new()
@@ -608,22 +621,29 @@ def _run_sync_with_timeout(
     request: EmscriptenRequest | None,
     response: EmscriptenResponse | None,
 ) -> Any:
-    """await a JavaScript promise synchronously with a timeout set via the
-       AbortController
+    """
+    Await a JavaScript promise synchronously with a timeout which is implemented
+    via the AbortController
 
-    Args:
-        promise (Any): JavaScript promise to await
-        timeout (float): Timeout in seconds
-        js_abort_controller (Any): A JavaScript AbortController object, used on timeout
-        request (EmscriptenRequest | None): The request we're currently handling
-        response (EmscriptenResponse | None): Response we're handling if it exists yet.
+    :param promise:
+        Javascript promise to await
 
-    Raises:
-        _TimeoutError: If the request times out
-        _RequestError: If the request raises a JavaScript exception
+    :param timeout:
+        Timeout in seconds
 
-    Returns:
-        _type_: The result of awaiting the promise.
+    :param js_abort_controller:
+        A JavaScript AbortController object, used on timeout
+
+    :param request:
+        The request being handled
+
+    :param response:
+        The response being handled (if it exists yet)
+
+    :raises _TimeoutError: If the request times out
+    :raises _RequestError: If the request raises a JavaScript exception
+
+    :return: The result of awaiting the promise.
     """
     timer_id = None
     if timeout > 0:
@@ -650,11 +670,16 @@ def _run_sync_with_timeout(
 
 
 def has_jspi() -> bool:
-    """Return true if jspi can be used.
+    """
+    Return true if jspi can be used.
 
     This requires both browser support and also WebAssembly
     to be in the correct state - i.e. that the javascript
-    call into python was async not sync."""
+    call into python was async not sync.
+
+    :return: True if jspi can be used.
+    :rtype: bool
+    """
     try:
         from pyodide.ffi import can_run_sync, run_sync  # noqa: F401
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import os
 import random
+import re
 import textwrap
 from dataclasses import dataclass
 from pathlib import Path
@@ -151,6 +152,31 @@ class ServerRunnerInfo:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
+        # replace imports of urllib3 in the code
+        # so that pyodide doesn't find them and automatically
+        # load the urllib3 module from its distribution
+        # n.b. we can't override this import otherwise because
+        # we can't run custom js in the pyodide worker test template
+        # before the python code is launched
+        code = "import importlib\n" + code
+        code = re.sub(
+            r"import (urllib3\S*)", r"urllib3=importlib.__import__('\1')", code
+        )
+        code = re.sub(
+            r"from (urllib3\S*) import (\S*)",
+            r"\2=importlib.import_module('\1').\2",
+            code,
+        )
+        # now make sure import of urllib3 comes from our package
+        code = (
+            textwrap.dedent(
+                f"""
+                import pyodide_js as _pjs
+                await _pjs.loadPackage('https://{self.host}:{self.port}/dist/urllib3.whl')
+                """
+            )
+            + code
+        )
 
         if not has_jspi:
             # disable jspi in this code
@@ -187,6 +213,9 @@ class ServerRunnerInfo:
         _coverage_js.Array.from_(_coverage_outdata)
         """
         )
+
+        print("Substituted code:", code)
+
         if self.selenium.browser == "firefox":
             # running in worker is SLOW on firefox
             self.selenium.set_script_timeout(30)
