@@ -158,49 +158,47 @@ class ServerRunnerInfo:
         # n.b. we can't override this import otherwise because
         # we can't run custom js in the pyodide worker test template
         # before the python code is launched
-        code = "import importlib\n" + code
-        code = re.sub(
+
+        import_fixed_code = re.sub(
             r"import (urllib3\S*)", r"urllib3=importlib.__import__('\1')", code
         )
-        code = re.sub(
+        import_fixed_code = re.sub(
             r"from (urllib3\S*) import (\S*)",
             r"\2=importlib.import_module('\1').\2",
-            code,
+            import_fixed_code,
         )
-        # now make sure import of urllib3 comes from our package
-        code = (
-            textwrap.dedent(
-                f"""
-                import pyodide_js as _pjs
-                await _pjs.loadPackage('https://{self.host}:{self.port}/dist/urllib3.whl')
-                """
-            )
-            + code
-        )
+
+        jspi_code = ""
 
         if not has_jspi:
             # disable jspi in this code
-            code = (
-                textwrap.dedent(
-                    """
-                import urllib3.contrib.emscripten.fetch
+            jspi_code = textwrap.dedent(
+                """
+                urllib3=importlib.__import__('urllib3.contrib.emscripten.fetch')
                 urllib3.contrib.emscripten.fetch.has_jspi = lambda : False
                 """
-                )
-                + code
             )
-        # add coverage collection to this code
-        code = (
-            textwrap.dedent(
+
+        code = "import importlib\n" + code
+
+        # now make sure import of urllib3 comes from our package
+        load_wheel_code = textwrap.dedent(
+            f"""
+                import pyodide_js as _pjs
+                await _pjs.loadPackage('https://{self.host}:{self.port}/dist/urllib3.whl')
                 """
+        )
+
+        # add coverage collection to this code
+        coverage_init_code = textwrap.dedent(
+            """
         import coverage
         _coverage= coverage.Coverage(source_pkgs=['urllib3'])
         _coverage.start()
         """
-            )
-            + code
         )
-        code += textwrap.dedent(
+
+        coverage_end_code = textwrap.dedent(
             """
         _coverage.stop()
         _coverage.save()
@@ -214,7 +212,16 @@ class ServerRunnerInfo:
         """
         )
 
-        print("Substituted code:", code)
+        # the ordering of these code blocks is important - makes sure
+        # that the first thing that happens is our wheel is loaded
+        code = (
+            load_wheel_code
+            + "import importlib\n"
+            + jspi_code
+            + coverage_init_code
+            + import_fixed_code
+            + coverage_end_code
+        )
 
         if self.selenium.browser == "firefox":
             # running in worker is SLOW on firefox
