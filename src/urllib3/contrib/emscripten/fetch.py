@@ -134,17 +134,18 @@ class _ReadStream(io.RawIOBase):
         return self.is_closed()
 
     def close(self) -> None:
-        if not self.is_closed():
-            self.read_len = 0
-            self.read_pos = 0
-            self.int_buffer = None
-            self.byte_buffer = None
-            self._is_closed = True
-            self.request = None
-            if self.is_live:
-                self.worker.postMessage(_obj_from_dict({"close": self.connection_id}))
-                self.is_live = False
-            super().close()
+        if self.is_closed():
+            return
+        self.read_len = 0
+        self.read_pos = 0
+        self.int_buffer = None
+        self.byte_buffer = None
+        self._is_closed = True
+        self.request = None
+        if self.is_live:
+            self.worker.postMessage(_obj_from_dict({"close": self.connection_id}))
+            self.is_live = False
+        super().close()
 
     def readable(self) -> bool:
         return True
@@ -353,15 +354,17 @@ class _JSPIReadStream(io.RawIOBase):
         return self.is_closed()
 
     def close(self) -> None:
-        if not self.is_closed():
-            self.read_len = 0
-            self.read_pos = 0
-            self.js_read_stream = None
-            self._is_closed = True
-            self._is_done = True
-            self.request = None
-            self.response = None
-            super().close()
+        if self.is_closed():
+            return
+        self.read_len = 0
+        self.read_pos = 0
+        self.js_read_stream.cancel()
+        self.js_read_stream = None
+        self._is_closed = True
+        self._is_done = True
+        self.request = None
+        self.response = None
+        super().close()
 
     def readable(self) -> bool:
         return True
