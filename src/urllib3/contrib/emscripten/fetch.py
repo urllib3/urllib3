@@ -446,9 +446,9 @@ def send_streaming_request(request: EmscriptenRequest) -> EmscriptenResponse | N
         return send_jspi_request(request, True)
     elif is_in_node():
         raise _RequestError(
-            message="urllib3 only works in Node.js with pyodide.runPythonAsync"
-            " and requires the flag --experimental-wasm-stack-switching in "
-            " versions of node <24",
+            message="urllib3 only works in Node.js with pyodide.runPythonAsync."
+            " It requires Node.js 20 or newer, and you will need the flag "
+            "--experimental-wasm-stack-switching in versions lower than 24",
             request=request,
             response=None,
         )
