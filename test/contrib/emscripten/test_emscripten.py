@@ -612,7 +612,7 @@ def test_streaming_notready_warning(
         #assert len([x for x in log_msgs if x.find("Can't stream HTTP requests")!=-1])==1
         #assert urllib3.contrib.emscripten.fetch._SHOWN_STREAMING_WARNING==True
         """
-    run_from_server.run_webworker(worker_code, has_jspi=False)
+    run_from_server.run_webworker(worker_code)
 
 
 def test_post_receive_json(
