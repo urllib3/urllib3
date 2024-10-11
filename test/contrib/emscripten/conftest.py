@@ -59,9 +59,9 @@ class PyodideServerInfo:
 
 @pytest.fixture()
 def selenium_with_jspi_if_possible(
-    request: pytest.FixtureRequest, runtime: str
+    request: pytest.FixtureRequest, runtime: str, has_jspi: bool
 ) -> Generator[Any, None, None]:
-    if runtime.startswith("firefox"):
+    if runtime.startswith("firefox") or not has_jspi:
         fixture_name = "selenium"
         with_jspi = False
     else:
@@ -76,13 +76,6 @@ def selenium_with_jspi_if_possible(
 def selenium_coverage(
     selenium_with_jspi_if_possible: Any, testserver_http: PyodideServerInfo
 ) -> Generator[Any, None, None]:
-    def enable_jspi(self: Any, jspi: bool) -> None:
-        if not jspi and selenium_with_jspi_if_possible.with_jspi:
-            code = f"""
-                    import urllib3.contrib.emscripten.fetch
-                    urllib3.contrib.emscripten.fetch.has_jspi = lambda : {jspi}"""
-            self.run(code)
-
     def _install_packages(self: Any) -> None:
         if self.browser == "node":
             # stop Node.js checking our https certificates
@@ -105,14 +98,6 @@ _coverage.start()
         selenium_with_jspi_if_possible,
         "_install_packages",
         _install_packages.__get__(
-            selenium_with_jspi_if_possible, selenium_with_jspi_if_possible.__class__
-        ),
-    )
-
-    setattr(
-        selenium_with_jspi_if_possible,
-        "enable_jspi",
-        enable_jspi.__get__(
             selenium_with_jspi_if_possible, selenium_with_jspi_if_possible.__class__
         ),
     )
@@ -148,7 +133,7 @@ class ServerRunnerInfo:
         self.selenium = selenium
         self.dist_dir = dist_dir
 
-    def run_webworker(self, code: str, *, has_jspi: bool = True) -> Any:
+    def run_webworker(self, code: str) -> Any:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
@@ -169,15 +154,6 @@ class ServerRunnerInfo:
         )
 
         jspi_code = ""
-
-        if not has_jspi:
-            # disable jspi in this code
-            jspi_code = textwrap.dedent(
-                """
-                urllib3=importlib.__import__('urllib3.contrib.emscripten.fetch')
-                urllib3.contrib.emscripten.fetch.has_jspi = lambda : False
-                """
-            )
 
         code = "import importlib\n" + code
 
@@ -293,7 +269,6 @@ def run_from_server(
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    # register an additional marker
     config.addinivalue_line(
         "markers",
         "in_webbrowser: mark test to run only in browser (not in Node.js)",
@@ -310,26 +285,30 @@ def pytest_configure(config: pytest.Config) -> None:
         "markers",
         "webworkers: mark test to run only if this platform can test web workers",
     )
+    config.addinivalue_line(
+        "markers",
+        "node_without_jspi: mark test to run in node with jspi enabled (for failure testing)",
+    )
 
 
-def pytest_runtest_setup(item: pytest.Item) -> None:
-    """Configure various markers to mark tests which use behaviour which is
-    browser / Node.js specific."""
-    if item.get_closest_marker("without_jspi"):
-        if item.config.getoption("--runtime").startswith("node"):
-            pytest.skip("Node.js doesn't support non jspi tests")
+# def pytest_runtest_setup(item: pytest.Item) -> None:
+#     """Configure various markers to mark tests which use behaviour which is
+#     browser / Node.js specific."""
+#     if item.get_closest_marker("without_jspi"):
+#         if item.config.getoption("--runtime").startswith("node"):
+#             pytest.skip("Node.js doesn't support non jspi tests")
 
-    if item.get_closest_marker("with_jspi"):
-        if item.config.getoption("--runtime").startswith("firefox"):
-            pytest.skip("Firefox doesn't support jspi tests")
+#     if item.get_closest_marker("with_jspi"):
+#         if item.config.getoption("--runtime").startswith("firefox"):
+#             pytest.skip("Firefox doesn't support jspi tests")
 
-    if item.get_closest_marker("in_webbrowser"):
-        if item.config.getoption("--runtime").startswith("node"):
-            pytest.skip("Skipping web browser test in Node.js")
+#     if item.get_closest_marker("in_webbrowser"):
+#         if item.config.getoption("--runtime").startswith("node"):
+#             pytest.skip("Skipping web browser test in Node.js")
 
-    if item.get_closest_marker("webworkers"):
-        if item.config.getoption("--runtime").startswith("node"):
-            pytest.skip("Skipping webworker test in Node.js")
+#     if item.get_closest_marker("webworkers"):
+#         if item.config.getoption("--runtime").startswith("node"):
+#             pytest.skip("Skipping webworker test in Node.js")
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
@@ -345,9 +324,34 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     3) Chrome supports JSPI on or off.
     """
     if "has_jspi" in metafunc.fixturenames:
+        can_run_with_jspi = False
+        can_run_without_jspi = False
         if metafunc.config.getoption("--runtime").startswith("node"):
-            metafunc.parametrize("has_jspi", [True])
+            if (
+                metafunc.definition.get_closest_marker("webworkers") is None
+                and metafunc.definition.get_closest_marker("in_webbrowser") is None
+            ):
+                # node only supports JSPI and doesn't support workers or
+                # webbrowser specific tests
+                can_run_with_jspi = True
+            if metafunc.definition.get_closest_marker("node_without_jspi"):
+                can_run_without_jspi = True
+                can_run_with_jspi = False
+
         elif metafunc.config.getoption("--runtime").startswith("firefox"):
-            metafunc.parametrize("has_jspi", [False])
+            can_run_without_jspi = True  # firefox doesn't support JSPI
         else:
-            metafunc.parametrize("has_jspi", [True, False])
+            # chrome supports JSPI on or off
+            can_run_without_jspi = True
+            can_run_with_jspi = True
+        if metafunc.definition.get_closest_marker("with_jspi"):
+            can_run_without_jspi = False
+        elif metafunc.definition.get_closest_marker("without_jspi"):
+            can_run_with_jspi = False
+
+        jspi_options = []
+        if can_run_without_jspi:
+            jspi_options.append(False)
+        if can_run_with_jspi:
+            jspi_options.append(True)
+        metafunc.parametrize("has_jspi", jspi_options)

@@ -34,8 +34,6 @@ else:
 def test_index(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int, has_jspi: bool) -> None:  # type: ignore[no-untyped-def]
         import urllib3.contrib.emscripten.fetch
@@ -71,8 +69,6 @@ def test_index(
 def test_pool_requests(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int, https_port: int, has_jspi: bool) -> None:  # type: ignore[no-untyped-def]
         # first with PoolManager
@@ -144,8 +140,6 @@ def test_pool_requests(
 def test_wrong_protocol(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import http.client
@@ -167,8 +161,6 @@ def test_wrong_protocol(
 def test_bad_method(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import http.client
@@ -192,8 +184,6 @@ def test_bad_method(
 def test_no_response(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import http.client
@@ -213,8 +203,6 @@ def test_no_response(
 def test_404(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPConnection
@@ -241,8 +229,6 @@ def test_timeout_warning(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
 ) -> None:
-    selenium_coverage.enable_jspi(False)
-
     @run_in_pyodide()  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import js  # type: ignore[import-not-found]
@@ -301,7 +287,7 @@ def test_timeout_in_worker_non_streaming(
             result=-4
         assert result == 1
 """
-    run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
+    run_from_server.run_webworker(worker_code)
 
 
 @pytest.mark.webworkers
@@ -328,14 +314,12 @@ def test_timeout_in_worker_streaming(
             result=-2
         assert result == 1
 """
-    run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
+    run_from_server.run_webworker(worker_code)
 
 
 def test_index_https(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPSConnection
@@ -357,9 +341,6 @@ def test_index_https(
 def test_non_streaming_no_fallback_warning(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    # this is only relevant if JSPI is not available
-    selenium_coverage.enable_jspi(False)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import js
@@ -400,9 +381,6 @@ def test_non_streaming_no_fallback_warning(
 def test_streaming_fallback_warning(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    # this is only relevant if JSPI is not available
-    selenium_coverage.enable_jspi(False)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import js
@@ -449,8 +427,6 @@ def test_specific_method(
     run_from_server: ServerRunnerInfo,
     has_jspi: bool,
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3 import HTTPSConnectionPool
@@ -498,7 +474,7 @@ def test_streaming_download(
             data=response.data.decode('utf-8')
             assert len(data) == 17825792
 """
-    run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
+    run_from_server.run_webworker(worker_code)
 
 
 @pytest.mark.webworkers
@@ -543,7 +519,7 @@ def test_streaming_close(
             del body_internal
             del conn
 """
-    run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
+    run_from_server.run_webworker(worker_code)
 
 
 @pytest.mark.webworkers
@@ -570,7 +546,7 @@ def test_streaming_bad_url(
             with pytest.raises(http.client.HTTPException):
                 conn.request("GET", "{bad_url}",preload_content=False)
 """
-    run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
+    run_from_server.run_webworker(worker_code)
 
 
 @pytest.mark.webworkers
@@ -599,7 +575,7 @@ def test_streaming_bad_method(
                 # TRACE method should throw SecurityError in Javascript
                 conn.request("TRACE", "{bad_url}",preload_content=False)
 """
-    run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
+    run_from_server.run_webworker(worker_code)
 
 
 @pytest.mark.webworkers
@@ -609,7 +585,6 @@ def test_streaming_notready_warning(
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
 ) -> None:
-    selenium_coverage.enable_jspi(False)
     # test streaming download but don't wait for
     # worker to be ready - should fallback to non-streaming
     # and log a warning
@@ -643,8 +618,6 @@ def test_streaming_notready_warning(
 def test_post_receive_json(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import json
@@ -674,10 +647,8 @@ def test_post_receive_json(
 
 
 def test_upload(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3 import HTTPConnectionPool
@@ -703,7 +674,6 @@ def test_upload(
 def test_streaming_not_ready_in_browser(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(False)  # only relevant if JSPI is disabled
     # streaming ready should always be false
     # if we're in the main browser thread
     selenium_coverage.run_async(
@@ -717,9 +687,8 @@ def test_streaming_not_ready_in_browser(
 
 
 def test_requests_with_micropip(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
     # this can't be @run_in_pyodide(packages=['urllib3']) because of the async code
     selenium_coverage.run_async(
         f"""
@@ -740,10 +709,8 @@ def test_requests_with_micropip(
 
 
 def test_open_close(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from http.client import ResponseNotReady
@@ -783,6 +750,7 @@ def test_open_close(
 # throw exceptions nicely, by deliberately breaking things
 # this is for coverage
 @pytest.mark.webworkers
+@pytest.mark.without_jspi
 def test_break_worker_streaming(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
@@ -854,14 +822,12 @@ def test_break_worker_streaming(
             data=response.read()
         body_internal.worker.postMessage = old_pm
 """
-    run_from_server.run_webworker(worker_code, has_jspi=False)
+    run_from_server.run_webworker(worker_code)
 
 
 def test_response_init_length(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import pytest
@@ -904,10 +870,8 @@ def test_response_init_length(
 
 
 def test_response_close_connection(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPConnection
@@ -926,10 +890,8 @@ def test_response_close_connection(
 
 
 def test_read_chunked(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from urllib3.connection import HTTPConnection
@@ -949,10 +911,8 @@ def test_read_chunked(
 
 
 def test_retries(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import pytest
@@ -986,10 +946,8 @@ def test_retries(
 
 
 def test_insecure_requests_warning(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int, https_port: int) -> None:  # type: ignore[no-untyped-def]
         import warnings
@@ -1023,14 +981,12 @@ def test_has_jspi_worker(
     assert(urllib3.contrib.emscripten.fetch.has_jspi() == {has_jspi})
     """
 
-    run_from_server.run_webworker(worker_code, has_jspi=has_jspi)
+    run_from_server.run_webworker(worker_code)
 
 
 def test_has_jspi(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
-    selenium_coverage.enable_jspi(has_jspi)
-
     @run_in_pyodide
     def pyodide_test(selenium, has_jspi):  # type: ignore[no-untyped-def]
         import urllib3.contrib.emscripten.fetch
@@ -1046,8 +1002,6 @@ def test_timeout_jspi(
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
 ) -> None:
-    selenium_coverage.enable_jspi(True)
-
     @run_in_pyodide
     def pyodide_test(selenium, host, port):  # type: ignore[no-untyped-def]
         import pytest
@@ -1071,7 +1025,6 @@ def test_timeout_jspi(
 def test_streaming_jspi(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(True)
     bigfile_url = (
         f"http://{testserver_http.http_host}:{testserver_http.http_port}/dripfeed"
     )
@@ -1106,11 +1059,10 @@ def test_streaming_jspi(
     )
 
 
-@pytest.mark.with_jspi
+@pytest.mark.node_without_jspi
 def test_non_jspi_fail_in_node(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(False)
     if selenium_coverage.browser != "node":
         pytest.skip("node only test")
 
@@ -1141,8 +1093,6 @@ def test_non_jspi_fail_in_node(
 def test_jspi_fetch_error(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(True)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import http.client
@@ -1166,8 +1116,6 @@ def test_jspi_fetch_error(
 def test_jspi_readstream_errors(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(True)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         import io
@@ -1212,8 +1160,6 @@ def test_jspi_readstream_errors(
 def test_has_jspi_exception(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
-    selenium_coverage.enable_jspi(True)
-
     @run_in_pyodide  # type: ignore[misc]
     def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
         from unittest.mock import patch
