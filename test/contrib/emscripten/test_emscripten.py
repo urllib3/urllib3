@@ -22,13 +22,10 @@ from pytest_pyodide import run_in_pyodide  # type: ignore[import-not-found] # no
 from .conftest import PyodideServerInfo, ServerRunnerInfo  # noqa: E402
 
 # make our ssl certificates work in chrome
-if hasattr(pytest_pyodide.runner, "CHROME_FLAGS"):
-    pytest_pyodide.runner.CHROME_FLAGS.append("ignore-certificate-errors")
-else:
-    pyodide_config = pytest_pyodide.config.get_global_config()
-    pyodide_config.set_flags(
-        "chrome", ["ignore-certificate-errors"] + pyodide_config.get_flags("chrome")
-    )
+pyodide_config = pytest_pyodide.config.get_global_config()
+pyodide_config.set_flags(
+    "chrome", ["ignore-certificate-errors"] + pyodide_config.get_flags("chrome")
+)
 
 
 def test_index(

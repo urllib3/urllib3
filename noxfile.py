@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import shutil
 import sys
-import typing
 from pathlib import Path
 
 import nox
@@ -219,8 +218,6 @@ def emscripten(session: nox.Session, runner: str) -> None:
             session.run("node", "--version", silent=True, external=True),
         )
     session.install("-r", "emscripten-requirements.txt")
-    # build wheel into dist folder
-    session.run("python", "-m", "build")
     # make sure we have a dist dir for pyodide
     dist_dir = None
     if "PYODIDE_ROOT" in os.environ:
@@ -228,17 +225,8 @@ def emscripten(session: nox.Session, runner: str) -> None:
         # use the dist directory from that
         dist_dir = Path(os.environ["PYODIDE_ROOT"]) / "dist"
     else:
-        # we don't have a build tree, get one
-        # that matches the version of pyodide build
-        pyodide_version = typing.cast(
-            str,
-            session.run(
-                "python",
-                "-c",
-                "import pyodide_build;print(pyodide_build.__version__)",
-                silent=True,
-            ),
-        ).strip()
+        # we don't have a build tree
+        pyodide_version = "0.27.0a2"
 
         pyodide_artifacts_path = Path(session.cache_dir) / f"pyodide-{pyodide_version}"
         if not pyodide_artifacts_path.exists():

@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 import os
 import random
-import re
 import textwrap
 from dataclasses import dataclass
 from pathlib import Path
@@ -137,67 +136,33 @@ class ServerRunnerInfo:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
-        # replace imports of urllib3 in the code
-        # so that pyodide doesn't find them and automatically
-        # load the urllib3 module from its distribution
-        # n.b. we can't override this import otherwise because
-        # we can't run custom js in the pyodide worker test template
-        # before the python code is launched
-
-        import_fixed_code = re.sub(
-            r"import (urllib3\S*)", r"urllib3=importlib.__import__('\1')", code
-        )
-        import_fixed_code = re.sub(
-            r"from (urllib3\S*) import (\S*)",
-            r"\2=importlib.import_module('\1').\2",
-            import_fixed_code,
-        )
-
-        jspi_code = ""
-
-        code = "import importlib\n" + code
-
-        # now make sure import of urllib3 comes from our package
-        load_wheel_code = textwrap.dedent(
-            f"""
-                import pyodide_js as _pjs
-                await _pjs.loadPackage('https://{self.host}:{self.port}/dist/urllib3.whl')
-                """
-        )
 
         # add coverage collection to this code
         coverage_init_code = textwrap.dedent(
             """
-        import coverage
-        _coverage= coverage.Coverage(source_pkgs=['urllib3'])
-        _coverage.start()
-        """
+            import coverage
+            _coverage= coverage.Coverage(source_pkgs=['urllib3'])
+            _coverage.start()
+            """
         )
 
         coverage_end_code = textwrap.dedent(
             """
-        _coverage.stop()
-        _coverage.save()
-        _coverage_datafile = open(".coverage","rb")
-        _coverage_outdata = _coverage_datafile.read()
-        # avoid polluting main namespace too much
-        import js as _coverage_js
-        # convert to js Array (as default conversion is TypedArray which does
-        # bad things in firefox)
-        _coverage_js.Array.from_(_coverage_outdata)
-        """
+            _coverage.stop()
+            _coverage.save()
+            _coverage_datafile = open(".coverage","rb")
+            _coverage_outdata = _coverage_datafile.read()
+            # avoid polluting main namespace too much
+            import js as _coverage_js
+            # convert to js Array (as default conversion is TypedArray which does
+            # bad things in firefox)
+            _coverage_js.Array.from_(_coverage_outdata)
+            """
         )
 
         # the ordering of these code blocks is important - makes sure
         # that the first thing that happens is our wheel is loaded
-        code = (
-            load_wheel_code
-            + "import importlib\n"
-            + jspi_code
-            + coverage_init_code
-            + import_fixed_code
-            + coverage_end_code
-        )
+        code = coverage_init_code + "\n" + code + "\n" + coverage_end_code
 
         if self.selenium.browser == "firefox":
             # running in worker is SLOW on firefox

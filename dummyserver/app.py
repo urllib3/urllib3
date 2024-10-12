@@ -378,17 +378,70 @@ def _find_built_wheel() -> Path | None:
         return None
 
 
+def _get_pyodide_template(py_file: str) -> bytes:
+    # serve code to run pyodide in a webworker, or html template
+    # these are included in pytest_pyodide, but
+    # we modify the webworker to automatically load our wheel
+    # before anything else
+    if py_file == "webworker_dev.js":
+        return b"""
+            importScripts("./pyodide.js");
+
+            onmessage = async function (e) {
+                try {
+                    let code = e.data.python;
+                    self.pyodide = await loadPyodide();
+                    await self.pyodide.loadPackage("/dist/urllib3.whl");
+                    await self.pyodide.loadPackagesFromImports(code);
+                    let results = await self.pyodide.runPythonAsync(code);
+                    self.postMessage({ results });
+                } catch (e) {
+                    self.postMessage({ error: e.message + "\\n" + e.stack });
+                }
+            };
+        """
+    elif py_file == "test.html":
+        return b"""
+            <!doctype html>
+            <html>
+            <head>
+                <script type="text/javascript">
+                window.logs = [];
+                console.log = function (message) {
+                    window.logs.push(message);
+                };
+                console.warn = function (message) {
+                    window.logs.push(message);
+                };
+                console.info = function (message) {
+                    window.logs.push(message);
+                };
+                console.error = function (message) {
+                    window.logs.push(message);
+                };
+                console.debug = function (message) {
+                    window.logs.push(message);
+                };
+                </script>
+                <script src="./pyodide.js"></script>
+            </head>
+            <body></body>
+            </html>
+        """
+    else:
+        return None
+
+
 @pyodide_testing_app.route("/pyodide/<py_file>")
 async def pyodide(py_file: str) -> ResponseReturnValue:
-    # in newer versions of pyodide, testing bootstrap files
-    # are not in the distribution, so we have to serve them from
-    # pytest_pyodide instead
-    import pytest_pyodide  # type: ignore[import-not-found]
-
-    pytest_pyodide_template_path = Path(pytest_pyodide.__file__).parent / "_templates"
-    file_path = Path(pytest_pyodide_template_path, py_file)
-    if not file_path.exists():
-        file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
+    template_data = _get_pyodide_template(py_file)
+    if template_data:
+        mime_type, _encoding = mimetypes.guess_type(py_file)
+        if not mime_type:
+            mime_type = "text/plain"
+        headers = [("Content-Type", mime_type)]
+        return await make_response(template_data, 200, headers)
+    file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
 
     if file_path is not None and file_path.exists():
         if py_file.endswith(".whl"):
