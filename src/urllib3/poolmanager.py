@@ -199,7 +199,7 @@ class PoolManager(RequestMethods):
     def __init__(
         self,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         **connection_pool_kw: typing.Any,
     ) -> None:
         super().__init__(headers)

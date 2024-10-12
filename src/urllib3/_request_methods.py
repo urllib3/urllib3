@@ -48,7 +48,7 @@ class RequestMethods:
 
     _encode_url_methods = {"DELETE", "GET", "HEAD", "OPTIONS"}
 
-    def __init__(self, headers: typing.Mapping[str, str] | None = None) -> None:
+    def __init__(self, headers: typing.Mapping[str, str | bytes] | None = None) -> None:
         self.headers = headers or {}
 
     def urlopen(
@@ -72,7 +72,7 @@ class RequestMethods:
         url: str,
         body: _TYPE_BODY | None = None,
         fields: _TYPE_FIELDS | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         json: typing.Any | None = None,
         **urlopen_kw: typing.Any,
     ) -> BaseHTTPResponse:
@@ -149,7 +149,7 @@ class RequestMethods:
         method: str,
         url: str,
         fields: _TYPE_ENCODE_URL_FIELDS | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
@@ -186,7 +186,7 @@ class RequestMethods:
         method: str,
         url: str,
         fields: _TYPE_FIELDS | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         encode_multipart: bool = True,
         multipart_boundary: str | None = None,
         **urlopen_kw: str,
