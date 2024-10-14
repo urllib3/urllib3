@@ -80,9 +80,10 @@ def selenium_coverage(
             # stop Node.js checking our https certificates
             self.run_js('process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;')
         # install urllib3 from our test server, rather than from existing package
-        self.run_js(
+        result = self.run_js(
             f'await pyodide.loadPackage("http://{testserver_http.http_host}:{testserver_http.http_port}/dist/urllib3.whl")'
         )
+        print("Installed package:", result)
         self.run_js(
             """
             await pyodide.loadPackage("coverage")

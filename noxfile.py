@@ -251,6 +251,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
             )
 
         dist_dir = pyodide_artifacts_path
+    session.run("python", "-m", "build")
     assert dist_dir is not None
     assert dist_dir.exists()
     tests_impl(

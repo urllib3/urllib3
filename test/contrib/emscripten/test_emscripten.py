@@ -688,34 +688,29 @@ def test_requests_with_micropip(
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
 ) -> None:
-    @run_in_pyodide(packages=["micropip"])
-    async def test_fn(selenium_coverage, http_host, http_port, https_port):
-        try:
-            import micropip
+    @run_in_pyodide(packages=["micropip"])  # type: ignore[misc]
+    async def test_fn(
+        selenium_coverage: typing.Any, http_host: str, http_port: int, https_port: int
+    ) -> None:
+        import micropip  # type: ignore[import-not-found]
 
-            await micropip.install("requests")
-            import requests
+        await micropip.install("requests")
+        import requests
 
-            r = requests.get(f"http://{http_host}:{http_port}/")
-            assert r.status_code == 200
-            assert r.text == "Dummy server!"
-            json_data = {"woo": "yay"}
-            # try posting some json with requests on https
-            r = requests.post(
-                f"https://{http_host}:{https_port}/echo_json", json=json_data
-            )
-            assert r.json() == json_data
-        except Exception as e:
-            return str(e)
+        r = requests.get(f"http://{http_host}:{http_port}/")
+        assert r.status_code == 200
+        assert r.text == "Dummy server!"
+        json_data = {"woo": "yay"}
+        # try posting some json with requests on https
+        r = requests.post(f"https://{http_host}:{https_port}/echo_json", json=json_data)
+        assert r.json() == json_data
 
-    err = test_fn(
+    test_fn(
         selenium_coverage,
         testserver_http.http_host,
         testserver_http.http_port,
         testserver_http.https_port,
     )
-    if err is not None:
-        pytest.fail(err)
 
 
 def test_open_close(

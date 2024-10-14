@@ -378,7 +378,7 @@ def _find_built_wheel() -> Path | None:
         return None
 
 
-def _get_pyodide_template(py_file: str) -> bytes:
+def _get_pyodide_template(py_file: str) -> bytes | None:
     # serve code to run pyodide in a webworker, or html template
     # these are included in pytest_pyodide, but
     # we modify the webworker to automatically load our wheel
@@ -435,6 +435,7 @@ def _get_pyodide_template(py_file: str) -> bytes:
 @pyodide_testing_app.route("/pyodide/<py_file>")
 async def pyodide(py_file: str) -> ResponseReturnValue:
     template_data = _get_pyodide_template(py_file)
+    mime_type: str | None = None
     if template_data:
         mime_type, _encoding = mimetypes.guess_type(py_file)
         if not mime_type:
@@ -445,7 +446,7 @@ async def pyodide(py_file: str) -> ResponseReturnValue:
 
     if file_path is not None and file_path.exists():
         if py_file.endswith(".whl"):
-            mime_type: str | None = "application/x-wheel"
+            mime_type = "application/x-wheel"
             headers = [
                 ("Content-Disposition", f"inline; filename='{file_path.name}'"),
                 ("Content-Type", mime_type),
@@ -464,6 +465,7 @@ async def pyodide(py_file: str) -> ResponseReturnValue:
 async def wheel() -> ResponseReturnValue:
     file_path = _find_built_wheel()
     if not file_path:
+        print("NO BUILT WHEEL?")
         return await make_response("", 404)
 
     mime_type = "application/x-wheel"
