@@ -129,6 +129,11 @@ jobs:
         if: ${{ matrix.nox-session == 'emscripten' }}
         with:
           node-version: 22
+      - name: Cache pyodide downloads in nox cache
+        uses: actions/cache@v4
+        with:
+          path: .nox/.cache
+          key: pyodide_downloads
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
         run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}
