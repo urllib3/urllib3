@@ -684,25 +684,38 @@ def test_streaming_not_ready_in_browser(
 
 
 def test_requests_with_micropip(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+    selenium_coverage: typing.Any,
+    testserver_http: PyodideServerInfo,
+    run_from_server: ServerRunnerInfo,
 ) -> None:
-    # this can't be @run_in_pyodide(packages=['urllib3']) because of the async code
-    selenium_coverage.run_async(
-        f"""
-        import micropip
-        await micropip.install("requests")
-        import requests
-        import json
-        r = requests.get("http://{testserver_http.http_host}:{testserver_http.http_port}/")
-        assert(r.status_code == 200)
-        assert(r.text == "Dummy server!")
-        json_data={{"woo":"yay"}}
-        # try posting some json with requests
-        r = requests.post("http://{testserver_http.http_host}:{testserver_http.http_port}/echo_json",json=json_data)
-        import js
-        assert(r.json() == json_data)
-    """
+    @run_in_pyodide(packages=["micropip"])
+    async def test_fn(selenium_coverage, http_host, http_port, https_port):
+        try:
+            import micropip
+
+            await micropip.install("requests")
+            import requests
+
+            r = requests.get(f"http://{http_host}:{http_port}/")
+            assert r.status_code == 200
+            assert r.text == "Dummy server!"
+            json_data = {"woo": "yay"}
+            # try posting some json with requests on https
+            r = requests.post(
+                f"https://{http_host}:{https_port}/echo_json", json=json_data
+            )
+            assert r.json() == json_data
+        except Exception as e:
+            return str(e)
+
+    err = test_fn(
+        selenium_coverage,
+        testserver_http.http_host,
+        testserver_http.http_port,
+        testserver_http.https_port,
     )
+    if err is not None:
+        pytest.fail(err)
 
 
 def test_open_close(
