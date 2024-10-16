@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-import typing
 import unittest
 
 import pytest
@@ -110,7 +109,7 @@ class TestMultipartEncoder(unittest.TestCase):
 
     def test_streams_its_data(self) -> None:
         large_file = LargeFileMock()
-        parts: typing.Mapping[str, str | typing.BinaryIO] = {
+        parts: dict[str, str | io.BytesIO] = {
             "some field": "value",
             "some file": large_file,
         }
@@ -177,7 +176,7 @@ class TestMultipartEncoder(unittest.TestCase):
         Ensure https://github.com/requests/toolbelt/issues/31 doesn't
         ever happen again.
         """
-        fields: dict[str, str | tuple[str, typing.BinaryIO]] = {"test": "t" * 100}
+        fields: dict[str, str | tuple[str, io.BufferedReader]] = {"test": "t" * 100}
 
         for x in range(30):
             fields["f%d" % x] = ("test", open(__file__, "rb"))

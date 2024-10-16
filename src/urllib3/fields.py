@@ -5,7 +5,7 @@ import io
 import mimetypes
 import typing
 
-_TYPE_FIELD_VALUE = typing.Union[str, bytes, io.BytesIO]
+_TYPE_FIELD_VALUE = typing.Union[str, bytes, io.BytesIO, io.BufferedReader]
 _TYPE_FIELD_VALUE_TUPLE = typing.Union[
     _TYPE_FIELD_VALUE,
     typing.Tuple[str, _TYPE_FIELD_VALUE],

@@ -16,7 +16,7 @@ class Part:
     def __init__(
         self,
         headers: bytes,
-        body: typing.BinaryIO | FileWrapper | _CustomBytesIO,
+        body: io.BytesIO | io.BufferedReader | FileWrapper | _CustomBytesIO,
     ) -> None:
         self.headers = headers
         self.body = body
@@ -126,22 +126,24 @@ class FileWrapper:
 PartTuples = typing.Union[
     typing.Tuple[
         str,
-        typing.Union[bytes, str, typing.BinaryIO],
+        typing.Union[bytes, str, io.BytesIO, io.BufferedReader],
     ],
     typing.Tuple[
         str,
-        typing.Union[bytes, str, typing.BinaryIO],
+        typing.Union[bytes, str, io.BytesIO, io.BufferedReader],
         typing.Union[bytes, str],
     ],
     typing.Tuple[
         str,
-        typing.Union[bytes, str, typing.BinaryIO],
+        typing.Union[bytes, str, io.BytesIO, io.BufferedReader],
         typing.Union[bytes, str],
         typing.Mapping[str, str],
     ],
 ]
 
-FieldValue: typing.TypeAlias = typing.Union[bytes, str, PartTuples, typing.BinaryIO]
+FieldValue: typing.TypeAlias = typing.Union[
+    bytes, str, PartTuples, io.BytesIO, io.BufferedReader
+]
 
 Fields = typing.Union[
     typing.Mapping[str, FieldValue],

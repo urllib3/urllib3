@@ -77,7 +77,7 @@ def encode_multipart_formdata(
 
         if isinstance(data, str):
             writer(body).write(data)
-        elif isinstance(data, io.BytesIO):
+        elif isinstance(data, (io.BytesIO, io.BufferedReader)):
             body.write(data.read())
         else:
             body.write(data)
