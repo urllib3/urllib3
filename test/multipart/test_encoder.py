@@ -173,7 +173,10 @@ class TestMultipartEncoder(unittest.TestCase):
     # Filtering the warning is easier than closing the files.
     @pytest.mark.filterwarnings("default::ResourceWarning")
     def test_regression_1(self) -> None:
-        """Ensure issue #31 doesn't ever happen again."""
+        """
+        Ensure https://github.com/requests/toolbelt/issues/31 doesn't
+        ever happen again.
+        """
         fields: dict[str, str | tuple[str, typing.BinaryIO]] = {"test": "t" * 100}
 
         for x in range(30):
