@@ -341,27 +341,27 @@ class MultipartEncoder:
         except StopIteration:
             return None
 
-    def _iter_fields(self) -> typing.Generator[RequestField, None, None]:
-        for k, v in to_list(self._fields):
-            file_name = None
-            file_type = None
-            file_headers = None
+    def _iter_fields(self) -> typing.Iterator[RequestField]:
+        for name, v in to_list(self._fields):
+            filename = None
+            content_type = None
+            headers = None
             if isinstance(v, (list, tuple)):
                 if len(v) == 2:
-                    file_name, file_pointer = v
+                    filename, data = v
                 elif len(v) == 3:
-                    file_name, file_pointer, file_type = v
+                    filename, data, content_type = v
                 else:
-                    file_name, file_pointer, file_type, file_headers = v
+                    filename, data, content_type, headers = v
             else:
-                file_pointer = v
+                data = v
 
             field = fields.RequestField(
-                name=k, data=file_pointer, filename=file_name, headers=file_headers
+                name=name, data=data, filename=filename, headers=headers
             )
-            if isinstance(file_type, bytes):
-                file_type = file_type.decode("utf-8")
-            field.make_multipart(content_type=file_type)
+            if isinstance(content_type, bytes):
+                content_type = content_type.decode("utf-8")
+            field.make_multipart(content_type=content_type)
             yield field
 
     def _prepare_parts(self) -> tuple[list[Part], typing.Iterator[Part]]:
