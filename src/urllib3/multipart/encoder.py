@@ -286,7 +286,6 @@ class MultipartEncoder:
 
         This returns the calculated length so __len__ can be lazy.
         """
-        # TODO: Is this the length of `\r\n\r\n` or `--{self._boundary}\r\n`?
         boundarycrnl_len = len(self._boundary) + len("\r\n\r\n")
         self._len = sum(total_len(p) for p in self._parts) + (
             boundarycrnl_len * (len(self._parts) + 1)
