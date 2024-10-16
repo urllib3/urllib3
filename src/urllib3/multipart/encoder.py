@@ -275,10 +275,6 @@ class MultipartEncoder:
 
     def __len__(self) -> int:
         """Length of the multipart/form-data body."""
-        # TODO: There's a comment in requests-toolbelt about files more than
-        # 4GB, referring to https://github.com/requests/toolbelt/issues/80
-        # Does this apply here?  Can we test this case?
-        # If _len isn't already calculated, calculate, return, and set it
         return self._len or self._calculate_length()
 
     def __repr__(self) -> str:
