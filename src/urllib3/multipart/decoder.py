@@ -17,12 +17,6 @@ class NonMultipartContentTypeError(Exception):
     pass
 
 
-def _header_parser(headers: bytes, encoding: str) -> typing.Sequence[tuple[str, str]]:
-    string = headers.decode(encoding)
-    items = email.parser.HeaderParser().parsestr(string).items()
-    return items
-
-
 class BodyPart:
     """This provides an easy way to interact with a single part of the body.
 
@@ -36,7 +30,6 @@ class BodyPart:
     def __init__(self, content: bytes, encoding: str):
         #: Encoding used for the body part to decode body and headers
         self.encoding = encoding
-        headers: dict[str, str] = {}
         # Split into header section (if any) and the content
         headerbytes, separator, bodybytes = content.partition(b"\r\n\r\n")
         if b"\r\n\r\n" != separator:
@@ -44,9 +37,12 @@ class BodyPart:
 
         #: The bytes containing the body of this part
         self.content = bodybytes
-        if headerbytes != b"":
-            headers.update(_header_parser(headerbytes.lstrip(), encoding))
         #: The headers associated with this part
+        if headerbytes != b"":
+            headerstring = headerbytes.decode(encoding)
+            headers = dict(email.parser.HeaderParser().parsestr(headerstring))
+        else:
+            headers = {}
         self.headers = _collections.HTTPHeaderDict(headers)
 
     @property
@@ -99,7 +95,7 @@ class MultipartDecoder:
         mimetype = ct_info[0]
         if mimetype.split("/")[0].lower() != "multipart":
             raise NonMultipartContentTypeError(
-                f"Unexpected mimetype in content-type: '{mimetype}'"
+                f"Unexpected mimetype in content-type: {mimetype!r}"
             )
         for item in ct_info[1:]:
             attr, _, value = item.partition("=")
