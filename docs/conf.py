@@ -83,7 +83,7 @@ html_favicon = "images/favicon.png"
 html_static_path = ["_static"]
 html_theme_options = {
     "announcement": """
-        <a style=\"text-decoration: none; color: white;\" 
+        <a style=\"text-decoration: none; color: white;\"
            href=\"https://opencollective.com/urllib3/updates/urllib3-is-fundraising-for-http-2-support\">
            <img src=\"/en/latest/_static/favicon.png\"/> urllib3 is fundraising for HTTP/2 support!
         </a>
@@ -106,6 +106,7 @@ nitpick_ignore = [
     ("py:class", "_TYPE_SOCKET_OPTIONS"),
     ("py:class", "_TYPE_TIMEOUT"),
     ("py:class", "_TYPE_FIELD_VALUE"),
+    ("py:class", "_TYPE_FIELDS"),
     ("py:class", "_TYPE_BODY"),
     ("py:class", "_HttplibHTTPResponse"),
     ("py:class", "_HttplibHTTPMessage"),
@@ -122,5 +123,7 @@ nitpick_ignore = [
     ("py:class", "urllib3._request_methods.RequestMethods"),
     ("py:class", "urllib3.contrib.socks._TYPE_SOCKS_OPTIONS"),
     ("py:class", "urllib3.util.timeout._TYPE_DEFAULT"),
+    ("py:class", "urllib3.multipart.decoder.MD"),
+    ("py:class", "Fields"),
     ("py:class", "BaseHTTPConnection"),
 ]

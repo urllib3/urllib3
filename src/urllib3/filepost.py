@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import binascii
 import codecs
+import io
 import os
 import typing
-from io import BytesIO
 
 from .fields import _TYPE_FIELD_VALUE_TUPLE, RequestField
 
@@ -62,7 +62,7 @@ def encode_multipart_formdata(
         If not specified, then a random boundary will be generated using
         :func:`urllib3.filepost.choose_boundary`.
     """
-    body = BytesIO()
+    body = io.BytesIO()
     if boundary is None:
         boundary = choose_boundary()
 
@@ -77,6 +77,8 @@ def encode_multipart_formdata(
 
         if isinstance(data, str):
             writer(body).write(data)
+        elif isinstance(data, (io.BytesIO, io.BufferedReader)):
+            body.write(data.read())
         else:
             body.write(data)
 
