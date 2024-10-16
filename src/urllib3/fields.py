@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import email.utils
+import io
 import mimetypes
 import typing
 
-_TYPE_FIELD_VALUE = typing.Union[str, bytes, typing.BinaryIO]
+_TYPE_FIELD_VALUE = typing.Union[str, bytes, io.BytesIO]
 _TYPE_FIELD_VALUE_TUPLE = typing.Union[
     _TYPE_FIELD_VALUE,
     typing.Tuple[str, _TYPE_FIELD_VALUE],

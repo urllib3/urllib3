@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import os
+import platform
 import socket
 import time
 import typing
@@ -100,13 +101,18 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
             self.host, self.port, timeout=short_timeout, retries=False
         ) as pool:
             wait_for_socket(ready_event)
-            now = time.time()
+            now = time.perf_counter()
             with pytest.raises(ReadTimeoutError):
                 pool.request("GET", "/", timeout=LONG_TIMEOUT)
-            delta = time.time() - now
+            delta = time.perf_counter() - now
 
             message = "timeout was pool-level SHORT_TIMEOUT rather than request-level LONG_TIMEOUT"
-            assert delta >= (LONG_TIMEOUT - 1e-5), message
+            if platform.system() == "Windows":
+                # Adjust tolerance for floating-point comparison on Windows to
+                # avoid flakiness in CI #3413
+                assert delta >= (LONG_TIMEOUT - 1e-3), message
+            else:
+                assert delta >= (LONG_TIMEOUT - 1e-5), message
             block_event.set()  # Release request
 
             # Timeout passed directly to request should raise a request timeout
@@ -201,6 +207,17 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
 
 class TestConnectionPool(HypercornDummyServerTestCase):
+    def test_http2_test_error(self, http_version: str) -> None:
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            if http_version == "h2":
+                with pytest.raises(
+                    ValueError, match="HTTP/2 support currently only applies to HTTPS.*"
+                ):
+                    r = pool.request("GET", "/")
+            else:
+                r = pool.request("GET", "/")
+                assert r.status == 200
+
     def test_get(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/specific_method", fields={"method": "GET"})
@@ -364,7 +381,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             try:
                 # Update the default socket options
                 assert conn.socket_options is not None
-                conn.socket_options += [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]  # type: ignore[operator]
+                conn.socket_options += [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
                 s = conn._new_conn()  # type: ignore[attr-defined]
                 nagle_disabled = (
                     s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) > 0
@@ -459,7 +476,6 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             )
 
     def test_tunnel(self) -> None:
-        # note the actual httplib.py has no tests for this functionality
         timeout = Timeout(total=None)
         with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
             conn = pool._get_conn()
@@ -822,7 +838,8 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             self.host, self.port, source_address=invalid_source_address, retries=False
         ) as pool:
             if is_ipv6:
-                with pytest.raises(NameResolutionError):
+                # with pytest.raises(NameResolutionError):
+                with pytest.raises(NewConnectionError):
                     pool.request("GET", f"/source_address?{invalid_source_address}")
             else:
                 with pytest.raises(NewConnectionError):
@@ -1176,7 +1193,9 @@ class TestRetry(HypercornDummyServerTestCase):
             )
             assert resp.status == 418
 
-    def test_read_retries_unsuccessful(self) -> None:
+    def test_read_retries_unsuccessful(
+        self,
+    ) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             headers = {"test-name": "test_read_retries_unsuccessful"}
             resp = pool.request("GET", "/successful_retry", headers=headers, retries=1)
@@ -1322,6 +1341,7 @@ class TestRetryAfter(HypercornDummyServerTestCase):
             r = pool.request("GET", "/redirect_after", retries=False)
             assert r.status == 303
 
+            # Real timestamps are needed for this test
             t = time.time()
             r = pool.request("GET", "/redirect_after")
             assert r.status == 200

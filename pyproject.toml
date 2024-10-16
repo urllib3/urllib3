@@ -1,7 +1,7 @@
 # This file is protected via CODEOWNERS
 
 [build-system]
-requires = ["hatchling>=1.6.0,<2"]
+requires = ["hatchling>=1.6.0,<2", "hatch-vcs==0.4.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -29,6 +29,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
@@ -60,7 +61,11 @@ h2 = [
 "Issue tracker" = "https://github.com/urllib3/urllib3/issues"
 
 [tool.hatch.version]
-path = "src/urllib3/_version.py"
+source = "vcs"
+[tool.hatch.version.raw-options]
+local_scheme = "no-local-version"
+[tool.hatch.build.hooks.vcs]
+version-file = "src/urllib3/_version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [

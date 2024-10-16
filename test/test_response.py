@@ -96,7 +96,9 @@ class TestBytesQueueBuffer:
         (lambda b: b.get(len(b)), lambda b: b.get_all()),
         ids=("get", "get_all"),
     )
-    @pytest.mark.limit_memory("12.5 MB")  # assert that we're not doubling memory usage
+    @pytest.mark.limit_memory(
+        "12.5 MB", current_thread_only=True
+    )  # assert that we're not doubling memory usagelimit_mem
     def test_memory_usage(
         self, get_func: typing.Callable[[BytesQueueBuffer], str]
     ) -> None:
@@ -108,7 +110,7 @@ class TestBytesQueueBuffer:
 
         assert len(get_func(buffer)) == 10 * 2**20
 
-    @pytest.mark.limit_memory("10.01 MB")
+    @pytest.mark.limit_memory("10.01 MB", current_thread_only=True)
     def test_get_all_memory_usage_single_chunk(self) -> None:
         buffer = BytesQueueBuffer()
         chunk = bytes(10 * 2**20)  # 10 MiB
@@ -1095,7 +1097,7 @@ class TestResponse:
             (False, 10 * 2**20, "read1"),
         ],
     )
-    @pytest.mark.limit_memory("25 MB")
+    @pytest.mark.limit_memory("25 MB", current_thread_only=True)
     def test_buffer_memory_usage_decode_one_chunk(
         self, preload_content: bool, amt: int, read_meth: str
     ) -> None:
@@ -1119,7 +1121,7 @@ class TestResponse:
             (False, 10 * 2**20, "read1"),
         ],
     )
-    @pytest.mark.limit_memory("10.5 MB")
+    @pytest.mark.limit_memory("10.5 MB", current_thread_only=True)
     def test_buffer_memory_usage_no_decoding(
         self, preload_content: bool, amt: int, read_meth: str
     ) -> None:

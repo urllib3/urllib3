@@ -1,0 +1,1 @@
+Added pickling support to ``NewConnectionError`` and ``NameResolutionError``.

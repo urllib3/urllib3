@@ -2,6 +2,11 @@ name: Publish to PyPI
 
 on:
   push:
+    branches:
+      # We don't publish to Test PyPI on pushes to 1.26.x yet because there is
+      # no mechanism to get a dynamic version number in the branch yet.
+      # - "1.26.x"
+      - "main"
     tags:
       - "*"
 
@@ -10,19 +15,20 @@ permissions:
 
 jobs:
   build:
-    name: "Build dists"
+    if: github.repository_owner == 'urllib3'
+    name: "Build distribution 📦"
     runs-on: "ubuntu-latest"
-    environment:
-      name: "publish"
     outputs:
       hashes: ${{ steps.hash.outputs.hashes }}
 
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+        with:
+          fetch-depth: 0 # Needed to fetch the version from git
 
       - name: "Setup Python"
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
         with:
           python-version: "3.x"
 
@@ -40,7 +46,7 @@ jobs:
           cd dist && echo "hashes=$(sha256sum * | base64 -w0)" >> $GITHUB_OUTPUT
 
       - name: "Upload dists"
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: "dist"
           path: "dist/"
@@ -53,24 +59,25 @@ jobs:
       actions: read
       contents: write
       id-token: write # Needed to access the workflow's OIDC identity.
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.10.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
     with:
       base64-subjects: "${{ needs.build.outputs.hashes }}"
       upload-assets: true
-      compile-generator: true # Workaround for https://github.com/slsa-framework/slsa-github-generator/issues/1163
 
-  publish:
-    name: "Publish"
+  publish-to-pypi-and-github:
+    name: "Publish to PyPI"
     if: startsWith(github.ref, 'refs/tags/')
     needs: ["build", "provenance"]
     permissions:
-      contents: write
+      contents: write # Needed for making GitHub releases
       id-token: write # Needed for trusted publishing to PyPI.
     runs-on: "ubuntu-latest"
+    environment:
+      name: "publish"
 
     steps:
     - name: "Download dists"
-      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
       with:
         name: "dist"
         path: "dist/"
@@ -82,4 +89,28 @@ jobs:
         gh release upload ${{ github.ref_name }} dist/* --repo ${{ github.repository }}
 
     - name: "Publish dists to PyPI"
-      uses: pypa/gh-action-pypi-publish@f8c70e705ffc13c3b4d1221169b84f12a75d6ca8 # v1.8.8
+      uses: pypa/gh-action-pypi-publish@0ab0b79471669eb3a4d647e625009c62f9f3b241 # v1.10.1
+      with:
+        attestations: true
+
+  publish-to-test-pypi:
+    name: "Publish to Test PyPI"
+    needs: ["build", "provenance"]
+    permissions:
+      id-token: write # Needed for trusted publishing to PyPI.
+    runs-on: "ubuntu-latest"
+    environment:
+      name: "testpypi"
+
+    steps:
+    - name: "Download dists"
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
+      with:
+        name: "dist"
+        path: "dist/"
+
+    - name: "Publish dists to Test PyPI"
+      uses: pypa/gh-action-pypi-publish@0ab0b79471669eb3a4d647e625009c62f9f3b241 # v1.10.1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        attestations: true

@@ -1,3 +1,49 @@
+2.2.3 (2024-09-12)
+==================
+
+Features
+--------
+
+- Added support for Python 3.13. (`#3473 <https://github.com/urllib3/urllib3/issues/3473>`__)
+
+Bugfixes
+--------
+
+- Fixed the default encoding of chunked request bodies to be UTF-8 instead of ISO-8859-1.
+  All other methods of supplying a request body already use UTF-8 starting in urllib3 v2.0. (`#3053 <https://github.com/urllib3/urllib3/issues/3053>`__)
+- Fixed ResourceWarning on CONNECT with Python < 3.11.4 by backporting https://github.com/python/cpython/issues/103472. (`#3252 <https://github.com/urllib3/urllib3/issues/3252>`__)
+- Adjust tolerance for floating-point comparison on Windows to avoid flakiness in CI (`#3413 <https://github.com/urllib3/urllib3/issues/3413>`__)
+- Fixed a crash where certain standard library hash functions were absent in restricted environments. (`#3432 <https://github.com/urllib3/urllib3/issues/3432>`__)
+- Fixed mypy error when adding to ``HTTPConnection.default_socket_options``. (`#3448 <https://github.com/urllib3/urllib3/issues/3448>`__)
+
+HTTP/2 (experimental)
+---------------------
+
+HTTP/2 support is still in early development.
+
+- Excluded Transfer-Encoding: chunked from HTTP/2 request body (`#3425 <https://github.com/urllib3/urllib3/issues/3425>`__)
+- Added version checking for ``h2`` (https://pypi.org/project/h2/) usage.
+
+  Now only accepting supported h2 major version 4.x.x. (`#3290 <https://github.com/urllib3/urllib3/issues/3290>`__)
+- Added a probing mechanism for determining whether a given target origin
+  supports HTTP/2 via ALPN. (`#3301 <https://github.com/urllib3/urllib3/issues/3301>`__)
+- Add support for sending a request body with HTTP/2 (`#3302 <https://github.com/urllib3/urllib3/issues/3302>`__)
+
+
+Deprecations and Removals
+-------------------------
+
+- Note for downstream distributors: the ``_version.py`` file has been removed and is now created at build time by hatch-vcs. (`#3412 <https://github.com/urllib3/urllib3/issues/3412>`__)
+- Drop support for end-of-life PyPy3.8 and PyPy3.9. (`#3475 <https://github.com/urllib3/urllib3/issues/3475>`__)
+
+
+2.2.2 (2024-06-17)
+==================
+
+- Added the ``Proxy-Authorization`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+- Allowed passing negative integers as ``amt`` to read methods of ``http.client.HTTPResponse`` as an alternative to ``None``. (`#3122 <https://github.com/urllib3/urllib3/issues/3122>`__)
+- Fixed return types representing copying actions to use ``typing.Self``. (`#3363 <https://github.com/urllib3/urllib3/issues/3363>`__)
+
 2.2.1 (2024-02-16)
 ==================
 
@@ -212,6 +258,27 @@ Fixed
 * Fixed a reference cycle bug in ``urllib3.util.connection.create_connection()`` (`#2277 <https://github.com/urllib3/urllib3/issues/2277>`__).
 * Fixed a socket leak if ``HTTPConnection.connect()`` fails (`#2571 <https://github.com/urllib3/urllib3/pull/2571>`__).
 * Fixed ``urllib3.contrib.pyopenssl.WrappedSocket`` and ``urllib3.contrib.securetransport.WrappedSocket`` close methods (`#2970 <https://github.com/urllib3/urllib3/issues/2970>`__)
+
+1.26.20 (2024-08-29)
+====================
+
+* Fixed a crash where certain standard library hash functions were absent in
+  FIPS-compliant environments.
+  (`#3432 <https://github.com/urllib3/urllib3/issues/3432>`__)
+* Replaced deprecated dash-separated setuptools entries in ``setup.cfg``.
+  (`#3461 <https://github.com/urllib3/urllib3/pull/3461>`__)
+* Took into account macOS setting ``ECONNRESET`` instead of ``EPROTOTYPE`` in
+  its newer versions.
+  (`#3416 <https://github.com/urllib3/urllib3/pull/3416>`__)
+* Backported changes to our tests and CI configuration from v2.x to support
+  testing with CPython 3.12 and 3.13.
+  (`#3436 <https://github.com/urllib3/urllib3/pull/3436>`__)
+
+1.26.19 (2024-06-17)
+====================
+
+* Added the ``Proxy-Authorization`` header to the list of headers to strip from requests when redirecting to a different host. As before, different headers can be set via ``Retry.remove_headers_on_redirect``.
+* Fixed handling of OpenSSL 3.2.0 new error message for misconfiguring an HTTP proxy as HTTPS. (`#3405 <https://github.com/urllib3/urllib3/issues/3405>`__)
 
 1.26.18 (2023-10-17)
 ====================

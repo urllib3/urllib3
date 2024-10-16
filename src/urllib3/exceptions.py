@@ -143,6 +143,10 @@ class NewConnectionError(ConnectTimeoutError, HTTPError):
         self.conn = conn
         super().__init__(f"{conn}: {message}")
 
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        # For pickling purposes.
+        return self.__class__, (None, None)
+
     @property
     def pool(self) -> HTTPConnection:
         warnings.warn(
@@ -161,6 +165,10 @@ class NameResolutionError(NewConnectionError):
     def __init__(self, host: str, conn: HTTPConnection, reason: socket.gaierror):
         message = f"Failed to resolve '{host}' ({reason})"
         super().__init__(conn, message)
+
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        # For pickling purposes.
+        return self.__class__, (None, None, None)
 
 
 class EmptyPoolError(PoolError):

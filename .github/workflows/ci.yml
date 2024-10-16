@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
 
       - name: "Setup Python"
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
         with:
           python-version: "3.x"
           cache: "pip"
@@ -63,14 +63,6 @@ jobs:
             experimental: false
             nox-session: test-3.8
           # pypy
-          - python-version: "pypy-3.8"
-            os: ubuntu-latest
-            experimental: false
-            nox-session: test-pypy3.8
-          - python-version: "pypy-3.9-v7.3.13"
-            os: ubuntu-latest
-            experimental: false
-            nox-session: test-pypy3.9
           - python-version: "pypy-3.10"
             os: ubuntu-latest
             experimental: false
@@ -89,8 +81,6 @@ jobs:
             os: ubuntu-latest
             nox-session: emscripten
             experimental: true
-          - python-version: "3.13"
-            experimental: true
         exclude:
           # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
           # https://github.com/python/cpython/issues/83001
@@ -104,9 +94,11 @@ jobs:
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+        with:
+          fetch-depth: 0 # Needed to fetch the version from git
 
       - name: "Setup Python ${{ matrix.python-version }}"
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
@@ -115,7 +107,7 @@ jobs:
         run: python -m pip install --upgrade pip setuptools nox
 
       - name: "Install Chrome"
-        uses: browser-actions/setup-chrome@82b9ce628cc5595478a9ebadc480958a36457dc2 # v1.6.0
+        uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
         if: ${{ matrix.nox-session == 'emscripten' }}
       - name: "Install Firefox"
         uses: browser-actions/setup-firefox@233224b712fc07910ded8c15fb95a555c86da76f # v1.5.0
@@ -144,7 +136,7 @@ jobs:
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
 
       - name: "Setup Python"
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
         with:
           python-version: "3.x"
 
@@ -159,6 +151,7 @@ jobs:
 
       - name: "Combine & check coverage"
         run: |
+          python -m build
           python -m coverage combine
           python -m coverage html --skip-covered --skip-empty
           python -m coverage report --ignore-errors --show-missing --fail-under=100
