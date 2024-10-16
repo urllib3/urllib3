@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import email.parser
-import typing
 
 from .. import _collections
 from .. import response as _response

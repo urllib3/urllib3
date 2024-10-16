@@ -336,7 +336,8 @@ class MultipartEncoder:
 
     def _next_part(self) -> Part | None:
         try:
-            return self._current_part = next(self._iter_parts)
+            p = self._current_part = next(self._iter_parts)
+            return p
         except StopIteration:
             return None
 
@@ -399,7 +400,7 @@ class MultipartEncoder:
 
     @property
     def content_length(self) -> str:
-        return f"{len(self)}"
+        return str(len(self))
 
     @property
     def headers(self) -> _collections.HTTPHeaderDict:
@@ -515,6 +516,7 @@ def total_len(
         | typing.Sized
     ),
 ) -> int:
+    # TODO: Are any of these casts unnecessary?  I think MyPy is smart enough to handl these
     if hasattr(o, "__len__"):
         o = typing.cast(typing.Union[typing.Sized, typing.AnyStr], o)
         return len(o)
@@ -587,7 +589,7 @@ def coerce_data(
     return data
 
 
-def to_list(fields: Fields) -> list[tuple[str, FieldValue]:
+def to_list(fields: Fields) -> list[tuple[str, FieldValue]]:
     if hasattr(fields, "items"):
         fields = typing.cast(typing.Mapping[str, FieldValue], fields)
         return list(fields.items())
