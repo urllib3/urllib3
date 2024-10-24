@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import platform
 import socket
 import time
@@ -220,6 +221,17 @@ class TestConnectionPool(HypercornDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/specific_method", fields={"method": "GET"})
             assert r.status == 200, r.data
+
+    def test_debug_log(self, caplog: pytest.LogCaptureFixture) -> None:
+        caplog.set_level(logging.DEBUG, logger="urllib3.connectionpool")
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.urlopen("GET", "/")
+            assert r.status == 200
+        logs = [record.getMessage() for record in caplog.records]
+        assert logs == [
+            f"Starting new HTTP connection (1): {self.host}:{self.port}",
+            f'http://{self.host}:{self.port} "GET / HTTP/1.1" 200 0',
+        ]
 
     def test_post_url(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
