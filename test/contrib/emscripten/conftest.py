@@ -4,9 +4,10 @@ import contextlib
 import os
 import random
 import textwrap
+from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import pytest
 

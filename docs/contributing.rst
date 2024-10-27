@@ -66,7 +66,6 @@ suite::
   [ Nox will create virtualenv if needed, install the specified dependencies, and run the commands in order.]
   .......
   .......
-  nox > Session test-3.8 was successful.
   nox > Session test-3.9 was successful.
   nox > Session test-3.10 was successful.
   nox > Session test-3.11 was successful.
@@ -79,13 +78,13 @@ Our test suite `runs continuously on GitHub Actions
 
 To run specific tests or quickly re-run without nox recreating the env, do the following::
 
-  $ nox --reuse-existing-virtualenvs --sessions test-3.8 -- pyTestArgument1 pyTestArgument2 pyTestArgumentN
+  $ nox --reuse-existing-virtualenvs --sessions test-3.13 -- pyTestArgument1 pyTestArgument2 pyTestArgumentN
   [ Nox will create virtualenv, install the specified dependencies, and run the commands in order.]
-  nox > Running session test-3.8
-  nox > Re-using existing virtual environment at .nox/test-3-8.
+  nox > Running session test-3.13
+  nox > Re-using existing virtual environment at .nox/test-3-13.
   .......
   .......
-  nox > Session test-3.8 was successful.
+  nox > Session test-3.13 was successful.
 
 After the ``--`` indicator, any arguments will be passed to pytest.
 To specify an exact test case the following syntax also works:

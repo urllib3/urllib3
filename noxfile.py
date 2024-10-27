@@ -44,7 +44,7 @@ def tests_impl(
 
     memray_supported = True
     if implementation_name != "cpython":
-        memray_supported = False  # pytest-memray requires CPython 3.8+
+        memray_supported = False
     elif sys.platform == "win32":
         memray_supported = False
 
@@ -93,7 +93,6 @@ def tests_impl(
 
 @nox.session(
     python=[
-        "3.8",
         "3.9",
         "3.10",
         "3.11",
