@@ -32,7 +32,7 @@ def _is_bpo_43522_fixed(
     version_info: _TYPE_VERSION_INFO,
     pypy_version_info: _TYPE_VERSION_INFO | None,
 ) -> bool:
-    """Return True for CPython 3.8.9+, 3.9.3+ or 3.10+ and PyPy 7.3.8+ where
+    """Return True for CPython 3.9.3+ or 3.10+ and PyPy 7.3.8+ where
     setting SSLContext.hostname_checks_common_name to False works.
 
     Outside of CPython and PyPy we don't know which implementations work
@@ -48,11 +48,7 @@ def _is_bpo_43522_fixed(
     elif implementation_name == "cpython":
         major_minor = version_info[:2]
         micro = version_info[2]
-        return (
-            (major_minor == (3, 8) and micro >= 9)
-            or (major_minor == (3, 9) and micro >= 3)
-            or major_minor >= (3, 10)
-        )
+        return (major_minor == (3, 9) and micro >= 3) or major_minor >= (3, 10)
     else:  # Defensive:
         return False
 
