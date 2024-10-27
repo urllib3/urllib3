@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         os:
           - macos-15
           - windows-latest
@@ -76,6 +76,8 @@ jobs:
           - python-version: "3.11"
             os: ubuntu-latest
             nox-session: emscripten
+            experimental: true
+          - python-version: 3.14
             experimental: true
 
     runs-on: ${{ matrix.os }}
