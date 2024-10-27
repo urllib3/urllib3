@@ -544,13 +544,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         response._pool = self  # type: ignore[attr-defined]
 
         log.debug(
-            '%s://%s:%s "%s %s HTTP/%s" %s %s',
+            '%s://%s:%s "%s %s %s" %s %s',
             self.scheme,
             self.host,
             self.port,
             method,
             url,
-            response.version,
+            response.version_string,
             response.status,
             response.length_remaining,
         )
