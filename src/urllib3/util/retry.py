@@ -330,7 +330,7 @@ class Retry:
         if retry_after is None:
             return None
 
-        return self.parse_retry_after(retry_after)
+        return self.parse_retry_after(retry_after)  # type: ignore[arg-type]
 
     def sleep_for_retry(self, response: BaseHTTPResponse) -> bool:
         retry_after = self.get_retry_after(response)

@@ -315,7 +315,9 @@ class BaseHTTPResponse(io.IOBase):
     def __init__(
         self,
         *,
-        headers: typing.Mapping[str, str] | typing.Mapping[bytes, bytes] | None = None,
+        headers: typing.Mapping[str, str | bytes]
+        | typing.Mapping[bytes, bytes]
+        | None = None,
         status: int,
         version: int,
         version_string: str,
@@ -340,7 +342,7 @@ class BaseHTTPResponse(io.IOBase):
         self.chunked = False
         tr_enc = self.headers.get("transfer-encoding", "").lower()
         # Don't incur the penalty of creating a list and then discarding it
-        encodings = (enc.strip() for enc in tr_enc.split(","))
+        encodings = (enc.strip() for enc in tr_enc.split(","))  # type: ignore[arg-type]
         if "chunked" in encodings:
             self.chunked = True
 
@@ -356,7 +358,7 @@ class BaseHTTPResponse(io.IOBase):
             location. ``False`` if not a redirect status code.
         """
         if self.status in self.REDIRECT_STATUSES:
-            return self.headers.get("location")
+            return self.headers.get("location")  # type: ignore[return-value]
         return False
 
     @property
@@ -452,15 +454,15 @@ class BaseHTTPResponse(io.IOBase):
         content_encoding = self.headers.get("content-encoding", "").lower()
         if self._decoder is None:
             if content_encoding in self.CONTENT_DECODERS:
-                self._decoder = _get_decoder(content_encoding)
+                self._decoder = _get_decoder(content_encoding)  # type: ignore[arg-type]
             elif "," in content_encoding:
                 encodings = [
                     e.strip()
-                    for e in content_encoding.split(",")
+                    for e in content_encoding.split(",")  # type: ignore[arg-type]
                     if e.strip() in self.CONTENT_DECODERS
                 ]
                 if encodings:
-                    self._decoder = _get_decoder(content_encoding)
+                    self._decoder = _get_decoder(content_encoding)  # type: ignore[arg-type]
 
     def _decode(
         self, data: bytes, decode_content: bool | None, flush_decoder: bool
@@ -484,7 +486,7 @@ class BaseHTTPResponse(io.IOBase):
             content_encoding = self.headers.get("content-encoding", "").lower()
             raise DecodeError(
                 "Received response with content-encoding: %s, but "
-                "failed to decode it." % content_encoding,
+                "failed to decode it." % content_encoding,  # type: ignore[str-bytes-safe]
                 e,
             ) from e
         if flush_decoder:
@@ -527,7 +529,7 @@ class BaseHTTPResponse(io.IOBase):
             category=DeprecationWarning,
             stacklevel=2,
         )
-        return self.headers.get(name, default)
+        return self.headers.get(name, default)  # type: ignore[return-value]
 
     # Compatibility method for http.cookiejar
     def info(self) -> HTTPHeaderDict:
@@ -573,7 +575,9 @@ class HTTPResponse(BaseHTTPResponse):
     def __init__(
         self,
         body: _TYPE_BODY = "",
-        headers: typing.Mapping[str, str] | typing.Mapping[bytes, bytes] | None = None,
+        headers: typing.Mapping[str, str | bytes]
+        | typing.Mapping[bytes, bytes]
+        | None = None,
         status: int = 0,
         version: int = 0,
         version_string: str = "HTTP/?",
@@ -681,7 +685,7 @@ class HTTPResponse(BaseHTTPResponse):
         Set initial length value for Response content if available.
         """
         length: int | None
-        content_length: str | None = self.headers.get("content-length")
+        content_length: str | None = self.headers.get("content-length")  # type: ignore[assignment]
 
         if content_length is not None:
             if self.chunked:

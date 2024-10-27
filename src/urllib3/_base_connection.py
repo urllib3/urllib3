@@ -82,7 +82,7 @@ if typing.TYPE_CHECKING:
             method: str,
             url: str,
             body: _TYPE_BODY | None = None,
-            headers: typing.Mapping[str, str] | None = None,
+            headers: typing.Mapping[str, str | bytes] | None = None,
             # We know *at least* botocore is depending on the order of the
             # first 3 parameters so to be safe we only mark the later ones
             # as keyword-only to ensure we have space to extend.

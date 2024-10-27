@@ -8,6 +8,7 @@ import http.client
 import io
 import os
 import os.path
+import re
 import select
 import shutil
 import socket
@@ -2029,6 +2030,42 @@ class TestHeaders(SocketDummyServerTestCase):
             )
             assert r.status == 200
             assert b"A: 1\r\nA: 4\r\nC: 3, 5\r\nC: 6\r\nB: 2\r\nB: 3" in buffer
+
+    def test_headers_with_byte_vals(self) -> None:
+        """
+        Simple check that headers with bytes objects as values work properly
+        """
+
+        buffer: bytes = b""
+        expected = b"\xc2\x80\r\n\r\n"
+
+        def socket_handler(listener: socket.socket) -> None:
+            nonlocal buffer
+            sock = listener.accept()[0]
+            sock.settimeout(0)
+
+            while expected not in buffer:
+                with contextlib.suppress(BlockingIOError):
+                    buffer += sock.recv(65536)
+
+            rawcookie_header_match_obj = re.search(b"(raw[^\r\n]*)", buffer)
+            if rawcookie_header_match_obj:
+                rawcookie_header = rawcookie_header_match_obj.group(0)
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: example.com\r\n"
+                b"Content-Length: 13\r\n\r\n" + rawcookie_header
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        headers = HTTPHeaderDict()
+        headers.add("rawcookie", b"\xc2\x80")
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            r = pool.request("GET", "/", headers=headers)
+            assert r.status == 200
+            assert r.data == b"rawcookie: \xc2\x80"
 
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
