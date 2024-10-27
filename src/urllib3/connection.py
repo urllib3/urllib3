@@ -78,8 +78,6 @@ RECENT_DATE = datetime.date(2023, 6, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
-_HAS_SYS_AUDIT = hasattr(sys, "audit")
-
 
 class HTTPConnection(_HTTPConnection):
     """
@@ -215,9 +213,7 @@ class HTTPConnection(_HTTPConnection):
                 self, f"Failed to establish a new connection: {e}"
             ) from e
 
-        # Audit hooks are only available in Python 3.8+
-        if _HAS_SYS_AUDIT:
-            sys.audit("http.client.connect", self, self.host, self.port)
+        sys.audit("http.client.connect", self, self.host, self.port)
 
         return sock
 

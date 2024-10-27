@@ -110,7 +110,7 @@ try:  # Do we have ssl at all?
     PROTOCOL_SSLv23 = PROTOCOL_TLS
 
     # Setting SSLContext.hostname_checks_common_name = False didn't work before CPython
-    # 3.8.9, 3.9.3, and 3.10 (but OK on PyPy) or OpenSSL 1.1.1l+
+    # 3.9.3, and 3.10 (but OK on PyPy) or OpenSSL 1.1.1l+
     if HAS_NEVER_CHECK_COMMON_NAME and not _is_has_never_check_common_name_reliable(
         OPENSSL_VERSION,
         OPENSSL_VERSION_NUMBER,
@@ -341,15 +341,12 @@ def create_urllib3_context(
 
     try:
         context.hostname_checks_common_name = False
-    except AttributeError:  # Defensive: for CPython < 3.8.9 and 3.9.3; for PyPy < 7.3.8
+    except AttributeError:  # Defensive: for CPython < 3.9.3; for PyPy < 7.3.8
         pass
 
-    # Enable logging of TLS session keys via defacto standard environment variable
-    # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+). Skip empty values.
-    if hasattr(context, "keylog_filename"):
-        sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
-        if sslkeylogfile:
-            context.keylog_filename = sslkeylogfile
+    sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
+    if sslkeylogfile:
+        context.keylog_filename = sslkeylogfile
 
     return context
 
