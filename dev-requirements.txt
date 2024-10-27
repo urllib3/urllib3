@@ -15,7 +15,7 @@ backports.zoneinfo==0.2.1;python_version<"3.9"
 towncrier==23.6.0
 pytest-memray==1.7.0;sys_platform!="win32" and implementation_name=="cpython"
 trio==0.26.2
-Quart==0.19.4
+Quart==0.19.7
 quart-trio==0.11.1
 # https://github.com/pgjones/hypercorn/issues/62
 # https://github.com/pgjones/hypercorn/issues/168
