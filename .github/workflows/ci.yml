@@ -123,11 +123,12 @@ jobs:
 
       - name: Upload Coverage
         if: ${{ matrix.nox-session != 'unsupported_python2' }}
-        uses: "actions/upload-artifact@v4"
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: coverage-data-${{ matrix.python-version }}-${{ matrix.os }}-${{ matrix.experimental }}-${{ matrix.nox-session }}
           path: ".coverage.*"
           if-no-files-found: error
+          include-hidden-files: true
 
   # A slow test that needs to be run separatelly to avoid timeouts.
   test_requesting_large_resources_via_ssl:
@@ -157,11 +158,12 @@ jobs:
           PYTHON_VERSION: ${{ matrix.python-version }}
 
       - name: Upload Coverage
-        uses: "actions/upload-artifact@v4"
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: coverage-data-${{ matrix.python-version }}-test_requesting_large_resources_via_ssl
           path: ".coverage.*"
           if-no-files-found: error
+          include-hidden-files: true
 
   coverage:
     if: always()
@@ -190,7 +192,7 @@ jobs:
           python -m coverage report --ignore-errors --show-missing --fail-under=100
 
       - name: "Upload report if check failed"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: coverage-report
           path: htmlcov
