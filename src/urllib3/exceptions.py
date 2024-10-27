@@ -23,9 +23,7 @@ class HTTPWarning(Warning):
     """Base warning used by this module."""
 
 
-_TYPE_REDUCE_RESULT = typing.Tuple[
-    typing.Callable[..., object], typing.Tuple[object, ...]
-]
+_TYPE_REDUCE_RESULT = tuple[typing.Callable[..., object], tuple[object, ...]]
 
 
 class PoolError(HTTPError):
