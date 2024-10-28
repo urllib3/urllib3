@@ -992,27 +992,6 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 assert http_version == "h11"
                 assert http2_probe._values() == {}
 
-    @pytest.mark.xfail(reason="Hypercorn always supports both HTTP/2 and HTTP/1.1")
-    def test_http2_probe_result_failed(self, http_version: str) -> None:
-        if http_version == "h2":
-            pytest.skip("Test must have server in HTTP/1.1 mode")
-        assert http2_probe._values() == {}
-
-        urllib3.http2.inject_into_urllib3()
-        try:
-            with HTTPSConnectionPool(
-                self.host,
-                self.port,
-                ca_certs=DEFAULT_CA,
-            ) as pool:
-                r = pool.request("GET", "/", retries=0)
-                assert r.status == 200
-
-            # The probe was a failure because Hypercorn didn't support HTTP/2.
-            assert http2_probe._values() == {(self.host, self.port): False}
-        finally:
-            urllib3.http2.extract_from_urllib3()
-
     def test_http2_probe_no_result_in_connect_error(self) -> None:
         assert http2_probe._values() == {}
 
