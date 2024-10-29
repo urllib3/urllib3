@@ -73,9 +73,13 @@ jobs:
             os: ubuntu-20.04  # CPython 3.9.2 is not available for ubuntu-22.04.
             experimental: false
             nox-session: test-3.9
-          - python-version: "3.11"
+          - python-version: "3.12"
             os: ubuntu-latest
-            nox-session: emscripten
+            nox-session: emscripten(firefox)
+            experimental: true
+          - python-version: "3.12"
+            os: ubuntu-latest
+            nox-session: emscripten(chrome)
             experimental: true
 
     runs-on: ${{ matrix.os }}

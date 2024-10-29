@@ -191,7 +191,7 @@ def lint(session: nox.Session) -> None:
     mypy(session)
 
 
-@nox.session(python="3.11")
+@nox.session(python="3.12")
 def pyodideconsole(session: nox.Session) -> None:
     # build wheel into dist folder
     session.install("build")
@@ -210,8 +210,8 @@ def pyodideconsole(session: nox.Session) -> None:
 # loading pyodide, but there is currently no nice way to do this with pytest-pyodide
 # because you can't override the test runner properties easily - see
 # https://github.com/pyodide/pytest-pyodide/issues/118 for more
-@nox.session(python="3.11")
-@nox.parametrize("runner", ["firefox", "chrome"])
+@nox.session(python="3.12")
+@nox.parametrize("runner", ["firefox", "chrome"], ids=["firefox", "chrome"])
 def emscripten(session: nox.Session, runner: str) -> None:
     """Test on Emscripten with Pyodide & Chrome / Firefox"""
     session.install("-r", "emscripten-requirements.txt")
@@ -240,10 +240,13 @@ def emscripten(session: nox.Session, runner: str) -> None:
         if not pyodide_artifacts_path.exists():
             print("Fetching pyodide build artifacts")
             session.run(
-                "wget",
+                "curl",
+                "-L",
                 f"https://github.com/pyodide/pyodide/releases/download/{pyodide_version}/pyodide-{pyodide_version}.tar.bz2",
+                "--output-dir",
+                session.cache_dir,
                 "-O",
-                f"{pyodide_artifacts_path}.tar.bz2",
+                external=True,
             )
             pyodide_artifacts_path.mkdir(parents=True)
             session.run(
@@ -254,6 +257,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
                 str(pyodide_artifacts_path),
                 "--strip-components",
                 "1",
+                external=True,
             )
 
         dist_dir = pyodide_artifacts_path
@@ -279,7 +283,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
                 "chrome-no-host",
                 "--dist-dir",
                 str(dist_dir),
-                "test",
+                "test/contrib/emscripten",
             ],
         )
     elif runner == "firefox":
@@ -301,7 +305,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
                 "firefox-no-host",
                 "--dist-dir",
                 str(dist_dir),
-                "test",
+                "test/contrib/emscripten",
             ],
         )
     else:
