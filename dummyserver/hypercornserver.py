@@ -119,7 +119,9 @@ def run_hypercorn_in_thread(
     shutdown_event = trio.Event()
 
     with anyio.from_thread.start_blocking_portal(backend="trio") as portal:
-        future, config_bind = portal.start_task(_start_server, config, app, shutdown_event)
+        future, config_bind = portal.start_task(
+            _start_server, config, app, shutdown_event
+        )
         try:
             port = parse_url(config_bind[0]).port
             assert port is not None
