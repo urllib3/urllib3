@@ -133,7 +133,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .nox/.cache
-          key: pyodide_downloads
+          # noxfile.py contains a Pyodide version used currently.
+          key: pyodide-downloads-${{ hashFiles('noxfile.py') }}
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
         run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}

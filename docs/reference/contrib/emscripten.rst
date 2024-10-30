@@ -28,7 +28,7 @@ Using urllib3 with Pyodide means you need to `get started with Pyodide first <ht
 The Pyodide project provides a `useful online REPL <https://pyodide.org/en/stable/console.html>`_ to try in your browser without
 any setup or installation to test out the code examples below.
 
-One minor note - when running pyodide code from javascript, if you use ``pyodide.runPythonAsync`` rather
+One minor note - when running Pyodide code from JavaScript, if you use ``pyodide.runPythonAsync`` rather
 than ``pyodide.runPython``, urllib3 can sometimes run more efficiently. It is generally always worth using
 ``runPythonAsync``.
 
