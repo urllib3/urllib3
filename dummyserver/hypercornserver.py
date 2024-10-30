@@ -89,7 +89,7 @@ async def _start_server(
     async with trio.open_nursery() as nursery:
         with trio.fail_after(5):
             config_bind: list[str]
-            config.bind = config_bind = await nursery.start(
+            config_bind = await nursery.start(
                 functools.partial(
                     hypercorn.trio.serve,
                     app,
