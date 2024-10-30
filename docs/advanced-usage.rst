@@ -588,7 +588,7 @@ Here's an example using zstd encoding via the ``Accept-Encoding`` header:
 
 Decrypting Captured TLS Sessions with Wireshark
 -----------------------------------------------
-Python 3.8 and higher support logging of TLS pre-master secrets.
+Python supports logging of TLS pre-master secrets.
 With these secrets tools like `Wireshark <https://wireshark.org>`_ can decrypt captured
 network traffic.
 

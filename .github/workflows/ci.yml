@@ -7,6 +7,8 @@ permissions: "read-all"
 defaults:
   run:
     shell: bash
+env:
+  FORCE_COLOR: 1
 
 jobs:
   package:
@@ -18,7 +20,7 @@ jobs:
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
 
       - name: "Setup Python"
-        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.x"
           cache: "pip"
@@ -34,21 +36,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         os:
-          - macos-12
+          - macos-15
           - windows-latest
           - ubuntu-22.04
         nox-session: ['']
         include:
           - experimental: false
           # integration
-          # 3.8 and 3.9 have a known issue with large SSL requests that we work around:
+          # 3.9 has a known issue with large SSL requests that we work around:
           # https://github.com/urllib3/urllib3/pull/3181#issuecomment-1794830698
-          - python-version: "3.8"
-            os: ubuntu-latest
-            experimental: false
-            nox-session: test_integration
           - python-version: "3.9"
             os: ubuntu-latest
             experimental: false
@@ -58,10 +56,10 @@ jobs:
             experimental: false
             nox-session: test_integration
           # OpenSSL 1.1.1
-          - python-version: "3.8"
+          - python-version: "3.9"
             os: ubuntu-20.04
             experimental: false
-            nox-session: test-3.8
+            nox-session: test-3.9
           # pypy
           - python-version: "pypy-3.10"
             os: ubuntu-latest
@@ -81,14 +79,9 @@ jobs:
             os: ubuntu-latest
             nox-session: emscripten
             experimental: true
-        exclude:
-          # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
-          # https://github.com/python/cpython/issues/83001
-          - python-version: "3.8"
-            os: ubuntu-22.04
 
     runs-on: ${{ matrix.os }}
-    name: ${{ fromJson('{"macos-12":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
+    name: ${{ fromJson('{"macos-15":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
     timeout-minutes: 30
     steps:
@@ -98,7 +91,7 @@ jobs:
           fetch-depth: 0 # Needed to fetch the version from git
 
       - name: "Setup Python ${{ matrix.python-version }}"
-        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
@@ -159,7 +152,7 @@ jobs:
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
 
       - name: "Setup Python"
-        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.x"
 

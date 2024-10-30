@@ -4,15 +4,10 @@ import datetime
 import os
 import time
 import typing
+import zoneinfo
 from contextlib import contextmanager
 
 import pytest
-
-try:
-    import zoneinfo
-except ImportError:
-    # Python < 3.9
-    from backports import zoneinfo  # type: ignore[no-redef]
 
 
 @contextmanager
