@@ -111,7 +111,6 @@ jobs:
         id: setup-chrome
         if: ${{ matrix.nox-session == 'emscripten' }}
         with:
-          chrome-version: 120
           install-chromedriver: true
       - name: Force override system chrome
         run: |
