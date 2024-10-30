@@ -132,8 +132,6 @@ def test_pool_requests(
 
 
 # wrong protocol / protocol error etc. should raise an exception of http.client.HTTPException
-
-
 def test_wrong_protocol(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -176,8 +174,6 @@ def test_bad_method(
 
 
 # no connection - should raise
-
-
 def test_no_response(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, has_jspi: bool
 ) -> None:
@@ -219,8 +215,6 @@ def test_404(
 # setting timeout should show a warning to js console
 # if we're on the ui thread, because XMLHttpRequest doesn't
 # support timeout in async mode if globalThis == Window
-
-
 @pytest.mark.without_jspi
 def test_timeout_warning(
     selenium_coverage: typing.Any,
