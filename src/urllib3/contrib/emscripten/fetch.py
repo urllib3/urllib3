@@ -666,7 +666,6 @@ def _run_sync_with_timeout(
             )
         else:
             raise _RequestError(message=err.message, request=request, response=response)
-        # raise (something)
     finally:
         if timer_id is not None:
             js.clearTimeout(timer_id)
