@@ -1,3 +1,6 @@
 pytest-pyodide==0.54.0
 pyodide-build==0.24.1
 webdriver-manager==4.0.1
+# With https://github.com/SeleniumHQ/selenium/pull/13286, we now get the following warning:
+# DeprecationWarning: setting remote_server_addr in RemoteConnection() is deprecated, set in ClientConfig instance instead
+selenium==4.25.0
