@@ -234,82 +234,36 @@ def run_from_server(
     )
 
 
-def pytest_configure(config: pytest.Config) -> None:
-    config.addinivalue_line(
-        "markers",
-        "in_webbrowser: mark test to run only in browser (not in Node.js)",
-    )
-    config.addinivalue_line(
-        "markers",
-        "with_jspi: mark test to run only if WebAssembly JavaScript Promise Integration is supported",
-    )
-    config.addinivalue_line(
-        "markers",
-        "without_jspi: mark test to run only if this platform works without  WebAssembly JavaScript Promise Integration",
-    )
-    config.addinivalue_line(
-        "markers",
-        "webworkers: mark test to run only if this platform can test web workers",
-    )
-    config.addinivalue_line(
-        "markers",
-        "node_without_jspi: mark test to run in node with jspi enabled (for failure testing)",
-    )
-
-
-# def pytest_runtest_setup(item: pytest.Item) -> None:
-#     """Configure various markers to mark tests which use behaviour which is
-#     browser / Node.js specific."""
-#     if item.get_closest_marker("without_jspi"):
-#         if item.config.getoption("--runtime").startswith("node"):
-#             pytest.skip("Node.js doesn't support non jspi tests")
-
-#     if item.get_closest_marker("with_jspi"):
-#         if item.config.getoption("--runtime").startswith("firefox"):
-#             pytest.skip("Firefox doesn't support jspi tests")
-
-#     if item.get_closest_marker("in_webbrowser"):
-#         if item.config.getoption("--runtime").startswith("node"):
-#             pytest.skip("Skipping web browser test in Node.js")
-
-#     if item.get_closest_marker("webworkers"):
-#         if item.config.getoption("--runtime").startswith("node"):
-#             pytest.skip("Skipping webworker test in Node.js")
-
-
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    """Generate WebAssembly JavaScript Promise Integration based tests
-    only for platforms that support it.
-
-    Currently:
-    1) Node.js only supports use of JSPI because it doesn't support
-    synchronous XMLHttpRequest
-
-    2) firefox doesn't support JSPI
-
-    3) Chrome supports JSPI on or off.
+    """Generate tests with WebAssembly JavaScript Promise Integration both
+     enabled and disabled depending on browser/node.js support for features.
+     Also drops any test that requires a browser or web-workers in Node.js.
+    ).
     """
     if "has_jspi" in metafunc.fixturenames:
         can_run_with_jspi = False
         can_run_without_jspi = False
+        # node only supports JSPI and doesn't support workers or
+        # webbrowser specific tests
         if metafunc.config.getoption("--runtime").startswith("node"):
             if (
                 metafunc.definition.get_closest_marker("webworkers") is None
                 and metafunc.definition.get_closest_marker("in_webbrowser") is None
             ):
-                # node only supports JSPI and doesn't support workers or
-                # webbrowser specific tests
                 can_run_with_jspi = True
             if metafunc.definition.get_closest_marker("node_without_jspi"):
                 can_run_without_jspi = True
                 can_run_with_jspi = False
-
+        # firefox doesn't support JSPI
         elif metafunc.config.getoption("--runtime").startswith("firefox"):
-            can_run_without_jspi = True  # firefox doesn't support JSPI
+            can_run_without_jspi = True
         else:
             # chrome supports JSPI on or off
             can_run_without_jspi = True
             can_run_with_jspi = True
+
+        # if the function is marked to only run with or without jspi,
+        # then disable the alternative option
         if metafunc.definition.get_closest_marker("with_jspi"):
             can_run_without_jspi = False
         elif metafunc.definition.get_closest_marker("without_jspi"):
