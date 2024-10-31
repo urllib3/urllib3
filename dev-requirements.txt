@@ -1,6 +1,6 @@
 h2==4.1.0
 build==1.2.1
-coverage==7.4.1
+coverage==7.6.4
 PySocks==1.7.1
 pytest==8.0.2
 pytest-timeout==2.1.0

@@ -51,16 +51,8 @@ def tests_impl(
     # Environment variables being passed to the pytest run.
     pytest_session_envvars = {
         "PYTHONWARNINGS": "always::DeprecationWarning",
+        "COVERAGE_CORE": "sysmon",
     }
-
-    # In coverage 7.4.0 we can only set the setting for Python 3.12+
-    # Future versions of coverage will use sys.monitoring based on availability.
-    if (
-        isinstance(session.python, str)
-        and "." in session.python
-        and int(session.python.split(".")[1]) >= 12
-    ):
-        pytest_session_envvars["COVERAGE_CORE"] = "sysmon"
 
     # Inspired from https://hynek.me/articles/ditch-codecov-python/
     # We use parallel mode and then combine in a later CI step
@@ -77,7 +69,6 @@ def tests_impl(
         "-v",
         "-ra",
         *(("--integration",) if integration else ()),
-        f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
         "--tb=native",
         "--durations=10",
         "--strict-config",
