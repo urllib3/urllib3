@@ -77,13 +77,21 @@ jobs:
             nox-session: test-3.9
           - python-version: "3.12"
             os: ubuntu-latest
-            nox-session: emscripten
+            nox-session: emscripten(node)
+            experimental: true
+          - python-version: "3.12"
+            os: ubuntu-latest
+            nox-session: emscripten(firefox)
+            experimental: true
+          - python-version: "3.12"
+            os: ubuntu-latest
+            nox-session: emscripten(chrome)
             experimental: true
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-15":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -102,7 +110,7 @@ jobs:
       - name: "Install Chrome"
         uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
         id: setup-chrome
-        if: ${{ matrix.nox-session == 'emscripten' }}
+        if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
         with:
           install-chromedriver: true
       - name: Force override system chrome
@@ -112,18 +120,18 @@ jobs:
           sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/google-chrome
           sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/chrome
           google-chrome --version
-        if: ${{ matrix.nox-session == 'emscripten' }}
+        if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
       - name: "Install Firefox"
         uses: browser-actions/setup-firefox@233224b712fc07910ded8c15fb95a555c86da76f # v1.5.0
-        if: ${{ matrix.nox-session == 'emscripten' }}
+        if: ${{ matrix.nox-session == 'emscripten(firefox)' }}
       - name: "Install node.js"
         uses: actions/setup-node@v4
-        if: ${{ matrix.nox-session == 'emscripten' }}
+        if: ${{ matrix.nox-session == 'emscripten(node)' }}
         with:
           node-version: 22
       - name: Cache pyodide downloads in nox cache
         uses: actions/cache@v4
-        if: ${{ matrix.nox-session == 'emscripten' }}
+        if: ${{ startsWith(matrix.nox-session, 'emscripten') }}
         with:
           path: .nox/.cache
           # noxfile.py contains the Pyodide version used currently.

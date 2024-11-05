@@ -199,7 +199,9 @@ def pyodideconsole(session: nox.Session) -> None:
 
 
 @nox.session(python="3.12")
-@nox.parametrize("runner", ["node", "firefox", "chrome"])
+@nox.parametrize(
+    "runner", ["node", "firefox", "chrome"], ids=["node", "firefox", "chrome"]
+)
 def emscripten(session: nox.Session, runner: str) -> None:
     """Test on Emscripten with Pyodide & Chrome / Firefox / Node.js"""
     if runner == "node":
@@ -222,10 +224,12 @@ def emscripten(session: nox.Session, runner: str) -> None:
         if not pyodide_artifacts_path.exists():
             print("Fetching pyodide build artifacts")
             session.run(
-                "wget",
+                "curl",
+                "-L",
                 f"https://github.com/pyodide/pyodide/releases/download/{pyodide_version}/pyodide-{pyodide_version}.tar.bz2",
+                "--output-dir",
+                session.cache_dir,
                 "-O",
-                f"{pyodide_artifacts_path}.tar.bz2",
                 external=True,
             )
             pyodide_artifacts_path.mkdir(parents=True)
