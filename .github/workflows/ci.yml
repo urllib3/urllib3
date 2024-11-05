@@ -77,6 +77,10 @@ jobs:
             nox-session: test-3.9
           - python-version: "3.12"
             os: ubuntu-latest
+            nox-session: emscripten(node)
+            experimental: true
+          - python-version: "3.12"
+            os: ubuntu-latest
             nox-session: emscripten(firefox)
             experimental: true
           - python-version: "3.12"
@@ -105,10 +109,33 @@ jobs:
 
       - name: "Install Chrome"
         uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
+        id: setup-chrome
+        if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
+        with:
+          install-chromedriver: true
+      - name: Force override system chrome
+        run: |
+          sudo rm -f /usr/bin/google-chrome
+          sudo rm -f /usr/bin/chrome
+          sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/google-chrome
+          sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/chrome
+          google-chrome --version
         if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
       - name: "Install Firefox"
         uses: browser-actions/setup-firefox@233224b712fc07910ded8c15fb95a555c86da76f # v1.5.0
         if: ${{ matrix.nox-session == 'emscripten(firefox)' }}
+      - name: "Install node.js"
+        uses: actions/setup-node@v4
+        if: ${{ matrix.nox-session == 'emscripten(node)' }}
+        with:
+          node-version: 22
+      - name: Cache pyodide downloads in nox cache
+        uses: actions/cache@v4
+        if: ${{ startsWith(matrix.nox-session, 'emscripten') }}
+        with:
+          path: .nox/.cache
+          # noxfile.py contains the Pyodide version used currently.
+          key: pyodide-downloads-${{ hashFiles('noxfile.py') }}
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
         run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}

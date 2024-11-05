@@ -7,7 +7,7 @@ import email.utils
 import gzip
 import mimetypes
 import zlib
-from collections.abc import Iterator
+from collections.abc import AsyncGenerator, Iterator
 from io import BytesIO
 from pathlib import Path
 
@@ -51,7 +51,6 @@ async def alpn_protocol() -> ResponseReturnValue:
 @hypercorn_app.route("/certificate")
 async def certificate() -> ResponseReturnValue:
     """Return the requester's certificate."""
-    print("scope", request.scope)
     subject = request.scope["extensions"]["tls"]["client_cert_name"]
     subject_as_dict = dict(part.split("=") for part in subject.split(", "))
     return await make_response(subject_as_dict)
@@ -315,6 +314,22 @@ async def slow() -> ResponseReturnValue:
     return await make_response("TEN SECONDS LATER", 200)
 
 
+@pyodide_testing_app.route("/dripfeed")
+async def dripfeed() -> ResponseReturnValue:
+    # great big text file which streams half the file
+    # then pauses for 2 seconds and streams the rest
+    async def generate() -> AsyncGenerator[bytes, None]:
+        for x in range(8):
+            if x == 4:
+                await trio.sleep(2)
+            yield b"WOOO YAY BOOYAKAH" * 131072
+
+    response = await make_response(generate(), 200)
+    if hasattr(response, "timeout"):
+        response.timeout = None
+    return response
+
+
 @pyodide_testing_app.route("/bigfile")
 async def bigfile() -> ResponseReturnValue:
     # great big text file, should force streaming
@@ -353,29 +368,109 @@ async def pyodide_upload() -> ResponseReturnValue:
     return await make_response("Uploaded file correct", 200)
 
 
+def _find_built_wheel() -> Path | None:
+    wheel_folder = Path(__file__).parent.parent / "dist"
+    wheels = list(wheel_folder.glob("*.whl"))
+    wheels = sorted(wheels, key=lambda w: w.stat().st_mtime)
+    if len(wheels) > 0:
+        return wheels[-1]  # newest wheel
+    else:
+        return None
+
+
+def _get_pyodide_template(py_file: str) -> bytes | None:
+    # serve code to run pyodide in a webworker, or html template
+    # these are included in pytest_pyodide, but
+    # we modify the webworker to automatically load our wheel
+    # before anything else
+    if py_file == "webworker_dev.js":
+        return b"""
+            importScripts("./pyodide.js");
+
+            onmessage = async function (e) {
+                try {
+                    let code = e.data.python;
+                    self.pyodide = await loadPyodide();
+                    await self.pyodide.loadPackage("/dist/urllib3.whl");
+                    await self.pyodide.loadPackagesFromImports(code);
+                    let results = await self.pyodide.runPythonAsync(code);
+                    self.postMessage({ results });
+                } catch (e) {
+                    self.postMessage({ error: e.message + "\\n" + e.stack });
+                }
+            };
+        """
+    elif py_file == "test.html":
+        return b"""
+            <!doctype html>
+            <html>
+            <head>
+                <script type="text/javascript">
+                window.logs = [];
+                console.log = function (message) {
+                    window.logs.push(message);
+                };
+                console.warn = function (message) {
+                    window.logs.push(message);
+                };
+                console.info = function (message) {
+                    window.logs.push(message);
+                };
+                console.error = function (message) {
+                    window.logs.push(message);
+                };
+                console.debug = function (message) {
+                    window.logs.push(message);
+                };
+                </script>
+                <script src="./pyodide.js"></script>
+            </head>
+            <body></body>
+            </html>
+        """
+    else:
+        return None
+
+
 @pyodide_testing_app.route("/pyodide/<py_file>")
 async def pyodide(py_file: str) -> ResponseReturnValue:
-    file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
-    if file_path.exists():
-        mime_type, encoding = mimetypes.guess_type(file_path)
+    template_data = _get_pyodide_template(py_file)
+    mime_type: str | None = None
+    if template_data:
+        mime_type, _encoding = mimetypes.guess_type(py_file)
         if not mime_type:
             mime_type = "text/plain"
-        return await make_response(
-            file_path.read_bytes(), 200, [("Content-Type", mime_type)]
-        )
+        headers = [("Content-Type", mime_type)]
+        return await make_response(template_data, 200, headers)
+    file_path = Path(pyodide_testing_app.config["pyodide_dist_dir"], py_file)
+
+    if file_path is not None and file_path.exists():
+        if py_file.endswith(".whl"):
+            mime_type = "application/x-wheel"
+            headers = [
+                ("Content-Disposition", f"inline; filename='{file_path.name}'"),
+                ("Content-Type", mime_type),
+            ]
+        else:
+            mime_type, _encoding = mimetypes.guess_type(file_path)
+            if not mime_type:
+                mime_type = "text/plain"
+            headers = [("Content-Type", mime_type)]
+        return await make_response(file_path.read_bytes(), 200, headers)
     else:
         return await make_response("", 404)
 
 
-@pyodide_testing_app.route("/wheel/dist.whl")
+@pyodide_testing_app.route("/dist/urllib3.whl")
 async def wheel() -> ResponseReturnValue:
-    # serve our wheel
-    wheel_folder = Path(__file__).parent.parent / "dist"
-    wheels = list(wheel_folder.glob("*.whl"))
-    if len(wheels) > 0:
-        wheel = wheels[0]
-        headers = [("Content-Disposition", f"inline; filename='{wheel.name}'")]
-        resp = await make_response(wheel.read_bytes(), 200, headers)
-        return resp
-    else:
-        return await make_response(f"NO WHEEL IN {wheel_folder}", 404)
+    file_path = _find_built_wheel()
+    if not file_path:
+        print("NO BUILT WHEEL?")
+        return await make_response("", 404)
+
+    mime_type = "application/x-wheel"
+    headers = [
+        ("Content-Disposition", f"inline; filename='{file_path.name}'"),
+        ("Content-Type", mime_type),
+    ]
+    return await make_response(file_path.read_bytes(), 200, headers)

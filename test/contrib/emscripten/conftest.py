@@ -44,13 +44,47 @@ def testserver_http(
             http_host=http_host,
             http_port=http_port,
             https_port=https_port,
+            pyodide_dist_dir=pyodide_dist_dir,
         )
         print("Server teardown")
 
 
+@dataclass
+class PyodideServerInfo:
+    http_port: int
+    https_port: int
+    http_host: str
+    pyodide_dist_dir: Path
+
+
 @pytest.fixture()
-def selenium_coverage(selenium: Any) -> Generator[Any, None, None]:
-    def _install_coverage(self: Any) -> None:
+def selenium_with_jspi_if_possible(
+    request: pytest.FixtureRequest, runtime: str, has_jspi: bool
+) -> Generator[Any, None, None]:
+    if runtime.startswith("firefox") or not has_jspi:
+        fixture_name = "selenium"
+        with_jspi = False
+    else:
+        fixture_name = "selenium_jspi"
+        with_jspi = True
+    selenium_obj = request.getfixturevalue(fixture_name)
+    selenium_obj.with_jspi = with_jspi
+    yield selenium_obj
+
+
+@pytest.fixture()
+def selenium_coverage(
+    selenium_with_jspi_if_possible: Any, testserver_http: PyodideServerInfo
+) -> Generator[Any, None, None]:
+    def _install_packages(self: Any) -> None:
+        if self.browser == "node":
+            # stop Node.js checking our https certificates
+            self.run_js('process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;')
+        # install urllib3 from our test server, rather than from existing package
+        result = self.run_js(
+            f'await pyodide.loadPackage("http://{testserver_http.http_host}:{testserver_http.http_port}/dist/urllib3.whl")'
+        )
+        print("Installed package:", result)
         self.run_js(
             """
             await pyodide.loadPackage("coverage")
@@ -62,15 +96,18 @@ _coverage.start()
         )
 
     setattr(
-        selenium,
-        "_install_coverage",
-        _install_coverage.__get__(selenium, selenium.__class__),
+        selenium_with_jspi_if_possible,
+        "_install_packages",
+        _install_packages.__get__(
+            selenium_with_jspi_if_possible, selenium_with_jspi_if_possible.__class__
+        ),
     )
-    selenium._install_coverage()
-    yield selenium
+
+    selenium_with_jspi_if_possible._install_packages()
+    yield selenium_with_jspi_if_possible
     # on teardown, save _coverage output
     coverage_out_binary = bytes(
-        selenium.run_js(
+        selenium_with_jspi_if_possible.run_js(
             """
 return await pyodide.runPythonAsync(`
 _coverage.stop()
@@ -91,28 +128,28 @@ _coverage_js.Array.from_(_coverage_outdata)
 
 
 class ServerRunnerInfo:
-    def __init__(self, host: str, port: int, selenium: Any) -> None:
+    def __init__(self, host: str, port: int, selenium: Any, dist_dir: Path) -> None:
         self.host = host
         self.port = port
         self.selenium = selenium
+        self.dist_dir = dist_dir
 
     def run_webworker(self, code: str) -> Any:
         if isinstance(code, str) and code.startswith("\n"):
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
-            # add coverage collection to this code
-            code = (
-                textwrap.dedent(
-                    """
+
+        # add coverage collection to this code
+        coverage_init_code = textwrap.dedent(
+            """
             import coverage
             _coverage= coverage.Coverage(source_pkgs=['urllib3'])
             _coverage.start()
             """
-                )
-                + code
-            )
-            code += textwrap.dedent(
-                """
+        )
+
+        coverage_end_code = textwrap.dedent(
+            """
             _coverage.stop()
             _coverage.save()
             _coverage_datafile = open(".coverage","rb")
@@ -123,12 +160,31 @@ class ServerRunnerInfo:
             # bad things in firefox)
             _coverage_js.Array.from_(_coverage_outdata)
             """
-            )
+        )
 
+        # the ordering of these code blocks is important - makes sure
+        # that the first thing that happens is our wheel is loaded
+        code = coverage_init_code + "\n" + code + "\n" + coverage_end_code
+
+        if self.selenium.browser == "firefox":
+            # running in worker is SLOW on firefox
+            self.selenium.set_script_timeout(30)
+        if self.selenium.browser == "node":
+            worker_path = str(self.dist_dir / "webworker_dev.js")
+            self.selenium.run_js(
+                f"""const {{
+                    Worker, isMainThread, parentPort, workerData,
+                }} = require('node:worker_threads');
+                globalThis.Worker= Worker;
+                process.chdir('{self.dist_dir}');
+                """
+            )
+        else:
+            worker_path = f"https://{self.host}:{self.port}/pyodide/webworker_dev.js"
         coverage_out_binary = bytes(
             self.selenium.run_js(
                 f"""
-            let worker = new Worker('https://{self.host}:{self.port}/pyodide/webworker_dev.js');
+            let worker = new Worker('{worker_path}');
             let p = new Promise((res, rej) => {{
                 worker.onmessageerror = e => rej(e);
                 worker.onerror = e => rej(e);
@@ -159,27 +215,64 @@ class ServerRunnerInfo:
 def run_from_server(
     selenium_coverage: Any, testserver_http: PyodideServerInfo
 ) -> Generator[ServerRunnerInfo, None, None]:
-    addr = f"https://{testserver_http.http_host}:{testserver_http.https_port}/pyodide/test.html"
-    selenium_coverage.goto(addr)
-    selenium_coverage.javascript_setup()
-    selenium_coverage.load_pyodide()
-    selenium_coverage.initialize_pyodide()
-    selenium_coverage.save_state()
-    selenium_coverage.restore_state()
-    # install the wheel, which is served at /wheel/*
-    selenium_coverage.run_js(
-        """
-await pyodide.loadPackage('/wheel/dist.whl')
-"""
-    )
-    selenium_coverage._install_coverage()
+    if selenium_coverage.browser != "node":
+        # on node, we don't need to be on the same origin
+        # so we can ignore all this
+        addr = f"https://{testserver_http.http_host}:{testserver_http.https_port}/pyodide/test.html"
+        selenium_coverage.goto(addr)
+        selenium_coverage.javascript_setup()
+        selenium_coverage.load_pyodide()
+        selenium_coverage.initialize_pyodide()
+        selenium_coverage.save_state()
+        selenium_coverage.restore_state()
+        selenium_coverage._install_packages()
+    dist_dir = testserver_http.pyodide_dist_dir
     yield ServerRunnerInfo(
-        testserver_http.http_host, testserver_http.https_port, selenium_coverage
+        testserver_http.http_host,
+        testserver_http.https_port,
+        selenium_coverage,
+        dist_dir,
     )
 
 
-@dataclass
-class PyodideServerInfo:
-    http_port: int
-    https_port: int
-    http_host: str
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    """Generate tests with WebAssembly JavaScript Promise Integration both
+     enabled and disabled depending on browser/node.js support for features.
+     Also drops any test that requires a browser or web-workers in Node.js.
+    ).
+    """
+    if "has_jspi" in metafunc.fixturenames:
+        can_run_with_jspi = False
+        can_run_without_jspi = False
+        # node only supports JSPI and doesn't support workers or
+        # webbrowser specific tests
+        if metafunc.config.getoption("--runtime").startswith("node"):
+            if (
+                metafunc.definition.get_closest_marker("webworkers") is None
+                and metafunc.definition.get_closest_marker("in_webbrowser") is None
+            ):
+                can_run_with_jspi = True
+            if metafunc.definition.get_closest_marker("node_without_jspi"):
+                can_run_without_jspi = True
+                can_run_with_jspi = False
+        # firefox doesn't support JSPI
+        elif metafunc.config.getoption("--runtime").startswith("firefox"):
+            can_run_without_jspi = True
+        else:
+            # chrome supports JSPI on or off
+            can_run_without_jspi = True
+            can_run_with_jspi = True
+
+        # if the function is marked to only run with or without jspi,
+        # then disable the alternative option
+        if metafunc.definition.get_closest_marker("with_jspi"):
+            can_run_without_jspi = False
+        elif metafunc.definition.get_closest_marker("without_jspi"):
+            can_run_with_jspi = False
+
+        jspi_options = []
+        if can_run_without_jspi:
+            jspi_options.append(False)
+        if can_run_with_jspi:
+            jspi_options.append(True)
+        metafunc.parametrize("has_jspi", jspi_options)
