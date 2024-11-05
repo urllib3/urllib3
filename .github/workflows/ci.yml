@@ -75,15 +75,19 @@ jobs:
             os: ubuntu-20.04  # CPython 3.9.2 is not available for ubuntu-22.04.
             experimental: false
             nox-session: test-3.9
-          - python-version: "3.11"
+          - python-version: "3.12"
             os: ubuntu-latest
-            nox-session: emscripten
+            nox-session: emscripten(firefox)
+            experimental: true
+          - python-version: "3.12"
+            os: ubuntu-latest
+            nox-session: emscripten(chrome)
             experimental: true
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-15":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -101,10 +105,10 @@ jobs:
 
       - name: "Install Chrome"
         uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
-        if: ${{ matrix.nox-session == 'emscripten' }}
+        if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
       - name: "Install Firefox"
         uses: browser-actions/setup-firefox@233224b712fc07910ded8c15fb95a555c86da76f # v1.5.0
-        if: ${{ matrix.nox-session == 'emscripten' }}
+        if: ${{ matrix.nox-session == 'emscripten(firefox)' }}
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
         run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}
