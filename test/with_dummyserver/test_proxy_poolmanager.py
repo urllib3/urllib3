@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import binascii
+import contextlib
 import hashlib
 import ipaddress
 import os.path
@@ -16,11 +17,11 @@ import pytest
 import trustme
 
 import urllib3.exceptions
+from dummyserver.socketserver import DEFAULT_CA, HAS_IPV6, get_unreachable_address
 from dummyserver.testcase import (
     HypercornDummyProxyTestCase,
     IPv6HypercornDummyProxyTestCase,
 )
-from dummyserver.tornadoserver import DEFAULT_CA, HAS_IPV6, get_unreachable_address
 from urllib3 import HTTPResponse
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import VerifiedHTTPSConnection
@@ -40,6 +41,16 @@ from urllib3.util.ssl_ import create_urllib3_context
 from urllib3.util.timeout import Timeout
 
 from .. import TARPIT_HOST, requires_network
+
+
+def assert_is_verified(pm: ProxyManager, *, proxy: bool, target: bool) -> None:
+    pool = list(pm.pools._container.values())[-1]  # retrieve last pool entry
+    connection = (
+        pool.pool.queue[-1] if pool.pool is not None else None
+    )  # retrieve last connection entry
+
+    assert connection.proxy_is_verified is proxy
+    assert connection.is_verified is target
 
 
 class TestHTTPProxyManager(HypercornDummyProxyTestCase):
@@ -81,6 +92,30 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
 
             r = https.request("GET", f"{self.http_url}/")
             assert r.status == 200
+
+    def test_is_verified_http_proxy_to_http_target(self) -> None:
+        with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
+            r = http.request("GET", f"{self.http_url}/")
+            assert r.status == 200
+            assert_is_verified(http, proxy=False, target=False)
+
+    def test_is_verified_http_proxy_to_https_target(self) -> None:
+        with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
+            r = http.request("GET", f"{self.https_url}/")
+            assert r.status == 200
+            assert_is_verified(http, proxy=False, target=True)
+
+    def test_is_verified_https_proxy_to_http_target(self) -> None:
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            r = https.request("GET", f"{self.http_url}/")
+            assert r.status == 200
+            assert_is_verified(https, proxy=True, target=False)
+
+    def test_is_verified_https_proxy_to_https_target(self) -> None:
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            r = https.request("GET", f"{self.https_url}/")
+            assert r.status == 200
+            assert_is_verified(https, proxy=True, target=True)
 
     def test_http_and_https_kwarg_ca_cert_data_proxy(self) -> None:
         with open(DEFAULT_CA) as pem_file:
@@ -187,9 +222,11 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
         with proxy_from_url(
             self.proxy_url, cert_reqs="REQUIRED", ca_certs=self.bad_ca_path
         ) as http:
-            https_pool = http._new_pool("https", self.https_host, self.https_port)
-            with pytest.raises(MaxRetryError) as e:
-                https_pool.request("GET", "/", retries=0)
+            with http._new_pool(
+                "https", self.https_host, self.https_port
+            ) as https_pool:
+                with pytest.raises(MaxRetryError) as e:
+                    https_pool.request("GET", "/", retries=0)
             assert isinstance(e.value.reason, SSLError)
             assert (
                 "certificate verify failed" in str(e.value.reason)
@@ -200,22 +237,26 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             http = proxy_from_url(
                 self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
             )
-            https_pool = http._new_pool("https", self.https_host, self.https_port)
-
-            conn = https_pool._new_conn()
-            assert conn.__class__ == VerifiedHTTPSConnection
-            https_pool.request("GET", "/")  # Should succeed without exceptions.
+            with http._new_pool(
+                "https", self.https_host, self.https_port
+            ) as https_pool2:
+                with contextlib.closing(https_pool._new_conn()) as conn:
+                    assert conn.__class__ == VerifiedHTTPSConnection
+                    https_pool2.request(
+                        "GET", "/"
+                    )  # Should succeed without exceptions.
 
             http = proxy_from_url(
                 self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
             )
-            https_fail_pool = http._new_pool("https", "127.0.0.1", self.https_port)
-
-            with pytest.raises(
-                MaxRetryError, match="doesn't match|IP address mismatch"
-            ) as e:
-                https_fail_pool.request("GET", "/", retries=0)
-            assert isinstance(e.value.reason, SSLError)
+            with http._new_pool(
+                "https", "127.0.0.1", self.https_port
+            ) as https_fail_pool:
+                with pytest.raises(
+                    MaxRetryError, match="doesn't match|IP address mismatch"
+                ) as e:
+                    https_fail_pool.request("GET", "/", retries=0)
+                assert isinstance(e.value.reason, SSLError)
 
     def test_redirect(self) -> None:
         with proxy_from_url(self.proxy_url) as http:

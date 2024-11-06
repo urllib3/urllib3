@@ -1,0 +1,1 @@
+Fixed an issue in debug logs where the HTTP version was rendering as "HTTP/11" instead of "HTTP/1.1".

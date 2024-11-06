@@ -18,7 +18,7 @@ from urllib3.util.wait import (
     wait_for_write,
 )
 
-TYPE_SOCKET_PAIR = typing.Tuple[socket, socket]
+TYPE_SOCKET_PAIR = tuple[socket, socket]
 TYPE_WAIT_FOR = typing.Callable[..., bool]
 
 

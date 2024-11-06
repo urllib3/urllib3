@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import errno
+import http.client
 import io
 import os
 import os.path
@@ -12,6 +13,7 @@ import shutil
 import socket
 import ssl
 import tempfile
+import threading
 import typing
 import zlib
 from collections import OrderedDict
@@ -23,13 +25,13 @@ from unittest import mock
 import pytest
 import trustme
 
-from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from dummyserver.tornadoserver import (
+from dummyserver.socketserver import (
     DEFAULT_CA,
     DEFAULT_CERTS,
     encrypt_key_pem,
     get_unreachable_address,
 )
+from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
@@ -47,7 +49,7 @@ from urllib3.util import ssl_, ssl_wrap_socket
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 
-from .. import LogRecorder, has_alpn
+from .. import LogRecorder
 
 if typing.TYPE_CHECKING:
     from _typeshed import StrOrBytesPath
@@ -106,9 +108,6 @@ class TestSNI(SocketDummyServerTestCase):
 
 class TestALPN(SocketDummyServerTestCase):
     def test_alpn_protocol_in_first_request_packet(self) -> None:
-        if not has_alpn():
-            pytest.skip("ALPN-support not available")
-
         done_receiving = Event()
         self.buf = b""
 
@@ -955,7 +954,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
             assert response.connection is None
 
     def test_socket_close_socket_then_file(self) -> None:
-        def consume_ssl_socket(listener: socket.socket) -> None:
+        quit_event = threading.Event()
+
+        def consume_ssl_socket(
+            listener: socket.socket,
+        ) -> None:
             try:
                 with listener.accept()[0] as sock, original_ssl_wrap_socket(
                     sock,
@@ -964,11 +967,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 ) as ssl_sock:
-                    consume_socket(ssl_sock)
+                    consume_socket(ssl_sock, quit_event=quit_event)
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
-        self._start_server(consume_ssl_socket)
+        self._start_server(consume_ssl_socket, quit_event=quit_event)
         with socket.create_connection(
             (self.host, self.port)
         ) as sock, contextlib.closing(
@@ -983,6 +986,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
             assert ssl_sock.fileno() == -1
 
     def test_socket_close_stays_open_with_makefile_open(self) -> None:
+        quit_event = threading.Event()
+
         def consume_ssl_socket(listener: socket.socket) -> None:
             try:
                 with listener.accept()[0] as sock, original_ssl_wrap_socket(
@@ -992,11 +997,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 ) as ssl_sock:
-                    consume_socket(ssl_sock)
+                    consume_socket(ssl_sock, quit_event=quit_event)
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
-        self._start_server(consume_ssl_socket)
+        self._start_server(consume_ssl_socket, quit_event=quit_event)
         with socket.create_connection(
             (self.host, self.port)
         ) as sock, contextlib.closing(
@@ -1133,6 +1138,27 @@ class TestProxyManager(SocketDummyServerTestCase):
                     retries=False,
                 )
 
+    def test_tunnel_sets_http_11_alpn(self) -> None:
+        done_receiving = Event()
+        self.buf = b""
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            self.buf = sock.recv(65536)  # We only accept one packet
+            done_receiving.set()  # let the test know it can proceed
+            sock.close()
+
+        self._start_server(socket_handler)
+        base_url = f"https://{self.host}:{self.port}"
+        with proxy_from_url(base_url) as proxy:
+            with pytest.raises(MaxRetryError):
+                proxy.request("GET", "https://localhost/")
+
+        done_receiving.wait()
+        assert b"http/1.1" in self.buf
+        assert b"h2" not in self.buf
+
     def test_connect_reconn(self) -> None:
         def proxy_ssl_one(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -1263,39 +1289,116 @@ class TestProxyManager(SocketDummyServerTestCase):
                 e.value.reason
             )
 
+    def test_proxy_status_not_ok(self) -> None:
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            consume_socket(sock)
+            sock.send(b"HTTP/1.0 501 Not Implemented\r\nConnection: close\r\n\r\n")
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        with ProxyManager(base_url) as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", "https://example.com", retries=0)
+
+            assert type(e.value.reason) is ProxyError
+            assert e.value.reason.args[0] == "Unable to connect to proxy"
+            assert type(e.value.reason.args[1]) is OSError
+            assert (
+                str(e.value.reason.args[1])
+                == "Tunnel connection failed: 501 Not Implemented"
+            )
+
+    def test_early_eof_doesnt_cause_infinite_loop(self) -> None:
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            consume_socket(sock)
+            sock.send(b"HTTP/1.0 200 OK\r\n")
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        with ProxyManager(base_url) as proxy:
+            with pytest.raises(MaxRetryError):
+                proxy.request("GET", "https://example.com", retries=0)
+
+    def test_header_longer_than_maxline(self) -> None:
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            consume_socket(sock)
+            sock.send(
+                b"HTTP/1.0 200 OK\r\nThis-Header-Is-Too-Long: Way-Too-Long\r\n\r\n"
+            )
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        with mock.patch("http.client._MAXLINE", 17):
+            with ProxyManager(base_url) as proxy:
+                with pytest.raises(MaxRetryError) as e:
+                    proxy.request("GET", "https://example.com", retries=0)
+
+            assert type(e.value.reason) is ProtocolError
+            assert e.value.reason.args[0] == "Connection aborted."
+            assert type(e.value.reason.args[1]) is http.client.LineTooLong
+            assert (
+                str(e.value.reason.args[1])
+                == "got more than 17 bytes when reading header line"
+            )
+
+    def test_debuglevel(self, capsys: pytest.CaptureFixture[str]) -> None:
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            consume_socket(sock)
+            sock.send(b"HTTP/1.0 200 OK\r\nExample-Header: Example-Value\r\n\r\n")
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        with mock.patch("http.client.HTTPConnection.debuglevel", 1):
+            with ProxyManager(base_url) as proxy:
+                with pytest.raises(MaxRetryError):
+                    proxy.request("GET", "https://example.com", retries=0)
+
+        assert "header: Example-Header: Example-Value\r\n\n" in capsys.readouterr().out
+
 
 class TestSSL(SocketDummyServerTestCase):
     def test_ssl_failure_midway_through_conn(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
-            sock = listener.accept()[0]
-            sock2 = sock.dup()
-            ssl_sock = original_ssl_wrap_socket(
-                sock,
-                server_side=True,
-                keyfile=DEFAULT_CERTS["keyfile"],
-                certfile=DEFAULT_CERTS["certfile"],
-                ca_certs=DEFAULT_CA,
-            )
+            with listener.accept()[0] as sock, sock.dup() as sock2:
+                ssl_sock = original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                )
 
-            buf = b""
-            while not buf.endswith(b"\r\n\r\n"):
-                buf += ssl_sock.recv(65536)
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += ssl_sock.recv(65536)
 
-            # Deliberately send from the non-SSL socket.
-            sock2.send(
-                b"HTTP/1.1 200 OK\r\n"
-                b"Content-Type: text/plain\r\n"
-                b"Content-Length: 2\r\n"
-                b"\r\n"
-                b"Hi"
-            )
-            sock2.close()
-            ssl_sock.close()
+                # Deliberately send from the non-SSL socket.
+                sock2.send(
+                    b"HTTP/1.1 200 OK\r\n"
+                    b"Content-Type: text/plain\r\n"
+                    b"Content-Length: 2\r\n"
+                    b"\r\n"
+                    b"Hi"
+                )
+                ssl_sock.close()
 
         self._start_server(socket_handler)
         with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
             with pytest.raises(
-                SSLError, match=r"(wrong version number|record overflow)"
+                SSLError,
+                match=r"(wrong version number|record overflow|record layer failure)",
             ):
                 pool.request("GET", "/", retries=False)
 
@@ -1353,19 +1456,21 @@ class TestSSL(SocketDummyServerTestCase):
                         certfile=DEFAULT_CERTS["certfile"],
                         ca_certs=DEFAULT_CA,
                     )
-                except (ssl.SSLError, ConnectionResetError):
-                    if i == 1:
-                        raise
-                    return
+                except (ssl.SSLError, ConnectionResetError, ConnectionAbortedError):
+                    pass
 
-                ssl_sock.send(
-                    b"HTTP/1.1 200 OK\r\n"
-                    b"Content-Type: text/plain\r\n"
-                    b"Content-Length: 5\r\n\r\n"
-                    b"Hello"
-                )
+                else:
+                    with ssl_sock:
+                        try:
+                            ssl_sock.send(
+                                b"HTTP/1.1 200 OK\r\n"
+                                b"Content-Type: text/plain\r\n"
+                                b"Content-Length: 5\r\n\r\n"
+                                b"Hello"
+                            )
+                        except (ssl.SSLEOFError, ConnectionResetError, BrokenPipeError):
+                            pass
 
-                ssl_sock.close()
                 sock.close()
 
         self._start_server(socket_handler)
@@ -1374,7 +1479,10 @@ class TestSSL(SocketDummyServerTestCase):
 
         def request() -> None:
             pool = HTTPSConnectionPool(
-                self.host, self.port, assert_fingerprint=fingerprint
+                self.host,
+                self.port,
+                assert_fingerprint=fingerprint,
+                cert_reqs="CERT_NONE",
             )
             try:
                 timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
@@ -1388,9 +1496,20 @@ class TestSSL(SocketDummyServerTestCase):
         with pytest.raises(MaxRetryError) as cm:
             request()
         assert type(cm.value.reason) is SSLError
+        assert str(cm.value.reason) == (
+            "Fingerprints did not match. Expected "
+            '"a0c4a74600eda72dc0becb9a8cb607ca58ee745e", got '
+            '"728b554c9afc1e88a11cad1bb2e7cc3edbc8f98a"'
+        )
         # Should not hang, see https://github.com/urllib3/urllib3/issues/529
-        with pytest.raises(MaxRetryError):
+        with pytest.raises(MaxRetryError) as cm2:
             request()
+        assert type(cm2.value.reason) is SSLError
+        assert str(cm2.value.reason) == (
+            "Fingerprints did not match. Expected "
+            '"a0c4a74600eda72dc0becb9a8cb607ca58ee745e", got '
+            '"728b554c9afc1e88a11cad1bb2e7cc3edbc8f98a"'
+        )
 
     def test_retry_ssl_error(self) -> None:
         def socket_handler(listener: socket.socket) -> None:
@@ -1475,6 +1594,17 @@ class TestSSL(SocketDummyServerTestCase):
         context.load_default_certs = mock.Mock()
         context.options = 0
 
+        class MockSSLSocket:
+            def __init__(
+                self, sock: socket.socket, *args: object, **kwargs: object
+            ) -> None:
+                self._sock = sock
+
+            def close(self) -> None:
+                self._sock.close()
+
+        context.wrap_socket = MockSSLSocket
+
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
             self._start_server(socket_handler)
             with HTTPSConnectionPool(self.host, self.port) as pool:
@@ -1516,6 +1646,17 @@ class TestSSL(SocketDummyServerTestCase):
         context = mock.create_autospec(ssl_.SSLContext)
         context.load_default_certs = mock.Mock()
         context.options = 0
+
+        class MockSSLSocket:
+            def __init__(
+                self, sock: socket.socket, *args: object, **kwargs: object
+            ) -> None:
+                self._sock = sock
+
+            def close(self) -> None:
+                self._sock.close()
+
+        context.wrap_socket = MockSSLSocket
 
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
             for kwargs in [
@@ -2195,11 +2336,28 @@ class TestBrokenPipe(SocketDummyServerTestCase):
 
 class TestMultipartResponse(SocketDummyServerTestCase):
     def test_multipart_assert_header_parsing_no_defects(self) -> None:
+        quit_event = threading.Event()
+
         def socket_handler(listener: socket.socket) -> None:
             for _ in range(2):
-                sock = listener.accept()[0]
-                while not sock.recv(65536).endswith(b"\r\n\r\n"):
-                    pass
+                listener.settimeout(LONG_TIMEOUT)
+
+                while True:
+                    if quit_event and quit_event.is_set():
+                        return
+                    try:
+                        sock = listener.accept()[0]
+                        break
+                    except (TimeoutError, socket.timeout):
+                        continue
+
+                sock.settimeout(LONG_TIMEOUT)
+                while True:
+                    if quit_event and quit_event.is_set():
+                        sock.close()
+                        return
+                    if sock.recv(65536).endswith(b"\r\n\r\n"):
+                        break
 
                 sock.sendall(
                     b"HTTP/1.1 404 Not Found\r\n"
@@ -2215,7 +2373,7 @@ class TestMultipartResponse(SocketDummyServerTestCase):
                 )
                 sock.close()
 
-        self._start_server(socket_handler)
+        self._start_server(socket_handler, quit_event=quit_event)
         from urllib3.connectionpool import log
 
         with mock.patch.object(log, "warning") as log_warning:
@@ -2271,15 +2429,26 @@ class TestContentFraming(SocketDummyServerTestCase):
     def test_chunked_specified(
         self, method: str, chunked: bool, body_type: str
     ) -> None:
+        quit_event = threading.Event()
         buffer = bytearray()
         expected_bytes = b"\r\n\r\na\r\nxxxxxxxxxx\r\n0\r\n\r\n"
 
         def socket_handler(listener: socket.socket) -> None:
             nonlocal buffer
-            sock = listener.accept()[0]
-            sock.settimeout(0)
+            listener.settimeout(LONG_TIMEOUT)
+            while True:
+                if quit_event.is_set():
+                    return
+                try:
+                    sock = listener.accept()[0]
+                    break
+                except (TimeoutError, socket.timeout):
+                    continue
+            sock.settimeout(LONG_TIMEOUT)
 
             while expected_bytes not in buffer:
+                if quit_event.is_set():
+                    return
                 with contextlib.suppress(BlockingIOError):
                     buffer += sock.recv(65536)
 
@@ -2290,7 +2459,7 @@ class TestContentFraming(SocketDummyServerTestCase):
             )
             sock.close()
 
-        self._start_server(socket_handler)
+        self._start_server(socket_handler, quit_event=quit_event)
 
         body: typing.Any
         if body_type == "generator":

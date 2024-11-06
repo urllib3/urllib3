@@ -23,9 +23,7 @@ class HTTPWarning(Warning):
     """Base warning used by this module."""
 
 
-_TYPE_REDUCE_RESULT = typing.Tuple[
-    typing.Callable[..., object], typing.Tuple[object, ...]
-]
+_TYPE_REDUCE_RESULT = tuple[typing.Callable[..., object], tuple[object, ...]]
 
 
 class PoolError(HTTPError):
@@ -150,6 +148,10 @@ class NewConnectionError(ConnectTimeoutError, HTTPError):
         self.conn = conn
         super().__init__(f"{conn}: {message}")
 
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        # For pickling purposes.
+        return self.__class__, (None, None)
+
     @property
     def pool(self) -> HTTPConnection:
         warnings.warn(
@@ -168,6 +170,10 @@ class NameResolutionError(NewConnectionError):
     def __init__(self, host: str, conn: HTTPConnection, reason: socket.gaierror):
         message = f"Failed to resolve '{host}' ({reason})"
         super().__init__(conn, message)
+
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        # For pickling purposes.
+        return self.__class__, (None, None, None)
 
 
 class EmptyPoolError(PoolError):
@@ -259,13 +265,16 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
     for ``partial`` to avoid creating large objects on streamed reads.
     """
 
+    partial: int  # type: ignore[assignment]
+    expected: int
+
     def __init__(self, partial: int, expected: int) -> None:
-        self.partial = partial  # type: ignore[assignment]
+        self.partial = partial
         self.expected = expected
 
     def __repr__(self) -> str:
         return "IncompleteRead(%i bytes read, %i more expected)" % (
-            self.partial,  # type: ignore[str-format]
+            self.partial,
             self.expected,
         )
 

@@ -21,15 +21,15 @@ SKIPPABLE_HEADERS = frozenset(["accept-encoding", "host", "user-agent"])
 ACCEPT_ENCODING = "gzip,deflate"
 try:
     try:
-        import brotlicffi as _unused_module_brotli  # type: ignore[import] # noqa: F401
+        import brotlicffi as _unused_module_brotli  # type: ignore[import-not-found] # noqa: F401
     except ImportError:
-        import brotli as _unused_module_brotli  # type: ignore[import] # noqa: F401
+        import brotli as _unused_module_brotli  # type: ignore[import-not-found] # noqa: F401
 except ImportError:
     pass
 else:
     ACCEPT_ENCODING += ",br"
 try:
-    import zstandard as _unused_module_zstd  # type: ignore[import] # noqa: F401
+    import zstandard as _unused_module_zstd  # noqa: F401
 except ImportError:
     pass
 else:
@@ -68,8 +68,10 @@ def make_headers(
 
     :param accept_encoding:
         Can be a boolean, list, or string.
-        ``True`` translates to 'gzip,deflate'.  If either the ``brotli`` or
-        ``brotlicffi`` package is installed 'gzip,deflate,br' is used instead.
+        ``True`` translates to 'gzip,deflate'.  If the dependencies for
+        Brotli (either the ``brotli`` or ``brotlicffi`` package) and/or Zstandard
+        (the ``zstandard`` package) algorithms are installed, then their encodings are
+        included in the string ('br' and 'zstd', respectively).
         List will get joined by comma.
         String will be used as provided.
 
@@ -227,7 +229,7 @@ def body_to_chunks(
                 if not datablock:
                     break
                 if encode:
-                    datablock = datablock.encode("iso-8859-1")
+                    datablock = datablock.encode("utf-8")
                 yield datablock
 
         chunks = chunk_readable()

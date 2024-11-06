@@ -41,9 +41,6 @@ from urllib3.util.util import to_bytes, to_str
 
 from . import clear_warnings
 
-if typing.TYPE_CHECKING:
-    from typing import Literal
-
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
 # numbers used for timeouts
@@ -516,7 +513,7 @@ class TestUtil:
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
     def test_url_vulnerabilities(
-        self, url: str, expected_url: Literal[False] | Url
+        self, url: str, expected_url: typing.Literal[False] | Url
     ) -> None:
         if expected_url is False:
             with pytest.raises(LocationParseError):
@@ -748,7 +745,7 @@ class TestUtil:
     def test_is_fp_closed_object_supports_closed(self) -> None:
         class ClosedFile:
             @property
-            def closed(self) -> Literal[True]:
+            def closed(self) -> typing.Literal[True]:
                 return True
 
         assert is_fp_closed(ClosedFile())
@@ -764,7 +761,7 @@ class TestUtil:
     def test_is_fp_closed_object_has_fp(self) -> None:
         class FpFile:
             @property
-            def fp(self) -> Literal[True]:
+            def fp(self) -> typing.Literal[True]:
                 return True
 
         assert not is_fp_closed(FpFile())
@@ -1076,7 +1073,7 @@ class TestUtilSSL:
             ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), None, True),
             # PyPy: depends on the version
             ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 9, 9), (7, 3, 7), False),
-            ("OpenSSL 1.1.1", 0x101010CF, "pypy", (3, 8, 12), (7, 3, 8), True),
+            ("OpenSSL 1.1.1", 0x101010CF, "pypy", (3, 9, 19), (7, 3, 16), True),
             # OpenSSL OK -> reliable
             ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 2), None, True),
             # not OpenSSSL -> unreliable

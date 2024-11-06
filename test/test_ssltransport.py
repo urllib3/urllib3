@@ -4,18 +4,16 @@ import platform
 import select
 import socket
 import ssl
+import threading
 import typing
 from unittest import mock
 
 import pytest
 
+from dummyserver.socketserver import DEFAULT_CA, DEFAULT_CERTS
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from dummyserver.tornadoserver import DEFAULT_CA, DEFAULT_CERTS
 from urllib3.util import ssl_
 from urllib3.util.ssltransport import SSLTransport
-
-if typing.TYPE_CHECKING:
-    from typing import Literal
 
 # consume_socket can iterate forever, we add timeouts to prevent halting.
 PER_TEST_TIMEOUT = 60
@@ -34,12 +32,12 @@ def server_client_ssl_contexts() -> tuple[ssl.SSLContext, ssl.SSLContext]:
 
 
 @typing.overload
-def sample_request(binary: Literal[True] = ...) -> bytes:
+def sample_request(binary: typing.Literal[True] = ...) -> bytes:
     ...
 
 
 @typing.overload
-def sample_request(binary: Literal[False]) -> str:
+def sample_request(binary: typing.Literal[False]) -> str:
     ...
 
 
@@ -54,7 +52,7 @@ def sample_request(binary: bool = True) -> bytes | str:
 
 
 def validate_request(
-    provided_request: bytearray, binary: Literal[False, True] = True
+    provided_request: bytearray, binary: typing.Literal[False, True] = True
 ) -> None:
     assert provided_request is not None
     expected_request = sample_request(binary)
@@ -62,12 +60,12 @@ def validate_request(
 
 
 @typing.overload
-def sample_response(binary: Literal[True] = ...) -> bytes:
+def sample_response(binary: typing.Literal[True] = ...) -> bytes:
     ...
 
 
 @typing.overload
-def sample_response(binary: Literal[False]) -> str:
+def sample_response(binary: typing.Literal[False]) -> str:
     ...
 
 
@@ -111,20 +109,29 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         cls.server_context, cls.client_context = server_client_ssl_contexts()
 
     def start_dummy_server(
-        self, handler: typing.Callable[[socket.socket], None] | None = None
+        self,
+        handler: typing.Callable[[socket.socket], None] | None = None,
+        validate: bool = True,
     ) -> None:
+        quit_event = threading.Event()
+
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             try:
                 with self.server_context.wrap_socket(sock, server_side=True) as ssock:
-                    request = consume_socket(ssock)
+                    request = consume_socket(
+                        ssock,
+                        quit_event=quit_event,
+                    )
+                    if not validate:
+                        return
                     validate_request(request)
                     ssock.send(sample_response())
             except (ConnectionAbortedError, ConnectionResetError):
                 return
 
         chosen_handler = handler if handler else socket_handler
-        self._start_server(chosen_handler)
+        self._start_server(chosen_handler, quit_event=quit_event)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_start_closed_socket(self) -> None:
@@ -138,7 +145,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_close_after_handshake(self) -> None:
         """Socket errors should be bubbled up"""
-        self.start_dummy_server()
+        self.start_dummy_server(validate=False)
 
         sock = socket.create_connection((self.host, self.port))
         with SSLTransport(
@@ -184,33 +191,32 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         """
 
         def shutdown_handler(listener: socket.socket) -> None:
-            sock = listener.accept()[0]
-            ssl_sock = self.server_context.wrap_socket(sock, server_side=True)
+            with listener.accept()[0] as sock, self.server_context.wrap_socket(
+                sock, server_side=True
+            ) as ssl_sock:
+                request = consume_socket(ssl_sock)
+                validate_request(request)
+                ssl_sock.sendall(sample_response())
 
-            request = consume_socket(ssl_sock)
-            validate_request(request)
-            ssl_sock.sendall(sample_response())
-
-            unwrapped_sock = ssl_sock.unwrap()
-
-            request = consume_socket(unwrapped_sock)
-            validate_request(request)
-            unwrapped_sock.sendall(sample_response())
+                with ssl_sock.unwrap() as unwrapped_sock:
+                    request = consume_socket(unwrapped_sock)
+                    validate_request(request)
+                    unwrapped_sock.sendall(sample_response())
 
         self.start_dummy_server(shutdown_handler)
-        sock = socket.create_connection((self.host, self.port))
-        ssock = SSLTransport(sock, self.client_context, server_hostname="localhost")
+        with socket.create_connection((self.host, self.port)) as sock:
+            ssock = SSLTransport(sock, self.client_context, server_hostname="localhost")
 
-        # request/response over TLS.
-        ssock.sendall(sample_request())
-        response = consume_socket(ssock)
-        validate_response(response)
+            # request/response over TLS.
+            ssock.sendall(sample_request())
+            response = consume_socket(ssock)
+            validate_response(response)
 
-        # request/response over plaintext after unwrap.
-        ssock.unwrap()
-        sock.sendall(sample_request())
-        response = consume_socket(sock)
-        validate_response(response)
+            # request/response over plaintext after unwrap.
+            ssock.unwrap()
+            sock.sendall(sample_request())
+            response = consume_socket(sock)
+            validate_response(response)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_ssl_object_attributes(self) -> None:
@@ -224,9 +230,8 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             cipher = ssock.cipher()
             assert type(cipher) is tuple
 
-            # No chosen protocol through ALPN or NPN.
+            # No chosen protocol.
             assert ssock.selected_alpn_protocol() is None
-            assert ssock.selected_npn_protocol() is None
 
             shared_ciphers = ssock.shared_ciphers()
             # SSLContext.shared_ciphers() changed behavior completely in a patch version.

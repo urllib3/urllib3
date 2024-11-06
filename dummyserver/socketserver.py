@@ -6,10 +6,6 @@ Dummy server used for unit testing.
 
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
-import contextlib
-import errno
 import logging
 import os
 import socket
@@ -18,19 +14,13 @@ import sys
 import threading
 import typing
 import warnings
-from collections.abc import Coroutine, Generator
-from datetime import datetime
 
-import tornado.httpserver
-import tornado.ioloop
-import tornado.netutil
-import tornado.web
 import trustme
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 
 from urllib3.exceptions import HTTPWarning
-from urllib3.util import ALPN_PROTOCOLS, resolve_cert_reqs, resolve_ssl_version
+from urllib3.util import resolve_cert_reqs, resolve_ssl_version
 
 if typing.TYPE_CHECKING:
     from typing_extensions import ParamSpec
@@ -45,7 +35,7 @@ DEFAULT_CERTS: dict[str, typing.Any] = {
     "keyfile": os.path.join(CERTS_PATH, "server.key"),
     "cert_reqs": ssl.CERT_OPTIONAL,
     "ca_certs": os.path.join(CERTS_PATH, "cacert.pem"),
-    "alpn_protocols": ALPN_PROTOCOLS,
+    "alpn_protocols": ["h2", "http/1.1"],
 }
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
@@ -118,6 +108,7 @@ class SocketServerThread(threading.Thread):
         socket_handler: typing.Callable[[socket.socket], None],
         host: str = "localhost",
         ready_event: threading.Event | None = None,
+        quit_event: threading.Event | None = None,
     ) -> None:
         super().__init__()
         self.daemon = True
@@ -125,6 +116,7 @@ class SocketServerThread(threading.Thread):
         self.socket_handler = socket_handler
         self.host = host
         self.ready_event = ready_event
+        self.quit_event = quit_event
 
     def _start_server(self) -> None:
         if self.USE_IPV6:
@@ -134,17 +126,18 @@ class SocketServerThread(threading.Thread):
             sock = socket.socket(socket.AF_INET)
         if sys.platform != "win32":
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((self.host, 0))
-        self.port = sock.getsockname()[1]
 
-        # Once listen() returns, the server socket is ready
-        sock.listen(1)
+        with sock:
+            sock.bind((self.host, 0))
+            self.port = sock.getsockname()[1]
 
-        if self.ready_event:
-            self.ready_event.set()
+            # Once listen() returns, the server socket is ready
+            sock.listen(1)
 
-        self.socket_handler(sock)
-        sock.close()
+            if self.ready_event:
+                self.ready_event.set()
+
+            self.socket_handler(sock)
 
     def run(self) -> None:
         self._start_server()
@@ -175,52 +168,9 @@ def ssl_options_to_context(  # type: ignore[no-untyped-def]
     ctx.verify_mode = cert_reqs
     if ctx.verify_mode != cert_none:
         ctx.load_verify_locations(cafile=ca_certs)
-    if alpn_protocols and hasattr(ctx, "set_alpn_protocols"):
-        try:
-            ctx.set_alpn_protocols(alpn_protocols)
-        except NotImplementedError:
-            pass
+    if alpn_protocols:
+        ctx.set_alpn_protocols(alpn_protocols)
     return ctx
-
-
-def run_tornado_app(
-    app: tornado.web.Application,
-    certs: dict[str, typing.Any] | None,
-    scheme: str,
-    host: str,
-) -> tuple[tornado.httpserver.HTTPServer, int]:
-    # We can't use fromtimestamp(0) because of CPython issue 29097, so we'll
-    # just construct the datetime object directly.
-    app.last_req = datetime(1970, 1, 1)  # type: ignore[attr-defined]
-
-    if scheme == "https":
-        assert certs is not None
-        ssl_opts = ssl_options_to_context(**certs)
-        http_server = tornado.httpserver.HTTPServer(app, ssl_options=ssl_opts)
-    else:
-        http_server = tornado.httpserver.HTTPServer(app)
-
-    # When we request a socket with host localhost and port zero (None in Python), then
-    # Tornado gets a free IPv4 port and requests that same port in IPv6. But that port
-    # could easily be taken with IPv6, especially in crowded CI environments. For this
-    # reason we put bind_sockets in a retry loop. Full details:
-    #  * https://github.com/urllib3/urllib3/issues/2171
-    #  * https://github.com/tornadoweb/tornado/issues/1860
-    for i in range(10):
-        try:
-            sockets = tornado.netutil.bind_sockets(None, address=host)  # type: ignore[arg-type]
-        except OSError as e:
-            if e.errno == errno.EADDRINUSE:
-                # TODO this should be a warning if there's a way for pytest to print it
-                print(
-                    f"Retrying bind_sockets({host}) after EADDRINUSE", file=sys.stderr
-                )
-                continue
-        break
-
-    port = sockets[0].getsockname()[1]
-    http_server.add_sockets(sockets)
-    return http_server, port
 
 
 def get_unreachable_address() -> tuple[str, int]:
@@ -238,79 +188,3 @@ def encrypt_key_pem(private_key_pem: trustme.Blob, password: bytes) -> trustme.B
         serialization.BestAvailableEncryption(password),
     )
     return trustme.Blob(encrypted_key)
-
-
-R = typing.TypeVar("R")
-
-
-def _run_and_close_tornado(
-    async_fn: typing.Callable[P, Coroutine[typing.Any, typing.Any, R]],
-    *args: P.args,
-    **kwargs: P.kwargs,
-) -> R:
-    tornado_loop = None
-
-    async def inner_fn() -> R:
-        nonlocal tornado_loop
-        tornado_loop = tornado.ioloop.IOLoop.current()
-        return await async_fn(*args, **kwargs)
-
-    try:
-        return asyncio.run(inner_fn())
-    finally:
-        tornado_loop.close(all_fds=True)  # type: ignore[union-attr]
-
-
-@contextlib.contextmanager
-def run_tornado_loop_in_thread() -> Generator[tornado.ioloop.IOLoop, None, None]:
-    loop_started: concurrent.futures.Future[
-        tuple[tornado.ioloop.IOLoop, asyncio.Event]
-    ] = concurrent.futures.Future()
-    with concurrent.futures.ThreadPoolExecutor(
-        1, thread_name_prefix="test IOLoop"
-    ) as tpe:
-
-        async def run() -> None:
-            io_loop = tornado.ioloop.IOLoop.current()
-            stop_event = asyncio.Event()
-            loop_started.set_result((io_loop, stop_event))
-            await stop_event.wait()
-
-        # run asyncio.run in a thread and collect exceptions from *either*
-        # the loop failing to start, or failing to close
-        ran = tpe.submit(_run_and_close_tornado, run)  # type: ignore[arg-type]
-        for f in concurrent.futures.as_completed((loop_started, ran)):  # type: ignore[misc]
-            if f is loop_started:
-                io_loop, stop_event = loop_started.result()
-                try:
-                    yield io_loop
-                finally:
-                    io_loop.add_callback(stop_event.set)
-
-            elif f is ran:
-                # if this is the first iteration the loop failed to start
-                # if it's the second iteration the loop has finished or
-                # the loop failed to close and we need to raise the exception
-                ran.result()
-                return
-
-
-def main() -> int:
-    # For debugging dummyserver itself - PYTHONPATH=src python -m dummyserver.tornadoserver
-    from .handlers import TestingApp
-
-    host = "127.0.0.1"
-
-    async def amain() -> int:
-        app = tornado.web.Application([(r".*", TestingApp)])
-        server, port = run_tornado_app(app, None, "http", host)
-
-        print(f"Listening on http://{host}:{port}")
-        await asyncio.Event().wait()
-        return 0
-
-    return asyncio.run(amain())
-
-
-if __name__ == "__main__":
-    sys.exit(main())

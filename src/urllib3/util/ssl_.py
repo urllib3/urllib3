@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import hmac
 import os
 import socket
@@ -7,7 +8,6 @@ import sys
 import typing
 import warnings
 from binascii import unhexlify
-from hashlib import md5, sha1, sha256
 
 from ..exceptions import ProxySchemeUnsupported, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
@@ -18,10 +18,13 @@ HAS_NEVER_CHECK_COMMON_NAME = False
 IS_PYOPENSSL = False
 ALPN_PROTOCOLS = ["http/1.1"]
 
-_TYPE_VERSION_INFO = typing.Tuple[int, int, int, str, int]
+_TYPE_VERSION_INFO = tuple[int, int, int, str, int]
 
 # Maps the length of a digest to a possible hash function producing this digest
-HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
+HASHFUNC_MAP = {
+    length: getattr(hashlib, algorithm, None)
+    for length, algorithm in ((32, "md5"), (40, "sha1"), (64, "sha256"))
+}
 
 
 def _is_bpo_43522_fixed(
@@ -29,7 +32,7 @@ def _is_bpo_43522_fixed(
     version_info: _TYPE_VERSION_INFO,
     pypy_version_info: _TYPE_VERSION_INFO | None,
 ) -> bool:
-    """Return True for CPython 3.8.9+, 3.9.3+ or 3.10+ and PyPy 7.3.8+ where
+    """Return True for CPython 3.9.3+ or 3.10+ and PyPy 7.3.8+ where
     setting SSLContext.hostname_checks_common_name to False works.
 
     Outside of CPython and PyPy we don't know which implementations work
@@ -45,11 +48,7 @@ def _is_bpo_43522_fixed(
     elif implementation_name == "cpython":
         major_minor = version_info[:2]
         micro = version_info[2]
-        return (
-            (major_minor == (3, 8) and micro >= 9)
-            or (major_minor == (3, 9) and micro >= 3)
-            or major_minor >= (3, 10)
-        )
+        return (major_minor == (3, 9) and micro >= 3) or major_minor >= (3, 10)
     else:  # Defensive:
         return False
 
@@ -78,7 +77,7 @@ def _is_has_never_check_common_name_reliable(
 
 if typing.TYPE_CHECKING:
     from ssl import VerifyMode
-    from typing import Literal, TypedDict
+    from typing import TypedDict
 
     from .ssltransport import SSLTransport as SSLTransportType
 
@@ -111,7 +110,7 @@ try:  # Do we have ssl at all?
     PROTOCOL_SSLv23 = PROTOCOL_TLS
 
     # Setting SSLContext.hostname_checks_common_name = False didn't work before CPython
-    # 3.8.9, 3.9.3, and 3.10 (but OK on PyPy) or OpenSSL 1.1.1l+
+    # 3.9.3, and 3.10 (but OK on PyPy) or OpenSSL 1.1.1l+
     if HAS_NEVER_CHECK_COMMON_NAME and not _is_has_never_check_common_name_reliable(
         OPENSSL_VERSION,
         OPENSSL_VERSION_NUMBER,
@@ -159,9 +158,13 @@ def assert_fingerprint(cert: bytes | None, fingerprint: str) -> None:
 
     fingerprint = fingerprint.replace(":", "").lower()
     digest_length = len(fingerprint)
-    hashfunc = HASHFUNC_MAP.get(digest_length)
-    if not hashfunc:
+    if digest_length not in HASHFUNC_MAP:
         raise SSLError(f"Fingerprint of invalid length: {fingerprint}")
+    hashfunc = HASHFUNC_MAP.get(digest_length)
+    if hashfunc is None:
+        raise SSLError(
+            f"Hash function implementation unavailable for fingerprint length: {digest_length}"
+        )
 
     # We need encode() here for py32; works on py2 and p33.
     fingerprint_bytes = unhexlify(fingerprint.encode())
@@ -319,14 +322,9 @@ def create_urllib3_context(
 
     # Enable post-handshake authentication for TLS 1.3, see GH #1634. PHA is
     # necessary for conditional client cert authentication with TLS 1.3.
-    # The attribute is None for OpenSSL <= 1.1.0 or does not exist in older
-    # versions of Python. We only enable if certificate verification is enabled to work
-    # around Python issue #37428
-    # See: https://bugs.python.org/issue37428
-    if (
-        cert_reqs == ssl.CERT_REQUIRED
-        and getattr(context, "post_handshake_auth", None) is not None
-    ):
+    # The attribute is None for OpenSSL <= 1.1.0 or does not exist when using
+    # an SSLContext created by pyOpenSSL.
+    if getattr(context, "post_handshake_auth", None) is not None:
         context.post_handshake_auth = True
 
     # The order of the below lines setting verify_mode and check_hostname
@@ -343,15 +341,12 @@ def create_urllib3_context(
 
     try:
         context.hostname_checks_common_name = False
-    except AttributeError:  # Defensive: for CPython < 3.8.9 and 3.9.3; for PyPy < 7.3.8
+    except AttributeError:  # Defensive: for CPython < 3.9.3; for PyPy < 7.3.8
         pass
 
-    # Enable logging of TLS session keys via defacto standard environment variable
-    # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+). Skip empty values.
-    if hasattr(context, "keylog_filename"):
-        sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
-        if sslkeylogfile:
-            context.keylog_filename = sslkeylogfile
+    sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
+    if sslkeylogfile:
+        context.keylog_filename = sslkeylogfile
 
     return context
 
@@ -370,7 +365,7 @@ def ssl_wrap_socket(
     ca_cert_dir: str | None = ...,
     key_password: str | None = ...,
     ca_cert_data: None | str | bytes = ...,
-    tls_in_tls: Literal[False] = ...,
+    tls_in_tls: typing.Literal[False] = ...,
 ) -> ssl.SSLSocket:
     ...
 
@@ -462,10 +457,7 @@ def ssl_wrap_socket(
         else:
             context.load_cert_chain(certfile, keyfile, key_password)
 
-    try:
-        context.set_alpn_protocols(ALPN_PROTOCOLS)
-    except NotImplementedError:  # Defensive: in CI, we always have set_alpn_protocols
-        pass
+    context.set_alpn_protocols(ALPN_PROTOCOLS)
 
     ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
     return ssl_sock

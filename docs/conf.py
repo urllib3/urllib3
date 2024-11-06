@@ -84,8 +84,8 @@ html_static_path = ["_static"]
 html_theme_options = {
     "announcement": """
         <a style=\"text-decoration: none; color: white;\" 
-           href=\"https://github.com/sponsors/urllib3\">
-           <img src=\"/en/latest/_static/favicon.png\"/> Support urllib3 on GitHub Sponsors
+           href=\"https://opencollective.com/urllib3/updates/urllib3-is-fundraising-for-http-2-support\">
+           <img src=\"/en/latest/_static/favicon.png\"/> urllib3 is fundraising for HTTP/2 support!
         </a>
     """,
     "sidebar_hide_name": True,
@@ -110,7 +110,6 @@ nitpick_ignore = [
     ("py:class", "_HttplibHTTPResponse"),
     ("py:class", "_HttplibHTTPMessage"),
     ("py:class", "TracebackType"),
-    ("py:class", "Literal"),
     ("py:class", "email.errors.MessageDefect"),
     ("py:class", "MessageDefect"),
     ("py:class", "http.client.HTTPMessage"),

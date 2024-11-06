@@ -7,8 +7,8 @@ import typing
 _TYPE_FIELD_VALUE = typing.Union[str, bytes]
 _TYPE_FIELD_VALUE_TUPLE = typing.Union[
     _TYPE_FIELD_VALUE,
-    typing.Tuple[str, _TYPE_FIELD_VALUE],
-    typing.Tuple[str, _TYPE_FIELD_VALUE, str],
+    tuple[str, _TYPE_FIELD_VALUE],
+    tuple[str, _TYPE_FIELD_VALUE, str],
 ]
 
 
@@ -225,13 +225,9 @@ class RequestField:
 
         if isinstance(value, tuple):
             if len(value) == 3:
-                filename, data, content_type = typing.cast(
-                    typing.Tuple[str, _TYPE_FIELD_VALUE, str], value
-                )
+                filename, data, content_type = value
             else:
-                filename, data = typing.cast(
-                    typing.Tuple[str, _TYPE_FIELD_VALUE], value
-                )
+                filename, data = value
                 content_type = guess_content_type(filename)
         else:
             filename = None

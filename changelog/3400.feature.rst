@@ -1,0 +1,2 @@
+Added support for JavaScript Promise Integration on Emscripten. This enables more efficient WebAssembly 
+requests and streaming, and makes it possible to use in Node.js if you launch it as  ``node --experimental-wasm-stack-switching``.

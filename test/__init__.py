@@ -19,30 +19,26 @@ import pytest
 
 try:
     try:
-        import brotlicffi as brotli  # type: ignore[import]
+        import brotlicffi as brotli  # type: ignore[import-not-found]
     except ImportError:
-        import brotli  # type: ignore[import]
+        import brotli  # type: ignore[import-not-found]
 except ImportError:
     brotli = None
 
 try:
-    import zstandard as zstd  # type: ignore[import]
+    import zstandard as _unused_module_zstd  # noqa: F401
 except ImportError:
-    zstd = None
+    HAS_ZSTD = False
+else:
+    HAS_ZSTD = True
 
-from urllib3 import util
 from urllib3.connectionpool import ConnectionPool
 from urllib3.exceptions import HTTPWarning
-from urllib3.util import ssl_
 
 try:
     import urllib3.contrib.pyopenssl as pyopenssl
 except ImportError:
     pyopenssl = None  # type: ignore[assignment]
-
-if typing.TYPE_CHECKING:
-    import ssl
-    from typing import Literal
 
 
 _RT = typing.TypeVar("_RT")  # return type
@@ -89,19 +85,6 @@ def _can_resolve(host: str) -> bool:
         return False
 
 
-def has_alpn(ctx_cls: type[ssl.SSLContext] | None = None) -> bool:
-    """Detect if ALPN support is enabled."""
-    ctx_cls = ctx_cls or util.SSLContext
-    ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)  # type: ignore[misc, attr-defined]
-    try:
-        if hasattr(ctx, "set_alpn_protocols"):
-            ctx.set_alpn_protocols(ssl_.ALPN_PROTOCOLS)
-            return True
-    except NotImplementedError:
-        pass
-    return False
-
-
 # Some systems might not resolve "localhost." correctly.
 # See https://github.com/urllib3/urllib3/issues/1809 and
 # https://github.com/urllib3/urllib3/pull/1475#issuecomment-440788064.
@@ -144,13 +127,13 @@ def notBrotli() -> typing.Callable[[_TestFuncT], _TestFuncT]:
 
 def onlyZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
-        zstd is None, reason="only run if a python-zstandard library is installed"
+        not HAS_ZSTD, reason="only run if a python-zstandard library is installed"
     )
 
 
 def notZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
-        zstd is not None,
+        HAS_ZSTD,
         reason="only run if a python-zstandard library is not installed",
     )
 
@@ -264,7 +247,7 @@ class LogRecorder:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ) -> Literal[False]:
+    ) -> typing.Literal[False]:
         self.uninstall()
         return False
 

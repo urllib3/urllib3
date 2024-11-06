@@ -1,12 +1,14 @@
 name: CI
 
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 permissions: "read-all"
 
 defaults:
   run:
     shell: bash
+env:
+  FORCE_COLOR: 1
 
 jobs:
   package:
@@ -15,10 +17,10 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
 
       - name: "Setup Python"
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.x"
           cache: "pip"
@@ -34,22 +36,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         os:
-          - macos-11
+          - macos-15
           - windows-latest
-          - ubuntu-20.04  # OpenSSL 1.1.1
-          - ubuntu-22.04  # OpenSSL 3.0
+          - ubuntu-22.04
         nox-session: ['']
         include:
           - experimental: false
           # integration
-          # 3.8 and 3.9 have a known issue with large SSL requests that we work around:
+          # 3.9 has a known issue with large SSL requests that we work around:
           # https://github.com/urllib3/urllib3/pull/3181#issuecomment-1794830698
-          - python-version: "3.8"
-            os: ubuntu-latest
-            experimental: false
-            nox-session: test_integration
           - python-version: "3.9"
             os: ubuntu-latest
             experimental: false
@@ -58,19 +55,16 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test_integration
+          # OpenSSL 1.1.1
+          - python-version: "3.9"
+            os: ubuntu-20.04
+            experimental: false
+            nox-session: test-3.9
           # pypy
-          - python-version: "pypy-3.8"
-            os: ubuntu-latest
-            experimental: false
-            nox-session: test-pypy
-          - python-version: "pypy-3.9"
-            os: ubuntu-latest
-            experimental: false
-            nox-session: test-pypy
           - python-version: "pypy-3.10"
             os: ubuntu-latest
             experimental: false
-            nox-session: test-pypy
+            nox-session: test-pypy3.10
           - python-version: "3.x"
           # brotli
             os: ubuntu-latest
@@ -81,26 +75,31 @@ jobs:
             os: ubuntu-20.04  # CPython 3.9.2 is not available for ubuntu-22.04.
             experimental: false
             nox-session: test-3.9
-          - python-version: "3.11"
+          - python-version: "3.12"
             os: ubuntu-latest
-            nox-session: emscripten
+            nox-session: emscripten(node)
             experimental: true
-        exclude:
-          # Ubuntu 22.04 comes with OpenSSL 3.0, so only CPython 3.9+ is compatible with it
-          # https://github.com/python/cpython/issues/83001
-          - python-version: "3.8"
-            os: ubuntu-22.04
+          - python-version: "3.12"
+            os: ubuntu-latest
+            nox-session: emscripten(firefox)
+            experimental: true
+          - python-version: "3.12"
+            os: ubuntu-latest
+            nox-session: emscripten(chrome)
+            experimental: true
 
     runs-on: ${{ matrix.os }}
-    name: ${{ fromJson('{"macos-11":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
+    name: ${{ fromJson('{"macos-15":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+        with:
+          fetch-depth: 0 # Needed to fetch the version from git
 
       - name: "Setup Python ${{ matrix.python-version }}"
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
@@ -109,22 +108,45 @@ jobs:
         run: python -m pip install --upgrade pip setuptools nox
 
       - name: "Install Chrome"
-        uses: browser-actions/setup-chrome@52f10de5479c69bcbbab2eab094c9d373148005e # v1.4.0
-        if: ${{ matrix.nox-session == 'emscripten' }}
+        uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
+        id: setup-chrome
+        if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
+        with:
+          install-chromedriver: true
+      - name: Force override system chrome
+        run: |
+          sudo rm -f /usr/bin/google-chrome
+          sudo rm -f /usr/bin/chrome
+          sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/google-chrome
+          sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/chrome
+          google-chrome --version
+        if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
       - name: "Install Firefox"
-        uses: browser-actions/setup-firefox@29a706787c6fb2196f091563261e1273bf379ead # v1.4.0
-        if: ${{ matrix.nox-session == 'emscripten' }}
+        uses: browser-actions/setup-firefox@233224b712fc07910ded8c15fb95a555c86da76f # v1.5.0
+        if: ${{ matrix.nox-session == 'emscripten(firefox)' }}
+      - name: "Install node.js"
+        uses: actions/setup-node@v4
+        if: ${{ matrix.nox-session == 'emscripten(node)' }}
+        with:
+          node-version: 22
+      - name: Cache pyodide downloads in nox cache
+        uses: actions/cache@v4
+        if: ${{ startsWith(matrix.nox-session, 'emscripten') }}
+        with:
+          path: .nox/.cache
+          # noxfile.py contains the Pyodide version used currently.
+          key: pyodide-downloads-${{ hashFiles('noxfile.py') }}
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
-        run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION} --error-on-missing-interpreters
+        run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
           NOX_SESSION: ${{ matrix.nox-session }}
 
-      - name: "Upload artifact"
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      - name: "Upload coverage data"
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
-          name: coverage-data
+          name: coverage-data-${{ matrix.python-version }}-${{ matrix.os }}-${{ matrix.experimental }}-${{ matrix.nox-session }}
           path: ".coverage.*"
           if-no-files-found: error
 
@@ -135,30 +157,32 @@ jobs:
     needs: test
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
 
       - name: "Setup Python"
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.x"
 
       - name: "Install coverage"
         run: "python -m pip install -r dev-requirements.txt"
 
-      - name: "Download artifact"
-        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+      - name: "Download coverage data"
+        uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
         with:
-          name: coverage-data
+          pattern: coverage-data-*
+          merge-multiple: true
 
       - name: "Combine & check coverage"
         run: |
+          python -m build
           python -m coverage combine
           python -m coverage html --skip-covered --skip-empty
           python -m coverage report --ignore-errors --show-missing --fail-under=100
 
       - if: ${{ failure() }}
         name: "Upload report if check failed"
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: coverage-report
           path: htmlcov

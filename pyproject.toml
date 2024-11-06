@@ -1,7 +1,7 @@
 # This file is protected via CODEOWNERS
 
 [build-system]
-requires = ["hatchling>=1.6.0,<2"]
+requires = ["hatchling>=1.6.0,<2", "hatch-vcs==0.4.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -24,18 +24,18 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Software Development :: Libraries",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dynamic = ["version"]
 
 [project.optional-dependencies]
@@ -49,6 +49,9 @@ zstd = [
 socks = [
   "PySocks>=1.5.6,<2.0,!=1.5.7",
 ]
+h2 = [
+  "h2>=4,<5"
+]
 
 [project.urls]
 "Changelog" = "https://github.com/urllib3/urllib3/blob/main/CHANGES.rst"
@@ -57,7 +60,11 @@ socks = [
 "Issue tracker" = "https://github.com/urllib3/urllib3/issues"
 
 [tool.hatch.version]
-path = "src/urllib3/_version.py"
+source = "vcs"
+[tool.hatch.version.raw-options]
+local_scheme = "no-local-version"
+[tool.hatch.build.hooks.vcs]
+version-file = "src/urllib3/_version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -78,6 +85,11 @@ markers = [
     "limit_memory: Limit memory with memray",
     "requires_network: This test needs access to the Internet",
     "integration: Slow integrations tests not run by default",
+    "in_webbrowser: Emscripten - run only in browser (not in Node.js)",
+    "with_jspi: Emscripten - run only if WebAssembly JavaScript Promise Integration is supported",
+    "without_jspi: Emscripten - run only if this platform works without  WebAssembly JavaScript Promise Integration",
+    "webworkers: Emscripten - run only if this platform can test web workers",    
+    "node_without_jspi: Emscripten - run in node with jspi enabled (for failure testing only)",
 ]
 log_level = "DEBUG"
 filterwarnings = [
@@ -91,8 +103,13 @@ filterwarnings = [
     '''default:ssl\.TLSVersion\.TLSv1_1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
-    '''default:unclosed .*:ResourceWarning''',
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
+    # https://github.com/pallets/quart/issues/301
+    '''default:Async generator 'quart\.wrappers\.response\.DataBody\.__aiter__\.<locals>\._aiter' was garbage collected.*:ResourceWarning''',
+    # https://github.com/SeleniumHQ/selenium/issues/13328
+    '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',
+    # https://github.com/SeleniumHQ/selenium/issues/14686
+    '''default:setting remote_server_addr in RemoteConnection\(\) is deprecated, set in ClientConfig instance instead:DeprecationWarning'''
 ]
 
 [tool.isort]
