@@ -348,7 +348,7 @@ class BaseHTTPResponse(io.IOBase):
         self._decoder: ContentDecoder | None = None
         self.length_remaining: int | None
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Self:
         return self
 
     def __exit__(
