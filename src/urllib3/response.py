@@ -7,6 +7,7 @@ import logging
 import re
 import sys
 import typing
+import types
 import warnings
 import zlib
 from contextlib import contextmanager
@@ -346,6 +347,20 @@ class BaseHTTPResponse(io.IOBase):
 
         self._decoder: ContentDecoder | None = None
         self.length_remaining: int | None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
+        self.close()
+        self.release_conn()
+
+        return None
 
     def get_redirect_location(self) -> str | None | typing.Literal[False]:
         """
