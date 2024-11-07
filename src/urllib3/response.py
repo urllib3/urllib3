@@ -6,8 +6,8 @@ import json as _json
 import logging
 import re
 import sys
-import typing
 import types
+import typing
 import warnings
 import zlib
 from contextlib import contextmanager
