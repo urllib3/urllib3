@@ -14,6 +14,7 @@
   <a href="https://deps.dev/pypi/urllib3"><img alt="OpenSSF Scorecard" src="https://api.securityscorecards.dev/projects/github.com/urllib3/urllib3/badge" /></a>
   <a href="https://slsa.dev"><img alt="SLSA 3" src="https://slsa.dev/images/gh-badge-level3.svg" /></a>
   <a href="https://bestpractices.coreinfrastructure.org/projects/6227"><img alt="CII Best Practices" src="https://bestpractices.coreinfrastructure.org/projects/6227/badge" /></a>
+  <a href="https://gurubase.io/g/urllib3"><img alt="Gurubase" src="https://img.shields.io/badge/Gurubase-Ask%20urllib3%20Guru-006BFF" /></a>
 </p>
 
 urllib3 is a powerful, *user-friendly* HTTP client for Python. Much of the
