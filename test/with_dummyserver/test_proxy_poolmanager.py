@@ -49,6 +49,7 @@ def assert_is_verified(pm: ProxyManager, *, proxy: bool, target: bool) -> None:
         pool.pool.queue[-1] if pool.pool is not None else None
     )  # retrieve last connection entry
 
+    assert connection is not None
     assert connection.proxy_is_verified is proxy
     assert connection.is_verified is target
 
