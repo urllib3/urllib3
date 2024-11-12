@@ -176,7 +176,7 @@ class TestResponse:
 
         assert not r._body
         assert r.data == b"foo"
-        assert r._body == b"foo"
+        assert r._body == b"foo"  # type: ignore[comparison-overlap]
         assert r.data == b"foo"
 
     def test_default(self) -> None:
@@ -807,7 +807,7 @@ class TestResponse:
     def test_io_textiowrapper(self) -> None:
         fp = BytesIO(b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f")
         resp = HTTPResponse(fp, preload_content=False)
-        br = TextIOWrapper(resp, encoding="utf8")  # type: ignore[arg-type]
+        br = TextIOWrapper(resp, encoding="utf8")  # type: ignore[type-var]
 
         assert br.read() == "äöüß"
 
@@ -821,14 +821,14 @@ class TestResponse:
         )
         resp = HTTPResponse(fp, preload_content=False)
         with pytest.raises(ValueError, match="I/O operation on closed file.?"):
-            list(TextIOWrapper(resp))  # type: ignore[arg-type]
+            list(TextIOWrapper(resp))  # type: ignore[type-var]
 
     def test_io_not_autoclose_textiowrapper(self) -> None:
         fp = BytesIO(
             b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\n\xce\xb1\xce\xb2\xce\xb3\xce\xb4"
         )
         resp = HTTPResponse(fp, preload_content=False, auto_close=False)
-        reader = TextIOWrapper(resp, encoding="utf8")  # type: ignore[arg-type]
+        reader = TextIOWrapper(resp, encoding="utf8")  # type: ignore[type-var]
         assert list(reader) == ["äöüß\n", "αβγδ"]
 
         assert not reader.closed
