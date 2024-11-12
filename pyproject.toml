@@ -104,8 +104,6 @@ filterwarnings = [
     '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
-    # https://github.com/pallets/quart/issues/301
-    '''default:Async generator 'quart\.wrappers\.response\.DataBody\.__aiter__\.<locals>\._aiter' was garbage collected.*:ResourceWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/13328
     '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/14686
