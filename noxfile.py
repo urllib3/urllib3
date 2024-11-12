@@ -44,7 +44,7 @@ def tests_impl(
     session.run("python", "-m", "OpenSSL.debug")
 
     memray_supported = True
-    if implementation_name != "cpython":
+    if implementation_name != "cpython" or release_level != "final":
         memray_supported = False
     elif sys.platform == "win32":
         memray_supported = False
@@ -90,6 +90,7 @@ def tests_impl(
         "3.11",
         "3.12",
         "3.13",
+        "3.14",
         "pypy3.10",
     ]
 )
