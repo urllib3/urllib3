@@ -448,7 +448,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 proxy_sock, self.client_context, server_hostname="localhost"
             ) as destination_sock:
                 file = destination_sock.makefile("rwb", buffering)
-                file.write(sample_request())  # type: ignore[call-overload]
+                file.write(sample_request())  # type: ignore[arg-type]
                 file.flush()
 
                 response = bytearray(65536)
