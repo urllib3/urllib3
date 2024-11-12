@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import shutil
 import sys
-import typing
 from pathlib import Path
 
 import nox
@@ -32,8 +31,10 @@ def tests_impl(
 
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
-    session.install(f".[{extras}]")
-
+    if len(extras) > 0:
+        session.install(f".[{extras}]")
+    else:
+        session.install(".")
     # Show the pip version.
     session.run("pip", "--version")
     # Print the Python version and bytesize.
@@ -51,16 +52,8 @@ def tests_impl(
     # Environment variables being passed to the pytest run.
     pytest_session_envvars = {
         "PYTHONWARNINGS": "always::DeprecationWarning",
+        "COVERAGE_CORE": "sysmon",
     }
-
-    # In coverage 7.4.0 we can only set the setting for Python 3.12+
-    # Future versions of coverage will use sys.monitoring based on availability.
-    if (
-        isinstance(session.python, str)
-        and "." in session.python
-        and int(session.python.split(".")[1]) >= 12
-    ):
-        pytest_session_envvars["COVERAGE_CORE"] = "sysmon"
 
     # Inspired from https://hynek.me/articles/ditch-codecov-python/
     # We use parallel mode and then combine in a later CI step
@@ -77,14 +70,13 @@ def tests_impl(
         "-v",
         "-ra",
         *(("--integration",) if integration else ()),
-        f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
         "--tb=native",
         "--durations=10",
         "--strict-config",
         "--strict-markers",
         "--disable-socket",
         "--allow-unix-socket",
-        "--allow-hosts=localhost,::1,127.0.0.0,240.0.0.0",  # See `TARPIT_HOST`
+        "--allow-hosts=localhost,127.0.0.1,::1,127.0.0.0,240.0.0.0",  # See `TARPIT_HOST`
         *pytest_extra_args,
         *(session.posargs or ("test/",)),
         env=pytest_session_envvars,
@@ -192,7 +184,7 @@ def lint(session: nox.Session) -> None:
     mypy(session)
 
 
-@nox.session(python="3.11")
+@nox.session(python="3.12")
 def pyodideconsole(session: nox.Session) -> None:
     # build wheel into dist folder
     session.install("build")
@@ -207,17 +199,18 @@ def pyodideconsole(session: nox.Session) -> None:
     session.run("python", "-m", "http.server")
 
 
-# TODO: node support is not tested yet - it should work if you require('xmlhttprequest') before
-# loading pyodide, but there is currently no nice way to do this with pytest-pyodide
-# because you can't override the test runner properties easily - see
-# https://github.com/pyodide/pytest-pyodide/issues/118 for more
-@nox.session(python="3.11")
-@nox.parametrize("runner", ["firefox", "chrome"])
+@nox.session(python="3.12")
+@nox.parametrize(
+    "runner", ["node", "firefox", "chrome"], ids=["node", "firefox", "chrome"]
+)
 def emscripten(session: nox.Session, runner: str) -> None:
-    """Test on Emscripten with Pyodide & Chrome / Firefox"""
+    """Test on Emscripten with Pyodide & Chrome / Firefox / Node.js"""
+    if runner == "node":
+        print(
+            "Node version:",
+            session.run("node", "--version", silent=True, external=True),
+        )
     session.install("-r", "emscripten-requirements.txt")
-    # build wheel into dist folder
-    session.run("python", "-m", "build")
     # make sure we have a dist dir for pyodide
     dist_dir = None
     if "PYODIDE_ROOT" in os.environ:
@@ -225,26 +218,20 @@ def emscripten(session: nox.Session, runner: str) -> None:
         # use the dist directory from that
         dist_dir = Path(os.environ["PYODIDE_ROOT"]) / "dist"
     else:
-        # we don't have a build tree, get one
-        # that matches the version of pyodide build
-        pyodide_version = typing.cast(
-            str,
-            session.run(
-                "python",
-                "-c",
-                "import pyodide_build;print(pyodide_build.__version__)",
-                silent=True,
-            ),
-        ).strip()
+        # we don't have a build tree
+        pyodide_version = "0.26.3"
 
         pyodide_artifacts_path = Path(session.cache_dir) / f"pyodide-{pyodide_version}"
         if not pyodide_artifacts_path.exists():
             print("Fetching pyodide build artifacts")
             session.run(
-                "wget",
+                "curl",
+                "-L",
                 f"https://github.com/pyodide/pyodide/releases/download/{pyodide_version}/pyodide-{pyodide_version}.tar.bz2",
+                "--output-dir",
+                session.cache_dir,
                 "-O",
-                f"{pyodide_artifacts_path}.tar.bz2",
+                external=True,
             )
             pyodide_artifacts_path.mkdir(parents=True)
             session.run(
@@ -255,58 +242,26 @@ def emscripten(session: nox.Session, runner: str) -> None:
                 str(pyodide_artifacts_path),
                 "--strip-components",
                 "1",
+                external=True,
             )
 
         dist_dir = pyodide_artifacts_path
+    session.run("python", "-m", "build")
     assert dist_dir is not None
     assert dist_dir.exists()
-    if runner == "chrome":
-        # install chrome webdriver and add it to path
-        driver = typing.cast(
-            str,
-            session.run(
-                "python",
-                "-c",
-                "from webdriver_manager.chrome import ChromeDriverManager;print(ChromeDriverManager().install())",
-                silent=True,
-            ),
-        ).strip()
-        session.env["PATH"] = f"{Path(driver).parent}:{session.env['PATH']}"
-
-        tests_impl(
-            session,
-            pytest_extra_args=[
-                "--rt",
-                "chrome-no-host",
-                "--dist-dir",
-                str(dist_dir),
-                "test",
-            ],
-        )
-    elif runner == "firefox":
-        driver = typing.cast(
-            str,
-            session.run(
-                "python",
-                "-c",
-                "from webdriver_manager.firefox import GeckoDriverManager;print(GeckoDriverManager().install())",
-                silent=True,
-            ),
-        ).strip()
-        session.env["PATH"] = f"{Path(driver).parent}:{session.env['PATH']}"
-
-        tests_impl(
-            session,
-            pytest_extra_args=[
-                "--rt",
-                "firefox-no-host",
-                "--dist-dir",
-                str(dist_dir),
-                "test",
-            ],
-        )
-    else:
-        raise ValueError(f"Unknown runner: {runner}")
+    tests_impl(
+        session,
+        extras="",
+        pytest_extra_args=[
+            "-x",
+            "--runtime",
+            f"{runner}-no-host",
+            "--dist-dir",
+            str(dist_dir),
+            "test/contrib/emscripten",
+            "-v",
+        ],
+    )
 
 
 @nox.session(python="3.12")

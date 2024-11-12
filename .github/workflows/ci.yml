@@ -7,6 +7,8 @@ permissions: "read-all"
 defaults:
   run:
     shell: bash
+env:
+  FORCE_COLOR: 1
 
 jobs:
   package:
@@ -18,7 +20,7 @@ jobs:
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
 
       - name: "Setup Python"
-        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.x"
           cache: "pip"
@@ -73,9 +75,17 @@ jobs:
             os: ubuntu-20.04  # CPython 3.9.2 is not available for ubuntu-22.04.
             experimental: false
             nox-session: test-3.9
-          - python-version: "3.11"
+          - python-version: "3.12"
             os: ubuntu-latest
-            nox-session: emscripten
+            nox-session: emscripten(node)
+            experimental: true
+          - python-version: "3.12"
+            os: ubuntu-latest
+            nox-session: emscripten(firefox)
+            experimental: true
+          - python-version: "3.12"
+            os: ubuntu-latest
+            nox-session: emscripten(chrome)
             experimental: true
           - python-version: 3.14
             experimental: true
@@ -83,7 +93,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-15":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu","ubuntu-20.04":"Ubuntu 20.04 (OpenSSL 1.1.1)","ubuntu-22.04":"Ubuntu 22.04 (OpenSSL 3.0)"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -91,7 +101,7 @@ jobs:
           fetch-depth: 0 # Needed to fetch the version from git
 
       - name: "Setup Python ${{ matrix.python-version }}"
-        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
@@ -101,10 +111,33 @@ jobs:
 
       - name: "Install Chrome"
         uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
-        if: ${{ matrix.nox-session == 'emscripten' }}
+        id: setup-chrome
+        if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
+        with:
+          install-chromedriver: true
+      - name: Force override system chrome
+        run: |
+          sudo rm -f /usr/bin/google-chrome
+          sudo rm -f /usr/bin/chrome
+          sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/google-chrome
+          sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/chrome
+          google-chrome --version
+        if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
       - name: "Install Firefox"
         uses: browser-actions/setup-firefox@233224b712fc07910ded8c15fb95a555c86da76f # v1.5.0
-        if: ${{ matrix.nox-session == 'emscripten' }}
+        if: ${{ matrix.nox-session == 'emscripten(firefox)' }}
+      - name: "Install node.js"
+        uses: actions/setup-node@v4
+        if: ${{ matrix.nox-session == 'emscripten(node)' }}
+        with:
+          node-version: 22
+      - name: Cache pyodide downloads in nox cache
+        uses: actions/cache@v4
+        if: ${{ startsWith(matrix.nox-session, 'emscripten') }}
+        with:
+          path: .nox/.cache
+          # noxfile.py contains the Pyodide version used currently.
+          key: pyodide-downloads-${{ hashFiles('noxfile.py') }}
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
         run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}
@@ -129,7 +162,7 @@ jobs:
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
 
       - name: "Setup Python"
-        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.x"
 

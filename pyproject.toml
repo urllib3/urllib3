@@ -85,6 +85,11 @@ markers = [
     "limit_memory: Limit memory with memray",
     "requires_network: This test needs access to the Internet",
     "integration: Slow integrations tests not run by default",
+    "in_webbrowser: Emscripten - run only in browser (not in Node.js)",
+    "with_jspi: Emscripten - run only if WebAssembly JavaScript Promise Integration is supported",
+    "without_jspi: Emscripten - run only if this platform works without  WebAssembly JavaScript Promise Integration",
+    "webworkers: Emscripten - run only if this platform can test web workers",    
+    "node_without_jspi: Emscripten - run in node with jspi enabled (for failure testing only)",
 ]
 log_level = "DEBUG"
 filterwarnings = [
@@ -99,8 +104,12 @@ filterwarnings = [
     '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
-    '''default:Async generator 'quart\.wrappers\.response\.DataBody\.__aiter__\.<locals>\._aiter' was garbage collected.*:ResourceWarning''',  # https://github.com/pallets/quart/issues/301
-    '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',  # https://github.com/SeleniumHQ/selenium/issues/13328
+    # https://github.com/pallets/quart/issues/301
+    '''default:Async generator 'quart\.wrappers\.response\.DataBody\.__aiter__\.<locals>\._aiter' was garbage collected.*:ResourceWarning''',
+    # https://github.com/SeleniumHQ/selenium/issues/13328
+    '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',
+    # https://github.com/SeleniumHQ/selenium/issues/14686
+    '''default:setting remote_server_addr in RemoteConnection\(\) is deprecated, set in ClientConfig instance instead:DeprecationWarning'''
 ]
 
 [tool.isort]
