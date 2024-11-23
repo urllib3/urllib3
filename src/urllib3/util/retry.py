@@ -268,6 +268,7 @@ class Retry:
             remove_headers_on_redirect=self.remove_headers_on_redirect,
             respect_retry_after_header=self.respect_retry_after_header,
             backoff_jitter=self.backoff_jitter,
+            max_retry_wait_length=self.max_retry_wait_length
         )
 
         params.update(kw)
