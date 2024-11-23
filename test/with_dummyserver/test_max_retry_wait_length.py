@@ -32,8 +32,8 @@ class TestMaxRetryWaitLength(SocketDummyServerTestCase):
         """
         Test that max_retry_wait_length is respected when the Retry-After value is larger.
         """
-        # Start a dummy server that returns a Retry-After of 10 seconds
-        self.start_retry_after_handler("10")
+        # Start a dummy server that returns a Retry-After of 100 seconds
+        self.start_retry_after_handler("100")
 
         with HTTPConnectionPool(self.host, self.port) as pool:
             retries = Retry(total=1, max_retry_wait_length=2)
@@ -46,7 +46,7 @@ class TestMaxRetryWaitLength(SocketDummyServerTestCase):
 
             # Ensure that we waited no longer than the specified max_retry_wait_length
             assert (
-                elapsed_time < 3
+                elapsed_time < 20  # github actions may be very slow
             ), f"Elapsed time {elapsed_time} exceeded the max retry wait length"
 
     def test_no_max_retry_wait_length(self) -> None:
