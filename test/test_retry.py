@@ -345,6 +345,22 @@ class TestRetry:
 
         assert retry.remove_headers_on_redirect == {"x-api-secret"}
 
+    def test_max_retry_wait_length(self) -> None:
+        retry_1 = Retry()
+        http_response_1 = HTTPResponse(headers={})
+        print(retry_1.get_retry_after(http_response_1))
+        assert retry_1.get_retry_after(http_response_1) == None
+        
+        retry_2 = Retry()
+        http_response_2 = HTTPResponse(headers={"Retry-After": "10"})
+        print(retry_2.get_retry_after(http_response_2))
+        assert retry_2.get_retry_after(http_response_2) == 10
+        
+        retry_3 = Retry(max_retry_wait_length = 2)
+        http_response_3 = HTTPResponse(headers={"Retry-After": "10"})
+        print(retry_3.get_retry_after(http_response_3))
+        assert retry_3.get_retry_after(http_response_3) == 2
+
     @pytest.mark.parametrize("value", ["-1", "+1", "1.0", "\xb2"])  # \xb2 = ^2
     def test_parse_retry_after_invalid(self, value: str) -> None:
         retry = Retry()

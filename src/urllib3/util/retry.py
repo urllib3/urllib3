@@ -178,6 +178,10 @@ class Retry:
         Sequence of headers to remove from the request when a response
         indicating a redirect is returned before firing off the redirected
         request.
+        
+    :param float max_retry_wait_length:
+        The maximum value of time to wait for retry. If the value of Retry-After
+        header is larger than this, will only wait for this value.
     """
 
     #: Default methods to be used for ``allowed_methods``
@@ -219,6 +223,7 @@ class Retry:
             str
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
         backoff_jitter: float = 0.0,
+        max_retry_wait_length: float | None = None,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -243,6 +248,7 @@ class Retry:
             h.lower() for h in remove_headers_on_redirect
         )
         self.backoff_jitter = backoff_jitter
+        self.max_retry_wait_length = max_retry_wait_length
 
     def new(self, **kw: typing.Any) -> Self:
         params = dict(
@@ -330,7 +336,11 @@ class Retry:
         if retry_after is None:
             return None
 
-        return self.parse_retry_after(retry_after)
+        retry_after = self.parse_retry_after(retry_after)
+        if (self.max_retry_wait_length != None and retry_after > self.max_retry_wait_length):
+            return self.max_retry_wait_length
+
+        return retry_after
 
     def sleep_for_retry(self, response: BaseHTTPResponse) -> bool:
         retry_after = self.get_retry_after(response)
