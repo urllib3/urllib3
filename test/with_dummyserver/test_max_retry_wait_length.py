@@ -15,6 +15,7 @@ class TestMaxRetryWaitLength(SocketDummyServerTestCase):
         """
         Start a server that sends a Retry-After header with the specified value.
         """
+
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             sock.send(
@@ -37,14 +38,16 @@ class TestMaxRetryWaitLength(SocketDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             retries = Retry(total=1, max_retry_wait_length=2)
             print(retries.max_retry_wait_length)
-            
+
             start_time = time.time()
             with pytest.raises(Exception):  # Catch the retry failure
                 pool.urlopen("GET", "/", retries=retries)
             elapsed_time = time.time() - start_time
 
             # Ensure that we waited no longer than the specified max_retry_wait_length
-            assert elapsed_time < 3, f"Elapsed time {elapsed_time} exceeded the max retry wait length"
+            assert (
+                elapsed_time < 3
+            ), f"Elapsed time {elapsed_time} exceeded the max retry wait length"
 
     def test_no_max_retry_wait_length(self) -> None:
         """
@@ -55,14 +58,16 @@ class TestMaxRetryWaitLength(SocketDummyServerTestCase):
 
         with HTTPConnectionPool(self.host, self.port) as pool:
             retries = Retry(total=1)
-            
+
             start_time = time.time()
             with pytest.raises(Exception):  # Catch the retry failure
                 pool.urlopen("GET", "/", retries=retries)
             elapsed_time = time.time() - start_time
 
             # Ensure that we waited for at least the Retry-After value
-            assert elapsed_time >= 5, f"Elapsed time {elapsed_time} was less than expected Retry-After"
+            assert (
+                elapsed_time >= 5
+            ), f"Elapsed time {elapsed_time} was less than expected Retry-After"
 
     def test_invalid_retry_after_header(self) -> None:
         """
@@ -73,14 +78,16 @@ class TestMaxRetryWaitLength(SocketDummyServerTestCase):
 
         with HTTPConnectionPool(self.host, self.port) as pool:
             retries = Retry(total=1, max_retry_wait_length=2)
-            
+
             start_time = time.time()
             with pytest.raises(Exception):  # Catch the retry failure
                 pool.urlopen("GET", "/", retries=retries)
             elapsed_time = time.time() - start_time
 
             # Ensure that no additional wait time occurred due to invalid Retry-After
-            assert elapsed_time < 1, f"Elapsed time {elapsed_time} exceeded the expected behavior for invalid Retry-After"
+            assert (
+                elapsed_time < 1
+            ), f"Elapsed time {elapsed_time} exceeded the expected behavior for invalid Retry-After"
 
 
 if __name__ == "__main__":
