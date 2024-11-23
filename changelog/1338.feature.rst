@@ -1,2 +1,3 @@
 Add the maximum time to wait for ``Retry-After`` header.
-if you set ``max_retry_wait_length`` in ``Retry`` object, and if the value of ``Retry-After`` header exceeds this, will only wait for ``max_retry_wait_length`` before retry. Otherwise, it will keep using the ``Retry-After`` header value (if have).
+
+If you set ``max_retry_wait_length`` in ``Retry`` object, and if the value of ``Retry-After`` header exceeds this, will only wait for ``max_retry_wait_length`` before retry. Otherwise, it will keep using the ``Retry-After`` header value (if have).
