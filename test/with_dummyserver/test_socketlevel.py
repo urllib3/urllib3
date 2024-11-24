@@ -1014,6 +1014,40 @@ class TestSocketClosing(SocketDummyServerTestCase):
             ssl_sock.sendall(b"hello")
             assert ssl_sock.fileno() > 0
 
+    def test_socket_shutdown_stops_recv(self) -> None:
+        timed_out = Event()
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            # Consume request
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf = sock.recv(65535)
+
+            # Send incomplete message (note Content-Length)
+            sock.send(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Content-Length: 10\r\n"
+                b"\r\n"
+                b"Hi-"
+            )
+            timed_out.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.urlopen("GET", "/", preload_content=False, retries=0)
+            # Calling shutdown here calls shutdown() on the underlying socket,
+            # so that the reamining read will fail instead of blocking
+            # indefinitely
+            response.shutdown()
+            with pytest.raises(ProtocolError, match="Connection broken"):
+                response.read()
+            timed_out.set()
+
 
 class TestProxyManager(SocketDummyServerTestCase):
     def test_simple(self) -> None:
