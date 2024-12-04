@@ -5,6 +5,8 @@ import re
 import threading
 import types
 import typing
+from enum import Enum
+from io import BytesIO
 
 import h2.config  # type: ignore[import-untyped]
 import h2.connection  # type: ignore[import-untyped]
@@ -14,7 +16,7 @@ from .._base_connection import _TYPE_BODY
 from .._collections import HTTPHeaderDict
 from ..connection import HTTPSConnection, _get_default_user_agent
 from ..exceptions import ConnectionError
-from ..response import BaseHTTPResponse
+from ..response import BaseHTTPResponse, BytesQueueBuffer
 
 orig_HTTPSConnection = HTTPSConnection
 
@@ -87,7 +89,7 @@ class HTTP2Connection(HTTPSConnection):
         self, host: str, port: int | None = None, **kwargs: typing.Any
     ) -> None:
         self._h2_conn = self._new_h2_conn()
-        self._h2_stream: int | None = None
+        self._h2_streams: dict[int, HTTP2Stream] = dict()
         self._headers: list[tuple[bytes, bytes]] = []
 
         if "proxy" in kwargs or "proxy_config" in kwargs:  # Defensive:
@@ -109,13 +111,14 @@ class HTTP2Connection(HTTPSConnection):
             if data_to_send := conn.data_to_send():
                 self.sock.sendall(data_to_send)
 
-    def putrequest(  # type: ignore[override]
+    def _putrequest(
         self,
+        stream_id: int,
         method: str,
         url: str,
         **kwargs: typing.Any,
     ) -> None:
-        """putrequest
+        """_putrequest
         This deviates from the HTTPConnection method signature since we never need to override
         sending accept-encoding headers or the host header.
         """
@@ -137,9 +140,6 @@ class HTTP2Connection(HTTPSConnection):
         self._headers.append((b":authority", authority.encode()))
         self._headers.append((b":path", url.encode()))
 
-        with self._h2_conn as conn:
-            self._h2_stream = conn.get_next_available_stream_id()
-
     def putheader(self, header: str | bytes, *values: str | bytes) -> None:
         # TODO SKIPPABLE_HEADERS from urllib3 are ignored.
         header = header.encode() if isinstance(header, str) else header
@@ -153,13 +153,10 @@ class HTTP2Connection(HTTPSConnection):
                 raise ValueError(f"Illegal header value {str(value)}")
             self._headers.append((header, value))
 
-    def endheaders(self, message_body: typing.Any = None) -> None:  # type: ignore[override]
-        if self._h2_stream is None:
-            raise ConnectionError("Must call `putrequest` first.")
-
+    def _endheaders(self, stream_id: int, message_body: typing.Any = None) -> None:
         with self._h2_conn as conn:
             conn.send_headers(
-                stream_id=self._h2_stream,
+                stream_id=stream_id,
                 headers=self._headers,
                 end_stream=(message_body is None),
             )
@@ -167,14 +164,12 @@ class HTTP2Connection(HTTPSConnection):
                 self.sock.sendall(data_to_send)
         self._headers = []  # Reset headers for the next request.
 
-    def send(self, data: typing.Any) -> None:
-        """Send data to the server.
-        `data` can be: `str`, `bytes`, an iterable, or file-like objects
+    def _send_stream(self, stream_id: int, data: typing.Any) -> None:
+        """Send data across a stream to the server
+        `stream_id`: `int`, id corresponding to the stream
+        `data`: `str`, `bytes`, an iterable, or file-like objects
         that support a .read() method.
         """
-        if self._h2_stream is None:
-            raise ConnectionError("Must call `putrequest` first.")
-
         with self._h2_conn as conn:
             if data_to_send := conn.data_to_send():
                 self.sock.sendall(data_to_send)
@@ -186,10 +181,10 @@ class HTTP2Connection(HTTPSConnection):
                         break
                     if isinstance(chunk, str):
                         chunk = chunk.encode()  # pragma: no cover
-                    conn.send_data(self._h2_stream, chunk, end_stream=False)
+                    conn.send_data(stream_id, chunk, end_stream=False)
                     if data_to_send := conn.data_to_send():
                         self.sock.sendall(data_to_send)
-                conn.end_stream(self._h2_stream)
+                conn.end_stream(stream_id)
                 return
 
             if isinstance(data, str):  # str -> bytes
@@ -197,15 +192,15 @@ class HTTP2Connection(HTTPSConnection):
 
             try:
                 if isinstance(data, bytes):
-                    conn.send_data(self._h2_stream, data, end_stream=True)
+                    conn.send_data(stream_id, data, end_stream=True)
                     if data_to_send := conn.data_to_send():
                         self.sock.sendall(data_to_send)
                 else:
                     for chunk in data:
-                        conn.send_data(self._h2_stream, chunk, end_stream=False)
+                        conn.send_data(stream_id, chunk, end_stream=False)
                         if data_to_send := conn.data_to_send():
                             self.sock.sendall(data_to_send)
-                    conn.end_stream(self._h2_stream)
+                    conn.end_stream(stream_id)
             except TypeError:
                 raise TypeError(
                     "`data` should be str, bytes, iterable, or file. got %r"
@@ -223,47 +218,67 @@ class HTTP2Connection(HTTPSConnection):
             "HTTP/2 does not support setting up a tunnel through a proxy"
         )
 
-    def getresponse(  # type: ignore[override]
+    def _read_stream(
         self,
-    ) -> HTTP2Response:
-        status = None
-        data = bytearray()
+        stream_id: int,
+        get_response_headers: bool = False,
+        end_stream: bool = False,
+    ) -> None:
+        if not get_response_headers and not end_stream:
+            raise RuntimeError(
+                "One of 'get_response_headers' or 'end_stream' should be set"
+            )
+
+        if get_response_headers and end_stream:
+            raise RuntimeError(
+                "Only one of 'get_response_headers' and 'end_stream' " "should be set."
+            )
+
         with self._h2_conn as conn:
-            end_stream = False
-            while not end_stream:
-                # TODO: Arbitrary read value.
-                if received_data := self.sock.recv(65535):
-                    events = conn.receive_data(received_data)
-                    for event in events:
-                        if isinstance(event, h2.events.ResponseReceived):
-                            headers = HTTPHeaderDict()
-                            for header, value in event.headers:
-                                if header == b":status":
-                                    status = int(value.decode())
-                                else:
-                                    headers.add(
-                                        header.decode("ascii"), value.decode("ascii")
-                                    )
+            stop_reading = False
+            while not stop_reading:
+                # breakpoint()
+                if not (received_data := self.sock.recv(65535)):
+                    # connection is lost
+                    break
 
-                        elif isinstance(event, h2.events.DataReceived):
-                            data += event.data
-                            conn.acknowledge_received_data(
-                                event.flow_controlled_length, event.stream_id
-                            )
+                events = conn.receive_data(received_data)
+                for event in events:
+                    print(event)
+                    if isinstance(event, h2.events.ResponseReceived):
+                        _headers = HTTPHeaderDict()
+                        for header, value in event.headers:
+                            if header == b":status":
+                                _status = int(value.decode())
+                            else:
+                                _headers.add(
+                                    header.decode("ascii"), value.decode("ascii")
+                                )
 
-                        elif isinstance(event, h2.events.StreamEnded):
-                            end_stream = True
+                        self._h2_streams[event.stream_id].open_stream(_status, _headers)
+                        if get_response_headers and stream_id == event.stream_id:
+                            stop_reading = True
+
+                    elif isinstance(event, h2.events.DataReceived):
+                        self._h2_streams[event.stream_id].push_data(event.data)
+                        conn.acknowledge_received_data(
+                            event.flow_controlled_length, event.stream_id
+                        )
+                    elif isinstance(event, h2.events.StreamEnded):
+                        self._h2_streams[event.stream_id].end_stream()
+                        if end_stream and event.stream_id == stream_id:
+                            stop_reading = True
 
                 if data_to_send := conn.data_to_send():
                     self.sock.sendall(data_to_send)
-
-        assert status is not None
-        return HTTP2Response(
-            status=status,
-            headers=headers,
-            request_url=self._request_url,
-            data=bytes(data),
-        )
+        if get_response_headers and not stop_reading:
+            raise ConnectionError(
+                f"Could not get Response Headers for stream {stream_id}"
+            )
+        if end_stream and not stop_reading:
+            raise ConnectionError(
+                f"Expected StreamEnded event for stream id {stream_id}."
+            )
 
     def request(  # type: ignore[override]
         self,
@@ -276,7 +291,7 @@ class HTTP2Connection(HTTPSConnection):
         decode_content: bool = True,
         enforce_content_length: bool = True,
         **kwargs: typing.Any,
-    ) -> None:
+    ) -> HTTP2Stream:
         """Send an HTTP/2 request"""
         if "chunked" in kwargs:
             # TODO this is often present from upstream.
@@ -286,7 +301,14 @@ class HTTP2Connection(HTTPSConnection):
         if self.sock is not None:
             self.sock.settimeout(self.timeout)
 
-        self.putrequest(method, url)
+        stream_id = None
+        with self._h2_conn as conn:
+            stream_id = conn.get_next_available_stream_id()
+
+        if stream_id is None:
+            raise ConnectionError("Could not allocate stream id.")
+
+        self._putrequest(stream_id, method, url)
 
         headers = headers or {}
         for k, v in headers.items():
@@ -299,10 +321,15 @@ class HTTP2Connection(HTTPSConnection):
             self.putheader(b"user-agent", _get_default_user_agent())
 
         if body:
-            self.endheaders(message_body=body)
-            self.send(body)
+            self._endheaders(stream_id=stream_id, message_body=body)
+            self._send_stream(stream_id=stream_id, data=body)
         else:
-            self.endheaders()
+            self._endheaders(stream_id=stream_id)
+
+        stream = HTTP2Stream(stream_id=stream_id, connection=self)
+        self._h2_streams[stream_id] = stream
+
+        return stream
 
     def close(self) -> None:
         with self._h2_conn as conn:
@@ -321,6 +348,57 @@ class HTTP2Connection(HTTPSConnection):
         super().close()
 
 
+# These states have different meaning than the HTTP/2 RFC9113. They mean -
+# IDLE = Response Headers have not being received
+# OPEN = Response Headers Received, also can received data.
+# CLOSED = END_STREAM received and also send back
+StreamState = Enum("StreamState", ["IDLE", "OPEN", "CLOSED"])
+
+
+class HTTP2Stream:
+    def __init__(self, stream_id: int, connection: HTTP2Connection) -> None:
+        self.stream_id = stream_id
+        self.state = StreamState.IDLE
+        self.connection = connection
+        self.response: HTTP2Response | None = None
+        self._data = BytesIO()
+
+    def getresponse(self) -> HTTP2Response:
+        if self.state == StreamState.IDLE:
+            self.connection._read_stream(self.stream_id, get_response_headers=True)
+
+        assert self.response is not None
+        return self.response
+
+    def open_stream(self, status: int, headers: HTTPHeaderDict) -> None:
+        assert self.state == StreamState.IDLE
+        res = HTTP2Response(
+            status=status,
+            headers=headers,
+            request_url=self.connection._request_url,
+            data=bytearray(),
+            stream=self,
+        )
+        self.response = res
+        self.state = StreamState.OPEN
+
+    def read(self, amt: int = -1) -> bytes:
+        if self.state == StreamState.OPEN:
+            self.connection._read_stream(self.stream_id, end_stream=True)
+
+        assert self.state == StreamState.CLOSED
+        return self._data.read(amt)
+
+    def push_data(self, data: bytes) -> None:
+        assert self.state == StreamState.OPEN
+        self._data.write(data)
+
+    def end_stream(self) -> None:
+        assert self.state != StreamState.CLOSED
+        self._data.seek(0)
+        self.state = StreamState.CLOSED
+
+
 class HTTP2Response(BaseHTTPResponse):
     # TODO: This is a woefully incomplete response object, but works for non-streaming.
     def __init__(
@@ -329,7 +407,8 @@ class HTTP2Response(BaseHTTPResponse):
         headers: HTTPHeaderDict,
         request_url: str,
         data: bytes,
-        decode_content: bool = False,  # TODO: support decoding
+        stream: HTTP2Stream,
+        decode_content: bool = True,
     ) -> None:
         super().__init__(
             status=status,
@@ -343,10 +422,58 @@ class HTTP2Response(BaseHTTPResponse):
             request_url=request_url,
         )
         self._data = data
-        self.length_remaining = 0
+        self._stream = stream
+        # self.length_remaining = self._init_length()
+
+        self._decoded_buffer = BytesQueueBuffer()
+
+    def read(
+        self,
+        amt: int | None = None,
+        decode_content: bool | None = None,
+        cache_content: bool = False,
+    ) -> bytes:
+        self._init_decoder()
+        if decode_content is None:
+            decode_content = self.decode_content
+
+        if not decode_content:
+            if self._has_decoded_content:
+                raise RuntimeError(
+                    "Calling read(decode_content=False) is not supported after "
+                    "read(decode_content=True) was called."
+                )
+
+        if amt and amt < 0:
+            amt = None
+
+        if amt is None:
+            # read all the data
+            data = self._stream.read()
+            decode_content, flush_decoder = True, True
+            data = self._decode(data, decode_content, flush_decoder)
+            if cache_content:
+                self._data = data
+        else:
+            if len(self._decoded_buffer) >= amt:
+                return self._decoded_buffer.get(amt)
+
+            data = self._stream.read(amt)
+
+            if decode_content:
+                flush_decoder = amt != 0 and not data
+                decoded_data = self._decode(data, decode_content, flush_decoder)
+                self._decoded_buffer.put(decoded_data)
+                data = self._decoded_buffer.get(amt)
+
+        return data
 
     @property
     def data(self) -> bytes:
+        if self._data:
+            return self._data
+
+        self.read(cache_content=True)
         return self._data
 
     def get_redirect_location(self) -> None:
