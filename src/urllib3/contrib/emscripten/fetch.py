@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import io
 import json
+import warnings
 from email.parser import Parser
 from importlib.resources import files
 from typing import TYPE_CHECKING, Any
@@ -121,9 +122,6 @@ class _ReadStream(io.RawIOBase):
         self._is_closed = False
         self.request: EmscriptenRequest | None = request
 
-    def __del__(self) -> None:
-        self.close()
-
     # this is compatible with _base_connection
     def is_closed(self) -> bool:
         return self._is_closed
@@ -136,6 +134,10 @@ class _ReadStream(io.RawIOBase):
     def close(self) -> None:
         if self.is_closed():
             return
+        if getattr(self, "_finalizing", False):
+            warn_message = f"unclosed file {self!r}"
+        else:
+            warn_message = ""
         self.read_len = 0
         self.read_pos = 0
         self.int_buffer = None
@@ -146,6 +148,8 @@ class _ReadStream(io.RawIOBase):
             self.worker.postMessage(_obj_from_dict({"close": self.connection_id}))
             self.is_live = False
         super().close()
+        if warn_message:
+            warnings.warn(warn_message, ResourceWarning)
 
     def readable(self) -> bool:
         return True
