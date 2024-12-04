@@ -244,6 +244,7 @@ class HypercornDummyProxyTestCase:
     proxy_url: typing.ClassVar[str]
     https_proxy_port: typing.ClassVar[int]
     https_proxy_url: typing.ClassVar[str]
+    proxy_url_with_auth: typing.ClassVar[str]
 
     certs_dir: typing.ClassVar[str] = ""
     bad_ca_path: typing.ClassVar[str] = ""
