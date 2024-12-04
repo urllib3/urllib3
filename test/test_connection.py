@@ -323,3 +323,37 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    def test_idle_timeout_defaultvalue(self) -> None:
+        conn = HTTPConnection("google.com", port=80)
+
+        assert conn.idle_timeout is None
+        assert conn.last_activity is not None
+        conn.last_activity = datetime.datetime.fromtimestamp(0)
+        assert not conn.has_passed_idle_limit
+
+    def test_idle_timeout_none(self) -> None:
+        conn = HTTPConnection("google.com", port=80, idle_timeout=None)
+
+        assert conn.idle_timeout is None
+        assert conn.last_activity is not None
+        conn.last_activity = datetime.datetime.fromtimestamp(0)
+        assert not conn.has_passed_idle_limit
+
+    def test_idle_timeout_float(self) -> None:
+        conn = HTTPConnection("google.com", port=80, idle_timeout=5.0)
+
+        assert conn.idle_timeout == datetime.timedelta(seconds=5.0)
+        assert conn.last_activity is not None
+        conn.last_activity = datetime.datetime.now() - datetime.timedelta(seconds=6)
+        assert conn.has_passed_idle_limit
+
+    def test_idle_timeout_timedelta(self) -> None:
+        conn = HTTPConnection(
+            "google.com", port=80, idle_timeout=datetime.timedelta(seconds=5.0)
+        )
+
+        assert conn.idle_timeout == datetime.timedelta(seconds=5.0)
+        assert conn.last_activity is not None
+        conn.last_activity = datetime.datetime.now() - datetime.timedelta(seconds=6)
+        assert conn.has_passed_idle_limit

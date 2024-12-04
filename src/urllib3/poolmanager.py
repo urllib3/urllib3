@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import functools
 import logging
 import typing
@@ -90,6 +91,7 @@ class PoolKey(typing.NamedTuple):
     key_assert_fingerprint: str | None
     key_server_hostname: str | None
     key_blocksize: int | None
+    key_idle_timeout: float | datetime.timedelta | None
 
 
 def _default_key_normalizer(

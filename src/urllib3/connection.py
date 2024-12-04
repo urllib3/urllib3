@@ -129,6 +129,9 @@ class HTTPConnection(_HTTPConnection):
     _tunnel_port: int | None
     _tunnel_scheme: str | None
 
+    idle_timeout: datetime.timedelta | None = None
+    last_activity: datetime.datetime
+
     def __init__(
         self,
         host: str,
@@ -141,6 +144,7 @@ class HTTPConnection(_HTTPConnection):
         | (connection._TYPE_SOCKET_OPTIONS) = default_socket_options,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
+        idle_timeout: float | datetime.timedelta | None = None,
     ) -> None:
         super().__init__(
             host=host,
@@ -152,6 +156,12 @@ class HTTPConnection(_HTTPConnection):
         self.socket_options = socket_options
         self.proxy = proxy
         self.proxy_config = proxy_config
+        if idle_timeout:
+            if isinstance(idle_timeout, datetime.timedelta):
+                self.idle_timeout = idle_timeout
+            else:
+                self.idle_timeout = datetime.timedelta(seconds=idle_timeout)
+        self.last_activity = datetime.datetime.now()
 
         self._has_connected_to_proxy = False
         self._response_options = None
@@ -299,6 +309,15 @@ class HTTPConnection(_HTTPConnection):
         return not wait_for_read(self.sock, timeout=0.0)
 
     @property
+    def has_passed_idle_limit(self) -> bool:
+        if self.idle_timeout:
+            now = datetime.datetime.now()
+            elapsed = now - self.last_activity
+            if elapsed > self.idle_timeout:
+                return True
+        return False
+
+    @property
     def has_connected_to_proxy(self) -> bool:
         return self._has_connected_to_proxy
 
@@ -381,6 +400,8 @@ class HTTPConnection(_HTTPConnection):
         # This only triggers if the connection is re-used.
         if self.sock is not None:
             self.sock.settimeout(self.timeout)
+
+        self.last_activity = datetime.datetime.now()
 
         # Store these values to be fed into the HTTPResponse
         # object later. TODO: Remove this in favor of a real
