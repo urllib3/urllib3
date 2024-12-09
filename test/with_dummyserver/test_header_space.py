@@ -5,8 +5,7 @@ import socket
 import pytest
 
 from dummyserver.testcase import SocketDummyServerTestCase
-from urllib3 import HTTPConnectionPool
-from urllib3 import HTTPHeaderDict
+from urllib3 import HTTPConnectionPool, HTTPHeaderDict
 from urllib3.exceptions import InvalidHeader
 
 """
