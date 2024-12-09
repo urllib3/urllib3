@@ -6,6 +6,7 @@ import pytest
 
 from dummyserver.testcase import SocketDummyServerTestCase
 from urllib3 import HTTPConnectionPool
+from urllib3 import HTTPHeaderDict
 from urllib3.exceptions import InvalidHeader
 
 """
@@ -43,13 +44,13 @@ class TestHeaderSpace(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-    def get_response_headers(self, pool: HTTPConnectionPool):
+    def get_response_headers(self, pool: HTTPConnectionPool) -> HTTPHeaderDict | str:
         headers = None
         try:
             response = pool.request("GET", "/")
             headers = response.headers
         except Exception:
-            headers = "ERROR"
+            return "ERROR"
         return headers
 
     def test_normal_header(self) -> None:
