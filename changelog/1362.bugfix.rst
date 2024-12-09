@@ -1,4 +1,4 @@
 Fix for white space in the header, including the following situations:
 
 1. If header name starts with space, it will raise an exception.
-2. If header name ends with space, it will remove the space.
+2. If header value ends with space, it will remove the space.
