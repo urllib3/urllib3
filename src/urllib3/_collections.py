@@ -5,6 +5,8 @@ from collections import OrderedDict
 from enum import Enum, auto
 from threading import RLock
 
+from .exceptions import InvalidHeader
+
 if typing.TYPE_CHECKING:
     # We can only import Protocol if TYPE_CHECKING because it's a development
     # dependency, and is not available at runtime.
@@ -354,6 +356,9 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         elif isinstance(other, typing.Iterable):
             other = typing.cast(typing.Iterable[tuple[str, str]], other)
             for key, value in other:
+                if "\r\n" in value:
+                    raise InvalidHeader("Header name starts with space")
+                value = value.strip(" ")
                 self.add(key, value)
         elif hasattr(other, "keys") and hasattr(other, "__getitem__"):
             # THIS IS NOT A TYPESAFE BRANCH
