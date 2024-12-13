@@ -441,6 +441,9 @@ class BaseHTTPResponse(io.IOBase):
     def drain_conn(self) -> None:
         raise NotImplementedError()
 
+    def shutdown(self) -> None:
+        raise NotImplementedError()
+
     def close(self) -> None:
         raise NotImplementedError()
 
@@ -1069,7 +1072,6 @@ class HTTPResponse(BaseHTTPResponse):
     def readable(self) -> bool:
         return True
 
-    # TODO should it be defined in BaseHTTPResponse?
     def shutdown(self) -> None:
         if not self._sock_shutdown:
             raise ValueError("Cannot shutdown socket as self._sock_shutdown is not set")
