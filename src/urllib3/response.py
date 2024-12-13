@@ -1076,6 +1076,8 @@ class HTTPResponse(BaseHTTPResponse):
         self._sock_shutdown(socket.SHUT_RD)
 
     def close(self) -> None:
+        self._sock_shutdown = None
+
         if not self.closed and self._fp:
             self._fp.close()
 
