@@ -1,0 +1,1 @@
+Add ``HTTResponse.shutdown()`` to stop any ongoing or future reads for a specific response. It calls ``shutdown(SHUT_RD)`` on the underlying socket.
