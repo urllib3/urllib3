@@ -71,6 +71,7 @@ suite::
   nox > Session test-3.11 was successful.
   nox > Session test-3.12 was successful.
   nox > Session test-3.13 was successful.
+  nox > Session test-3.14 was successful.
   nox > Session test-pypy was successful.
 
 Our test suite `runs continuously on GitHub Actions
