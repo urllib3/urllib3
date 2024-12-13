@@ -1041,7 +1041,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             response = pool.urlopen("GET", "/", preload_content=False, retries=0)
             # Calling shutdown here calls shutdown() on the underlying socket,
-            # so that the reamining read will fail instead of blocking
+            # so that the remaining read will fail instead of blocking
             # indefinitely
             response.shutdown()
             with pytest.raises(ProtocolError, match="Connection broken"):
