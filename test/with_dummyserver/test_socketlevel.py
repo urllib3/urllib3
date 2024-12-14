@@ -2464,7 +2464,7 @@ class TestContentFraming(SocketDummyServerTestCase):
         body: typing.Any
         if body_type == "generator":
 
-            def body_generator() -> typing.Generator[bytes, None, None]:
+            def body_generator() -> typing.Generator[bytes]:
                 yield b"x" * 10
 
             body = body_generator()
@@ -2502,7 +2502,7 @@ class TestContentFraming(SocketDummyServerTestCase):
 
         if body_type == "generator":
 
-            def body_generator() -> typing.Generator[bytes, None, None]:
+            def body_generator() -> typing.Generator[bytes]:
                 yield b"x" * 10
 
             body = body_generator()
