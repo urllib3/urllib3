@@ -306,9 +306,7 @@ class ConnectionMarker:
 
     @classmethod
     @contextlib.contextmanager
-    def mark(
-        cls, monkeypatch: pytest.MonkeyPatch
-    ) -> typing.Generator[None, None, None]:
+    def mark(cls, monkeypatch: pytest.MonkeyPatch) -> typing.Generator[None]:
         """
         Mark connections under in that context.
         """

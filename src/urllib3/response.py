@@ -733,7 +733,7 @@ class HTTPResponse(BaseHTTPResponse):
         return length
 
     @contextmanager
-    def _error_catcher(self) -> typing.Generator[None, None, None]:
+    def _error_catcher(self) -> typing.Generator[None]:
         """
         Catch low-level python exceptions, instead re-raising urllib3
         variants, so that low-level exceptions are not leaked in the
@@ -1037,7 +1037,7 @@ class HTTPResponse(BaseHTTPResponse):
 
     def stream(
         self, amt: int | None = 2**16, decode_content: bool | None = None
-    ) -> typing.Generator[bytes, None, None]:
+    ) -> typing.Generator[bytes]:
         """
         A generator wrapper for the read() method. A call will block until
         ``amt`` bytes have been read from the connection or until the
@@ -1159,7 +1159,7 @@ class HTTPResponse(BaseHTTPResponse):
 
     def read_chunked(
         self, amt: int | None = None, decode_content: bool | None = None
-    ) -> typing.Generator[bytes, None, None]:
+    ) -> typing.Generator[bytes]:
         """
         Similar to :meth:`HTTPResponse.read`, but with an additional
         parameter: ``decode_content``.
