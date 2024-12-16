@@ -1,0 +1,23 @@
+h2
+build
+coverage
+PySocks
+pytest
+pytest-timeout
+pyOpenSSL
+idna
+trustme
+cryptography
+towncrier
+pytest-memray
+trio
+# https://github.com/pallets/quart/pull/369
+Quart @ git+https://github.com/pallets/quart@67110bf383d8973bce1619e957b4b6ea088ad9f2
+quart-trio
+# https://github.com/pgjones/hypercorn/issues/62
+# https://github.com/pgjones/hypercorn/issues/168
+# https://github.com/pgjones/hypercorn/issues/169
+hypercorn @ git+https://github.com/urllib3/hypercorn@urllib3-changes
+httpx
+pytest-socket
+
