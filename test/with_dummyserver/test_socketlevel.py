@@ -1056,7 +1056,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     self.response = pool.urlopen(
                         "GET", "/", preload_content=False, retries=0
                     )
-                    with pytest.raises(ProtocolError, match="IncompleteRead"):
+                    with pytest.raises(ProtocolError, match="Connection broken"):
                         starting_read.set()
                         self.response.read()
 
