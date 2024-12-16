@@ -507,6 +507,11 @@ class HTTPConnection(_HTTPConnection):
         # This is needed here to avoid circular import errors
         from .response import HTTPResponse
 
+        # Save a reference to the shutdown function before ownership is passed
+        # to httplib_response
+        # TODO should we implement it everywhere?
+        _shutdown = getattr(self.sock, "shutdown", None)
+
         # Get the response from http.client.HTTPConnection
         httplib_response = super().getresponse()
 
@@ -535,6 +540,7 @@ class HTTPConnection(_HTTPConnection):
             enforce_content_length=resp_options.enforce_content_length,
             request_method=resp_options.request_method,
             request_url=resp_options.request_url,
+            sock_shutdown=_shutdown,
         )
         return response
 
