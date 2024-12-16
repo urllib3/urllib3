@@ -11,7 +11,7 @@ on:
       - "*"
 
 permissions:
-  contents: read
+  contents: "read"
 
 jobs:
   build:
@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
         with:
           fetch-depth: 0 # Needed to fetch the version from git
+          persist-credentials: false
 
       - name: "Setup Python"
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
@@ -66,7 +67,7 @@ jobs:
 
   publish-to-pypi-and-github:
     name: "Publish to PyPI"
-    if: startsWith(github.ref, 'refs/tags/')
+    if: ${{ github.ref_type == 'tag' }}
     needs: ["build", "provenance"]
     permissions:
       contents: write # Needed for making GitHub releases
