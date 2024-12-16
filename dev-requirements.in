@@ -1,23 +1,23 @@
-h2
-build
-coverage
-PySocks
-pytest
-pytest-timeout
-pyOpenSSL
-idna
-trustme
-cryptography
-towncrier
-pytest-memray
-trio
+h2==4.1.0
+build==1.2.1
+coverage==7.6.4
+PySocks==1.7.1
+pytest==8.0.2
+pytest-timeout==2.1.0
+pyOpenSSL==24.2.1
+idna==3.7
+trustme==1.2.0
+cryptography==43.0.1
+towncrier==23.6.0
+pytest-memray==1.7.0;python_version<"3.14" and sys_platform!="win32" and implementation_name=="cpython"
+trio==0.26.2
 # https://github.com/pallets/quart/pull/369
 Quart @ git+https://github.com/pallets/quart@67110bf383d8973bce1619e957b4b6ea088ad9f2
-quart-trio
+quart-trio==0.11.1
 # https://github.com/pgjones/hypercorn/issues/62
 # https://github.com/pgjones/hypercorn/issues/168
 # https://github.com/pgjones/hypercorn/issues/169
 hypercorn @ git+https://github.com/urllib3/hypercorn@urllib3-changes
-httpx
-pytest-socket
+httpx==0.25.2
+pytest-socket==0.7.0
 
