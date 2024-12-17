@@ -32,7 +32,7 @@ def inject_into_urllib3() -> None:
     global orig_HTTPSConnection
     orig_HTTPSConnection = urllib3_connection.HTTPSConnection
 
-    HTTPSConnectionPool.ConnectionCls = HTTP2Connection
+    HTTPSConnectionPool.ConnectionCls = HTTP2Connection  # type: ignore[assignment]
     urllib3_connection.HTTPSConnection = HTTP2Connection  # type: ignore[misc]
 
     # TODO: Offer 'http/1.1' as well, but for testing purposes this is handy.
