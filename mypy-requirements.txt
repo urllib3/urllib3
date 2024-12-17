@@ -1,9 +1,10 @@
+anyio[trio]==4.6.2.post1
 mypy==1.13.0
 idna>=2.0.0
 cryptography>=1.3.4
 pytest>=6.2
 trustme==1.1.0
-trio==0.23.1
+trio==0.27.0
 Quart==0.19.8
 quart-trio==0.11.1
 hypercorn==0.15.0
