@@ -28,7 +28,7 @@ def _get_coverage_filename(prefix: str) -> str:
 @pytest.fixture(scope="module")
 def testserver_http(
     request: pytest.FixtureRequest,
-) -> Generator[PyodideServerInfo, None, None]:
+) -> Generator[PyodideServerInfo]:
     pyodide_dist_dir = Path(os.getcwd(), request.config.getoption("--dist-dir"))
     pyodide_testing_app.config["pyodide_dist_dir"] = str(pyodide_dist_dir)
     http_host = "localhost"
@@ -60,7 +60,7 @@ class PyodideServerInfo:
 @pytest.fixture()
 def selenium_with_jspi_if_possible(
     request: pytest.FixtureRequest, runtime: str, has_jspi: bool
-) -> Generator[Any, None, None]:
+) -> Generator[Any]:
     if runtime.startswith("firefox") or not has_jspi:
         fixture_name = "selenium"
         with_jspi = False
@@ -75,7 +75,7 @@ def selenium_with_jspi_if_possible(
 @pytest.fixture()
 def selenium_coverage(
     selenium_with_jspi_if_possible: Any, testserver_http: PyodideServerInfo
-) -> Generator[Any, None, None]:
+) -> Generator[Any]:
     def _install_packages(self: Any) -> None:
         if self.browser == "node":
             # stop Node.js checking our https certificates
@@ -214,7 +214,7 @@ class ServerRunnerInfo:
 @pytest.fixture()
 def run_from_server(
     selenium_coverage: Any, testserver_http: PyodideServerInfo
-) -> Generator[ServerRunnerInfo, None, None]:
+) -> Generator[ServerRunnerInfo]:
     if selenium_coverage.browser != "node":
         # on node, we don't need to be on the same origin
         # so we can ignore all this

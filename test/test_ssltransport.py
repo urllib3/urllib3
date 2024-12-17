@@ -32,13 +32,11 @@ def server_client_ssl_contexts() -> tuple[ssl.SSLContext, ssl.SSLContext]:
 
 
 @typing.overload
-def sample_request(binary: typing.Literal[True] = ...) -> bytes:
-    ...
+def sample_request(binary: typing.Literal[True] = ...) -> bytes: ...
 
 
 @typing.overload
-def sample_request(binary: typing.Literal[False]) -> str:
-    ...
+def sample_request(binary: typing.Literal[False]) -> str: ...
 
 
 def sample_request(binary: bool = True) -> bytes | str:
@@ -60,18 +58,15 @@ def validate_request(
 
 
 @typing.overload
-def sample_response(binary: typing.Literal[True] = ...) -> bytes:
-    ...
+def sample_response(binary: typing.Literal[True] = ...) -> bytes: ...
 
 
 @typing.overload
-def sample_response(binary: typing.Literal[False]) -> str:
-    ...
+def sample_response(binary: typing.Literal[False]) -> str: ...
 
 
 @typing.overload
-def sample_response(binary: bool = ...) -> bytes | str:
-    ...
+def sample_response(binary: bool = ...) -> bytes | str: ...
 
 
 def sample_response(binary: bool = True) -> bytes | str:
@@ -191,9 +186,10 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         """
 
         def shutdown_handler(listener: socket.socket) -> None:
-            with listener.accept()[0] as sock, self.server_context.wrap_socket(
-                sock, server_side=True
-            ) as ssl_sock:
+            with (
+                listener.accept()[0] as sock,
+                self.server_context.wrap_socket(sock, server_side=True) as ssl_sock,
+            ):
                 request = consume_socket(ssl_sock)
                 validate_request(request)
                 ssl_sock.sendall(sample_response())

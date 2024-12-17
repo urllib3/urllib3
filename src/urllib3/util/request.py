@@ -118,14 +118,14 @@ def make_headers(
         headers["connection"] = "keep-alive"
 
     if basic_auth:
-        headers[
-            "authorization"
-        ] = f"Basic {b64encode(basic_auth.encode('latin-1')).decode()}"
+        headers["authorization"] = (
+            f"Basic {b64encode(basic_auth.encode('latin-1')).decode()}"
+        )
 
     if proxy_basic_auth:
-        headers[
-            "proxy-authorization"
-        ] = f"Basic {b64encode(proxy_basic_auth.encode('latin-1')).decode()}"
+        headers["proxy-authorization"] = (
+            f"Basic {b64encode(proxy_basic_auth.encode('latin-1')).decode()}"
+        )
 
     if disable_cache:
         headers["cache-control"] = "no-cache"
