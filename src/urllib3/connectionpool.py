@@ -1033,6 +1033,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         else:
             tunnel_scheme = "http"
 
+        if self._tunnel_host: #Adding host details in proxy headers
+            self.proxy_headers.update({"Host":self._tunnel_host})
+
         conn.set_tunnel(
             scheme=tunnel_scheme,
             host=self._tunnel_host,
