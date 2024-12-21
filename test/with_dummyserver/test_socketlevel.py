@@ -1027,13 +1027,21 @@ class TestSocketClosing(SocketDummyServerTestCase):
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
+            ssl_sock = original_ssl_wrap_socket(
+                sock,
+                server_side=True,
+                keyfile=DEFAULT_CERTS["keyfile"],
+                certfile=DEFAULT_CERTS["certfile"],
+                ca_certs=DEFAULT_CA,
+            )
+
             # Consume request
             buf = b""
             while not buf.endswith(b"\r\n\r\n"):
-                buf = sock.recv(65535)
+                buf = ssl_sock.recv(65535)
 
             # Send incomplete message (note Content-Length)
-            sock.send(
+            ssl_sock.send(
                 b"HTTP/1.1 200 OK\r\n"
                 b"Content-Type: text/plain\r\n"
                 b"Content-Length: 10\r\n"
@@ -1041,7 +1049,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 b"Hi-"
             )
             timed_out.wait(5)
-            sock.close()
+            ssl_sock.close()
 
         self._start_server(socket_handler)
 
@@ -1052,7 +1060,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 self.response: BaseHTTPResponse | None = None
 
             def run(self) -> None:
-                with HTTPConnectionPool(self.host, self.port) as pool:
+                with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
                     self.response = pool.urlopen(
                         "GET", "/", preload_content=False, retries=0
                     )

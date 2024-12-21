@@ -368,7 +368,7 @@ class WrappedSocket:
 
     def shutdown(self, how: int) -> None:
         try:
-            self.connection.shutdown(how)
+            self.connection.shutdown()
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError(f"shutdown error: {e!r}") from e
 
