@@ -75,7 +75,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
 
     def stream(
         self, amt: int | None = 2**16, decode_content: bool | None = None
-    ) -> typing.Generator[bytes, None, None]:
+    ) -> typing.Generator[bytes]:
         """
         A generator wrapper for the read() method. A call will block until
         ``amt`` bytes have been read from the connection or until the
@@ -185,7 +185,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
         self,
         amt: int | None = None,
         decode_content: bool | None = None,
-    ) -> typing.Generator[bytes, None, None]:
+    ) -> typing.Generator[bytes]:
         # chunked is handled by browser
         while True:
             bytes = self.read(amt, decode_content)
@@ -241,7 +241,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
             self._closed = True
 
     @contextmanager
-    def _error_catcher(self) -> typing.Generator[None, None, None]:
+    def _error_catcher(self) -> typing.Generator[None]:
         """
         Catch Emscripten specific exceptions thrown by fetch.py,
         instead re-raising urllib3 variants, so that low-level exceptions

@@ -967,25 +967,28 @@ class TestSocketClosing(SocketDummyServerTestCase):
             listener: socket.socket,
         ) -> None:
             try:
-                with listener.accept()[0] as sock, original_ssl_wrap_socket(
-                    sock,
-                    server_side=True,
-                    keyfile=DEFAULT_CERTS["keyfile"],
-                    certfile=DEFAULT_CERTS["certfile"],
-                    ca_certs=DEFAULT_CA,
-                ) as ssl_sock:
+                with (
+                    listener.accept()[0] as sock,
+                    original_ssl_wrap_socket(
+                        sock,
+                        server_side=True,
+                        keyfile=DEFAULT_CERTS["keyfile"],
+                        certfile=DEFAULT_CERTS["certfile"],
+                        ca_certs=DEFAULT_CA,
+                    ) as ssl_sock,
+                ):
                     consume_socket(ssl_sock, quit_event=quit_event)
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
         self._start_server(consume_ssl_socket, quit_event=quit_event)
-        with socket.create_connection(
-            (self.host, self.port)
-        ) as sock, contextlib.closing(
-            ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
-        ) as ssl_sock, ssl_sock.makefile(
-            "rb"
-        ) as f:
+        with (
+            socket.create_connection((self.host, self.port)) as sock,
+            contextlib.closing(
+                ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
+            ) as ssl_sock,
+            ssl_sock.makefile("rb") as f,
+        ):
             ssl_sock.close()
             f.close()
             with pytest.raises(OSError):
@@ -997,24 +1000,27 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         def consume_ssl_socket(listener: socket.socket) -> None:
             try:
-                with listener.accept()[0] as sock, original_ssl_wrap_socket(
-                    sock,
-                    server_side=True,
-                    keyfile=DEFAULT_CERTS["keyfile"],
-                    certfile=DEFAULT_CERTS["certfile"],
-                    ca_certs=DEFAULT_CA,
-                ) as ssl_sock:
+                with (
+                    listener.accept()[0] as sock,
+                    original_ssl_wrap_socket(
+                        sock,
+                        server_side=True,
+                        keyfile=DEFAULT_CERTS["keyfile"],
+                        certfile=DEFAULT_CERTS["certfile"],
+                        ca_certs=DEFAULT_CA,
+                    ) as ssl_sock,
+                ):
                     consume_socket(ssl_sock, quit_event=quit_event)
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
         self._start_server(consume_ssl_socket, quit_event=quit_event)
-        with socket.create_connection(
-            (self.host, self.port)
-        ) as sock, contextlib.closing(
-            ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
-        ) as ssl_sock, ssl_sock.makefile(
-            "rb"
+        with (
+            socket.create_connection((self.host, self.port)) as sock,
+            contextlib.closing(
+                ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
+            ) as ssl_sock,
+            ssl_sock.makefile("rb"),
         ):
             ssl_sock.close()
             ssl_sock.close()
@@ -2530,7 +2536,7 @@ class TestContentFraming(SocketDummyServerTestCase):
         body: typing.Any
         if body_type == "generator":
 
-            def body_generator() -> typing.Generator[bytes, None, None]:
+            def body_generator() -> typing.Generator[bytes]:
                 yield b"x" * 10
 
             body = body_generator()
@@ -2568,7 +2574,7 @@ class TestContentFraming(SocketDummyServerTestCase):
 
         if body_type == "generator":
 
-            def body_generator() -> typing.Generator[bytes, None, None]:
+            def body_generator() -> typing.Generator[bytes]:
                 yield b"x" * 10
 
             body = body_generator()
