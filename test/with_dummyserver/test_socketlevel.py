@@ -1066,7 +1066,9 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 self.response: BaseHTTPResponse | None = None
 
             def run(self) -> None:
-                with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
+                with HTTPSConnectionPool(
+                    self.host, self.port, ca_certs=DEFAULT_CA
+                ) as pool:
                     self.response = pool.urlopen(
                         "GET", "/", preload_content=False, retries=0
                     )
