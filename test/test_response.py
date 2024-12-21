@@ -204,6 +204,13 @@ class TestResponse:
         assert r.data == b"foo"
         assert fp.tell() == len(b"foo")
 
+    def test_no_shutdown(self) -> None:
+        r = HTTPResponse()
+        with pytest.raises(
+            ValueError, match="Cannot shutdown socket as self._sock_shutdown is not set"
+        ):
+            r.shutdown()
+
     def test_decode_bad_data(self) -> None:
         fp = BytesIO(b"\x00" * 10)
         with pytest.raises(DecodeError):
