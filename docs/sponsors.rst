@@ -7,8 +7,17 @@ benefits from this library.
 Your contribution will go towards adding new features to urllib3 and making
 sure all functionality continues to meet our high quality standards.
 
-Sponsors and Grants
--------------------
+All expenses and contributions can be `tracked on our Open Collective page
+<https://opencollective.com/urllib3>`__. We also write annual reports:
+
+* 2019: https://sethmlarson.dev/review-of-2019-for-urllib3
+* 2020: https://sethmlarson.dev/urllib3-in-2020
+* 2021: https://sethmlarson.dev/urllib3-raised-15k-in-2021
+* 2022: https://sethmlarson.dev/urllib3-in-2022
+* 2023: https://sethmlarson.dev/urllib3-is-fundraising-for-http2-support
+
+Sponsors and Grants (prior to 2019)
+-----------------------------------
 
 A grant for contiguous full-time development has the biggest impact for
 progress. Periods of 3 to 10 days allow a contributor to tackle substantial
