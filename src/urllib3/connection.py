@@ -861,6 +861,7 @@ def _ssl_wrap_socket_and_match_hostname(
     server_hostname: str | None,
     ssl_context: ssl.SSLContext | None,
     tls_in_tls: bool = False,
+    ciphers: str | None = None,
 ) -> _WrappedAndVerifiedSocket:
     """Logic for constructing an SSLContext from all TLS parameters, passing
     that down into ssl_wrap_socket, and then doing certificate verification
@@ -875,6 +876,7 @@ def _ssl_wrap_socket_and_match_hostname(
             ssl_minimum_version=ssl_minimum_version,
             ssl_maximum_version=ssl_maximum_version,
             cert_reqs=resolve_cert_reqs(cert_reqs),
+            ciphers=ciphers,
         )
     else:
         context = ssl_context
