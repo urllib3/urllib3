@@ -1,3 +1,28 @@
+2.3.0 (2024-12-22)
+==================
+
+Features
+--------
+
+- Added ``HTTPResponse.shutdown()`` to stop any ongoing or future reads for a specific response. It calls ``shutdown(SHUT_RD)`` on the underlying socket. This feature was `sponsored by LaunchDarkly <https://opencollective.com/urllib3/contributions/815307>`__. (`#2868 <https://github.com/urllib3/urllib3/issues/2868>`__)
+- Added support for JavaScript Promise Integration on Emscripten. This enables more efficient WebAssembly 
+  requests and streaming, and makes it possible to use in Node.js if you launch it as  ``node --experimental-wasm-stack-switching``. (`#3400 <https://github.com/urllib3/urllib3/issues/3400>`__)
+- Added the ``proxy_is_tunneling`` property to ``HTTPConnection`` and ``HTTPSConnection``. (`#3285 <https://github.com/urllib3/urllib3/issues/3285>`__)
+- Added pickling support to ``NewConnectionError`` and ``NameResolutionError``. (`#3480 <https://github.com/urllib3/urllib3/issues/3480>`__)
+
+
+Bugfixes
+--------
+
+- Fixed an issue in debug logs where the HTTP version was rendering as "HTTP/11" instead of "HTTP/1.1". (`#3489 <https://github.com/urllib3/urllib3/issues/3489>`__)
+
+
+Deprecations and Removals
+-------------------------
+
+- Removed support for Python 3.8. (`#3492 <https://github.com/urllib3/urllib3/issues/3492>`__)
+
+
 2.2.3 (2024-09-12)
 ==================
 

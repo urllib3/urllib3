@@ -366,9 +366,11 @@ class WrappedSocket:
             )
             total_sent += sent
 
-    def shutdown(self) -> None:
-        # FIXME rethrow compatible exceptions should we ever use this
-        self.connection.shutdown()
+    def shutdown(self, how: int) -> None:
+        try:
+            self.connection.shutdown()
+        except OpenSSL.SSL.Error as e:
+            raise ssl.SSLError(f"shutdown error: {e!r}") from e
 
     def close(self) -> None:
         self._closed = True

@@ -5,6 +5,7 @@ import io
 import json as _json
 import logging
 import re
+import socket
 import sys
 import typing
 import warnings
@@ -440,6 +441,9 @@ class BaseHTTPResponse(io.IOBase):
     def drain_conn(self) -> None:
         raise NotImplementedError()
 
+    def shutdown(self) -> None:
+        raise NotImplementedError()
+
     def close(self) -> None:
         raise NotImplementedError()
 
@@ -589,6 +593,7 @@ class HTTPResponse(BaseHTTPResponse):
         request_method: str | None = None,
         request_url: str | None = None,
         auto_close: bool = True,
+        sock_shutdown: typing.Callable[[int], None] | None = None,
     ) -> None:
         super().__init__(
             headers=headers,
@@ -618,6 +623,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         if hasattr(body, "read"):
             self._fp = body  # type: ignore[assignment]
+        self._sock_shutdown = sock_shutdown
 
         # Are we using the chunked-style of transfer encoding?
         self.chunk_left: int | None = None
@@ -1066,7 +1072,14 @@ class HTTPResponse(BaseHTTPResponse):
     def readable(self) -> bool:
         return True
 
+    def shutdown(self) -> None:
+        if not self._sock_shutdown:
+            raise ValueError("Cannot shutdown socket as self._sock_shutdown is not set")
+        self._sock_shutdown(socket.SHUT_RD)
+
     def close(self) -> None:
+        self._sock_shutdown = None
+
         if not self.closed and self._fp:
             self._fp.close()
 
