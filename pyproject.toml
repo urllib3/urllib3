@@ -8,6 +8,8 @@ build-backend = "hatchling.build"
 name = "urllib3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE.txt"]
 keywords = ["urllib", "httplib", "threadsafe", "filepost", "http", "https", "ssl", "pooling"]
 authors = [
   {name = "Andrey Petrov", email = "andrey.petrov@shazow.net"}
@@ -20,7 +22,6 @@ maintainers = [
 classifiers = [
   "Environment :: Web Environment",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
