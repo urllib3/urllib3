@@ -1,0 +1,1 @@
+Added support for the `QUERY HTTP method (Proposed Standard) <https://datatracker.ietf.org/doc/draft-ietf-httpbis-safe-method-w-body/>`_. As urllib3 already allows making requests with arbitrary methods, this only means that QUERY is now another retryable by default method.
