@@ -8,6 +8,7 @@ from pathlib import Path
 import nox
 
 nox.options.error_on_missing_interpreters = True
+nox.options.default_venv_backend = "uv"
 
 
 def tests_impl(
@@ -18,6 +19,7 @@ def tests_impl(
     byte_string_comparisons: bool = False,
     integration: bool = False,
     pytest_extra_args: list[str] = [],
+    dependency_group: str = "dev",
 ) -> None:
     # Retrieve sys info from the Python implementation under test
     # to avoid enabling memray when nox runs under CPython but tests PyPy
@@ -30,13 +32,16 @@ def tests_impl(
     implementation_name, release_level = session_python_info.split(" ")
 
     # Install deps and the package itself.
-    session.install("-r", "dev-requirements.txt")
-    if len(extras) > 0:
-        session.install(f".[{extras}]")
-    else:
-        session.install(".")
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        dependency_group,
+        *(f"--extra={extra}" for extra in (extras.split(",") if extras else ())),
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
     # Show the pip version.
-    session.run("pip", "--version")
+    session.run("uv", "--version")
     # Print the Python version and bytesize.
     session.run("python", "--version")
     session.run("python", "-c", "import struct; print(struct.calcsize('P') * 8)")
@@ -131,7 +136,7 @@ def git_clone(session: nox.Session, git_url: str) -> None:
         session.run("git", "-C", expected_directory, "pull", external=True)
 
 
-@nox.session()
+@nox.session(venv_backend="virtualenv")
 def downstream_botocore(session: nox.Session) -> None:
     root = os.getcwd()
     tmp_dir = session.create_tmp()
@@ -210,7 +215,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
             "Node version:",
             session.run("node", "--version", silent=True, external=True),
         )
-    session.install("-r", "emscripten-requirements.txt")
+    session.install("build")
     # make sure we have a dist dir for pyodide
     dist_dir = None
     if "PYODIDE_ROOT" in os.environ:
@@ -261,13 +266,21 @@ def emscripten(session: nox.Session, runner: str) -> None:
             "test/contrib/emscripten",
             "-v",
         ],
+        dependency_group="emscripten",
     )
 
 
 @nox.session(python="3.12")
 def mypy(session: nox.Session) -> None:
     """Run mypy."""
-    session.install("-r", "mypy-requirements.txt")
+    session.run_install(
+        "uv",
+        "sync",
+        "--only-group",
+        "mypy",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.install(".")
     session.run("mypy", "--version")
     session.run(
         "mypy",
@@ -284,8 +297,19 @@ def mypy(session: nox.Session) -> None:
 
 @nox.session
 def docs(session: nox.Session) -> None:
-    session.install("-r", "docs/requirements.txt")
-    session.install(".[socks,brotli,zstd]")
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        "docs",
+        "--extra",
+        "socks",
+        "--extra",
+        "brotli",
+        "--extra",
+        "zstd",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
 
     session.chdir("docs")
     if os.path.exists("_build"):
