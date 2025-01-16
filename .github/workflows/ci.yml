@@ -191,6 +191,7 @@ jobs:
 
       - name: "Combine & check coverage"
         run: |
+          source .venv/bin/activate
           python -m build
           python -m coverage combine
           python -m coverage html --skip-covered --skip-empty
