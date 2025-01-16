@@ -110,8 +110,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - name: "Install dependencies"
-        run: python -m pip install --upgrade uv nox
+      - name: "Install uv"
+        uses: astral-sh/setup-uv@b5f58b2abc5763ade55e4e9d0fe52cd1ff7979ca # v5.2.1
+        with:
+          python-version: ${{ matrix.python-version }}
 
       - name: "Install Chrome"
         uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
@@ -144,7 +146,7 @@ jobs:
           key: pyodide-downloads-${{ hashFiles('noxfile.py') }}
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
-        run: nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}
+        run: uvx nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
           NOX_SESSION: ${{ matrix.nox-session }}
@@ -172,9 +174,12 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: "Install uv"
+        uses: astral-sh/setup-uv@b5f58b2abc5763ade55e4e9d0fe52cd1ff7979ca # v5.2.1
+
       - name: "Install coverage"
         # Install the same version of coverage as in the lock file.
-        run: python -m pip install build coverage==$(awk '/^name = "coverage"/ {getline; gsub(/"/, "", $3); print $3}' uv.lock)
+        run: uv sync --dev --frozen
 
       - name: "Download coverage data"
         uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
