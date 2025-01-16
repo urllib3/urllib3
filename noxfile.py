@@ -35,6 +35,7 @@ def tests_impl(
     session.run_install(
         "uv",
         "sync",
+        "--frozen",
         "--group",
         dependency_group,
         *(f"--extra={extra}" for extra in (extras.split(",") if extras else ())),
@@ -136,7 +137,7 @@ def git_clone(session: nox.Session, git_url: str) -> None:
         session.run("git", "-C", expected_directory, "pull", external=True)
 
 
-@nox.session(venv_backend="virtualenv")
+@nox.session(venv_backend="virtualenv")  # botocore fails with uv
 def downstream_botocore(session: nox.Session) -> None:
     root = os.getcwd()
     tmp_dir = session.create_tmp()
@@ -215,7 +216,6 @@ def emscripten(session: nox.Session, runner: str) -> None:
             "Node version:",
             session.run("node", "--version", silent=True, external=True),
         )
-    session.install("build")
     # make sure we have a dist dir for pyodide
     dist_dir = None
     if "PYODIDE_ROOT" in os.environ:
@@ -251,6 +251,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
             )
 
         dist_dir = pyodide_artifacts_path
+    session.install("build")
     session.run("python", "-m", "build")
     assert dist_dir is not None
     assert dist_dir.exists()
@@ -276,6 +277,7 @@ def mypy(session: nox.Session) -> None:
     session.run_install(
         "uv",
         "sync",
+        "--frozen",
         "--only-group",
         "mypy",
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
@@ -300,6 +302,7 @@ def docs(session: nox.Session) -> None:
     session.run_install(
         "uv",
         "sync",
+        "--frozen",
         "--group",
         "docs",
         "--extra",
