@@ -196,7 +196,6 @@ def lint(session: nox.Session) -> None:
 def pyodideconsole(session: nox.Session) -> None:
     session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     # build wheel into dist folder
-    session.run_install("uv", "sync", "--frozen", "--package", "build")
     session.run("uv", "run", "-m", "build")
     session.run(
         "cp",
@@ -255,7 +254,6 @@ def emscripten(session: nox.Session, runner: str) -> None:
             )
 
         dist_dir = pyodide_artifacts_path
-    session.run_install("uv", "sync", "--frozen", "--package", "build")
     session.run("uv", "run", "-m", "build")
     assert dist_dir is not None
     assert dist_dir.exists()
