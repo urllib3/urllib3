@@ -41,7 +41,7 @@ def tests_impl(
         *(f"--extra={extra}" for extra in (extras.split(",") if extras else ())),
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
-    # Show the pip version.
+    # Show the uv version.
     session.run("uv", "--version")
     # Print the Python version and bytesize.
     session.run("python", "--version")
