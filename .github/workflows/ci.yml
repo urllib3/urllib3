@@ -191,11 +191,10 @@ jobs:
 
       - name: "Combine & check coverage"
         run: |
-          source .venv/bin/activate
-          python -m build
-          python -m coverage combine
-          python -m coverage html --skip-covered --skip-empty
-          python -m coverage report --ignore-errors --show-missing --fail-under=100
+          uv run -m build
+          uv run -m coverage combine
+          uv run -m coverage html --skip-covered --skip-empty
+          uv run -m coverage report --ignore-errors --show-missing --fail-under=100
 
       - if: ${{ failure() }}
         name: "Upload report if check failed"

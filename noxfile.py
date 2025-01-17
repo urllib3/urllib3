@@ -39,7 +39,6 @@ def tests_impl(
         "--group",
         dependency_group,
         *(f"--extra={extra}" for extra in (extras.split(",") if extras else ())),
-        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
     # Show the uv version.
     session.run("uv", "--version")
@@ -101,12 +100,14 @@ def tests_impl(
     ]
 )
 def test(session: nox.Session) -> None:
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     tests_impl(session)
 
 
 @nox.session(python="3")
 def test_integration(session: nox.Session) -> None:
     """Run integration tests"""
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     tests_impl(session, integration=True)
 
 
@@ -115,6 +116,7 @@ def test_brotlipy(session: nox.Session) -> None:
     """Check that if 'brotlipy' is installed instead of 'brotli' or
     'brotlicffi' that we still don't blow up.
     """
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     session.install("brotlipy")
     tests_impl(session, extras="socks", byte_string_comparisons=False)
 
@@ -192,9 +194,10 @@ def lint(session: nox.Session) -> None:
 
 @nox.session(python="3.12")
 def pyodideconsole(session: nox.Session) -> None:
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     # build wheel into dist folder
-    session.install("build")
-    session.run("python", "-m", "build")
+    session.run_install("uv", "sync", "--frozen", "--package", "build")
+    session.run("uv", "run", "-m", "build")
     session.run(
         "cp",
         "test/contrib/emscripten/templates/pyodide-console.html",
@@ -211,6 +214,7 @@ def pyodideconsole(session: nox.Session) -> None:
 )
 def emscripten(session: nox.Session, runner: str) -> None:
     """Test on Emscripten with Pyodide & Chrome / Firefox / Node.js"""
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     if runner == "node":
         print(
             "Node version:",
@@ -251,8 +255,8 @@ def emscripten(session: nox.Session, runner: str) -> None:
             )
 
         dist_dir = pyodide_artifacts_path
-    session.install("build")
-    session.run("python", "-m", "build")
+    session.run_install("uv", "sync", "--frozen", "--package", "build")
+    session.run("uv", "run", "-m", "build")
     assert dist_dir is not None
     assert dist_dir.exists()
     tests_impl(
@@ -274,14 +278,8 @@ def emscripten(session: nox.Session, runner: str) -> None:
 @nox.session(python="3.12")
 def mypy(session: nox.Session) -> None:
     """Run mypy."""
-    session.run_install(
-        "uv",
-        "sync",
-        "--frozen",
-        "--only-group",
-        "mypy",
-        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
-    )
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
+    session.run_install("uv", "sync", "--frozen", "--only-group", "mypy")
     session.install(".")
     session.run("mypy", "--version")
     session.run(
@@ -299,6 +297,7 @@ def mypy(session: nox.Session) -> None:
 
 @nox.session
 def docs(session: nox.Session) -> None:
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     session.run_install(
         "uv",
         "sync",
@@ -311,7 +310,6 @@ def docs(session: nox.Session) -> None:
         "brotli",
         "--extra",
         "zstd",
-        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
 
     session.chdir("docs")
