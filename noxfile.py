@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -196,15 +197,25 @@ def lint(session: nox.Session) -> None:
 def pyodideconsole(session: nox.Session) -> None:
     session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     # build wheel into dist folder
-    session.run("uv", "run", "-m", "build")
-    session.run(
-        "cp",
-        "test/contrib/emscripten/templates/pyodide-console.html",
-        "dist/index.html",
-        external=True,
-    )
-    session.cd("dist")
-    session.run("python", "-m", "http.server")
+    # Run build and capture output
+    build_output = session.run("uv", "run", "-m", "build", "--wheel", silent=True)
+    assert build_output
+
+    # Extract wheel name using regex
+    wheel_match = re.search(r"urllib3-[^\s]+\.whl", build_output)
+    assert wheel_match
+    wheel_name = wheel_match.group(0)
+
+    # Read template and replace wheel name
+    template_path = Path("test/contrib/emscripten/templates/pyodide-console.html")
+    html_content = template_path.read_text()
+    html_content = html_content.replace("{urllib3_wheel_name}.whl", wheel_name)
+
+    # Write modified content to dist/index.html
+    dist_path = Path("dist")
+    (dist_path / "index.html").write_text(html_content)
+
+    session.run("python", "-m", "http.server", "-d", "dist", "-b", "localhost")
 
 
 @nox.session(python="3.12")
