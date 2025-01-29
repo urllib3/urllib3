@@ -1083,7 +1083,7 @@ def test_streaming2_jspi(
         # correctly even if the low level read doesn't
         # always return a full buffer (which it doesn't)
         while not response._response.body.closed():
-            all_data += response.raw_read(32768)
+            all_data += response.read(32768)
         assert len(all_data.decode("utf-8")) == 17825792
 
     pyodide_test(
