@@ -1,0 +1,1 @@
+Fixed a bug with partial reads of streaming data in emscripten (issue #3555)
