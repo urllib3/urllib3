@@ -1077,12 +1077,12 @@ def test_streaming2_jspi(
         response = conn.getresponse()
         assert isinstance(response, BaseHTTPResponse)
         # get first data
-        all_data = response.raw.read(32768)
+        all_data = response.read(32768)
         # now get the rest in chunks
         # to make sure that streaming works
         # correctly even if the low level read doesn't
         # always return a full buffer (which it doesn't)
-        while not response.raw._response.body.closed():
+        while not response._response.body.closed():
             all_data += response.raw_read(32768)
         assert len(all_data.decode("utf-8")) == 17825792
 
