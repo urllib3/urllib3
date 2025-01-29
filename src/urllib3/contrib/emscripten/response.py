@@ -164,7 +164,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
                     self.length_remaining = max(self.length_remaining - len(data), 0)
                 if (self.length_is_certain and self.length_remaining == 0) or len(
                     data
-                ) < amt:
+                ) == 0:
                     # definitely finished reading, close response stream
                     self._response.body.close()
                 return typing.cast(bytes, data)

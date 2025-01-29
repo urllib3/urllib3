@@ -1058,6 +1058,42 @@ def test_streaming_jspi(
     )
 
 
+# another streaming test - uses
+@pytest.mark.with_jspi
+def test_streaming2_jspi(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    bigfile_url = (
+        f"http://{testserver_http.http_host}:{testserver_http.http_port}/dripfeed"
+    )
+
+    @run_in_pyodide
+    def pyodide_test(selenium, host, port, bigfile_url):  # type: ignore[no-untyped-def]
+        from urllib3.connection import HTTPConnection
+        from urllib3.response import BaseHTTPResponse
+
+        conn = HTTPConnection(host, port)
+        conn.request("GET", bigfile_url, preload_content=False)
+        response = conn.getresponse()
+        assert isinstance(response, BaseHTTPResponse)
+        # get first data
+        all_data = response.raw.read(32768)
+        # now get the rest in chunks
+        # to make sure that streaming works
+        # correctly even if the low level read doesn't
+        # always return a full buffer (which it doesn't)
+        while not response.raw._response.body.closed():
+            all_data += response.raw_read(32768)
+        assert len(all_data.decode("utf-8")) == 17825792
+
+    pyodide_test(
+        selenium_coverage,
+        testserver_http.http_host,
+        testserver_http.http_port,
+        bigfile_url,
+    )
+
+
 @pytest.mark.node_without_jspi
 def test_non_jspi_fail_in_node(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
