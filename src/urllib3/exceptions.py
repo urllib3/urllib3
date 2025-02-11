@@ -84,7 +84,8 @@ class MaxRetryWaitExceededError(HTTPError):
     def __init__(self, retry_after_header_value: float) -> None:
         self.retry_after_header_value = retry_after_header_value
 
-        super().__init__()
+        message = f"Retry-After header value of {retry_after_header_value} exceeds the maximum allowed wait time"
+        super().__init__(message)
 
 
 class MaxRetryError(RequestError):
