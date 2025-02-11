@@ -140,7 +140,7 @@ class HTTP2Connection(HTTPSConnection):
         with self._h2_conn as conn:
             self._h2_stream = conn.get_next_available_stream_id()
 
-    def putheader(self, header: str | bytes, *values: str | bytes) -> None:
+    def putheader(self, header: str | bytes, *values: str | bytes) -> None:  # type: ignore[override]
         # TODO SKIPPABLE_HEADERS from urllib3 are ignored.
         header = header.encode() if isinstance(header, str) else header
         header = header.lower()  # A lot of upstream code uses capitalized headers.

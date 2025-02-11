@@ -755,9 +755,9 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         ) as https_pool:
             https_pool.ssl_version = ssl_version = self.certs["ssl_version"]
             if ssl_version is getattr(ssl, "PROTOCOL_TLS", object()):
-                cmgr: contextlib.AbstractContextManager[
-                    object
-                ] = contextlib.nullcontext()
+                cmgr: contextlib.AbstractContextManager[object] = (
+                    contextlib.nullcontext()
+                )
             else:
                 cmgr = pytest.warns(
                     DeprecationWarning,

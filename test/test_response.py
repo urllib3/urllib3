@@ -137,7 +137,7 @@ nP4HF2uWHA=="""
 
 
 @pytest.fixture
-def sock() -> typing.Generator[socket.socket, None, None]:
+def sock() -> typing.Generator[socket.socket]:
     s = socket.socket()
     yield s
     s.close()
@@ -176,7 +176,7 @@ class TestResponse:
 
         assert not r._body
         assert r.data == b"foo"
-        assert r._body == b"foo"
+        assert r._body == b"foo"  # type: ignore[comparison-overlap]
         assert r.data == b"foo"
 
     def test_default(self) -> None:
@@ -203,6 +203,13 @@ class TestResponse:
         assert fp.tell() == 0
         assert r.data == b"foo"
         assert fp.tell() == len(b"foo")
+
+    def test_no_shutdown(self) -> None:
+        r = HTTPResponse()
+        with pytest.raises(
+            ValueError, match="Cannot shutdown socket as self._sock_shutdown is not set"
+        ):
+            r.shutdown()
 
     def test_decode_bad_data(self) -> None:
         fp = BytesIO(b"\x00" * 10)
@@ -807,7 +814,7 @@ class TestResponse:
     def test_io_textiowrapper(self) -> None:
         fp = BytesIO(b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f")
         resp = HTTPResponse(fp, preload_content=False)
-        br = TextIOWrapper(resp, encoding="utf8")  # type: ignore[arg-type]
+        br = TextIOWrapper(resp, encoding="utf8")  # type: ignore[type-var]
 
         assert br.read() == "äöüß"
 
@@ -821,14 +828,14 @@ class TestResponse:
         )
         resp = HTTPResponse(fp, preload_content=False)
         with pytest.raises(ValueError, match="I/O operation on closed file.?"):
-            list(TextIOWrapper(resp))  # type: ignore[arg-type]
+            list(TextIOWrapper(resp))  # type: ignore[type-var]
 
     def test_io_not_autoclose_textiowrapper(self) -> None:
         fp = BytesIO(
             b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\n\xce\xb1\xce\xb2\xce\xb3\xce\xb4"
         )
         resp = HTTPResponse(fp, preload_content=False, auto_close=False)
-        reader = TextIOWrapper(resp, encoding="utf8")  # type: ignore[arg-type]
+        reader = TextIOWrapper(resp, encoding="utf8")  # type: ignore[type-var]
         assert list(reader) == ["äöüß\n", "αβγδ"]
 
         assert not reader.closed
@@ -1245,7 +1252,7 @@ class TestResponse:
     def test_mock_gzipped_transfer_encoding_chunked_decoded(self) -> None:
         """Show that we can decode the gzipped and chunked body."""
 
-        def stream() -> typing.Generator[bytes, None, None]:
+        def stream() -> typing.Generator[bytes]:
             # Set up a generator to chunk the gzipped body
             compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
             data = compress.compress(b"foobar")
@@ -1493,7 +1500,7 @@ class TestResponse:
         assert actual_stream == expected_stream
 
     def test__iter__decode_content(self) -> None:
-        def stream() -> typing.Generator[bytes, None, None]:
+        def stream() -> typing.Generator[bytes]:
             # Set up a generator to chunk the gzipped body
             compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
             data = compress.compress(b"foo\nbar")
@@ -1519,7 +1526,7 @@ class TestResponse:
         )
 
         @contextlib.contextmanager
-        def make_bad_mac_fp() -> typing.Generator[BytesIO, None, None]:
+        def make_bad_mac_fp() -> typing.Generator[BytesIO]:
             fp = BytesIO(b"")
             with mock.patch.object(fp, "read") as fp_read:
                 # mac/decryption error

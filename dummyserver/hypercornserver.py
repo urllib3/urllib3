@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import concurrent.futures
 import contextlib
 import errno
 import functools
 import socket
 import sys
-import threading
-import traceback
 import typing
 
+import anyio.abc
+import anyio.to_thread
 import hypercorn
 import hypercorn.config
 import hypercorn.trio
@@ -80,37 +79,25 @@ class Config(hypercorn.Config):
         return sockets
 
 
-# https://github.com/pgjones/hypercorn/blob/19dfb96411575a6a647cdea63fa581b48ebb9180/src/hypercorn/utils.py#L172-L178
-async def graceful_shutdown(shutdown_event: threading.Event) -> None:
-    while True:
-        if shutdown_event.is_set():
-            return
-        await trio.sleep(0.1)
-
-
 async def _start_server(
     config: Config,
     app: QuartTrio,
-    ready_event: threading.Event,
-    shutdown_event: threading.Event,
+    shutdown_event: trio.Event,
+    *,
+    task_status: anyio.abc.TaskStatus[list[str]] = anyio.TASK_STATUS_IGNORED,
 ) -> None:
     async with trio.open_nursery() as nursery:
-        try:
-            config.bind = await nursery.start(
+        with trio.fail_after(5):
+            config_bind: list[str]
+            config_bind = await nursery.start(
                 functools.partial(
                     hypercorn.trio.serve,
                     app,
                     config,
-                    shutdown_trigger=functools.partial(
-                        graceful_shutdown, shutdown_event
-                    ),
+                    shutdown_trigger=shutdown_event.wait,
                 )
             )
-            ready_event.set()
-        except Exception:
-            print("Starting server failed", file=sys.stderr)
-            traceback.print_exc()
-            raise
+        task_status.started(config_bind)
 
 
 @contextlib.contextmanager
@@ -129,30 +116,18 @@ def run_hypercorn_in_thread(
             config.alpn_protocols = certs["alpn_protocols"]
     config.bind = [f"{host}:0"]
 
-    ready_event = threading.Event()
-    shutdown_event = threading.Event()
+    shutdown_event = trio.Event()
 
-    with concurrent.futures.ThreadPoolExecutor(
-        1, thread_name_prefix="hypercorn dummyserver"
-    ) as executor:
-        future = executor.submit(
-            trio.run,
-            _start_server,
-            config,
-            app,
-            ready_event,
-            shutdown_event,
+    with anyio.from_thread.start_blocking_portal(backend="trio") as portal:
+        future, config_bind = portal.start_task(
+            _start_server, config, app, shutdown_event
         )
-        ready_event.wait(5)
-        if not ready_event.is_set():
-            raise Exception("most likely failed to start server")
-
         try:
-            port = parse_url(config.bind[0]).port
+            port = parse_url(config_bind[0]).port
             assert port is not None
             yield port
         finally:
-            shutdown_event.set()
+            portal.call(shutdown_event.set)
             future.result()
 
 
@@ -162,9 +137,8 @@ def main() -> int:
 
     config = Config()
     config.bind = ["localhost:0"]
-    ready_event = threading.Event()
-    shutdown_event = threading.Event()
-    trio.run(_start_server, config, hypercorn_app, ready_event, shutdown_event)
+    shutdown_event = trio.Event()
+    trio.run(_start_server, config, hypercorn_app, shutdown_event)
     return 0
 
 

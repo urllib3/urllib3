@@ -5,6 +5,7 @@ import io
 import json as _json
 import logging
 import re
+import socket
 import sys
 import typing
 import warnings
@@ -440,6 +441,9 @@ class BaseHTTPResponse(io.IOBase):
     def drain_conn(self) -> None:
         raise NotImplementedError()
 
+    def shutdown(self) -> None:
+        raise NotImplementedError()
+
     def close(self) -> None:
         raise NotImplementedError()
 
@@ -589,6 +593,7 @@ class HTTPResponse(BaseHTTPResponse):
         request_method: str | None = None,
         request_url: str | None = None,
         auto_close: bool = True,
+        sock_shutdown: typing.Callable[[int], None] | None = None,
     ) -> None:
         super().__init__(
             headers=headers,
@@ -618,6 +623,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         if hasattr(body, "read"):
             self._fp = body  # type: ignore[assignment]
+        self._sock_shutdown = sock_shutdown
 
         # Are we using the chunked-style of transfer encoding?
         self.chunk_left: int | None = None
@@ -733,7 +739,7 @@ class HTTPResponse(BaseHTTPResponse):
         return length
 
     @contextmanager
-    def _error_catcher(self) -> typing.Generator[None, None, None]:
+    def _error_catcher(self) -> typing.Generator[None]:
         """
         Catch low-level python exceptions, instead re-raising urllib3
         variants, so that low-level exceptions are not leaked in the
@@ -1037,7 +1043,7 @@ class HTTPResponse(BaseHTTPResponse):
 
     def stream(
         self, amt: int | None = 2**16, decode_content: bool | None = None
-    ) -> typing.Generator[bytes, None, None]:
+    ) -> typing.Generator[bytes]:
         """
         A generator wrapper for the read() method. A call will block until
         ``amt`` bytes have been read from the connection or until the
@@ -1066,7 +1072,14 @@ class HTTPResponse(BaseHTTPResponse):
     def readable(self) -> bool:
         return True
 
+    def shutdown(self) -> None:
+        if not self._sock_shutdown:
+            raise ValueError("Cannot shutdown socket as self._sock_shutdown is not set")
+        self._sock_shutdown(socket.SHUT_RD)
+
     def close(self) -> None:
+        self._sock_shutdown = None
+
         if not self.closed and self._fp:
             self._fp.close()
 
@@ -1159,7 +1172,7 @@ class HTTPResponse(BaseHTTPResponse):
 
     def read_chunked(
         self, amt: int | None = None, decode_content: bool | None = None
-    ) -> typing.Generator[bytes, None, None]:
+    ) -> typing.Generator[bytes]:
         """
         Similar to :meth:`HTTPResponse.read`, but with an additional
         parameter: ``decode_content``.

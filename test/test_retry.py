@@ -405,12 +405,15 @@ class TestRetry:
     ) -> None:
         retry = Retry(respect_retry_after_header=respect_retry_after_header)
 
-        with mock.patch(
-            "time.time",
-            return_value=datetime.datetime(
-                2019, 6, 3, 11, tzinfo=datetime.timezone.utc
-            ).timestamp(),
-        ), mock.patch("time.sleep") as sleep_mock:
+        with (
+            mock.patch(
+                "time.time",
+                return_value=datetime.datetime(
+                    2019, 6, 3, 11, tzinfo=datetime.timezone.utc
+                ).timestamp(),
+            ),
+            mock.patch("time.sleep") as sleep_mock,
+        ):
             # for the default behavior, it must be in RETRY_AFTER_STATUS_CODES
             response = HTTPResponse(
                 status=503, headers={"Retry-After": retry_after_header}
