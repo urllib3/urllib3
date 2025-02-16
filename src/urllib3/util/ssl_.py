@@ -324,7 +324,10 @@ def create_urllib3_context(
     # necessary for conditional client cert authentication with TLS 1.3.
     # The attribute is None for OpenSSL <= 1.1.0 or does not exist when using
     # an SSLContext created by pyOpenSSL.
-    if getattr(context, "post_handshake_auth", None) is not None:
+    if (
+            cert_reqs == ssl.CERT_REQUIRED
+            and getattr(context, "post_handshake_auth", None) is not None
+    ):
         context.post_handshake_auth = True
 
     # The order of the below lines setting verify_mode and check_hostname
