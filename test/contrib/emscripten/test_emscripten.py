@@ -1058,7 +1058,9 @@ def test_streaming_jspi(
     )
 
 
-# another streaming test - uses
+# another streaming test - uses chunked read
+# and streaming to check that it works okay
+# (see https://github.com/urllib3/urllib3/issues/3555 )
 @pytest.mark.with_jspi
 def test_streaming2_jspi(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
