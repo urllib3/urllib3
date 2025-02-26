@@ -15,7 +15,7 @@
     ```
 * [ ]  The tag will trigger the `publish` GitHub workflow. This requires a review from a maintainer.
 * [ ]  Ensure that all expected artifacts are added to the new GitHub release. Should
-       be one `.whl`, one `.tar.gz`, and one `multiple.intoto.jsonl`. Update the GitHub
+       be one `.whl` and one `.tar.gz`. Update the GitHub
        release to have the content of the release's changelog and any ongoing announcements.
 * [ ]  Announce on:
   * [ ]  Social media
