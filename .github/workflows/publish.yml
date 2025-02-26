@@ -54,21 +54,10 @@ jobs:
           if-no-files-found: error
           retention-days: 5
 
-  provenance:
-    needs: [build]
-    permissions:
-      actions: read
-      contents: write
-      id-token: write # Needed to access the workflow's OIDC identity.
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
-    with:
-      base64-subjects: "${{ needs.build.outputs.hashes }}"
-      upload-assets: true
-
   publish-to-pypi-and-github:
     name: "Publish to PyPI"
     if: ${{ github.ref_type == 'tag' }}
-    needs: ["build", "provenance"]
+    needs: ["build"]
     permissions:
       contents: write # Needed for making GitHub releases
       id-token: write # Needed for trusted publishing to PyPI.
@@ -96,7 +85,7 @@ jobs:
 
   publish-to-test-pypi:
     name: "Publish to Test PyPI"
-    needs: ["build", "provenance"]
+    needs: ["build"]
     permissions:
       id-token: write # Needed for trusted publishing to PyPI.
     runs-on: "ubuntu-latest"
