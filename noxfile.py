@@ -98,6 +98,7 @@ def tests_impl(
         "3.13",
         "3.14",
         "pypy3.10",
+        "pypy3.11",
     ]
 )
 def test(session: nox.Session) -> None:

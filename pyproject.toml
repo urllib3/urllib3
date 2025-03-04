@@ -59,7 +59,7 @@ dev = [
     "anyio[trio]>=4.8.0",
     "build>=1.2.2.post1",
     "coverage>=7.6.10",
-    "cryptography>=44.0.0",
+    "cryptography>=44.0.2",
     "h2>=4.1.0",
     "httpx>=0.28.1",
     "hypercorn",
@@ -78,7 +78,7 @@ dev = [
 ]
 mypy = [
     "anyio[trio]>=4.8.0",
-    "cryptography>=44.0.0",
+    "cryptography>=44.0.2",
     "httpx>=0.28.1",
     "hypercorn>=0.15.0",
     "idna>=3.10",
