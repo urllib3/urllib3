@@ -63,6 +63,10 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test-pypy3.10
+          - python-version: "pypy-3.11"
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test-pypy3.11
           - python-version: "3.x"
           # brotli
             os: ubuntu-latest
@@ -99,6 +103,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
+          check-latest: true
 
       - name: "Install uv"
         uses: astral-sh/setup-uv@1edb52594c857e2b5b13128931090f0640537287 # v5.3.0
