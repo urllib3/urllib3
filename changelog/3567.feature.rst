@@ -1,0 +1,2 @@
+Updated exceptions to save and restore more properties
+during the pickle/serialization process.

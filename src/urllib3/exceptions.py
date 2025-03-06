@@ -31,11 +31,12 @@ class PoolError(HTTPError):
 
     def __init__(self, pool: ConnectionPool, message: str) -> None:
         self.pool = pool
+        self._message = message
         super().__init__(f"{pool}: {message}")
 
     def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
-        return self.__class__, (None, None)
+        return self.__class__, (None, self._message)
 
 
 class RequestError(PoolError):
@@ -47,7 +48,7 @@ class RequestError(PoolError):
 
     def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
-        return self.__class__, (None, self.url, None)
+        return self.__class__, (None, self.url, self._message)
 
 
 class SSLError(HTTPError):
@@ -100,6 +101,10 @@ class MaxRetryError(RequestError):
 
         super().__init__(pool, url, message)
 
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        # For pickling purposes.
+        return self.__class__, (None, self.url, self.reason)
+
 
 class HostChangedError(RequestError):
     """Raised when an existing pool gets a request for a foreign host."""
@@ -139,11 +144,12 @@ class NewConnectionError(ConnectTimeoutError, HTTPError):
 
     def __init__(self, conn: HTTPConnection, message: str) -> None:
         self.conn = conn
+        self._message = message
         super().__init__(f"{conn}: {message}")
 
     def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
-        return self.__class__, (None, None)
+        return self.__class__, (None, self._message)
 
     @property
     def pool(self) -> HTTPConnection:
@@ -162,11 +168,13 @@ class NameResolutionError(NewConnectionError):
 
     def __init__(self, host: str, conn: HTTPConnection, reason: socket.gaierror):
         message = f"Failed to resolve '{host}' ({reason})"
+        self._host = host
+        self._reason = reason
         super().__init__(conn, message)
 
     def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
-        return self.__class__, (None, None, None)
+        return self.__class__, (self._host, None, self._reason)
 
 
 class EmptyPoolError(PoolError):
