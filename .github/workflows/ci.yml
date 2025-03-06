@@ -43,7 +43,7 @@ jobs:
         os:
           - macos-15
           - windows-latest
-          - ubuntu-latest
+          - ubuntu-24.04
         nox-session: ['']
         include:
           - experimental: false
@@ -51,44 +51,44 @@ jobs:
           # 3.9 has a known issue with large SSL requests that we work around:
           # https://github.com/urllib3/urllib3/pull/3181#issuecomment-1794830698
           - python-version: "3.9"
-            os: ubuntu-latest
+            os: ubuntu-24.04
             experimental: false
             nox-session: test_integration
           - python-version: "3.12"
-            os: ubuntu-latest
+            os: ubuntu-24.04
             experimental: false
             nox-session: test_integration
           # pypy
           - python-version: "pypy-3.10"
-            os: ubuntu-latest
+            os: ubuntu-24.04
             experimental: false
             nox-session: test-pypy3.10
           - python-version: "pypy-3.11"
-            os: ubuntu-latest
+            os: ubuntu-24.04
             experimental: false
             nox-session: test-pypy3.11
           - python-version: "3.x"
           # brotli
-            os: ubuntu-latest
+            os: ubuntu-24.04
             experimental: false
             nox-session: test_brotlipy
           - python-version: "3.12"
-            os: ubuntu-latest
+            os: ubuntu-24.04
             nox-session: emscripten(node)
             experimental: true
           - python-version: "3.12"
-            os: ubuntu-latest
+            os: ubuntu-24.04
             nox-session: emscripten(firefox)
             experimental: true
           - python-version: "3.12"
-            os: ubuntu-latest
+            os: ubuntu-24.04
             nox-session: emscripten(chrome)
             experimental: true
           - python-version: 3.14
             experimental: true
 
     runs-on: ${{ matrix.os }}
-    name: ${{ fromJson('{"macos-15":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
+    name: ${{ fromJson('{"macos-15":"macOS","windows-latest":"Windows","ubuntu-24.04":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
     timeout-minutes: 10
     steps:
@@ -156,7 +156,7 @@ jobs:
 
   coverage:
     if: always()
-    runs-on: "ubuntu-latest"
+    runs-on: "ubuntu-24.04"
     needs: test
     steps:
       - name: "Checkout repository"
