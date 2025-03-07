@@ -117,7 +117,7 @@ try:  # Do we have ssl at all?
         sys.implementation.name,
         sys.version_info,
         sys.pypy_version_info if sys.implementation.name == "pypy" else None,  # type: ignore[attr-defined]
-    ):
+    ):  # Defensive: for Python < 3.9.3
         HAS_NEVER_CHECK_COMMON_NAME = False
 
     # Need to be careful here in case old TLS versions get
