@@ -81,7 +81,7 @@ def create_connection(
                 try:
                     # Gracefully shutdown the socket before closing
                     sock.shutdown(socket.SHUT_RDWR) 
-                except:
+                except OSError:
                     # If shutdown fails, its because the connection is already closed
                     pass  
                 sock.close()
