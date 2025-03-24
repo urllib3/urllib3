@@ -78,6 +78,10 @@ def create_connection(
         except OSError as _:
             err = _
             if sock is not None:
+                try:
+                    sock.shutdown(socket.SHUT_RDWR) # gracefully shutdown the socket before closing
+                except:
+                    pass  # If shutdown fails, its because the connection is already closed
                 sock.close()
 
     if err is not None:
