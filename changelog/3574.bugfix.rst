@@ -1,0 +1,1 @@
+Added graceful socket shutdown in error handling to ensure proper connection termination, following Python socket documentation.
