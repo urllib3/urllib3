@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ssl
+import sys
 import typing
 from unittest import mock
 
@@ -62,6 +63,21 @@ class TestSSL:
         with mock.patch("urllib3.util.ssl_.SSLContext", None):
             with pytest.raises(TypeError):
                 ssl_.create_urllib3_context()
+
+    def test_create_urllib3_context_default_verify_flags(self):
+        context = ssl_.create_urllib3_context()
+        if sys.version_info >= (3, 13):
+            assert context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN
+            assert context.verify_flags & ssl.VERIFY_X509_STRICT
+        else:
+            assert not (context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN)
+            assert not (context.verify_flags & ssl.VERIFY_X509_STRICT)
+
+    def test_create_urllib3_context_custom_verify_flags(self):
+        context = ssl_.create_urllib3_context()
+        assert not (context.verify_flags & ssl.VERIFY_CRL_CHECK_LEAF)
+        context = ssl_.create_urllib3_context(verify_flags=ssl.VERIFY_CRL_CHECK_LEAF)
+        assert context.verify_flags & ssl.VERIFY_CRL_CHECK_LEAF
 
     def test_wrap_socket_given_context_no_load_default_certs(self) -> None:
         context = mock.create_autospec(ssl_.SSLContext)
