@@ -731,10 +731,12 @@ class TestHTTPSProxyVerification:
         proxy_url = f"https://{proxy.host}:{proxy.port}"
         destination_url = f"https://{server.host}:{server.port}"
 
+        proxy_ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
         proxy_fingerprint = self._get_proxy_fingerprint_md5(proxy.ca_certs)
         with proxy_from_url(
             proxy_url,
             ca_certs=proxy.ca_certs,
+            proxy_ssl_context=proxy_ctx,
             proxy_assert_fingerprint=proxy_fingerprint,
         ) as https:
             https.request("GET", destination_url)
@@ -746,6 +748,7 @@ class TestHTTPSProxyVerification:
         proxy_url = f"https://{proxy.host}:{proxy.port}"
         destination_url = f"https://{server.host}:{server.port}"
 
+        proxy_ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
         proxy_fingerprint = self._get_proxy_fingerprint_md5(proxy.ca_certs)
         new_char = "b" if proxy_fingerprint[5] == "a" else "a"
         proxy_fingerprint = proxy_fingerprint[:5] + new_char + proxy_fingerprint[6:]
@@ -753,6 +756,7 @@ class TestHTTPSProxyVerification:
         with proxy_from_url(
             proxy_url,
             ca_certs=proxy.ca_certs,
+            proxy_ssl_context=proxy_ctx,
             proxy_assert_fingerprint=proxy_fingerprint,
         ) as https:
             with pytest.raises(MaxRetryError) as e:
@@ -856,10 +860,11 @@ class TestHTTPSProxyVerification:
 
             ssl_error = e.value.reason.original_error
             assert isinstance(ssl_error, SSLError)
-            assert "no appropriate subjectAltName fields were found" in str(
-                ssl_error
-            ) or "Hostname mismatch, certificate is not valid for 'localhost'" in str(
-                ssl_error
+            assert (
+                "no appropriate subjectAltName fields were found" in str(ssl_error)
+                or "Hostname mismatch, certificate is not valid for 'localhost'"
+                in str(ssl_error)
+                or "Empty Subject Alternative Name extension" in str(ssl_error)
             )
 
     def test_https_proxy_no_san_hostname_checks_common_name(
@@ -869,7 +874,7 @@ class TestHTTPSProxyVerification:
         proxy_url = f"https://{proxy.host}:{proxy.port}"
         destination_url = f"https://{server.host}:{server.port}"
 
-        proxy_ctx = urllib3.util.ssl_.create_urllib3_context()
+        proxy_ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
         try:
             proxy_ctx.hostname_checks_common_name = True
         # PyPy doesn't like us setting 'hostname_checks_common_name'

@@ -424,6 +424,7 @@ class PyOpenSSLContext:
         self.check_hostname = False
         self._minimum_version: int = ssl.TLSVersion.MINIMUM_SUPPORTED
         self._maximum_version: int = ssl.TLSVersion.MAXIMUM_SUPPORTED
+        self._verify_flags: int = ssl.VERIFY_X509_TRUSTED_FIRST
 
     @property
     def options(self) -> int:
@@ -433,6 +434,15 @@ class PyOpenSSLContext:
     def options(self, value: int) -> None:
         self._options = value
         self._set_ctx_options()
+
+    @property
+    def verify_flags(self) -> int:
+        return self._verify_flags
+
+    @verify_flags.setter
+    def verify_flags(self, value: int) -> None:
+        self._verify_flags = value
+        self._ctx.get_cert_store().set_flags(self._verify_flags)
 
     @property
     def verify_mode(self) -> int:

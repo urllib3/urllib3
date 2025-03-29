@@ -64,16 +64,20 @@ class TestSSL:
             with pytest.raises(TypeError):
                 ssl_.create_urllib3_context()
 
-    def test_create_urllib3_context_default_verify_flags(self):
+    def test_create_urllib3_context_default_verify_flags(self) -> None:
         context = ssl_.create_urllib3_context()
         if sys.version_info >= (3, 13):
             assert context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN
             assert context.verify_flags & ssl.VERIFY_X509_STRICT
         else:
-            assert not (context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN)
+            # Needed for Python 3.9 which does not define this
+            assert not (
+                context.verify_flags
+                & getattr(ssl, "VERIFY_X509_PARTIAL_CHAIN", 0x80000)
+            )
             assert not (context.verify_flags & ssl.VERIFY_X509_STRICT)
 
-    def test_create_urllib3_context_custom_verify_flags(self):
+    def test_create_urllib3_context_custom_verify_flags(self) -> None:
         context = ssl_.create_urllib3_context()
         assert not (context.verify_flags & ssl.VERIFY_CRL_CHECK_LEAF)
         context = ssl_.create_urllib3_context(verify_flags=ssl.VERIFY_CRL_CHECK_LEAF)

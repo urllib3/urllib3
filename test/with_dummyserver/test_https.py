@@ -1140,6 +1140,11 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         assert ctx.minimum_version == self.tls_version()
         assert ctx.maximum_version == self.tls_version()
 
+    def test_default_ssl_context_verify_flags(self) -> None:
+        ctx = urllib3.util.ssl_.create_urllib3_context()
+        ssl_ctx = ssl.create_default_context()
+        assert ctx.verify_flags == ssl_ctx.verify_flags
+
     def test_assert_missing_hashfunc(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fingerprint = "55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
         with HTTPSConnectionPool(
@@ -1208,14 +1213,16 @@ class TestHTTPS_Hostname:
                 MaxRetryError,
             ) as e:
                 https_pool.request("GET", "/")
-            assert "mismatch, certificate is not valid" in str(
-                e.value
-            ) or "no appropriate subjectAltName" in str(e.value)
+            assert (
+                "mismatch, certificate is not valid" in str(e.value)
+                or "no appropriate subjectAltName" in str(e.value)
+                or "Empty Subject Alternative Name extension" in str(e.value)
+            )
 
     def test_common_name_without_san_with_different_common_name(
         self, no_san_server_with_different_commmon_name: ServerConfig
     ) -> None:
-        ctx = urllib3.util.ssl_.create_urllib3_context()
+        ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
         try:
             ctx.hostname_checks_common_name = True
         except AttributeError:
@@ -1238,7 +1245,7 @@ class TestHTTPS_Hostname:
     def test_hostname_checks_common_name_respected(
         self, no_san_server: ServerConfig, use_assert_hostname: bool
     ) -> None:
-        ctx = urllib3.util.ssl_.create_urllib3_context()
+        ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
         if not hasattr(ctx, "hostname_checks_common_name"):
             pytest.skip("Test requires 'SSLContext.hostname_checks_common_name'")
         ctx.load_verify_locations(no_san_server.ca_certs)
@@ -1291,11 +1298,13 @@ class TestHTTPS_Hostname:
         self, no_san_server_with_different_commmon_name: ServerConfig
     ) -> None:
         """Ensure CN errors are not raised while assert_hostname is false"""
+        ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
         with HTTPSConnectionPool(
             no_san_server_with_different_commmon_name.host,
             no_san_server_with_different_commmon_name.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=no_san_server_with_different_commmon_name.ca_certs,
+            ssl_context=ctx,
             assert_hostname=False,
         ) as https_pool:
             https_pool.request("GET", "/")

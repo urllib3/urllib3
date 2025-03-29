@@ -9,7 +9,6 @@ Features
   requests and streaming, and makes it possible to use in Node.js if you launch it as  ``node --experimental-wasm-stack-switching``. (`#3400 <https://github.com/urllib3/urllib3/issues/3400>`__)
 - Added the ``proxy_is_tunneling`` property to ``HTTPConnection`` and ``HTTPSConnection``. (`#3285 <https://github.com/urllib3/urllib3/issues/3285>`__)
 - Added pickling support to ``NewConnectionError`` and ``NameResolutionError``. (`#3480 <https://github.com/urllib3/urllib3/issues/3480>`__)
-- Added ``verify_flags`` option to ``create_urllib3_context`` with a default of ``VERIFY_X509_PARTIAL_CHAIN`` and ``VERIFY_X509_STRICT`` for python 3.13+
 
 
 Bugfixes
