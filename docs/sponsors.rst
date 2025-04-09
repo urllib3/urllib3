@@ -15,6 +15,7 @@ All expenses and contributions can be `tracked on our Open Collective page
 * 2021: https://sethmlarson.dev/urllib3-raised-15k-in-2021
 * 2022: https://sethmlarson.dev/urllib3-in-2022
 * 2023: https://sethmlarson.dev/urllib3-is-fundraising-for-http2-support
+* 2024: https://quentin.pradet.me/blog/urllib3-in-2024.html
 
 Sponsors and Grants (prior to 2019)
 -----------------------------------
