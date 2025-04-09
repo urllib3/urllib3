@@ -168,6 +168,13 @@ def downstream_requests(session: nox.Session) -> None:
     session.cd(tmp_dir)
     git_clone(session, "https://github.com/psf/requests")
     session.chdir("requests")
+    # https://github.com/psf/requests/pull/6924
+    session.run(
+        "git",
+        "apply",
+        f"{root}/ci/0001-requests-test-cert-key-usage.patch",
+        external=True,
+    )
     session.run("git", "rev-parse", "HEAD", external=True)
     session.install(".[socks]", silent=False)
     session.install("-r", "requirements-dev.txt", silent=False)
