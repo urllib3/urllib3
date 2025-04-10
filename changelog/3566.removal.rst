@@ -1,2 +1,0 @@
-Removed the ``multiple.intoto.jsonl`` asset from GitHub releases.
-Attestation of release files since v2.3.0 can be found on PyPI.

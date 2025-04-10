@@ -1,3 +1,27 @@
+2.4.0 (2025-04-10)
+==================
+
+Features
+--------
+
+- Applied PEP 639 by specifying the license fields in pyproject.toml. (`#3522 <https://github.com/urllib3/urllib3/issues/3522>`__)
+- Updated exceptions to save and restore more properties during the pickle/serialization process. (`#3567 <https://github.com/urllib3/urllib3/issues/3567>`__)
+- Added ``verify_flags`` option to ``create_urllib3_context`` with a default of ``VERIFY_X509_PARTIAL_CHAIN`` and ``VERIFY_X509_STRICT`` for Python 3.13+. (`#3571 <https://github.com/urllib3/urllib3/issues/3571>`__)
+
+
+Bugfixes
+--------
+
+- Fixed a bug with partial reads of streaming data in Emscripten. (`#3555 <https://github.com/urllib3/urllib3/issues/3555>`__)
+
+
+Misc
+----
+
+- Switched to uv for installing development dependecies. (`#3550 <https://github.com/urllib3/urllib3/issues/3550>`__)
+- Removed the ``multiple.intoto.jsonl`` asset from GitHub releases. Attestation of release files since v2.3.0 can be found on PyPI. (`#3566 <https://github.com/urllib3/urllib3/issues/3566>`__)
+
+
 2.3.0 (2024-12-22)
 ==================
 
