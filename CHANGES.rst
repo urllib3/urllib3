@@ -1,4 +1,4 @@
-2.4.0 (2025-04-09)
+2.4.0 (2025-04-10)
 ==================
 
 Features
@@ -15,16 +15,11 @@ Bugfixes
 - Fixed a bug with partial reads of streaming data in Emscripten. (`#3555 <https://github.com/urllib3/urllib3/issues/3555>`__)
 
 
-Deprecations and Removals
--------------------------
-
-- Removed the ``multiple.intoto.jsonl`` asset from GitHub releases. Attestation of release files since v2.3.0 can be found on PyPI. (`#3566 <https://github.com/urllib3/urllib3/issues/3566>`__)
-
-
 Misc
 ----
 
 - Switched to uv for installing development dependecies. (`#3550 <https://github.com/urllib3/urllib3/issues/3550>`__)
+- Removed the ``multiple.intoto.jsonl`` asset from GitHub releases. Attestation of release files since v2.3.0 can be found on PyPI. (`#3566 <https://github.com/urllib3/urllib3/issues/3566>`__)
 
 
 2.3.0 (2024-12-22)
