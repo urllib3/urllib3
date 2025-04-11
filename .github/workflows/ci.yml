@@ -89,6 +89,10 @@ jobs:
             os: ubuntu-24.04
             nox-session: emscripten(chrome)
             experimental: true
+          - python-version: "3.12"
+            os: ubuntu-24.04
+            nox-session: test_wasi
+            experimental: true
           - python-version: 3.14
             experimental: true
 
@@ -152,6 +156,11 @@ jobs:
         shell: cmd
         run: |
           mklink "%Python3_ROOT_DIR%\python${{ matrix.python-version }}.exe" "%Python3_ROOT_DIR%\python.exe"
+
+        # Install dependencies for wasi tests. As the tests do not depend on the python version we are using to execute them, only run them for a single version
+      - name: "Install wasmtime"
+        uses: jcbhmr/setup-wasmtime@v2
+        if: ${{ (matrix.nox-session == 'test_wasi') }}
 
       - name: "Run tests"
         run: |
