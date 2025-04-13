@@ -139,6 +139,15 @@ jobs:
           path: .nox/.cache
           # noxfile.py contains the Pyodide version used currently.
           key: pyodide-downloads-${{ hashFiles('noxfile.py') }}
+        # Install dependencies for wasi tests. As the tests do not depend on the python version we are using to execute them, only run them for a single version
+      - name: "Install wasmtime"
+        uses: jcbhmr/setup-wasmtime@v2
+        if: ${{ (matrix.nox-session == '') && (matrix.python-version == '3.12') }}
+      - name: "Install componentize-py"
+        if: ${{ (matrix.nox-session == '') && (matrix.python-version == '3.12') }}
+        run: |
+          python -m pip install componentize-py==0.16.0
+
       - name: "Run tests"
         # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
         run: uvx nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}
