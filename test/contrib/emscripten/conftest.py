@@ -84,6 +84,18 @@ def selenium_coverage(
         result = self.run_js(
             f'await pyodide.loadPackage("http://{testserver_http.http_host}:{testserver_http.http_port}/dist/urllib3.whl")'
         )
+        if self.with_jspi is False:
+            # force chrome to test without jspi
+            # even though it is always enabled in
+            # chrome >= 137
+            self.run_async(
+                """
+            import urllib3
+            if urllib3.contrib.emscripten.fetch.has_jspi():
+                urllib3.contrib.emscripten.fetch._FORCE_DISABLE_JSPI = True
+            """
+            )
+
         print("Installed package:", result)
         self.run_js(
             """
