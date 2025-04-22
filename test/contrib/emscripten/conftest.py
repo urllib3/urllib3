@@ -140,11 +140,14 @@ _coverage_js.Array.from_(_coverage_outdata)
 
 
 class ServerRunnerInfo:
-    def __init__(self, host: str, port: int, selenium: Any, dist_dir: Path) -> None:
+    def __init__(
+        self, host: str, port: int, selenium: Any, dist_dir: Path, has_jspi: bool
+    ) -> None:
         self.host = host
         self.port = port
         self.selenium = selenium
         self.dist_dir = dist_dir
+        self.has_jspi = has_jspi
 
     def run_webworker(self, code: str) -> Any:
         if isinstance(code, str) and code.startswith("\n"):
@@ -160,13 +163,16 @@ class ServerRunnerInfo:
             """
         )
 
-        jspi_fix_code = textwrap.dedent(
-            """
-            import urllib3
-            if urllib3.contrib.emscripten.fetch.has_jspi():
-                urllib3.contrib.emscripten.fetch._FORCE_DISABLE_JSPI = True
-            """
-        )
+        if self.has_jspi is False:
+            jspi_fix_code = textwrap.dedent(
+                """
+                import urllib3
+                if urllib3.contrib.emscripten.fetch.has_jspi():
+                    urllib3.contrib.emscripten.fetch._FORCE_DISABLE_JSPI = True
+                """
+            )
+        else:
+            jspi_fix_code = ""
 
         coverage_end_code = textwrap.dedent(
             """
@@ -260,6 +266,7 @@ def run_from_server(
         testserver_http.https_port,
         selenium_coverage,
         dist_dir,
+        selenium_coverage.with_jspi,
     )
 
 
