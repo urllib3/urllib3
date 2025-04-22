@@ -160,6 +160,14 @@ class ServerRunnerInfo:
             """
         )
 
+        jspi_fix_code = textwrap.dedent(
+            """
+            import urllib3
+            if urllib3.contrib.emscripten.fetch.has_jspi():
+                urllib3.contrib.emscripten.fetch._FORCE_DISABLE_JSPI = True
+            """
+        )
+
         coverage_end_code = textwrap.dedent(
             """
             _coverage.stop()
@@ -176,7 +184,15 @@ class ServerRunnerInfo:
 
         # the ordering of these code blocks is important - makes sure
         # that the first thing that happens is our wheel is loaded
-        code = coverage_init_code + "\n" + code + "\n" + coverage_end_code
+        code = (
+            coverage_init_code
+            + "\n"
+            + jspi_fix_code
+            + "\n"
+            + code
+            + "\n"
+            + coverage_end_code
+        )
 
         if self.selenium.browser == "firefox":
             # running in worker is SLOW on firefox
