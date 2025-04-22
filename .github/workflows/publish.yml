@@ -72,11 +72,17 @@ jobs:
         name: "dist"
         path: "dist/"
 
-    - name: "Upload dists to GitHub Release"
+    - name: "Upload dists to a new GitHub Release Draft"
       env:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       run: |
-        gh release upload ${{ github.ref_name }} dist/* --repo ${{ github.repository }}
+        gh release create "$GITHUB_REF_NAME" \
+          --repo "$GITHUB_REPOSITORY" \
+          --draft \
+          --title "$GITHUB_REF_NAME" \
+          --notes "" \
+          --verify-tag
+        gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY"
 
     - name: "Publish dists to PyPI"
       uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
