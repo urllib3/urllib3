@@ -76,13 +76,13 @@ jobs:
       env:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       run: |
-        gh release create $GITHUB_REF_NAME \
-          --repo $GITHUB_REPOSITORY \
+        gh release create "$GITHUB_REF_NAME" \
+          --repo "$GITHUB_REPOSITORY" \
           --draft \
-          --title $GITHUB_REF_NAME \
+          --title "$GITHUB_REF_NAME" \
           --notes "" \
           --verify-tag
-        gh release upload $GITHUB_REF_NAME dist/* --repo $GITHUB_REPOSITORY
+        gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY"
 
     - name: "Publish dists to PyPI"
       uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
