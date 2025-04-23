@@ -674,10 +674,6 @@ def _run_sync_with_timeout(
             js.clearTimeout(timer_id)
 
 
-# force disable JSPI for testing only
-_FORCE_DISABLE_JSPI = False
-
-
 def has_jspi() -> bool:
     """
     Return true if jspi can be used.
@@ -689,8 +685,6 @@ def has_jspi() -> bool:
     :return: True if jspi can be used.
     :rtype: bool
     """
-    if _FORCE_DISABLE_JSPI:
-        return False
     try:
         from pyodide.ffi import can_run_sync, run_sync  # noqa: F401
 

@@ -87,12 +87,13 @@ def selenium_coverage(
         if self.with_jspi is False:
             # force chrome to test without jspi
             # even though it is always enabled in
-            # chrome >= 137
+            # chrome >= 137. We do this by monkeypatching
+            # pyodide.ffi.can_run_sync
             self.run_async(
                 """
-            import urllib3
-            if urllib3.contrib.emscripten.fetch.has_jspi():
-                urllib3.contrib.emscripten.fetch._FORCE_DISABLE_JSPI = True
+            import pyodide.ffi
+            if pyodide.ffi.can_run_sync()==True:
+                pyodide.ffi.can_run_sync = lambda:False
             """
             )
 
@@ -163,12 +164,14 @@ class ServerRunnerInfo:
             """
         )
 
+        # Monkeypatch pyodide to force disable JSPI in newer chrome
+        # so those code paths get tested
         if self.has_jspi is False:
             jspi_fix_code = textwrap.dedent(
                 """
-                import urllib3
-                if urllib3.contrib.emscripten.fetch.has_jspi():
-                    urllib3.contrib.emscripten.fetch._FORCE_DISABLE_JSPI = True
+                import pyodide.ffi
+                if pyodide.ffi.can_run_sync()==True:
+                    pyodide.ffi.can_run_sync = lambda:False
                 """
             )
         else:
