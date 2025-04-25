@@ -116,6 +116,8 @@ jobs:
         if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
         with:
           install-chromedriver: true
+          # Use stable until https://github.com/urllib3/urllib3/issues/3598 is fixed.
+          chrome-version: stable
       - name: Force override system chrome
         run: |
           sudo rm -f /usr/bin/google-chrome
