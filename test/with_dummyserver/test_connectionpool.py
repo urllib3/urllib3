@@ -1444,14 +1444,16 @@ class TestRedirectPoolSize(HypercornDummyServerTestCase):
             pool.urlopen("GET", "/redirect", preload_content=False)
             assert pool.num_connections == 1
 
+
 class TestShutdownOnConnectionReleasedToPool(HypercornDummyServerTestCase):
     def test_shutdown_on_connection_released_to_pool(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             resp = pool.urlopen("GET", "/", preload_content=False)
             resp.drain_conn()
             resp.release_conn()
-        
+
         with pytest.raises(
-            RuntimeError, match="Cannot shutdown as connection has already been released to the pool"
+            RuntimeError,
+            match="Cannot shutdown as connection has already been released to the pool",
         ):
             resp.shutdown()
