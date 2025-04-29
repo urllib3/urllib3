@@ -23,7 +23,7 @@ repos:
         additional_dependencies: [flake8-2020]
 
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.5.20
+    rev: 0.6.17
     hooks:
       - id: uv-lock
 

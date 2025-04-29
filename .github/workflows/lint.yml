@@ -28,7 +28,7 @@ jobs:
       - name: "Install uv"
         uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v6.0.0
         with:
-          version: "0.5.20"
+          version: "0.6.17"
 
       - name: "Run mypy"
         run: uvx nox -s mypy

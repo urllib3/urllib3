@@ -108,7 +108,7 @@ jobs:
       - name: "Install uv"
         uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v6.0.0
         with:
-          version: "0.5.20"
+          version: "0.6.17"
 
       - name: "Install Chrome"
         uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
@@ -174,7 +174,7 @@ jobs:
       - name: "Install uv"
         uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v6.0.0
         with:
-          version: "0.5.20"
+          version: "0.6.17"
 
       - name: "Install coverage"
         # Install the same version of coverage as in the lock file.
