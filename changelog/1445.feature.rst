@@ -1,0 +1,1 @@
+Added `is_response_retry` variation of `Retry.is_retry` that considers `HTTPResponse`.
