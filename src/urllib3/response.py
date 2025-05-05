@@ -638,15 +638,12 @@ class HTTPResponse(BaseHTTPResponse):
         if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
 
-        self._released_conn = False
-
     def release_conn(self) -> None:
         if not self._pool or not self._connection:
             return None
 
         self._pool._put_conn(self._connection)
         self._connection = None
-        self._released_conn = True
 
     def drain_conn(self) -> None:
         """
@@ -1076,7 +1073,7 @@ class HTTPResponse(BaseHTTPResponse):
         return True
 
     def shutdown(self) -> None:
-        if self._released_conn:
+        if self._connection is None:
             raise RuntimeError(
                 "Cannot shutdown as connection has already been released to the pool"
             )
