@@ -1073,12 +1073,12 @@ class HTTPResponse(BaseHTTPResponse):
         return True
 
     def shutdown(self) -> None:
+        if not self._sock_shutdown:
+            raise ValueError("Cannot shutdown socket as self._sock_shutdown is not set")
         if self._connection is None:
             raise RuntimeError(
                 "Cannot shutdown as connection has already been released to the pool"
             )
-        if not self._sock_shutdown:
-            raise ValueError("Cannot shutdown socket as self._sock_shutdown is not set")
         self._sock_shutdown(socket.SHUT_RD)
 
     def close(self) -> None:
