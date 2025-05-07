@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
 
       - name: "Setup Python"
-        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.x"
           cache: "pip"
@@ -99,7 +99,7 @@ jobs:
           persist-credentials: false
 
       - name: "Setup Python ${{ matrix.python-version }}"
-        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
@@ -116,6 +116,8 @@ jobs:
         if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
         with:
           install-chromedriver: true
+          # Use stable until https://github.com/urllib3/urllib3/issues/3598 is fixed.
+          chrome-version: stable
       - name: Force override system chrome
         run: |
           sudo rm -f /usr/bin/google-chrome
@@ -165,7 +167,7 @@ jobs:
           persist-credentials: false
 
       - name: "Setup Python"
-        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.x"
 
