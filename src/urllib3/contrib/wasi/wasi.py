@@ -156,7 +156,7 @@ def convert_body(  # type: ignore[no-untyped-def]
         return StreamResponseBody(response_body_resource, response_stream)
 
 
-def convert_response(  # type: ignore[no-untyped-def]
+def convert_response(
     request: WasiRequest,
     response: wasi_http_types.IncomingResponse,
 ) -> WasiResponse:
