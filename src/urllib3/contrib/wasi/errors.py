@@ -25,8 +25,8 @@ class ResourceClosedError(HTTPException):
 
 
 class WasiErrorCode(HTTPException):
-    def __init__(self, error_code: str):
-        self.message = f"Request failed with wasi http error code {error_code}"
+    def __init__(self, error: str):
+        self.message = f"Request failed with wasi http error {error}"
         super().__init__(self.message)
 
 

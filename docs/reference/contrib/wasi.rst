@@ -23,15 +23,11 @@ add imports for these to the world your component is going to implement:
       export wasi:cli/run@0.2.0;
     }
 
-To enable the WASI backend of urllib, import the contrib module and call ``enable_wasi_backend``. The parameter passed to this function
-is the snake-cased version for the world name you are implementing.
-This function should be called as early as possible in the lifecycle of your program, we recommend calling it directly in your entrypoint.
+You can then just import and use urllib3 as usual.
 
 .. code-block:: python
 
     from demo_world import exports
-    from urllib3.contrib.wasi import enable_wasi_backend
-    enable_wasi_backend("demo_world")
     import urllib3
 
     class Run(exports.Run):

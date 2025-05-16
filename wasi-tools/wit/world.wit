@@ -1,7 +1,7 @@
-package unused:unused;
+package pack:name;
 
 // See https://component-model.bytecodealliance.org/design/wit.html for more details about the WIT syntax
-world urllib-test {
+world component {
   import wasi:http/types@0.2.0;
   import wasi:http/outgoing-handler@0.2.0;
 

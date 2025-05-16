@@ -6,18 +6,16 @@ import sys
 import tempfile
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
-wit_path = os.path.join(current_directory, "wit")
+wit_path = os.path.join(current_directory, "../../../wasi-tools/wit")
 
 
 def python_component(body: str) -> str:
     return f"""\
-from urllib_test import exports
-from urllib3.contrib.wasi import enable_wasi_backend
+from wit_world import exports
 import traceback
 import sys
 import json
-
-enable_wasi_backend("urllib_test")
+import urllib3
 
 class Run(exports.Run):
     def run(self) -> None:
@@ -30,20 +28,23 @@ class Run(exports.Run):
 
 def run_python_component(body: str) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
-        component_file = os.path.join(tmpdir, "component.py")
+        component_file = os.path.join(tmpdir, "main.py")
         wasm_file = os.path.join(tmpdir, "component.wasm")
         # generate python script implementing cli world
         with open(component_file, "w") as f:
             f.write(python_component(body))
-        print(python_component(body))
 
         # generate wasm
         def run_componentize_py() -> None:
             args = [
                 "componentize-py",
+                "--import-interface-name",
+                '"wasi:http/types@0.2.0"="types"',
+                "--import-interface-name",
+                '"wasi:http/outgoing-handler@0.2.0"="outgoing_handler"',
                 "--wit-path",
                 wit_path,
-                "-w urllib-test",
+                "-w component",
                 "componentize",
             ]
 
@@ -51,7 +52,7 @@ def run_python_component(body: str) -> None:
             for path in sys.path:
                 args += ["-p", path]
 
-            args += ["-p", tmpdir, "-o", wasm_file, "component"]
+            args += ["-p", tmpdir, "-o", wasm_file, "main"]
 
             assert subprocess.run(args).returncode == 0
 

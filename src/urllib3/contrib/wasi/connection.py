@@ -57,7 +57,6 @@ class WasiHTTPConnection:
         socket_options: _TYPE_SOCKET_OPTIONS | None = None,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
-        world_name: str = "",
     ) -> None:
         (self.host, self.port) = self._get_hostport(host, port)
         self.timeout = timeout if isinstance(timeout, float) else None
@@ -70,7 +69,6 @@ class WasiHTTPConnection:
         self.source_address = None
         self.socket_options = None
         self.is_verified = False
-        self.world_name = world_name
 
     def set_tunnel(
         self,
@@ -123,7 +121,7 @@ class WasiHTTPConnection:
         for header, value in headers.items():
             request.set_header(header, value)
 
-        self._response = wasi.send_request(request, self.world_name)
+        self._response = wasi.send_request(request)
 
     def getresponse(self) -> BaseHTTPResponse:
         if self._response is not None:
@@ -215,7 +213,6 @@ class WasiHTTPSConnection(WasiHTTPConnection):
         cert_file: str | None = None,
         key_file: str | None = None,
         key_password: str | None = None,
-        world_name: str = "",
     ) -> None:
         super().__init__(
             host,
@@ -226,7 +223,6 @@ class WasiHTTPSConnection(WasiHTTPConnection):
             socket_options=socket_options,
             proxy=proxy,
             proxy_config=proxy_config,
-            world_name=world_name,
         )
         self.scheme = "https"
 
