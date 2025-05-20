@@ -134,14 +134,15 @@ def notBrotli() -> typing.Callable[[_TestFuncT], _TestFuncT]:
 
 def onlyZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
-        not HAS_ZSTD, reason="only run if a python-zstandard library is installed"
+        not HAS_ZSTD,
+        reason="only run if a python-zstandard library is installed or Python 3.14 and later",
     )
 
 
 def notZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         HAS_ZSTD,
-        reason="only run if a python-zstandard library is not installed",
+        reason="only run if a python-zstandard library is not installed or Python 3.13 and earlier",
     )
 
 
