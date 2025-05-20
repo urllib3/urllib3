@@ -26,9 +26,16 @@ except ImportError:
     brotli = None
 
 try:
-    import zstandard as _unused_module_zstd  # noqa: F401
+    # Python 3.14
+    from compression import zstd as _unused_module_zstd  # noqa: F401
 except ImportError:
-    HAS_ZSTD = False
+    # Python 3.13 and earlier require the 'zstandard' module.
+    try:
+        import zstandard as _unused_module_zstd  # noqa: F401
+    except ImportError:
+        HAS_ZSTD = False
+    else:
+        HAS_ZSTD = True
 else:
     HAS_ZSTD = True
 

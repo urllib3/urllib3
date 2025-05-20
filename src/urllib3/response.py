@@ -26,23 +26,6 @@ try:
 except ImportError:
     brotli = None
 
-try:
-    import zstandard as zstd
-except (AttributeError, ImportError, ValueError):  # Defensive:
-    HAS_ZSTD = False
-else:
-    # The package 'zstandard' added the 'eof' property starting
-    # in v0.18.0 which we require to ensure a complete and
-    # valid zstd stream was fed into the ZstdDecoder.
-    # See: https://github.com/urllib3/urllib3/pull/2624
-    _zstd_version = tuple(
-        map(int, re.search(r"^([0-9]+)\.([0-9]+)", zstd.__version__).groups())  # type: ignore[union-attr]
-    )
-    if _zstd_version < (0, 18):  # Defensive:
-        HAS_ZSTD = False
-    else:
-        HAS_ZSTD = True
-
 from . import util
 from ._base_connection import _TYPE_BODY
 from ._collections import HTTPHeaderDict
@@ -163,11 +146,15 @@ if brotli is not None:
             return b""
 
 
-if HAS_ZSTD:
+try:
+    # Python 3.14+
+    from compression import zstd
+
+    HAS_ZSTD = True
 
     class ZstdDecoder(ContentDecoder):
-        def __init__(self) -> None:
-            self._obj = zstd.ZstdDecompressor().decompressobj()
+        def __init__(self):
+            self._obj = zstd.ZstdDecompressor()
 
         def decompress(self, data: bytes) -> bytes:
             if not data:
@@ -175,15 +162,53 @@ if HAS_ZSTD:
             data_parts = [self._obj.decompress(data)]
             while self._obj.eof and self._obj.unused_data:
                 unused_data = self._obj.unused_data
-                self._obj = zstd.ZstdDecompressor().decompressobj()
+                self._obj = zstd.ZstdDecompressor()
                 data_parts.append(self._obj.decompress(unused_data))
             return b"".join(data_parts)
 
         def flush(self) -> bytes:
-            ret = self._obj.flush()  # note: this is a no-op
             if not self._obj.eof:
                 raise DecodeError("Zstandard data is incomplete")
-            return ret
+            return b""
+
+except ImportError:
+    try:
+        # Python 3.13 and earlier require the 'zstandard' module.
+        import zstandard as zstd
+
+        # The package 'zstandard' added the 'eof' property starting
+        # in v0.18.0 which we require to ensure a complete and
+        # valid zstd stream was fed into the ZstdDecoder.
+        # See: https://github.com/urllib3/urllib3/pull/2624
+        _zstd_version = tuple(
+            map(int, re.search(r"^([0-9]+)\.([0-9]+)", zstd.__version__).groups())  # type: ignore[union-attr]
+        )
+        if _zstd_version < (0, 18):  # Defensive:
+            raise ImportError("zstandard module doesn't have eof")
+    except (AttributeError, ImportError, ValueError):  # Defensive:
+        HAS_ZSTD = False
+    else:
+        HAS_ZSTD = True
+
+        class ZstdDecoder(ContentDecoder):
+            def __init__(self) -> None:
+                self._obj = zstd.ZstdDecompressor().decompressobj()
+
+            def decompress(self, data: bytes) -> bytes:
+                if not data:
+                    return b""
+                data_parts = [self._obj.decompress(data)]
+                while self._obj.eof and self._obj.unused_data:
+                    unused_data = self._obj.unused_data
+                    self._obj = zstd.ZstdDecompressor().decompressobj()
+                    data_parts.append(self._obj.decompress(unused_data))
+                return b"".join(data_parts)
+
+            def flush(self) -> bytes:
+                ret = self._obj.flush()  # note: this is a no-op
+                if not self._obj.eof:
+                    raise DecodeError("Zstandard data is incomplete")
+                return ret
 
 
 class MultiDecoder(ContentDecoder):
