@@ -37,10 +37,10 @@ from urllib3.util.retry import RequestHistory, Retry
 
 def zstd_compress(data: bytes) -> bytes:
     try:
-        from compression import zstd
+        from compression import zstd  # type: ignore[import-not-found] # noqa: F401
     except ImportError:
         import zstandard as zstd
-    return zstd.compress(data)
+    return zstd.compress(data)  # type: ignore[no-any-return]
 
 
 class TestBytesQueueBuffer:

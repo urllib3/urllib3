@@ -148,12 +148,12 @@ if brotli is not None:
 
 try:
     # Python 3.14+
-    from compression import zstd
+    from compression import zstd  # type: ignore[import-not-found] # noqa: F401
 
     HAS_ZSTD = True
 
     class ZstdDecoder(ContentDecoder):
-        def __init__(self):
+        def __init__(self) -> None:
             self._obj = zstd.ZstdDecompressor()
 
         def decompress(self, data: bytes) -> bytes:
@@ -190,7 +190,7 @@ except ImportError:
     else:
         HAS_ZSTD = True
 
-        class ZstdDecoder(ContentDecoder):
+        class ZstdDecoder(ContentDecoder):  # type: ignore[no-redef]
             def __init__(self) -> None:
                 self._obj = zstd.ZstdDecompressor().decompressobj()
 
@@ -208,7 +208,7 @@ except ImportError:
                 ret = self._obj.flush()  # note: this is a no-op
                 if not self._obj.eof:
                     raise DecodeError("Zstandard data is incomplete")
-                return ret
+                return ret  # type: ignore[no-any-return]
 
 
 class MultiDecoder(ContentDecoder):

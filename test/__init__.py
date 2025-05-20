@@ -27,7 +27,9 @@ except ImportError:
 
 try:
     # Python 3.14
-    from compression import zstd as _unused_module_zstd  # noqa: F401
+    from compression import (  # type: ignore[import-not-found] # noqa: F401
+        zstd as _unused_module_zstd,
+    )
 except ImportError:
     # Python 3.13 and earlier require the 'zstandard' module.
     try:

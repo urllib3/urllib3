@@ -30,7 +30,9 @@ else:
     ACCEPT_ENCODING += ",br"
 
 try:
-    from compression import zstd as _unused_module_zstd  # noqa: F401
+    from compression import (  # type: ignore[import-not-found] # noqa: F401
+        zstd as _unused_module_zstd,
+    )
 
     ACCEPT_ENCODING += ",zstd"
 except ImportError:
