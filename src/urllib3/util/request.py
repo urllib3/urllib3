@@ -28,12 +28,20 @@ except ImportError:
     pass
 else:
     ACCEPT_ENCODING += ",br"
+
 try:
-    import zstandard as _unused_module_zstd  # noqa: F401
-except ImportError:
-    pass
-else:
+    from compression import (  # type: ignore[import-not-found] # noqa: F401
+        zstd as _unused_module_zstd,
+    )
+
     ACCEPT_ENCODING += ",zstd"
+except ImportError:
+    try:
+        import zstandard as _unused_module_zstd  # noqa: F401
+
+        ACCEPT_ENCODING += ",zstd"
+    except ImportError:
+        pass
 
 
 class _TYPE_FAILEDTELL(Enum):

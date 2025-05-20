@@ -44,6 +44,10 @@ brotli = [
   "brotli>=1.0.9; platform_python_implementation == 'CPython'",
   "brotlicffi>=0.8.0; platform_python_implementation != 'CPython'"
 ]
+# Once we drop support for Python 3.13 this extra can be removed.
+# We'll need a deprecation period for the 'zstandard' module support
+# so that folks using Python without the 'compression.zstd' module
+# compiled will know to start doing so (although it'll likely be rare).
 zstd = [
   "zstandard>=0.18.0",
 ]
