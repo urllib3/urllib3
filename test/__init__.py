@@ -26,9 +26,18 @@ except ImportError:
     brotli = None
 
 try:
-    import zstandard as _unused_module_zstd  # noqa: F401
+    # Python 3.14
+    from compression import (  # type: ignore[import-not-found] # noqa: F401
+        zstd as _unused_module_zstd,
+    )
 except ImportError:
-    HAS_ZSTD = False
+    # Python 3.13 and earlier require the 'zstandard' module.
+    try:
+        import zstandard as _unused_module_zstd  # noqa: F401
+    except ImportError:
+        HAS_ZSTD = False
+    else:
+        HAS_ZSTD = True
 else:
     HAS_ZSTD = True
 
@@ -127,14 +136,15 @@ def notBrotli() -> typing.Callable[[_TestFuncT], _TestFuncT]:
 
 def onlyZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
-        not HAS_ZSTD, reason="only run if a python-zstandard library is installed"
+        not HAS_ZSTD,
+        reason="only run if a python-zstandard library is installed or Python 3.14 and later",
     )
 
 
 def notZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         HAS_ZSTD,
-        reason="only run if a python-zstandard library is not installed",
+        reason="only run if a python-zstandard library is not installed or Python 3.13 and earlier",
     )
 
 
