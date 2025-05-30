@@ -35,6 +35,14 @@ from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
 
 
+def zstd_compress(data: bytes) -> bytes:
+    try:
+        from compression import zstd  # type: ignore[import-not-found] # noqa: F401
+    except ImportError:
+        import zstandard as zstd
+    return zstd.compress(data)  # type: ignore[no-any-return]
+
+
 class TestBytesQueueBuffer:
     def test_single_chunk(self) -> None:
         buffer = BytesQueueBuffer()
@@ -411,9 +419,7 @@ class TestResponse:
 
     @onlyZstd()
     def test_decode_zstd(self) -> None:
-        import zstandard as zstd
-
-        data = zstd.compress(b"foo")
+        data = zstd_compress(b"foo")
 
         fp = BytesIO(data)
         r = HTTPResponse(fp, headers={"content-encoding": "zstd"})
@@ -421,11 +427,9 @@ class TestResponse:
 
     @onlyZstd()
     def test_decode_multiframe_zstd(self) -> None:
-        import zstandard as zstd
-
         data = (
             # Zstandard frame
-            zstd.compress(b"foo")
+            zstd_compress(b"foo")
             # skippable frame (must be ignored)
             + bytes.fromhex(
                 "50 2A 4D 18"  # Magic_Number (little-endian)
@@ -433,7 +437,7 @@ class TestResponse:
                 "00 00 00 00 00 00 00"  # User_Data
             )
             # Zstandard frame
-            + zstd.compress(b"bar")
+            + zstd_compress(b"bar")
         )
 
         fp = BytesIO(data)
@@ -442,9 +446,7 @@ class TestResponse:
 
     @onlyZstd()
     def test_chunked_decoding_zstd(self) -> None:
-        import zstandard as zstd
-
-        data = zstd.compress(b"foobarbaz")
+        data = zstd_compress(b"foobarbaz")
 
         fp = BytesIO(data)
         r = HTTPResponse(
@@ -475,9 +477,7 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_preload_content(self, data: bytes) -> None:
-        import zstandard as zstd
-
-        data = zstd.compress(data)
+        data = zstd_compress(data)
         fp = BytesIO(data[:-1])
 
         with pytest.raises(DecodeError):
@@ -486,9 +486,7 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_read(self, data: bytes) -> None:
-        import zstandard as zstd
-
-        data = zstd.compress(data)
+        data = zstd_compress(data)
         fp = BytesIO(data[:-1])  # shorten the data to trigger DecodeError
 
         # create response object without(!) reading/decoding the content
@@ -503,9 +501,7 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_read1(self, data: bytes) -> None:
-        import zstandard as zstd
-
-        data = zstd.compress(data)
+        data = zstd_compress(data)
         fp = BytesIO(data[:-1])
 
         r = HTTPResponse(
@@ -523,9 +519,7 @@ class TestResponse:
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_read1(self, data: bytes) -> None:
-        import zstandard as zstd
-
-        encoded_data = zstd.compress(data)
+        encoded_data = zstd_compress(data)
         fp = BytesIO(encoded_data)
 
         r = HTTPResponse(
