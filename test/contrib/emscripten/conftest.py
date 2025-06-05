@@ -84,17 +84,17 @@ def selenium_coverage(
         result = self.run_js(
             f'await pyodide.loadPackage("http://{testserver_http.http_host}:{testserver_http.http_port}/dist/urllib3.whl")'
         )
-        if self.with_jspi is False:
-            # force chrome to test without jspi
+        if not self.with_jspi:
+            # force Chrome to execute the current test without JSPI
             # even though it is always enabled in
             # chrome >= 137. We do this by monkeypatching
             # pyodide.ffi.can_run_sync
             self.run_async(
                 """
-            import pyodide.ffi
-            if pyodide.ffi.can_run_sync()==True:
-                pyodide.ffi.can_run_sync = lambda:False
-            """
+                import pyodide.ffi
+                if pyodide.ffi.can_run_sync():
+                    pyodide.ffi.can_run_sync = lambda: False
+                """
             )
 
         print("Installed package:", result)
@@ -170,8 +170,8 @@ class ServerRunnerInfo:
             jspi_fix_code = textwrap.dedent(
                 """
                 import pyodide.ffi
-                if pyodide.ffi.can_run_sync()==True:
-                    pyodide.ffi.can_run_sync = lambda:False
+                if pyodide.ffi.can_run_sync():
+                    pyodide.ffi.can_run_sync = lambda: False
                 """
             )
         else:
