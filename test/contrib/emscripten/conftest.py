@@ -84,6 +84,19 @@ def selenium_coverage(
         result = self.run_js(
             f'await pyodide.loadPackage("http://{testserver_http.http_host}:{testserver_http.http_port}/dist/urllib3.whl")'
         )
+        if not self.with_jspi:
+            # force Chrome to execute the current test without JSPI
+            # even though it is always enabled in
+            # chrome >= 137. We do this by monkeypatching
+            # pyodide.ffi.can_run_sync
+            self.run_async(
+                """
+                import pyodide.ffi
+                if pyodide.ffi.can_run_sync():
+                    pyodide.ffi.can_run_sync = lambda: False
+                """
+            )
+
         print("Installed package:", result)
         self.run_js(
             """
@@ -128,11 +141,14 @@ _coverage_js.Array.from_(_coverage_outdata)
 
 
 class ServerRunnerInfo:
-    def __init__(self, host: str, port: int, selenium: Any, dist_dir: Path) -> None:
+    def __init__(
+        self, host: str, port: int, selenium: Any, dist_dir: Path, has_jspi: bool
+    ) -> None:
         self.host = host
         self.port = port
         self.selenium = selenium
         self.dist_dir = dist_dir
+        self.has_jspi = has_jspi
 
     def run_webworker(self, code: str) -> Any:
         if isinstance(code, str) and code.startswith("\n"):
@@ -147,6 +163,19 @@ class ServerRunnerInfo:
             _coverage.start()
             """
         )
+
+        # Monkeypatch pyodide to force disable JSPI in newer chrome
+        # so those code paths get tested
+        if self.has_jspi is False:
+            jspi_fix_code = textwrap.dedent(
+                """
+                import pyodide.ffi
+                if pyodide.ffi.can_run_sync():
+                    pyodide.ffi.can_run_sync = lambda: False
+                """
+            )
+        else:
+            jspi_fix_code = ""
 
         coverage_end_code = textwrap.dedent(
             """
@@ -164,7 +193,15 @@ class ServerRunnerInfo:
 
         # the ordering of these code blocks is important - makes sure
         # that the first thing that happens is our wheel is loaded
-        code = coverage_init_code + "\n" + code + "\n" + coverage_end_code
+        code = (
+            coverage_init_code
+            + "\n"
+            + jspi_fix_code
+            + "\n"
+            + code
+            + "\n"
+            + coverage_end_code
+        )
 
         if self.selenium.browser == "firefox":
             # running in worker is SLOW on firefox
@@ -232,6 +269,7 @@ def run_from_server(
         testserver_http.https_port,
         selenium_coverage,
         dist_dir,
+        selenium_coverage.with_jspi,
     )
 
 
