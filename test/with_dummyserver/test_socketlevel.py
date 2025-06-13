@@ -22,6 +22,7 @@ from pathlib import Path
 from test import LONG_TIMEOUT, SHORT_TIMEOUT, notWindows, resolvesLocalhostFQDN
 from threading import Event
 from unittest import mock
+from urllib.parse import urlparse
 
 import pytest
 import trustme
@@ -1289,7 +1290,7 @@ class TestProxyManager(SocketDummyServerTestCase):
             r = conn.urlopen("GET", url, retries=0)
             assert r.status == 200
 
-    def test_connect_ipv6_addr(self) -> None:
+    def test_connect_ipv6_addr_from_host(self) -> None:
         ipv6_addr = "2001:4998:c:a06::2:4008"
 
         def echo_socket_handler(listener: socket.socket) -> None:
@@ -1329,13 +1330,76 @@ class TestProxyManager(SocketDummyServerTestCase):
 
         with proxy_from_url(base_url, cert_reqs="NONE") as proxy:
             url = f"https://[{ipv6_addr}]"
+
+            # Try with connection_from_host
+            parsed_request_url = urlparse(url)
+
+            host_params = {
+                "scheme": parsed_request_url.scheme.lower(),
+                "host": parsed_request_url.hostname,
+                "port": parsed_request_url.port,
+            }
+            conn = proxy.connection_from_host(**host_params)
+            try:
+                with pytest.warns(InsecureRequestWarning):
+                    r = conn.urlopen("GET", url, retries=0)
+                assert r.status == 200
+            except MaxRetryError:
+                pytest.fail(
+                    "Invalid IPv6 format in HTTP CONNECT request when using connection_from_host"
+                )
+
+    def test_connect_ipv6_addr_from_url(self) -> None:
+        ipv6_addr = "2001:4998:c:a06::2:4008"
+
+        def echo_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+            s = buf.decode("utf-8")
+
+            if s.startswith(f"CONNECT [{ipv6_addr}]:443"):
+                sock.send(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                ssl_sock = original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                )
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += ssl_sock.recv(65536)
+
+                ssl_sock.send(
+                    b"HTTP/1.1 200 OK\r\n"
+                    b"Content-Type: text/plain\r\n"
+                    b"Content-Length: 2\r\n"
+                    b"Connection: close\r\n"
+                    b"\r\n"
+                    b"Hi"
+                )
+                ssl_sock.close()
+            else:
+                sock.close()
+
+        self._start_server(echo_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        with proxy_from_url(base_url, cert_reqs="NONE") as proxy:
+            url = f"https://[{ipv6_addr}]"
+
+            # Try with connection_from_url
             conn = proxy.connection_from_url(url)
             try:
                 with pytest.warns(InsecureRequestWarning):
                     r = conn.urlopen("GET", url, retries=0)
                 assert r.status == 200
             except MaxRetryError:
-                pytest.fail("Invalid IPv6 format in HTTP CONNECT request")
+                pytest.fail(
+                    "Invalid IPv6 format in HTTP CONNECT request when using connection_from_url"
+                )
 
     @pytest.mark.parametrize("target_scheme", ["http", "https"])
     def test_https_proxymanager_connected_to_http_proxy(

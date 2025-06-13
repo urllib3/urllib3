@@ -233,11 +233,16 @@ class HTTPConnection(_HTTPConnection):
         self._tunnel_scheme = scheme
 
     if sys.version_info < (3, 11, 4):
+        # Taken from http.client. When using connection_from_host, host will come without brackets.
+        def _wrap_ipv6(self, ip: bytes) -> bytes:
+            if b":" in ip and ip[0] != b"["[0]:
+                return b"[" + ip + b"]"
+            return ip
 
         def _tunnel(self) -> None:
             _MAXLINE = http.client._MAXLINE  # type: ignore[attr-defined]
             connect = b"CONNECT %s:%d HTTP/1.0\r\n" % (  # type: ignore[str-format]
-                self._tunnel_host.encode("ascii"),  # type: ignore[union-attr]
+                self._wrap_ipv6(self._tunnel_host.encode("idna")),  # type: ignore[union-attr]
                 self._tunnel_port,
             )
             headers = [connect]
