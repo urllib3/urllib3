@@ -1334,12 +1334,11 @@ class TestProxyManager(SocketDummyServerTestCase):
             # Try with connection_from_host
             parsed_request_url = urlparse(url)
 
-            host_params = {
-                "scheme": parsed_request_url.scheme.lower(),
-                "host": parsed_request_url.hostname,
-                "port": parsed_request_url.port,
-            }
-            conn = proxy.connection_from_host(**host_params)
+            conn = proxy.connection_from_host(
+                scheme=parsed_request_url.scheme.lower(),
+                host=parsed_request_url.hostname,
+                port=parsed_request_url.port,
+            )
             try:
                 with pytest.warns(InsecureRequestWarning):
                     r = conn.urlopen("GET", url, retries=0)
