@@ -552,7 +552,7 @@ class BaseHTTPResponse(io.IOBase):
     def getheader(self, name: str, default: str | None = None) -> str | None:
         warnings.warn(
             "HTTPResponse.getheader() is deprecated and will be removed "
-            "in urllib3 v2.1.0. Instead use HTTPResponse.headers.get(name, default).",
+            "in urllib3 v2.5.0. Instead use HTTPResponse.headers.get(name, default).",
             category=DeprecationWarning,
             stacklevel=2,
         )
