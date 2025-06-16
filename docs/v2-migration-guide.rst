@@ -30,8 +30,8 @@ Here's a short summary of which changes in urllib3 2.x are most important:
 - Removed the ``urllib3.contrib.ntlmpool`` module.
 - Removed the ``urllib3.contrib.securetransport`` module.
 - Removed the ``urllib3[secure]`` extra.
-- Deprecated the ``HTTPResponse.getheaders()`` method in favor of ``HTTPResponse.headers``, will be removed in 2.5.0.
-- Deprecated the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``, will be removed in 2.5.0.
+- Deprecated the ``HTTPResponse.getheaders()`` method in favor of ``HTTPResponse.headers``, will be removed in 2.6.0.
+- Deprecated the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``, will be removed in 2.6.0.
 - Deprecated URLs without a scheme (ie 'https://') and will be raising an error in a future version of urllib3.
 - Changed the default minimum TLS version to TLS 1.2 (previously was TLS 1.0).
 - Changed the default request body encoding from 'ISO-8859-1' to 'UTF-8'.
@@ -217,7 +217,7 @@ Warnings will look something like this:
 .. code-block:: bash
 
   DeprecationWarning: 'ssl_version' option is deprecated and will be removed
-  in urllib3 v2.5.0. Instead use 'ssl_minimum_version'
+  in urllib3 v2.6.0. Instead use 'ssl_minimum_version'
 
 Continue removing deprecation warnings until there are no more. After this you can publish a new release of your package
 that supports both urllib3 1.26.x and 2.x.
