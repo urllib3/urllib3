@@ -8,7 +8,6 @@ import re
 import socket
 import sys
 import typing
-import warnings
 import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage

@@ -14,7 +14,6 @@ from unittest import mock
 
 import pytest
 
-from urllib3 import HTTPHeaderDict
 from urllib3.exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
