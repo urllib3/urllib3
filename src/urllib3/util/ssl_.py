@@ -289,7 +289,7 @@ def create_urllib3_context(
             # keep the maximum version to be it's default value: 'TLSVersion.MAXIMUM_SUPPORTED'
             warnings.warn(
                 "'ssl_version' option is deprecated and will be "
-                "removed in urllib3 v2.1.0. Instead use 'ssl_minimum_version'",
+                "removed in urllib3 v2.6.0. Instead use 'ssl_minimum_version'",
                 category=DeprecationWarning,
                 stacklevel=2,
             )
