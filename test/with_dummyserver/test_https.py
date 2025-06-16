@@ -762,7 +762,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 cmgr = pytest.warns(
                     DeprecationWarning,
                     match=r"'ssl_version' option is deprecated and will be removed "
-                    r"in urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version'",
+                    r"in urllib3 v2\.5\.0\. Instead use 'ssl_minimum_version'",
                 )
             with cmgr:
                 r = https_pool.request("GET", "/")
@@ -1132,7 +1132,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         with pytest.warns(
             DeprecationWarning,
             match=r"'ssl_version' option is deprecated and will be removed in "
-            r"urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version'",
+            r"urllib3 v2\.5\.0\. Instead use 'ssl_minimum_version'",
         ):
             ctx = urllib3.util.ssl_.create_urllib3_context(
                 ssl_version=self.ssl_version()
