@@ -836,7 +836,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             str(x.message)
             == (
                 "'ssl_version' option is deprecated and will be removed in "
-                "urllib3 v2.1.0. Instead use 'ssl_minimum_version'"
+                "urllib3 v2.5.0. Instead use 'ssl_minimum_version'"
             )
             for x in w
         )
