@@ -1,0 +1,2 @@
+Removed the ``HTTPResponse.getheaders()`` method in favor of ``HTTPResponse.headers``.
+Removed the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``.
