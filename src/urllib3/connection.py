@@ -232,7 +232,7 @@ class HTTPConnection(_HTTPConnection):
         super().set_tunnel(host, port=port, headers=headers)
         self._tunnel_scheme = scheme
 
-    if sys.version_info < (3, 12, 3) and not sys.version_info > (3, 11, 8):
+    if sys.version_info < (3, 11, 9) or ((3, 12) <= sys.version_info < (3, 12, 3)):
         # Taken from python/cpython#100986 which was backported in 3.11.9 and 3.12.3.
         # When using connection_from_host, host will come without brackets.
         def _wrap_ipv6(self, ip: bytes) -> bytes:
@@ -282,9 +282,8 @@ class HTTPConnection(_HTTPConnection):
                 finally:
                     response.close()
 
-        if (3, 12) <= sys.version_info < (3, 12, 3):
+        elif (3, 12) <= sys.version_info < (3, 12, 3):
             # https://github.com/python/cpython/commit/23aef575c7629abcd4aaf028ebd226fb41a4b3c8#diff-3cf29d90eb758d0fe5ec013bbfda9b0bb60be4f7d899583bd5f490a7a5a5dc5fR939-R952
-            from http.client import _read_headers  # type: ignore[attr-defined]
 
             def _tunnel(self) -> None:  # noqa: F811
                 connect = b"CONNECT %s:%d HTTP/1.1\r\n" % (  # type: ignore[str-format]
@@ -305,9 +304,9 @@ class HTTPConnection(_HTTPConnection):
                 try:
                     (version, code, message) = response._read_status()  # type: ignore[attr-defined]
 
-                    self._raw_proxy_headers = _read_headers(  # type: ignore[name-defined]  # noqa: F821
-                        response.fp
-                    )
+                    from http.client import _read_headers  # type: ignore[attr-defined]
+
+                    self._raw_proxy_headers = _read_headers(response.fp)
 
                     if self.debuglevel > 0:
                         for header in self._raw_proxy_headers:
