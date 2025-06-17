@@ -543,7 +543,7 @@ class BaseHTTPResponse(io.IOBase):
     def getheaders(self) -> HTTPHeaderDict:
         warnings.warn(
             "HTTPResponse.getheaders() is deprecated and will be removed "
-            "in urllib3 v2.1.0. Instead access HTTPResponse.headers directly.",
+            "in urllib3 v2.6.0. Instead access HTTPResponse.headers directly.",
             category=DeprecationWarning,
             stacklevel=2,
         )
@@ -552,7 +552,7 @@ class BaseHTTPResponse(io.IOBase):
     def getheader(self, name: str, default: str | None = None) -> str | None:
         warnings.warn(
             "HTTPResponse.getheader() is deprecated and will be removed "
-            "in urllib3 v2.1.0. Instead use HTTPResponse.headers.get(name, default).",
+            "in urllib3 v2.6.0. Instead use HTTPResponse.headers.get(name, default).",
             category=DeprecationWarning,
             stacklevel=2,
         )
@@ -1100,6 +1100,10 @@ class HTTPResponse(BaseHTTPResponse):
     def shutdown(self) -> None:
         if not self._sock_shutdown:
             raise ValueError("Cannot shutdown socket as self._sock_shutdown is not set")
+        if self._connection is None:
+            raise RuntimeError(
+                "Cannot shutdown as connection has already been released to the pool"
+            )
         self._sock_shutdown(socket.SHUT_RD)
 
     def close(self) -> None:
