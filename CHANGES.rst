@@ -4,6 +4,8 @@
 - Fixed a security issue where restricting the maximum number of followed
   redirects at the ``urllib3.PoolManager`` level via the ``retries`` parameter
   did not work.
+- Made the Node.js runtime respect redirect parameters such as ``retries``
+  and ``redirects``.
 - TODO: add other entries in the release PR.
 
 
