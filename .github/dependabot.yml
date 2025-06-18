@@ -6,7 +6,6 @@ updates:
       interval: "weekly"
     labels:
       - "dependencies"
-      - "github_actions"
       - "Skip Changelog"
     ignore:
       # Ignore all patch releases as we can manually
