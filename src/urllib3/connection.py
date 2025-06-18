@@ -241,7 +241,9 @@ class HTTPConnection(_HTTPConnection):
             return ip
 
         if sys.version_info < (3, 11, 9):
-            # https://github.com/python/cpython/commit/6fbc61070fda2ffb8889e77e3b24bca4249ab4d1#diff-3cf29d90eb758d0fe5ec013bbfda9b0bb60be4f7d899583bd5f490a7a5a5dc5fR923
+            # `_tunnel` copied from 3.11.13 backporting
+            # https://github.com/python/cpython/commit/0d4026432591d43185568dd31cef6a034c4b9261
+            # and https://github.com/python/cpython/commit/6fbc61070fda2ffb8889e77e3b24bca4249ab4d1
             def _tunnel(self) -> None:
                 _MAXLINE = http.client._MAXLINE  # type: ignore[attr-defined]
                 connect = b"CONNECT %s:%d HTTP/1.0\r\n" % (  # type: ignore[str-format]
@@ -283,8 +285,8 @@ class HTTPConnection(_HTTPConnection):
                     response.close()
 
         elif (3, 12) <= sys.version_info < (3, 12, 3):
-            # https://github.com/python/cpython/commit/23aef575c7629abcd4aaf028ebd226fb41a4b3c8#diff-3cf29d90eb758d0fe5ec013bbfda9b0bb60be4f7d899583bd5f490a7a5a5dc5fR939-R952
-
+            # `_tunnel` copied from 3.12.11 backporting
+            # https://github.com/python/cpython/commit/23aef575c7629abcd4aaf028ebd226fb41a4b3c8
             def _tunnel(self) -> None:  # noqa: F811
                 connect = b"CONNECT %s:%d HTTP/1.1\r\n" % (  # type: ignore[str-format]
                     self._wrap_ipv6(self._tunnel_host.encode("idna")),  # type: ignore[union-attr]
@@ -304,9 +306,7 @@ class HTTPConnection(_HTTPConnection):
                 try:
                     (version, code, message) = response._read_status()  # type: ignore[attr-defined]
 
-                    from http.client import _read_headers  # type: ignore[attr-defined]
-
-                    self._raw_proxy_headers = _read_headers(response.fp)
+                    self._raw_proxy_headers = http.client._read_headers(response.fp)  # type: ignore[attr-defined]
 
                     if self.debuglevel > 0:
                         for header in self._raw_proxy_headers:
