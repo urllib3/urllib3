@@ -58,6 +58,11 @@ jobs:
             os: ubuntu-24.04
             experimental: false
             nox-session: test_integration
+          # Test with 3.12.2 for https://github.com/urllib3/urllib3/pull/3620 patch
+          - python-version: "3.12.2"
+            os: ubuntu-24.04
+            experimental: false
+            nox-session: test-3.12
           # pypy
           - python-version: "pypy-3.10"
             os: ubuntu-24.04

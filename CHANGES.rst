@@ -1,3 +1,26 @@
+2.5.0 (2025-06-18)
+==================
+
+Features
+--------
+
+- Added support for the ``compression.zstd`` module that is new in Python 3.14.
+  See `PEP 784 <https://peps.python.org/pep-0784/>`_ for more information. (`#3610 <https://github.com/urllib3/urllib3/issues/3610>`__)
+- Added support for version 0.5 of ``hatch-vcs`` (`#3612 <https://github.com/urllib3/urllib3/issues/3612>`__)
+
+
+Bugfixes
+--------
+
+- Fixed a security issue where restricting the maximum number of followed
+  redirects at the ``urllib3.PoolManager`` level via the ``retries`` parameter
+  did not work.
+- Made the Node.js runtime respect redirect parameters such as ``retries``
+  and ``redirects``.
+- Raised exception for ``HTTPResponse.shutdown`` on a connection already released to the pool. (`#3581 <https://github.com/urllib3/urllib3/issues/3581>`__)
+- Fixed incorrect `CONNECT` statement when using an IPv6 proxy with `connection_from_host`. Previously would not be wrapped in `[]`. (`#3615 <https://github.com/urllib3/urllib3/issues/3615>`__)
+
+
 2.4.0 (2025-04-10)
 ==================
 
@@ -29,7 +52,7 @@ Features
 --------
 
 - Added ``HTTPResponse.shutdown()`` to stop any ongoing or future reads for a specific response. It calls ``shutdown(SHUT_RD)`` on the underlying socket. This feature was `sponsored by LaunchDarkly <https://opencollective.com/urllib3/contributions/815307>`__. (`#2868 <https://github.com/urllib3/urllib3/issues/2868>`__)
-- Added support for JavaScript Promise Integration on Emscripten. This enables more efficient WebAssembly 
+- Added support for JavaScript Promise Integration on Emscripten. This enables more efficient WebAssembly
   requests and streaming, and makes it possible to use in Node.js if you launch it as  ``node --experimental-wasm-stack-switching``. (`#3400 <https://github.com/urllib3/urllib3/issues/3400>`__)
 - Added the ``proxy_is_tunneling`` property to ``HTTPConnection`` and ``HTTPSConnection``. (`#3285 <https://github.com/urllib3/urllib3/issues/3285>`__)
 - Added pickling support to ``NewConnectionError`` and ``NameResolutionError``. (`#3480 <https://github.com/urllib3/urllib3/issues/3480>`__)

@@ -944,6 +944,68 @@ def test_retries(
     pyodide_test(selenium_coverage, testserver_http.http_host, find_unused_port())
 
 
+def test_redirects(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage: typing.Any, host: str, port: int) -> None:
+        from urllib3 import request
+
+        redirect_url = f"http://{host}:{port}/redirect"
+        response = request("GET", redirect_url)
+        assert response.status == 200
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
+
+
+@pytest.mark.with_jspi
+def test_disabled_redirects(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    """
+    Test that urllib3 can control redirects in Node.js.
+    """
+
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage: typing.Any, host: str, port: int) -> None:
+        import pytest
+
+        from urllib3 import PoolManager, request
+        from urllib3.contrib.emscripten.fetch import _is_node_js
+        from urllib3.exceptions import MaxRetryError
+
+        if not _is_node_js():
+            pytest.skip("urllib3 does not control redirects in browsers.")
+
+        redirect_url = f"http://{host}:{port}/redirect"
+
+        with PoolManager(retries=0) as http:
+            with pytest.raises(MaxRetryError):
+                http.request("GET", redirect_url)
+
+            response = http.request("GET", redirect_url, redirect=False)
+            assert response.status == 303
+
+        with PoolManager(retries=False) as http:
+            response = http.request("GET", redirect_url)
+            assert response.status == 303
+
+        with pytest.raises(MaxRetryError):
+            request("GET", redirect_url, retries=0)
+
+        response = request("GET", redirect_url, redirect=False)
+        assert response.status == 303
+
+        response = request("GET", redirect_url, retries=0, redirect=False)
+        assert response.status == 303
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
+
+
 def test_insecure_requests_warning(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
