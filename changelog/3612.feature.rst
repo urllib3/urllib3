@@ -1,1 +1,0 @@
-Support version 0.5 of ``hatch-vcs``
