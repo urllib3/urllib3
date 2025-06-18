@@ -944,6 +944,22 @@ def test_retries(
     pyodide_test(selenium_coverage, testserver_http.http_host, find_unused_port())
 
 
+def test_redirects(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage: typing.Any, host: str, port: int) -> None:
+        from urllib3 import request
+
+        redirect_url = f"http://{host}:{port}/redirect"
+        response = request("GET", redirect_url)
+        assert response.status == 200
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
+
+
 def test_insecure_requests_warning(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
