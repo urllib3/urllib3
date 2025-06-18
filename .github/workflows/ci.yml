@@ -139,6 +139,11 @@ jobs:
           path: .nox/.cache
           # noxfile.py contains the Pyodide version used currently.
           key: pyodide-downloads-${{ hashFiles('noxfile.py') }}
+      - name: Create symlink to python.exe to help nox find Python
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          mklink "%Python3_ROOT_DIR%\python${{ matrix.python-version }}.exe" "%Python3_ROOT_DIR%\python.exe"
       - name: "Run tests"
         run: |
           uvx nox -s "$NOX_SESSION"
