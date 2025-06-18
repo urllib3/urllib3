@@ -912,6 +912,18 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             # the pool should still contain poolsize elements
             assert http.pool.qsize() == http.pool.maxsize
 
+    def test_shutdown_on_connection_released_to_pool(self) -> None:
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            resp = pool.urlopen("GET", "/", preload_content=False)
+            resp.drain_conn()
+            resp.release_conn()
+
+        with pytest.raises(
+            RuntimeError,
+            match="Cannot shutdown as connection has already been released to the pool",
+        ):
+            resp.shutdown()
+
     def test_mixed_case_hostname(self) -> None:
         with HTTPConnectionPool("LoCaLhOsT", self.port) as pool:
             response = pool.request("GET", f"http://LoCaLhOsT:{self.port}/")

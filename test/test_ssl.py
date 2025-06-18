@@ -241,7 +241,7 @@ class TestSSL:
         with pytest.warns(
             DeprecationWarning,
             match=r"'ssl_version' option is deprecated and will be removed in "
-            r"urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version'",
+            r"urllib3 v2\.6\.0\. Instead use 'ssl_minimum_version'",
         ):
             ssl_.create_urllib3_context(**kwargs)
 
