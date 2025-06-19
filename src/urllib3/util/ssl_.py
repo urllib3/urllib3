@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import hashlib
 import hmac
 import os
@@ -371,6 +372,15 @@ def create_urllib3_context(
     return context
 
 
+# We wrap this in a cache so load_verify_locations() is called once
+# for a given set of parameters. This prevents repeated reloading which
+# can be slow with some version of OpenSSL
+
+@functools.lru_cache
+def load_verify_locations(context, ca_certs, ca_cert_dir, ca_cert_data):
+    context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
+
+
 @typing.overload
 def ssl_wrap_socket(
     sock: socket.socket,
@@ -455,7 +465,7 @@ def ssl_wrap_socket(
 
     if ca_certs or ca_cert_dir or ca_cert_data:
         try:
-            context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
+            load_verify_locations(context, ca_certs, ca_cert_dir, ca_cert_data)
         except OSError as e:
             raise SSLError(e) from e
 
