@@ -1,3 +1,75 @@
+2.5.0 (2025-06-18)
+==================
+
+Features
+--------
+
+- Added support for the ``compression.zstd`` module that is new in Python 3.14.
+  See `PEP 784 <https://peps.python.org/pep-0784/>`_ for more information. (`#3610 <https://github.com/urllib3/urllib3/issues/3610>`__)
+- Added support for version 0.5 of ``hatch-vcs`` (`#3612 <https://github.com/urllib3/urllib3/issues/3612>`__)
+
+
+Bugfixes
+--------
+
+- Fixed a security issue where restricting the maximum number of followed
+  redirects at the ``urllib3.PoolManager`` level via the ``retries`` parameter
+  did not work.
+- Made the Node.js runtime respect redirect parameters such as ``retries``
+  and ``redirects``.
+- Raised exception for ``HTTPResponse.shutdown`` on a connection already released to the pool. (`#3581 <https://github.com/urllib3/urllib3/issues/3581>`__)
+- Fixed incorrect `CONNECT` statement when using an IPv6 proxy with `connection_from_host`. Previously would not be wrapped in `[]`. (`#3615 <https://github.com/urllib3/urllib3/issues/3615>`__)
+
+
+2.4.0 (2025-04-10)
+==================
+
+Features
+--------
+
+- Applied PEP 639 by specifying the license fields in pyproject.toml. (`#3522 <https://github.com/urllib3/urllib3/issues/3522>`__)
+- Updated exceptions to save and restore more properties during the pickle/serialization process. (`#3567 <https://github.com/urllib3/urllib3/issues/3567>`__)
+- Added ``verify_flags`` option to ``create_urllib3_context`` with a default of ``VERIFY_X509_PARTIAL_CHAIN`` and ``VERIFY_X509_STRICT`` for Python 3.13+. (`#3571 <https://github.com/urllib3/urllib3/issues/3571>`__)
+
+
+Bugfixes
+--------
+
+- Fixed a bug with partial reads of streaming data in Emscripten. (`#3555 <https://github.com/urllib3/urllib3/issues/3555>`__)
+
+
+Misc
+----
+
+- Switched to uv for installing development dependecies. (`#3550 <https://github.com/urllib3/urllib3/issues/3550>`__)
+- Removed the ``multiple.intoto.jsonl`` asset from GitHub releases. Attestation of release files since v2.3.0 can be found on PyPI. (`#3566 <https://github.com/urllib3/urllib3/issues/3566>`__)
+
+
+2.3.0 (2024-12-22)
+==================
+
+Features
+--------
+
+- Added ``HTTPResponse.shutdown()`` to stop any ongoing or future reads for a specific response. It calls ``shutdown(SHUT_RD)`` on the underlying socket. This feature was `sponsored by LaunchDarkly <https://opencollective.com/urllib3/contributions/815307>`__. (`#2868 <https://github.com/urllib3/urllib3/issues/2868>`__)
+- Added support for JavaScript Promise Integration on Emscripten. This enables more efficient WebAssembly
+  requests and streaming, and makes it possible to use in Node.js if you launch it as  ``node --experimental-wasm-stack-switching``. (`#3400 <https://github.com/urllib3/urllib3/issues/3400>`__)
+- Added the ``proxy_is_tunneling`` property to ``HTTPConnection`` and ``HTTPSConnection``. (`#3285 <https://github.com/urllib3/urllib3/issues/3285>`__)
+- Added pickling support to ``NewConnectionError`` and ``NameResolutionError``. (`#3480 <https://github.com/urllib3/urllib3/issues/3480>`__)
+
+
+Bugfixes
+--------
+
+- Fixed an issue in debug logs where the HTTP version was rendering as "HTTP/11" instead of "HTTP/1.1". (`#3489 <https://github.com/urllib3/urllib3/issues/3489>`__)
+
+
+Deprecations and Removals
+-------------------------
+
+- Removed support for Python 3.8. (`#3492 <https://github.com/urllib3/urllib3/issues/3492>`__)
+
+
 2.2.3 (2024-09-12)
 ==================
 

@@ -11,7 +11,7 @@ import pytest
 
 
 @contextmanager
-def stub_timezone_ctx(tzname: str | None) -> typing.Generator[None, None, None]:
+def stub_timezone_ctx(tzname: str | None) -> typing.Generator[None]:
     """
     Switch to a locally-known timezone specified by `tzname`.
     On exit, restore the previous timezone.

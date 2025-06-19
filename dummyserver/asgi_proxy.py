@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ssl
 import typing
 
 import httpx
@@ -29,7 +30,10 @@ async def _read_body(receive: ASGIReceiveCallable) -> bytes:
 
 class ProxyApp:
     def __init__(self, upstream_ca_certs: str | None = None):
-        self.upstream_ca_certs = upstream_ca_certs
+        self.ssl_context = None
+        if upstream_ca_certs:
+            self.ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+            self.ssl_context.load_verify_locations(cafile=upstream_ca_certs)
 
     async def __call__(
         self, scope: Scope, receive: ASGIReceiveCallable, send: ASGISendCallable
@@ -48,7 +52,7 @@ class ProxyApp:
         receive: ASGIReceiveCallable,
         send: ASGISendCallable,
     ) -> None:
-        async with httpx.AsyncClient(verify=self.upstream_ca_certs or True) as client:
+        async with httpx.AsyncClient(verify=self.ssl_context or True) as client:
             client_response = await client.request(
                 method=scope["method"],
                 url=scope["path"],

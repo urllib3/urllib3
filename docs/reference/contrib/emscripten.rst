@@ -65,7 +65,7 @@ Features which are usable with Emscripten support are:
 * Timeouts
 * Retries
 * Streaming (with Web Workers and Cross-Origin Isolation)
-* Redirects
+* Redirects (urllib3 controls redirects in Node.js but not in browsers where behavior is determined by runtime)
 * Decompressing response bodies
 
 Features which don't work with Emscripten:

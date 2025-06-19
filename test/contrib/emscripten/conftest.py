@@ -28,7 +28,7 @@ def _get_coverage_filename(prefix: str) -> str:
 @pytest.fixture(scope="module")
 def testserver_http(
     request: pytest.FixtureRequest,
-) -> Generator[PyodideServerInfo, None, None]:
+) -> Generator[PyodideServerInfo]:
     pyodide_dist_dir = Path(os.getcwd(), request.config.getoption("--dist-dir"))
     pyodide_testing_app.config["pyodide_dist_dir"] = str(pyodide_dist_dir)
     http_host = "localhost"
@@ -60,7 +60,7 @@ class PyodideServerInfo:
 @pytest.fixture()
 def selenium_with_jspi_if_possible(
     request: pytest.FixtureRequest, runtime: str, has_jspi: bool
-) -> Generator[Any, None, None]:
+) -> Generator[Any]:
     if runtime.startswith("firefox") or not has_jspi:
         fixture_name = "selenium"
         with_jspi = False
@@ -75,7 +75,7 @@ def selenium_with_jspi_if_possible(
 @pytest.fixture()
 def selenium_coverage(
     selenium_with_jspi_if_possible: Any, testserver_http: PyodideServerInfo
-) -> Generator[Any, None, None]:
+) -> Generator[Any]:
     def _install_packages(self: Any) -> None:
         if self.browser == "node":
             # stop Node.js checking our https certificates
@@ -84,6 +84,19 @@ def selenium_coverage(
         result = self.run_js(
             f'await pyodide.loadPackage("http://{testserver_http.http_host}:{testserver_http.http_port}/dist/urllib3.whl")'
         )
+        if not self.with_jspi:
+            # force Chrome to execute the current test without JSPI
+            # even though it is always enabled in
+            # chrome >= 137. We do this by monkeypatching
+            # pyodide.ffi.can_run_sync
+            self.run_async(
+                """
+                import pyodide.ffi
+                if pyodide.ffi.can_run_sync():
+                    pyodide.ffi.can_run_sync = lambda: False
+                """
+            )
+
         print("Installed package:", result)
         self.run_js(
             """
@@ -128,11 +141,14 @@ _coverage_js.Array.from_(_coverage_outdata)
 
 
 class ServerRunnerInfo:
-    def __init__(self, host: str, port: int, selenium: Any, dist_dir: Path) -> None:
+    def __init__(
+        self, host: str, port: int, selenium: Any, dist_dir: Path, has_jspi: bool
+    ) -> None:
         self.host = host
         self.port = port
         self.selenium = selenium
         self.dist_dir = dist_dir
+        self.has_jspi = has_jspi
 
     def run_webworker(self, code: str) -> Any:
         if isinstance(code, str) and code.startswith("\n"):
@@ -147,6 +163,19 @@ class ServerRunnerInfo:
             _coverage.start()
             """
         )
+
+        # Monkeypatch pyodide to force disable JSPI in newer chrome
+        # so those code paths get tested
+        if self.has_jspi is False:
+            jspi_fix_code = textwrap.dedent(
+                """
+                import pyodide.ffi
+                if pyodide.ffi.can_run_sync():
+                    pyodide.ffi.can_run_sync = lambda: False
+                """
+            )
+        else:
+            jspi_fix_code = ""
 
         coverage_end_code = textwrap.dedent(
             """
@@ -164,7 +193,15 @@ class ServerRunnerInfo:
 
         # the ordering of these code blocks is important - makes sure
         # that the first thing that happens is our wheel is loaded
-        code = coverage_init_code + "\n" + code + "\n" + coverage_end_code
+        code = (
+            coverage_init_code
+            + "\n"
+            + jspi_fix_code
+            + "\n"
+            + code
+            + "\n"
+            + coverage_end_code
+        )
 
         if self.selenium.browser == "firefox":
             # running in worker is SLOW on firefox
@@ -214,7 +251,7 @@ class ServerRunnerInfo:
 @pytest.fixture()
 def run_from_server(
     selenium_coverage: Any, testserver_http: PyodideServerInfo
-) -> Generator[ServerRunnerInfo, None, None]:
+) -> Generator[ServerRunnerInfo]:
     if selenium_coverage.browser != "node":
         # on node, we don't need to be on the same origin
         # so we can ignore all this
@@ -232,6 +269,7 @@ def run_from_server(
         testserver_http.https_port,
         selenium_coverage,
         dist_dir,
+        selenium_coverage.with_jspi,
     )
 
 

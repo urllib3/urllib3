@@ -944,6 +944,68 @@ def test_retries(
     pyodide_test(selenium_coverage, testserver_http.http_host, find_unused_port())
 
 
+def test_redirects(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage: typing.Any, host: str, port: int) -> None:
+        from urllib3 import request
+
+        redirect_url = f"http://{host}:{port}/redirect"
+        response = request("GET", redirect_url)
+        assert response.status == 200
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
+
+
+@pytest.mark.with_jspi
+def test_disabled_redirects(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    """
+    Test that urllib3 can control redirects in Node.js.
+    """
+
+    @run_in_pyodide  # type: ignore[misc]
+    def pyodide_test(selenium_coverage: typing.Any, host: str, port: int) -> None:
+        import pytest
+
+        from urllib3 import PoolManager, request
+        from urllib3.contrib.emscripten.fetch import _is_node_js
+        from urllib3.exceptions import MaxRetryError
+
+        if not _is_node_js():
+            pytest.skip("urllib3 does not control redirects in browsers.")
+
+        redirect_url = f"http://{host}:{port}/redirect"
+
+        with PoolManager(retries=0) as http:
+            with pytest.raises(MaxRetryError):
+                http.request("GET", redirect_url)
+
+            response = http.request("GET", redirect_url, redirect=False)
+            assert response.status == 303
+
+        with PoolManager(retries=False) as http:
+            response = http.request("GET", redirect_url)
+            assert response.status == 303
+
+        with pytest.raises(MaxRetryError):
+            request("GET", redirect_url, retries=0)
+
+        response = request("GET", redirect_url, redirect=False)
+        assert response.status == 303
+
+        response = request("GET", redirect_url, retries=0, redirect=False)
+        assert response.status == 303
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
+    )
+
+
 def test_insecure_requests_warning(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:
@@ -1048,6 +1110,44 @@ def test_streaming_jspi(
         # make sure that the timeout on server side really happened
         # by checking that it took greater than the timeout
         assert time.time() - start_time > 2
+        assert len(all_data.decode("utf-8")) == 17825792
+
+    pyodide_test(
+        selenium_coverage,
+        testserver_http.http_host,
+        testserver_http.http_port,
+        bigfile_url,
+    )
+
+
+# another streaming test - uses chunked read
+# and streaming to check that it works okay
+# (see https://github.com/urllib3/urllib3/issues/3555 )
+@pytest.mark.with_jspi
+def test_streaming2_jspi(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    bigfile_url = (
+        f"http://{testserver_http.http_host}:{testserver_http.http_port}/dripfeed"
+    )
+
+    @run_in_pyodide
+    def pyodide_test(selenium, host, port, bigfile_url):  # type: ignore[no-untyped-def]
+        from urllib3.connection import HTTPConnection
+        from urllib3.response import BaseHTTPResponse
+
+        conn = HTTPConnection(host, port)
+        conn.request("GET", bigfile_url, preload_content=False)
+        response = conn.getresponse()
+        assert isinstance(response, BaseHTTPResponse)
+        # get first data
+        all_data = response.read(32768)
+        # now get the rest in chunks
+        # to make sure that streaming works
+        # correctly even if the low level read doesn't
+        # always return a full buffer (which it doesn't)
+        while not response._response.body.closed:  # type: ignore[attr-defined]
+            all_data += response.read(32768)
         assert len(all_data.decode("utf-8")) == 17825792
 
     pyodide_test(

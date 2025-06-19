@@ -1,1 +1,0 @@
-Added the ``proxy_is_tunneling`` property to ``HTTPConnection`` and ``HTTPSConnection``.

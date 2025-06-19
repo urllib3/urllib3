@@ -13,7 +13,7 @@ from urllib3.response import HTTPResponse
 
 
 @pytest.fixture()
-def pool() -> typing.Generator[HTTPConnectionPool, None, None]:
+def pool() -> typing.Generator[HTTPConnectionPool]:
     server.setup_class()
 
     with HTTPConnectionPool(server.host, server.port) as pool:

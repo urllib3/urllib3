@@ -227,6 +227,7 @@ async def encodingrequest() -> ResponseReturnValue:
 
 
 @hypercorn_app.route("/redirect", methods=["GET", "POST", "PUT"])
+@pyodide_testing_app.route("/redirect", methods=["GET", "POST", "PUT"])
 async def redirect() -> ResponseReturnValue:
     "Perform a redirect to ``target``"
     values = await request.values
@@ -318,7 +319,7 @@ async def slow() -> ResponseReturnValue:
 async def dripfeed() -> ResponseReturnValue:
     # great big text file which streams half the file
     # then pauses for 2 seconds and streams the rest
-    async def generate() -> AsyncGenerator[bytes, None]:
+    async def generate() -> AsyncGenerator[bytes]:
         for x in range(8):
             if x == 4:
                 await trio.sleep(2)

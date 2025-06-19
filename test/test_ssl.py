@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ssl
+import sys
 import typing
 from unittest import mock
 
@@ -62,6 +63,25 @@ class TestSSL:
         with mock.patch("urllib3.util.ssl_.SSLContext", None):
             with pytest.raises(TypeError):
                 ssl_.create_urllib3_context()
+
+    def test_create_urllib3_context_default_verify_flags(self) -> None:
+        context = ssl_.create_urllib3_context()
+        if sys.version_info >= (3, 13):
+            assert context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN
+            assert context.verify_flags & ssl.VERIFY_X509_STRICT
+        else:
+            # Needed for Python 3.9 which does not define this
+            assert not (
+                context.verify_flags
+                & getattr(ssl, "VERIFY_X509_PARTIAL_CHAIN", 0x80000)
+            )
+            assert not (context.verify_flags & ssl.VERIFY_X509_STRICT)
+
+    def test_create_urllib3_context_custom_verify_flags(self) -> None:
+        context = ssl_.create_urllib3_context()
+        assert not (context.verify_flags & ssl.VERIFY_CRL_CHECK_LEAF)
+        context = ssl_.create_urllib3_context(verify_flags=ssl.VERIFY_CRL_CHECK_LEAF)
+        assert context.verify_flags & ssl.VERIFY_CRL_CHECK_LEAF
 
     def test_wrap_socket_given_context_no_load_default_certs(self) -> None:
         context = mock.create_autospec(ssl_.SSLContext)
@@ -221,7 +241,7 @@ class TestSSL:
         with pytest.warns(
             DeprecationWarning,
             match=r"'ssl_version' option is deprecated and will be removed in "
-            r"urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version'",
+            r"urllib3 v2\.6\.0\. Instead use 'ssl_minimum_version'",
         ):
             ssl_.create_urllib3_context(**kwargs)
 

@@ -75,7 +75,7 @@ def _write_cert_to_dir(
 @contextlib.contextmanager
 def run_server_in_thread(
     scheme: str, host: str, tmpdir: Path, ca: trustme.CA, server_cert: trustme.LeafCert
-) -> typing.Generator[ServerConfig, None, None]:
+) -> typing.Generator[ServerConfig]:
     ca_cert_path = str(tmpdir / "ca.pem")
     ca.cert_pem.write_to_path(ca_cert_path)
     server_certs = _write_cert_to_dir(server_cert, tmpdir)
@@ -92,7 +92,7 @@ def run_server_and_proxy_in_thread(
     ca: trustme.CA,
     proxy_cert: trustme.LeafCert,
     server_cert: trustme.LeafCert,
-) -> typing.Generator[tuple[ServerConfig, ServerConfig], None, None]:
+) -> typing.Generator[tuple[ServerConfig, ServerConfig]]:
     ca_cert_path = str(tmpdir / "ca.pem")
     ca.cert_pem.write_to_path(ca_cert_path)
 
@@ -114,7 +114,7 @@ def run_server_and_proxy_in_thread(
 
 
 @pytest.fixture(params=["localhost", "127.0.0.1", "::1"])
-def loopback_host(request: typing.Any) -> typing.Generator[str, None, None]:
+def loopback_host(request: typing.Any) -> typing.Generator[str]:
     host = request.param
     if host == "::1" and not HAS_IPV6:
         pytest.skip("Test requires IPv6 on loopback")
@@ -124,7 +124,7 @@ def loopback_host(request: typing.Any) -> typing.Generator[str, None, None]:
 @pytest.fixture()
 def san_server(
     loopback_host: str, tmp_path_factory: pytest.TempPathFactory
-) -> typing.Generator[ServerConfig, None, None]:
+) -> typing.Generator[ServerConfig]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
 
@@ -137,7 +137,7 @@ def san_server(
 @pytest.fixture()
 def no_san_server(
     loopback_host: str, tmp_path_factory: pytest.TempPathFactory
-) -> typing.Generator[ServerConfig, None, None]:
+) -> typing.Generator[ServerConfig]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     server_cert = ca.issue_cert(common_name=loopback_host)
@@ -149,7 +149,7 @@ def no_san_server(
 @pytest.fixture()
 def no_san_server_with_different_commmon_name(
     tmp_path_factory: pytest.TempPathFactory,
-) -> typing.Generator[ServerConfig, None, None]:
+) -> typing.Generator[ServerConfig]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     server_cert = ca.issue_cert(common_name="example.com")
@@ -161,7 +161,7 @@ def no_san_server_with_different_commmon_name(
 @pytest.fixture
 def san_proxy_with_server(
     loopback_host: str, tmp_path_factory: pytest.TempPathFactory
-) -> typing.Generator[tuple[ServerConfig, ServerConfig], None, None]:
+) -> typing.Generator[tuple[ServerConfig, ServerConfig]]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     proxy_cert = ca.issue_cert(loopback_host)
@@ -176,7 +176,7 @@ def san_proxy_with_server(
 @pytest.fixture
 def no_san_proxy_with_server(
     tmp_path_factory: pytest.TempPathFactory,
-) -> typing.Generator[tuple[ServerConfig, ServerConfig], None, None]:
+) -> typing.Generator[tuple[ServerConfig, ServerConfig]]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # only common name, no subject alternative names
@@ -192,7 +192,7 @@ def no_san_proxy_with_server(
 @pytest.fixture
 def no_localhost_san_server(
     tmp_path_factory: pytest.TempPathFactory,
-) -> typing.Generator[ServerConfig, None, None]:
+) -> typing.Generator[ServerConfig]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # non localhost common name
@@ -205,7 +205,7 @@ def no_localhost_san_server(
 @pytest.fixture
 def ipv4_san_proxy_with_server(
     tmp_path_factory: pytest.TempPathFactory,
-) -> typing.Generator[tuple[ServerConfig, ServerConfig], None, None]:
+) -> typing.Generator[tuple[ServerConfig, ServerConfig]]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Subject Alternative Name
@@ -222,7 +222,7 @@ def ipv4_san_proxy_with_server(
 @pytest.fixture
 def ipv6_san_proxy_with_server(
     tmp_path_factory: pytest.TempPathFactory,
-) -> typing.Generator[tuple[ServerConfig, ServerConfig], None, None]:
+) -> typing.Generator[tuple[ServerConfig, ServerConfig]]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP addresses in Subject Alternative Name
@@ -239,7 +239,7 @@ def ipv6_san_proxy_with_server(
 @pytest.fixture
 def ipv4_san_server(
     tmp_path_factory: pytest.TempPathFactory,
-) -> typing.Generator[ServerConfig, None, None]:
+) -> typing.Generator[ServerConfig]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Subject Alternative Name
@@ -252,7 +252,7 @@ def ipv4_san_server(
 @pytest.fixture
 def ipv6_san_server(
     tmp_path_factory: pytest.TempPathFactory,
-) -> typing.Generator[ServerConfig, None, None]:
+) -> typing.Generator[ServerConfig]:
     if not HAS_IPV6:
         pytest.skip("Only runs on IPv6 systems")
 
@@ -268,7 +268,7 @@ def ipv6_san_server(
 @pytest.fixture
 def ipv6_no_san_server(
     tmp_path_factory: pytest.TempPathFactory,
-) -> typing.Generator[ServerConfig, None, None]:
+) -> typing.Generator[ServerConfig]:
     if not HAS_IPV6:
         pytest.skip("Only runs on IPv6 systems")
 
@@ -282,7 +282,7 @@ def ipv6_no_san_server(
 
 
 @pytest.fixture
-def stub_timezone(request: pytest.FixtureRequest) -> typing.Generator[None, None, None]:
+def stub_timezone(request: pytest.FixtureRequest) -> typing.Generator[None]:
     """
     A pytest fixture that runs the test with a stub timezone.
     """
@@ -367,7 +367,7 @@ class ErroringHTTPConnection:
 
 
 @pytest.fixture(params=["h11", "h2"])
-def http_version(request: pytest.FixtureRequest) -> typing.Generator[str, None, None]:
+def http_version(request: pytest.FixtureRequest) -> typing.Generator[str]:
     orig_HTTPConnection: typing.Any = None
 
     if request.param == "h2":
@@ -390,7 +390,7 @@ def http_version(request: pytest.FixtureRequest) -> typing.Generator[str, None, 
 
 
 @pytest.fixture(autouse=True, scope="function")
-def reset_http2_probe_cache() -> typing.Generator[None, None, None]:
+def reset_http2_probe_cache() -> typing.Generator[None]:
     # Always reset the HTTP/2 probe cache per test case.
     try:
         yield

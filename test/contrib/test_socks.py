@@ -106,15 +106,13 @@ def _set_up_fake_getaddrinfo(monkeypatch: pytest.MonkeyPatch) -> None:
     # However, some tests need to exercise failure. We don't want retries there, but
     # can't affect PySocks retries via its API. Instead, we monkeypatch PySocks so that
     # it only sees a single address, which effectively disables retries.
-    def fake_getaddrinfo(
-        addr: str, port: int, family: int, socket_type: int
-    ) -> list[
+    def fake_getaddrinfo(addr: str, port: int, family: int, socket_type: int) -> list[
         tuple[
             socket.AddressFamily,
             socket.SocketKind,
             int,
             str,
-            tuple[str, int] | tuple[str, int, int, int],
+            tuple[str, int] | tuple[str, int, int, int] | tuple[int, bytes],
         ]
     ]:
         gai_list = real_getaddrinfo(addr, port, family, socket_type)

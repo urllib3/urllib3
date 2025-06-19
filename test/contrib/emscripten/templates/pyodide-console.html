@@ -6,6 +6,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
+    <title>Pyodide — urllib3</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery.terminal@2.35.2/js/jquery.terminal.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery.terminal@2.35.2/js/unix_formatting.min.js"></script>
@@ -76,7 +77,7 @@
       }
 
       async function main() {
-        let indexURL = "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/";
+        let indexURL = "https://cdn.jsdelivr.net/pyodide/v0.27.1/full/";
         const urlParams = new URLSearchParams(window.location.search);
         const buildParam = urlParams.get("build");
         if (buildParam) {
@@ -260,7 +261,7 @@
         await term.ready;
         await term.exec("import micropip\n");
         await term.exec("micropip.list()\n");
-        await term.exec('await micropip.install("http://localhost:8000/urllib3-2.2.0-py3-none-any.whl")')
+        await term.exec('await micropip.install("http://localhost:8000/{urllib3_wheel_name}.whl")')
         await term.exec("micropip.list()");
         await term.exec("import urllib3");
         await term.exec("urllib3.__version__");

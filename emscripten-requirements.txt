@@ -1,3 +1,0 @@
-pytest-pyodide==0.58.3
-selenium==4.22.0
-build==1.2.1

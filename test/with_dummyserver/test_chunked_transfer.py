@@ -61,13 +61,15 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def _test_body(
         self,
-        data: bytes
-        | str
-        | io.BytesIO
-        | io.StringIO
-        | typing.Iterable[bytes]
-        | typing.Iterable[str]
-        | None,
+        data: (
+            bytes
+            | str
+            | io.BytesIO
+            | io.StringIO
+            | typing.Iterable[bytes]
+            | typing.Iterable[str]
+            | None
+        ),
         expected_data: bytes | None = None,
     ) -> None:
         self.start_chunked_handler()

@@ -74,7 +74,7 @@ port_by_scheme = {"http": 80, "https": 443}
 
 # When it comes time to update this value as a part of regular maintenance
 # (ie test_recent_date is failing) update it to ~6 months before the current date.
-RECENT_DATE = datetime.date(2023, 6, 1)
+RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
@@ -137,8 +137,9 @@ class HTTPConnection(_HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None
-        | (connection._TYPE_SOCKET_OPTIONS) = default_socket_options,
+        socket_options: None | (
+            connection._TYPE_SOCKET_OPTIONS
+        ) = default_socket_options,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
     ) -> None:
@@ -231,45 +232,94 @@ class HTTPConnection(_HTTPConnection):
         super().set_tunnel(host, port=port, headers=headers)
         self._tunnel_scheme = scheme
 
-    if sys.version_info < (3, 11, 4):
+    if sys.version_info < (3, 11, 9) or ((3, 12) <= sys.version_info < (3, 12, 3)):
+        # Taken from python/cpython#100986 which was backported in 3.11.9 and 3.12.3.
+        # When using connection_from_host, host will come without brackets.
+        def _wrap_ipv6(self, ip: bytes) -> bytes:
+            if b":" in ip and ip[0] != b"["[0]:
+                return b"[" + ip + b"]"
+            return ip
 
-        def _tunnel(self) -> None:
-            _MAXLINE = http.client._MAXLINE  # type: ignore[attr-defined]
-            connect = b"CONNECT %s:%d HTTP/1.0\r\n" % (  # type: ignore[str-format]
-                self._tunnel_host.encode("ascii"),  # type: ignore[union-attr]
-                self._tunnel_port,
-            )
-            headers = [connect]
-            for header, value in self._tunnel_headers.items():  # type: ignore[attr-defined]
-                headers.append(f"{header}: {value}\r\n".encode("latin-1"))
-            headers.append(b"\r\n")
-            # Making a single send() call instead of one per line encourages
-            # the host OS to use a more optimal packet size instead of
-            # potentially emitting a series of small packets.
-            self.send(b"".join(headers))
-            del headers
+        if sys.version_info < (3, 11, 9):
+            # `_tunnel` copied from 3.11.13 backporting
+            # https://github.com/python/cpython/commit/0d4026432591d43185568dd31cef6a034c4b9261
+            # and https://github.com/python/cpython/commit/6fbc61070fda2ffb8889e77e3b24bca4249ab4d1
+            def _tunnel(self) -> None:
+                _MAXLINE = http.client._MAXLINE  # type: ignore[attr-defined]
+                connect = b"CONNECT %s:%d HTTP/1.0\r\n" % (  # type: ignore[str-format]
+                    self._wrap_ipv6(self._tunnel_host.encode("ascii")),  # type: ignore[union-attr]
+                    self._tunnel_port,
+                )
+                headers = [connect]
+                for header, value in self._tunnel_headers.items():  # type: ignore[attr-defined]
+                    headers.append(f"{header}: {value}\r\n".encode("latin-1"))
+                headers.append(b"\r\n")
+                # Making a single send() call instead of one per line encourages
+                # the host OS to use a more optimal packet size instead of
+                # potentially emitting a series of small packets.
+                self.send(b"".join(headers))
+                del headers
 
-            response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
-            try:
-                (version, code, message) = response._read_status()  # type: ignore[attr-defined]
+                response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
+                try:
+                    (version, code, message) = response._read_status()  # type: ignore[attr-defined]
 
-                if code != http.HTTPStatus.OK:
-                    self.close()
-                    raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
-                while True:
-                    line = response.fp.readline(_MAXLINE + 1)
-                    if len(line) > _MAXLINE:
-                        raise http.client.LineTooLong("header line")
-                    if not line:
-                        # for sites which EOF without sending a trailer
-                        break
-                    if line in (b"\r\n", b"\n", b""):
-                        break
+                    if code != http.HTTPStatus.OK:
+                        self.close()
+                        raise OSError(
+                            f"Tunnel connection failed: {code} {message.strip()}"
+                        )
+                    while True:
+                        line = response.fp.readline(_MAXLINE + 1)
+                        if len(line) > _MAXLINE:
+                            raise http.client.LineTooLong("header line")
+                        if not line:
+                            # for sites which EOF without sending a trailer
+                            break
+                        if line in (b"\r\n", b"\n", b""):
+                            break
+
+                        if self.debuglevel > 0:
+                            print("header:", line.decode())
+                finally:
+                    response.close()
+
+        elif (3, 12) <= sys.version_info < (3, 12, 3):
+            # `_tunnel` copied from 3.12.11 backporting
+            # https://github.com/python/cpython/commit/23aef575c7629abcd4aaf028ebd226fb41a4b3c8
+            def _tunnel(self) -> None:  # noqa: F811
+                connect = b"CONNECT %s:%d HTTP/1.1\r\n" % (  # type: ignore[str-format]
+                    self._wrap_ipv6(self._tunnel_host.encode("idna")),  # type: ignore[union-attr]
+                    self._tunnel_port,
+                )
+                headers = [connect]
+                for header, value in self._tunnel_headers.items():  # type: ignore[attr-defined]
+                    headers.append(f"{header}: {value}\r\n".encode("latin-1"))
+                headers.append(b"\r\n")
+                # Making a single send() call instead of one per line encourages
+                # the host OS to use a more optimal packet size instead of
+                # potentially emitting a series of small packets.
+                self.send(b"".join(headers))
+                del headers
+
+                response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
+                try:
+                    (version, code, message) = response._read_status()  # type: ignore[attr-defined]
+
+                    self._raw_proxy_headers = http.client._read_headers(response.fp)  # type: ignore[attr-defined]
 
                     if self.debuglevel > 0:
-                        print("header:", line.decode())
-            finally:
-                response.close()
+                        for header in self._raw_proxy_headers:
+                            print("header:", header.decode())
+
+                    if code != http.HTTPStatus.OK:
+                        self.close()
+                        raise OSError(
+                            f"Tunnel connection failed: {code} {message.strip()}"
+                        )
+
+                finally:
+                    response.close()
 
     def connect(self) -> None:
         self.sock = self._new_conn()
@@ -506,6 +556,11 @@ class HTTPConnection(_HTTPConnection):
         # This is needed here to avoid circular import errors
         from .response import HTTPResponse
 
+        # Save a reference to the shutdown function before ownership is passed
+        # to httplib_response
+        # TODO should we implement it everywhere?
+        _shutdown = getattr(self.sock, "shutdown", None)
+
         # Get the response from http.client.HTTPConnection
         httplib_response = super().getresponse()
 
@@ -534,6 +589,7 @@ class HTTPConnection(_HTTPConnection):
             enforce_content_length=resp_options.enforce_content_length,
             request_method=resp_options.request_method,
             request_url=resp_options.request_url,
+            sock_shutdown=_shutdown,
         )
         return response
 
@@ -564,8 +620,9 @@ class HTTPSConnection(HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None
-        | (connection._TYPE_SOCKET_OPTIONS) = HTTPConnection.default_socket_options,
+        socket_options: None | (
+            connection._TYPE_SOCKET_OPTIONS
+        ) = HTTPConnection.default_socket_options,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
         cert_reqs: int | str | None = None,
