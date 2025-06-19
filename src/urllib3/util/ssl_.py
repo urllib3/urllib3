@@ -383,7 +383,7 @@ def load_verify_locations(
     ca_certs: str | None,
     ca_cert_dir: str | None,
     ca_cert_data: None | str | bytes,
-):
+) -> None:
     context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
 
 
