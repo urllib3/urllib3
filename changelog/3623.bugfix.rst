@@ -1,0 +1,1 @@
+Added a wrapper function which uses @functools.lru_cache to avoid repeatedly reloading SSL verification certificates into the same SSLContext, as this is slow and CPU intensive on many versions of OpenSSL 3.x

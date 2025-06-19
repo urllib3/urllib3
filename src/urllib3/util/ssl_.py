@@ -376,6 +376,7 @@ def create_urllib3_context(
 # for a given set of parameters. This prevents repeated reloading which
 # can be slow with some version of OpenSSL
 
+
 @functools.lru_cache
 def load_verify_locations(context, ca_certs, ca_cert_dir, ca_cert_data):
     context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
