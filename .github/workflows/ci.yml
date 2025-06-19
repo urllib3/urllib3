@@ -111,9 +111,9 @@ jobs:
           check-latest: true
 
       - name: "Install uv"
-        uses: astral-sh/setup-uv@0c5e2b8115b80b4c7c5ddf6ffdd634974642d182 # v5.4.1
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
         with:
-          version: "0.5.20"
+          version: "0.7.12"
 
       - name: "Install Chrome"
         uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
@@ -144,12 +144,20 @@ jobs:
           path: .nox/.cache
           # noxfile.py contains the Pyodide version used currently.
           key: pyodide-downloads-${{ hashFiles('noxfile.py') }}
+
+      # https://github.com/wntrblm/nox/issues/986
+      - name: Create symlink to python.exe to help nox find Python
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          mklink "%Python3_ROOT_DIR%\python${{ matrix.python-version }}.exe" "%Python3_ROOT_DIR%\python.exe"
+
       - name: "Run tests"
-        # If no explicit NOX_SESSION is set, run the default tests for the chosen Python version
-        run: uvx nox -s ${NOX_SESSION:-test-$PYTHON_VERSION}
+        run: |
+          uvx nox -s "$NOX_SESSION"
         env:
-          PYTHON_VERSION: ${{ matrix.python-version }}
-          NOX_SESSION: ${{ matrix.nox-session }}
+          # If no explicit nox-session is set, run the default tests for the chosen Python version
+          NOX_SESSION: ${{ matrix.nox-session != '' && matrix.nox-session || format('test-{0}', matrix.python-version) }}
 
       - name: "Upload coverage data"
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
@@ -175,9 +183,9 @@ jobs:
           python-version: "3.x"
 
       - name: "Install uv"
-        uses: astral-sh/setup-uv@0c5e2b8115b80b4c7c5ddf6ffdd634974642d182 # v5.4.1
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
         with:
-          version: "0.5.20"
+          version: "0.7.12"
 
       - name: "Install coverage"
         # Install the same version of coverage as in the lock file.
