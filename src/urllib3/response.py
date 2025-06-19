@@ -1286,7 +1286,7 @@ class HTTPResponse(BaseHTTPResponse):
         return self._request_url
 
     @url.setter
-    def url(self, url: str) -> None:
+    def url(self, url: str | None) -> None:
         self._request_url = url
 
     def __iter__(self) -> typing.Iterator[bytes]:
