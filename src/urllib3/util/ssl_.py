@@ -378,7 +378,12 @@ def create_urllib3_context(
 
 
 @functools.lru_cache
-def load_verify_locations(context, ca_certs, ca_cert_dir, ca_cert_data):
+def load_verify_locations(
+    context: ssl.SSLContext,
+    ca_certs: str | None,
+    ca_cert_dir: str | None,
+    ca_cert_data: None | str | bytes,
+):
     context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
 
 
