@@ -85,7 +85,7 @@ Tidelift will coordinate the fix and disclosure with maintainers.
 
 ## Maintainers
 
-- [@illia-v](https://github.com/illia-v) (Illia Volochii)
+- Lead: [@illia-v](https://github.com/illia-v) (Illia Volochii)
 - [@sethmlarson](https://github.com/sethmlarson) (Seth M. Larson)
 - [@pquentin](https://github.com/pquentin) (Quentin Pradet)
 - [@theacodes](https://github.com/theacodes) (Thea Flowers)
