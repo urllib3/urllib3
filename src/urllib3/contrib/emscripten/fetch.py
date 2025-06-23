@@ -573,6 +573,11 @@ def send_jspi_request(
         "method": request.method,
         "signal": js_abort_controller.signal,
     }
+    # Node.js returns the whole response (unlike opaqueredirect in browsers),
+    # so urllib3 can set `redirect: manual` to control redirects itself.
+    # https://stackoverflow.com/a/78524615
+    if _is_node_js():
+        fetch_data["redirect"] = "manual"
     # Call JavaScript fetch (async api, returns a promise)
     fetcher_promise_js = js.fetch(request.url, _obj_from_dict(fetch_data))
     # Now suspend WebAssembly until we resolve that promise
@@ -691,6 +696,21 @@ def has_jspi() -> bool:
         return bool(can_run_sync())
     except ImportError:
         return False
+
+
+def _is_node_js() -> bool:
+    """
+    Check if we are in Node.js.
+
+    :return: True if we are in Node.js.
+    :rtype: bool
+    """
+    return (
+        hasattr(js, "process")
+        and hasattr(js.process, "release")
+        # According to the Node.js documentation, the release name is always "node".
+        and js.process.release.name == "node"
+    )
 
 
 def streaming_ready() -> bool | None:

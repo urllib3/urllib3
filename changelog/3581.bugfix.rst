@@ -1,1 +1,0 @@
-Raise exception for HTTPResponse.shutdown on a connection already released to the pool.

@@ -26,9 +26,9 @@ jobs:
         uses: pre-commit/action@646c83fcd040023954eafda54b4db0192ce70507 # v3.0.0
 
       - name: "Install uv"
-        uses: astral-sh/setup-uv@0c5e2b8115b80b4c7c5ddf6ffdd634974642d182 # v5.4.1
+        uses: astral-sh/setup-uv@a02a550bdd3185dba2ebb6aa98d77047ce54ad21 # v6.2.1
         with:
-          version: "0.5.20"
+          version: "0.7.12"
 
       - name: "Run mypy"
         run: uvx nox -s mypy
