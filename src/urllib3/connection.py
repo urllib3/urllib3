@@ -862,7 +862,6 @@ class HTTPSConnection(HTTPConnection):
 
         # For proxy connections, we need to be more lenient with SSL verification
         # to avoid handshake failures that were introduced in v2.5.0
-        proxy_cert_reqs = self.cert_reqs
         if ssl_context is None:
             # If no explicit proxy SSL context is provided, create one with
             # more lenient settings to maintain backward compatibility
@@ -872,13 +871,13 @@ class HTTPSConnection(HTTPConnection):
                 ssl_version=self.ssl_version,
                 ssl_minimum_version=self.ssl_minimum_version,
                 ssl_maximum_version=self.ssl_maximum_version,
-                cert_reqs=proxy_cert_reqs,
+                cert_reqs=self.cert_reqs,
                 verify_flags=0,  # Disable strict verification flags for proxy connections
             )
 
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
-            cert_reqs=proxy_cert_reqs,
+            cert_reqs=self.cert_reqs,
             ssl_version=self.ssl_version,
             ssl_minimum_version=self.ssl_minimum_version,
             ssl_maximum_version=self.ssl_maximum_version,
