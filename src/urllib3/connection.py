@@ -859,9 +859,25 @@ class HTTPSConnection(HTTPConnection):
         # `_connect_tls_proxy` is called when self._tunnel_host is truthy.
         proxy_config = typing.cast(ProxyConfig, self.proxy_config)
         ssl_context = proxy_config.ssl_context
+        
+        # For proxy connections, we need to be more lenient with SSL verification
+        # to avoid handshake failures that were introduced in v2.5.0
+        proxy_cert_reqs = self.cert_reqs
+        if ssl_context is None:
+            # If no explicit proxy SSL context is provided, create one with
+            # more lenient settings to maintain backward compatibility
+            from .util.ssl_ import create_urllib3_context
+            ssl_context = create_urllib3_context(
+                ssl_version=self.ssl_version,
+                ssl_minimum_version=self.ssl_minimum_version,
+                ssl_maximum_version=self.ssl_maximum_version,
+                cert_reqs=proxy_cert_reqs,
+                verify_flags=0  # Disable strict verification flags for proxy connections
+            )
+        
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
-            cert_reqs=self.cert_reqs,
+            cert_reqs=proxy_cert_reqs,
             ssl_version=self.ssl_version,
             ssl_minimum_version=self.ssl_minimum_version,
             ssl_maximum_version=self.ssl_maximum_version,
