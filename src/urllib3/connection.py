@@ -868,7 +868,7 @@ class HTTPSConnection(HTTPConnection):
             from .util.ssl_ import create_urllib3_context
 
             ssl_context = create_urllib3_context(
-                ssl_version=self.ssl_version,
+                ssl_version=resolve_ssl_version(self.ssl_version),
                 ssl_minimum_version=self.ssl_minimum_version,
                 ssl_maximum_version=self.ssl_maximum_version,
                 cert_reqs=resolve_cert_reqs(self.cert_reqs),
