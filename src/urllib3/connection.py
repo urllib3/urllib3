@@ -872,9 +872,9 @@ class HTTPSConnection(HTTPConnection):
                 ssl_minimum_version=self.ssl_minimum_version,
                 ssl_maximum_version=self.ssl_maximum_version,
                 cert_reqs=proxy_cert_reqs,
-                verify_flags=0  # Disable strict verification flags for proxy connections
+                verify_flags=0,  # Disable strict verification flags for proxy connections
             )
-        
+
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
             cert_reqs=proxy_cert_reqs,
