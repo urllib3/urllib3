@@ -871,7 +871,7 @@ class HTTPSConnection(HTTPConnection):
                 ssl_version=self.ssl_version,
                 ssl_minimum_version=self.ssl_minimum_version,
                 ssl_maximum_version=self.ssl_maximum_version,
-                cert_reqs=self.cert_reqs,
+                cert_reqs=resolve_cert_reqs(self.cert_reqs),
                 verify_flags=0,  # Disable strict verification flags for proxy connections
             )
 
