@@ -2,6 +2,7 @@ import json
 from test import LONG_TIMEOUT
 
 import pytest
+import typing
 
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
