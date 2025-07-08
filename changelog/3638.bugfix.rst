@@ -1,3 +1,1 @@
-Updates the version requirement for hatchling.
-
-Use version 1.27.0 or newer to address the project licenses configuration issue stated here: https://github.com/pypa/hatch/issues/1715.
+Ensured successful urllib3 builds by setting Hatchling requirement to >= 1.27.0.
