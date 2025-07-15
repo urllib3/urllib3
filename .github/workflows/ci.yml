@@ -130,7 +130,7 @@ jobs:
           google-chrome --version
         if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
       - name: "Install Firefox"
-        uses: browser-actions/setup-firefox@634a60ccd6599686158cf5a570481b4cd30455a2 # v1.5.4
+        uses: browser-actions/setup-firefox@c04e669ab1d810acd2530e553388c1d183d765cf # v1.6.0
         if: ${{ matrix.nox-session == 'emscripten(firefox)' }}
       - name: "Install node.js"
         uses: actions/setup-node@v4
