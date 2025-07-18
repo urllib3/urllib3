@@ -109,10 +109,10 @@ def _get_jspi_monkeypatch_code(runtime: str, prefer_jspi: bool) -> tuple[str, st
 def selenium_with_jspi_if_possible(
     request: pytest.FixtureRequest, runtime: str, has_jspi: bool
 ) -> Generator[Any]:
-    if runtime.startswith("firefox") or not has_jspi:
-        fixture_name = "selenium"
-    else:
+    if runtime == "node" and has_jspi:
         fixture_name = "selenium_jspi"
+    else:
+        fixture_name = "selenium"
     selenium_obj = request.getfixturevalue(fixture_name)
 
     jspi_monkeypatch_code, jspi_unmonkeypatch_code = _get_jspi_monkeypatch_code(
