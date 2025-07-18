@@ -85,19 +85,46 @@ def _get_coverage_code() -> tuple[str, str]:
     return begin, end
 
 
+def _get_jspi_monkeypatch_code(runtime: str, prefer_jspi: bool) -> tuple[str, str]:
+    """
+    Return code to make Pyodide think JSPI is disabled in Chrome when a
+    test needs this to check some code paths.
+    """
+    if runtime != "chrome" or prefer_jspi:
+        return "", ""
+    monkeypatch_code = textwrap.dedent(
+        """
+        import pyodide.ffi
+
+        original_can_run_sync = pyodide.ffi.can_run_sync
+        if pyodide.ffi.can_run_sync():
+            pyodide.ffi.can_run_sync = lambda: False
+        """
+    )
+    unmonkeypatch_code = "pyodide.ffi.can_run_sync = original_can_run_sync"
+    return monkeypatch_code, unmonkeypatch_code
+
+
 @pytest.fixture()
 def selenium_with_jspi_if_possible(
     request: pytest.FixtureRequest, runtime: str, has_jspi: bool
 ) -> Generator[Any]:
     if runtime.startswith("firefox") or not has_jspi:
         fixture_name = "selenium"
-        with_jspi = False
     else:
         fixture_name = "selenium_jspi"
-        with_jspi = True
     selenium_obj = request.getfixturevalue(fixture_name)
-    selenium_obj.with_jspi = with_jspi
+
+    jspi_monkeypatch_code, jspi_unmonkeypatch_code = _get_jspi_monkeypatch_code(
+        runtime, has_jspi
+    )
+    if jspi_monkeypatch_code:
+        selenium_obj.run_async(jspi_monkeypatch_code)
+
     yield selenium_obj
+
+    if jspi_unmonkeypatch_code:
+        selenium_obj.run_async(jspi_unmonkeypatch_code)
 
 
 @pytest.fixture()
@@ -112,19 +139,6 @@ def selenium_coverage(
         result = self.run_js(
             f'await pyodide.loadPackage("http://{testserver_http.http_host}:{testserver_http.http_port}/dist/urllib3.whl")'
         )
-        if not self.with_jspi:
-            # force Chrome to execute the current test without JSPI
-            # even though it is always enabled in
-            # chrome >= 137. We do this by monkeypatching
-            # pyodide.ffi.can_run_sync
-            self.run_async(
-                """
-                import pyodide.ffi
-                if pyodide.ffi.can_run_sync():
-                    pyodide.ffi.can_run_sync = lambda: False
-                """
-            )
-
         print("Installed package:", result)
         self.run_js("await pyodide.loadPackage('coverage')")
 
@@ -171,28 +185,20 @@ class ServerRunnerInfo:
             code = textwrap.dedent(code)
 
         coverage_init_code, coverage_end_code = _get_coverage_code()
-
-        # Monkeypatch pyodide to force disable JSPI in newer chrome
-        # so those code paths get tested
-        if self.has_jspi is False:
-            jspi_fix_code = textwrap.dedent(
-                """
-                import pyodide.ffi
-                if pyodide.ffi.can_run_sync():
-                    pyodide.ffi.can_run_sync = lambda: False
-                """
-            )
-        else:
-            jspi_fix_code = ""
+        jspi_monkeypatch_code, jspi_unmonkeypatch_code = _get_jspi_monkeypatch_code(
+            self.selenium.browser, self.has_jspi
+        )
 
         # the ordering of these code blocks is important - makes sure
         # that the first thing that happens is our wheel is loaded
         code = (
             coverage_init_code
             + "\n"
-            + jspi_fix_code
+            + jspi_monkeypatch_code
             + "\n"
             + code
+            + "\n"
+            + jspi_unmonkeypatch_code
             + "\n"
             + coverage_end_code
         )
