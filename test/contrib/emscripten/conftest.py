@@ -107,16 +107,16 @@ def _get_jspi_monkeypatch_code(runtime: str, prefer_jspi: bool) -> tuple[str, st
 
 @pytest.fixture()
 def selenium_with_jspi_if_possible(
-    request: pytest.FixtureRequest, runtime: str, has_jspi: bool
+    request: pytest.FixtureRequest, runtime: str, prefer_jspi: bool
 ) -> Generator[Any]:
-    if runtime == "node" and has_jspi:
+    if runtime == "node" and prefer_jspi:
         fixture_name = "selenium_jspi"
     else:
         fixture_name = "selenium"
     selenium_obj = request.getfixturevalue(fixture_name)
 
     jspi_monkeypatch_code, jspi_unmonkeypatch_code = _get_jspi_monkeypatch_code(
-        runtime, has_jspi
+        runtime, prefer_jspi
     )
     if jspi_monkeypatch_code:
         selenium_obj.run_async(jspi_monkeypatch_code)
@@ -171,13 +171,13 @@ def selenium_coverage(
 
 class ServerRunnerInfo:
     def __init__(
-        self, host: str, port: int, selenium: Any, dist_dir: Path, has_jspi: bool
+        self, host: str, port: int, selenium: Any, dist_dir: Path, prefer_jspi: bool
     ) -> None:
         self.host = host
         self.port = port
         self.selenium = selenium
         self.dist_dir = dist_dir
-        self.has_jspi = has_jspi
+        self.prefer_jspi = prefer_jspi
 
     def run_webworker(self, code: str) -> Any:
         if isinstance(code, str) and code.startswith("\n"):
@@ -186,7 +186,7 @@ class ServerRunnerInfo:
 
         coverage_init_code, coverage_end_code = _get_coverage_code()
         jspi_monkeypatch_code, jspi_unmonkeypatch_code = _get_jspi_monkeypatch_code(
-            self.selenium.browser, self.has_jspi
+            self.selenium.browser, self.prefer_jspi
         )
 
         # the ordering of these code blocks is important - makes sure
@@ -250,7 +250,7 @@ class ServerRunnerInfo:
 # we are at the same origin as web requests to server_host
 @pytest.fixture()
 def run_from_server(
-    selenium: Any, testserver_http: PyodideServerInfo, has_jspi: bool
+    selenium: Any, testserver_http: PyodideServerInfo, prefer_jspi: bool
 ) -> Generator[ServerRunnerInfo]:
     if selenium.browser != "node":
         # on node, we don't need to be on the same origin
@@ -268,7 +268,7 @@ def run_from_server(
         testserver_http.https_port,
         selenium,
         dist_dir,
-        has_jspi,
+        prefer_jspi,
     )
 
 
@@ -278,7 +278,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
      Also drops any test that requires a browser or web-workers in Node.js.
     ).
     """
-    if "has_jspi" in metafunc.fixturenames:
+    if "prefer_jspi" in metafunc.fixturenames:
         can_run_with_jspi = False
         can_run_without_jspi = False
         # node only supports JSPI and doesn't support workers or
@@ -312,4 +312,4 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             jspi_options.append(False)
         if can_run_with_jspi:
             jspi_options.append(True)
-        metafunc.parametrize("has_jspi", jspi_options)
+        metafunc.parametrize("prefer_jspi", jspi_options)
