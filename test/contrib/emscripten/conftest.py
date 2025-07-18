@@ -57,6 +57,34 @@ class PyodideServerInfo:
     pyodide_dist_dir: Path
 
 
+def _get_coverage_code() -> tuple[str, str]:
+    begin = textwrap.dedent(
+        """
+        import coverage
+
+        _coverage = coverage.Coverage(source_pkgs=["urllib3"])
+        _coverage.start()
+        """
+    )
+    end = textwrap.dedent(
+        """
+        _coverage.stop()
+        _coverage.save()
+
+        _coverage_datafile = open(".coverage", "rb")
+        _coverage_outdata = _coverage_datafile.read()
+        _coverage_datafile.close()
+
+        # avoid polluting main namespace too much
+        import js as _coverage_js
+        # convert to js Array (as default conversion is TypedArray which does
+        # bad things in firefox)
+        _coverage_js.Array.from_(_coverage_outdata)
+        """
+    )
+    return begin, end
+
+
 @pytest.fixture()
 def selenium_with_jspi_if_possible(
     request: pytest.FixtureRequest, runtime: str, has_jspi: bool
@@ -98,15 +126,7 @@ def selenium_coverage(
             )
 
         print("Installed package:", result)
-        self.run_js(
-            """
-            await pyodide.loadPackage("coverage")
-            await pyodide.runPythonAsync(`import coverage
-_coverage= coverage.Coverage(source_pkgs=['urllib3'])
-_coverage.start()
-        `
-        )"""
-        )
+        self.run_js("await pyodide.loadPackage('coverage')")
 
     setattr(
         selenium_with_jspi_if_possible,
@@ -117,23 +137,18 @@ _coverage.start()
     )
 
     selenium_with_jspi_if_possible._install_packages()
+
+    coverage_begin, coverage_end = _get_coverage_code()
+    selenium_with_jspi_if_possible.run_js(
+        f"await pyodide.runPythonAsync(`{coverage_begin}`)"
+    )
+
     yield selenium_with_jspi_if_possible
+
     # on teardown, save _coverage output
     coverage_out_binary = bytes(
         selenium_with_jspi_if_possible.run_js(
-            """
-return await pyodide.runPythonAsync(`
-_coverage.stop()
-_coverage.save()
-_coverage_datafile = open(".coverage","rb")
-_coverage_outdata = _coverage_datafile.read()
-# avoid polluting main namespace too much
-import js as _coverage_js
-# convert to js Array (as default conversion is TypedArray which does
-# bad things in firefox)
-_coverage_js.Array.from_(_coverage_outdata)
-`)
-    """
+            f"return await pyodide.runPythonAsync(`{coverage_end}`)"
         )
     )
     with open(f"{_get_coverage_filename('.coverage.emscripten.')}", "wb") as outfile:
@@ -155,14 +170,7 @@ class ServerRunnerInfo:
             # we have a multiline string, fix indentation
             code = textwrap.dedent(code)
 
-        # add coverage collection to this code
-        coverage_init_code = textwrap.dedent(
-            """
-            import coverage
-            _coverage= coverage.Coverage(source_pkgs=['urllib3'])
-            _coverage.start()
-            """
-        )
+        coverage_init_code, coverage_end_code = _get_coverage_code()
 
         # Monkeypatch pyodide to force disable JSPI in newer chrome
         # so those code paths get tested
@@ -176,20 +184,6 @@ class ServerRunnerInfo:
             )
         else:
             jspi_fix_code = ""
-
-        coverage_end_code = textwrap.dedent(
-            """
-            _coverage.stop()
-            _coverage.save()
-            _coverage_datafile = open(".coverage","rb")
-            _coverage_outdata = _coverage_datafile.read()
-            # avoid polluting main namespace too much
-            import js as _coverage_js
-            # convert to js Array (as default conversion is TypedArray which does
-            # bad things in firefox)
-            _coverage_js.Array.from_(_coverage_outdata)
-            """
-        )
 
         # the ordering of these code blocks is important - makes sure
         # that the first thing that happens is our wheel is loaded
