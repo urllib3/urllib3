@@ -272,28 +272,66 @@ def run_from_server(
     )
 
 
-def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    """Generate tests with WebAssembly JavaScript Promise Integration both
-     enabled and disabled depending on browser/node.js support for features.
-     Also drops any test that requires a browser or web-workers in Node.js.
-    ).
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
     """
+    A pytest hook modifying collected test items for Emscripten.
+    """
+    selected_tests = []
+    deselected_tests = []
+
+    runtime = config.getoption("--runtime", default=None)
+    if not runtime:
+        return
+
+    for item in items:
+        # Deselect tests which Node.js cannot run.
+        if runtime.startswith("node"):
+            if (
+                item.get_closest_marker("webworkers")
+                or item.get_closest_marker("in_webbrowser")
+                or item.get_closest_marker("without_jspi")
+            ):
+                deselected_tests.append(item)
+                continue
+        # Tests marked with `in_webbrowser` are only for Node.js.
+        elif item.get_closest_marker("node_without_jspi"):
+            deselected_tests.append(item)
+            continue
+
+        # Firefox cannot run JSPI tests.
+        if runtime.startswith("firefox") and item.get_closest_marker("with_jspi"):
+            deselected_tests.append(item)
+            continue
+
+        selected_tests.append(item)
+
+    config.hook.pytest_deselected(items=deselected_tests)
+    items[:] = selected_tests
+
+
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    """
+    A pytest hook generating parametrized calls to a test function.
+    """
+
+    # Set proper `prefer_jspi` values for tests with WebAssembly
+    # JavaScript Promise Integration both enabled and disabled depending
+    # on browser/Node.js support for features.
     if "prefer_jspi" in metafunc.fixturenames:
-        can_run_with_jspi = False
-        can_run_without_jspi = False
         # node only supports JSPI and doesn't support workers or
         # webbrowser specific tests
         if metafunc.config.getoption("--runtime").startswith("node"):
-            if (
-                metafunc.definition.get_closest_marker("webworkers") is None
-                and metafunc.definition.get_closest_marker("in_webbrowser") is None
-            ):
-                can_run_with_jspi = True
             if metafunc.definition.get_closest_marker("node_without_jspi"):
-                can_run_without_jspi = True
                 can_run_with_jspi = False
+                can_run_without_jspi = True
+            else:
+                can_run_with_jspi = True
+                can_run_without_jspi = False
         # firefox doesn't support JSPI
         elif metafunc.config.getoption("--runtime").startswith("firefox"):
+            can_run_with_jspi = False
             can_run_without_jspi = True
         else:
             # chrome supports JSPI on or off
