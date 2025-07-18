@@ -251,7 +251,6 @@ def test_timeout_warning(
 
 @pytest.mark.webworkers
 def test_timeout_in_worker_non_streaming(
-    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
     has_jspi: bool,
@@ -283,7 +282,6 @@ def test_timeout_in_worker_non_streaming(
 
 @pytest.mark.webworkers
 def test_timeout_in_worker_streaming(
-    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
     has_jspi: bool,
@@ -415,7 +413,6 @@ def test_streaming_fallback_warning(
 def test_specific_method(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
-    run_from_server: ServerRunnerInfo,
     has_jspi: bool,
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
@@ -437,7 +434,6 @@ def test_specific_method(
 
 @pytest.mark.webworkers
 def test_streaming_download(
-    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
     has_jspi: bool,
@@ -470,7 +466,6 @@ def test_streaming_download(
 
 @pytest.mark.webworkers
 def test_streaming_close(
-    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
     has_jspi: bool,
@@ -515,7 +510,6 @@ def test_streaming_close(
 
 @pytest.mark.webworkers
 def test_streaming_bad_url(
-    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
     has_jspi: bool,
@@ -542,7 +536,6 @@ def test_streaming_bad_url(
 
 @pytest.mark.webworkers
 def test_streaming_bad_method(
-    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
     has_jspi: bool,
@@ -572,7 +565,6 @@ def test_streaming_bad_method(
 @pytest.mark.webworkers
 @pytest.mark.without_jspi
 def test_streaming_notready_warning(
-    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
 ) -> None:
@@ -680,7 +672,6 @@ def test_streaming_not_ready_in_browser(
 def test_requests_with_micropip(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
-    run_from_server: ServerRunnerInfo,
 ) -> None:
     @run_in_pyodide(packages=["micropip"])  # type: ignore[misc]
     async def test_fn(
@@ -751,7 +742,6 @@ def test_open_close(
 @pytest.mark.webworkers
 @pytest.mark.without_jspi
 def test_break_worker_streaming(
-    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
 ) -> None:
@@ -1032,7 +1022,6 @@ def test_insecure_requests_warning(
 
 @pytest.mark.webworkers
 def test_has_jspi_worker(
-    selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
     run_from_server: ServerRunnerInfo,
     has_jspi: bool,
@@ -1061,7 +1050,6 @@ def test_has_jspi(
 def test_timeout_jspi(
     selenium_coverage: typing.Any,
     testserver_http: PyodideServerInfo,
-    run_from_server: ServerRunnerInfo,
 ) -> None:
     @run_in_pyodide
     def pyodide_test(selenium, host, port):  # type: ignore[no-untyped-def]
