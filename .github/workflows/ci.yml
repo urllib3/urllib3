@@ -121,6 +121,7 @@ jobs:
         if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
         with:
           install-chromedriver: true
+          chrome-version: canary
       - name: Force override system chrome
         run: |
           sudo rm -f /usr/bin/google-chrome
