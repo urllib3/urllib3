@@ -1,0 +1,1 @@
+Fixed an issue useless loading system certificates when specifying ``cert_reqs='CERT_NONE'`` in ``HTTPSConnectionPool``
