@@ -986,6 +986,9 @@ class HTTPResponse(BaseHTTPResponse):
 
         if amt is None:
             data = self._decode(data, decode_content, flush_decoder)
+            if len(self._decoded_buffer) != 0:
+                data = self._decoded_buffer.get_all() + data
+
             if cache_content:
                 self._body = data
         else:

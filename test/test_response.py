@@ -4,6 +4,7 @@ import contextlib
 import http.client as httplib
 import socket
 import ssl
+import string
 import typing
 import zlib
 from base64 import b64decode
@@ -1558,6 +1559,19 @@ class TestResponse:
             resp = HTTPResponse(fp, status=204)
             resp.read(16)
         assert "Response may not contain content" in str(excinfo.value)
+
+    def test_partial_then_full_read_with_decode_content(self) -> None:
+        data = 100 * string.printable.encode()
+        cdata = zstd_compress(data)
+        fp = BytesIO(cdata)
+        r = HTTPResponse(
+            fp,
+            headers={"content-encoding": "zstd"},
+            preload_content=False,
+            decode_content=True,
+        )
+
+        assert r.read(512) + r.read() == data
 
 
 class MockChunkedEncodingResponse:
