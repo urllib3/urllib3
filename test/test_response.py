@@ -1560,6 +1560,7 @@ class TestResponse:
             resp.read(16)
         assert "Response may not contain content" in str(excinfo.value)
 
+    @onlyZstd()
     def test_partial_then_full_read_with_decode_content(self) -> None:
         data = 100 * string.printable.encode()
         cdata = zstd_compress(data)
