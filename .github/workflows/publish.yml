@@ -20,6 +20,7 @@ jobs:
     runs-on: "ubuntu-latest"
     outputs:
       hashes: ${{ steps.hash.outputs.hashes }}
+      artifact-id: ${{ steps.upload-artifact.outputs.artifact-id }}
 
     steps:
       - name: "Checkout repository"
@@ -47,7 +48,8 @@ jobs:
           cd dist && echo "hashes=$(sha256sum * | base64 -w0)" >> $GITHUB_OUTPUT
 
       - name: "Upload dists"
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: upload-artifact
         with:
           name: "dist"
           path: "dist/"
@@ -67,9 +69,9 @@ jobs:
 
     steps:
     - name: "Download dists"
-      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
       with:
-        name: "dist"
+        artifact-ids: ${{ needs.build.outputs.artifact-id }}
         path: "dist/"
 
     - name: "Upload dists to a new GitHub Release Draft"
@@ -100,9 +102,9 @@ jobs:
 
     steps:
     - name: "Download dists"
-      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
       with:
-        name: "dist"
+        artifact-ids: ${{ needs.build.outputs.artifact-id }}
         path: "dist/"
 
     - name: "Publish dists to Test PyPI"
