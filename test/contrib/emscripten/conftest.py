@@ -121,10 +121,11 @@ def selenium_with_jspi_if_possible(
     if jspi_monkeypatch_code:
         selenium_obj.run_async(jspi_monkeypatch_code)
 
-    yield selenium_obj
-
-    if jspi_unmonkeypatch_code:
-        selenium_obj.run_async(jspi_unmonkeypatch_code)
+    try:
+        yield selenium_obj
+    finally:
+        if jspi_unmonkeypatch_code:
+            selenium_obj.run_async(jspi_unmonkeypatch_code)
 
 
 @pytest.fixture()
@@ -196,9 +197,11 @@ class ServerRunnerInfo:
             + "\n"
             + jspi_monkeypatch_code
             + "\n"
-            + code
+            + "try:\n"
+            + textwrap.indent(code, "    ")
             + "\n"
-            + jspi_unmonkeypatch_code
+            + "finally:\n"
+            + textwrap.indent(jspi_unmonkeypatch_code or "pass", "    ")
             + "\n"
             + coverage_end_code
         )
