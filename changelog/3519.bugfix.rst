@@ -1,1 +1,1 @@
-Fixed an issue useless loading system certificates when specifying ``cert_reqs='CERT_NONE'`` in ``HTTPSConnectionPool``
+Prevent loading of system certificates when ``cert_reqs='CERT_NONE'`` is specified for ``HTTPSConnectionPool``.
