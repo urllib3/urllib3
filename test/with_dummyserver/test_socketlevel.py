@@ -1752,7 +1752,7 @@ class TestSSL(SocketDummyServerTestCase):
                     pool.request("GET", "/", timeout=SHORT_TIMEOUT)
                 context.load_default_certs.assert_called_with()
 
-    def test_ssl_dont_load_default_certs_when_cert_none(self) -> None:
+    def test_ssl_dont_load_default_certs_when_cert_none_str(self) -> None:
         context = mock.create_autospec(ssl_.SSLContext)
         context.load_default_certs = mock.Mock()
         context.options = 0
@@ -1760,6 +1760,19 @@ class TestSSL(SocketDummyServerTestCase):
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
             with HTTPSConnectionPool(
                 self.host, self.port, cert_reqs="CERT_NONE"
+            ) as pool:
+                with pytest.raises(Exception):
+                    pool.request("GET", "/", timeout=SHORT_TIMEOUT)
+                context.load_default_certs.assert_not_called()
+
+    def test_ssl_dont_load_default_certs_when_cert_none_enum(self) -> None:
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.load_default_certs = mock.Mock()
+        context.options = 0
+
+        with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
+            with HTTPSConnectionPool(
+                self.host, self.port, cert_reqs=ssl.CERT_NONE
             ) as pool:
                 with pytest.raises(Exception):
                     pool.request("GET", "/", timeout=SHORT_TIMEOUT)
