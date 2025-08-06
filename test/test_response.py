@@ -14,7 +14,6 @@ from unittest import mock
 
 import pytest
 
-from urllib3 import HTTPHeaderDict
 from urllib3.exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
@@ -149,26 +148,6 @@ def sock() -> typing.Generator[socket.socket]:
     s = socket.socket()
     yield s
     s.close()
-
-
-class TestLegacyResponse:
-    def test_getheaders(self) -> None:
-        headers = {"host": "example.com"}
-        r = HTTPResponse(headers=headers)
-        with pytest.warns(
-            DeprecationWarning,
-            match=r"HTTPResponse.getheaders\(\) is deprecated",
-        ):
-            assert r.getheaders() == HTTPHeaderDict(headers)
-
-    def test_getheader(self) -> None:
-        headers = {"host": "example.com"}
-        r = HTTPResponse(headers=headers)
-        with pytest.warns(
-            DeprecationWarning,
-            match=r"HTTPResponse.getheader\(\) is deprecated",
-        ):
-            assert r.getheader("host") == "example.com"
 
 
 class TestResponse:
