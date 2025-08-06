@@ -1,7 +1,7 @@
 # This file is protected via CODEOWNERS
 
 [build-system]
-requires = ["hatchling>=1.6.0,<2", "hatch-vcs>=0.4.0,<0.6.0", "setuptools-scm>=8,<9"]
+requires = ["hatchling>=1.27.0,<2", "hatch-vcs>=0.4.0,<0.6.0", "setuptools-scm>=8,<9"]
 build-backend = "hatchling.build"
 
 [project]
@@ -30,6 +30,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",

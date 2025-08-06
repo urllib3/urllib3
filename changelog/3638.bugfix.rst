@@ -1,0 +1,1 @@
+Ensured successful urllib3 builds by setting Hatchling requirement to >= 1.27.0.

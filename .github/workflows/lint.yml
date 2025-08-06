@@ -26,7 +26,7 @@ jobs:
         uses: pre-commit/action@646c83fcd040023954eafda54b4db0192ce70507 # v3.0.0
 
       - name: "Install uv"
-        uses: astral-sh/setup-uv@a02a550bdd3185dba2ebb6aa98d77047ce54ad21 # v6.2.1
+        uses: astral-sh/setup-uv@05273c154d09957eb9a2377d9c988fbda431d1c5 # v6.4.0
         with:
           version: "0.7.12"
 

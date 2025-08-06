@@ -239,7 +239,7 @@ def emscripten(session: nox.Session, runner: str) -> None:
         dist_dir = Path(os.environ["PYODIDE_ROOT"]) / "dist"
     else:
         # we don't have a build tree
-        pyodide_version = "0.27.1"
+        pyodide_version = "0.28.1"
 
         pyodide_artifacts_path = Path(session.cache_dir) / f"pyodide-{pyodide_version}"
         if not pyodide_artifacts_path.exists():
@@ -273,7 +273,6 @@ def emscripten(session: nox.Session, runner: str) -> None:
         session,
         extras="",
         pytest_extra_args=[
-            "-x",
             "--runtime",
             f"{runner}-no-host",
             "--dist-dir",
