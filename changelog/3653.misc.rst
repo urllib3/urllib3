@@ -1,1 +1,0 @@
-Fixed HTTPHeaderDict so that byte-string header names were decoded, allowing retrieval and deletion via bytes keys.
