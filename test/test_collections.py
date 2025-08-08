@@ -231,7 +231,7 @@ class TestHTTPHeaderDict:
         assert "COOKIE" not in d
 
     def test_delitem_with_bytes_key(self, d: HTTPHeaderDict) -> None:
-        del d[b"cookie"]
+        del d[b"cookie"]  # type: ignore[arg-type]
         assert "cookie" not in d
 
     def test_add_well_known_multiheader(self, d: HTTPHeaderDict) -> None:
@@ -323,7 +323,7 @@ class TestHTTPHeaderDict:
         assert d.getlist("b") == ["asdf"]
 
     def test_getlist_with_bytes_key(self, d: HTTPHeaderDict) -> None:
-        assert d.getlist(b"cookie") == ["foo", "bar"]
+        assert d.getlist(b"cookie") == ["foo", "bar"]  # type: ignore[call-overload]
 
     def test_getlist_after_copy(self, d: HTTPHeaderDict) -> None:
         assert d.getlist("cookie") == HTTPHeaderDict(d).getlist("cookie")
