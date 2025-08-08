@@ -13,6 +13,7 @@ from ..exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
     MaxRetryError,
+    MaxRetryWaitExceededError,
     ProtocolError,
     ProxyError,
     ReadTimeoutError,
@@ -219,6 +220,7 @@ class Retry:
             str
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
         backoff_jitter: float = 0.0,
+        max_retry_wait_length: float | None = None,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -243,6 +245,7 @@ class Retry:
             h.lower() for h in remove_headers_on_redirect
         )
         self.backoff_jitter = backoff_jitter
+        self.max_retry_wait_length = max_retry_wait_length
 
     def new(self, **kw: typing.Any) -> Self:
         params = dict(
@@ -335,6 +338,8 @@ class Retry:
     def sleep_for_retry(self, response: BaseHTTPResponse) -> bool:
         retry_after = self.get_retry_after(response)
         if retry_after:
+            if self.max_retry_wait_length and retry_after > self.max_retry_wait_length:
+                raise MaxRetryWaitExceededError(retry_after_header_value=retry_after)
             time.sleep(retry_after)
             return True
 
