@@ -259,6 +259,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         return ", ".join(val[1:])
 
     def __delitem__(self, key: str) -> None:
+        if isinstance(key, bytes):
+            key = key.decode("latin-1")
         del self._container[key.lower()]
 
     def __contains__(self, key: object) -> bool:
@@ -376,6 +378,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
     ) -> list[str] | _DT:
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
+        if isinstance(key, bytes):
+            key = key.decode("latin-1")
         try:
             vals = self._container[key.lower()]
         except KeyError:
