@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import io
 import socket
 import typing
 from http.client import ResponseNotReady
@@ -323,3 +324,37 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    def test_file_like_body_sets_content_length(self) -> None:
+        body = io.BytesIO(b"testbody")
+        with mock.patch("urllib3.util.connection.create_connection"):
+            with mock.patch(
+                "urllib3.connection._HTTPConnection.putheader"
+            ) as http_client_putheader:
+                conn = HTTPConnection("")
+                conn.request("POST", "/", body=body)
+
+        assert ("Content-Length", "8") in [
+            call.args for call in http_client_putheader.call_args_list
+        ]
+
+    def test_unseekable_file_like_body_chunked(self) -> None:
+
+        class ReadOnly:
+            def __init__(self, data: bytes) -> None:
+                self._io = io.BytesIO(data)
+
+            def read(self, amt: int | None = None) -> bytes:
+                return self._io.read(amt)
+
+        body = ReadOnly(b"testbody")
+        with mock.patch("urllib3.util.connection.create_connection"):
+            with mock.patch(
+                "urllib3.connection._HTTPConnection.putheader"
+            ) as http_client_putheader:
+                conn = HTTPConnection("")
+                conn.request("POST", "/", body=body)
+
+        headers = [call.args for call in http_client_putheader.call_args_list]
+        assert ("Content-Length", "8") not in headers
+        assert ("Transfer-Encoding", "chunked") in headers
