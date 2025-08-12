@@ -24,9 +24,9 @@ class Config(hypercorn.Config):
         assert len(self.bind) == 1
         secure_sockets, insecure_sockets = [], []
         if self.ssl_enabled:
-            secure_sockets = self._create_urllib3_sockets(self.bind[0])
+            secure_sockets = self._retry_create_urllib3_sockets(self.bind[0])
         else:
-            insecure_sockets = self._create_urllib3_sockets(self.bind[0])
+            insecure_sockets = self._retry_create_urllib3_sockets(self.bind[0])
         return hypercorn.config.Sockets(
             secure_sockets, insecure_sockets, quic_sockets=[]
         )
