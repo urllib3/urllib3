@@ -324,6 +324,14 @@ class TestHTTPHeaderDict:
 
     def test_getlist_with_bytes_key(self, d: HTTPHeaderDict) -> None:
         assert d.getlist(b"cookie") == ["foo", "bar"]  # type: ignore[call-overload]
+    
+    def test_getitem_with_bytes(self, d: HTTPHeaderDict):
+        result = d[b"Content-Type"]
+        assert result == "application/json, charset=utf-8"
+
+    def test_contains_with_bytes(self, d: HTTPHeaderDict):
+        assert b"Content-Type" in d
+        assert b"X-Not-There" not in d
 
     def test_getlist_after_copy(self, d: HTTPHeaderDict) -> None:
         assert d.getlist("cookie") == HTTPHeaderDict(d).getlist("cookie")
