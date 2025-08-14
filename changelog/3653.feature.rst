@@ -1,0 +1,1 @@
+Enabled retrieval, deletion, and membership testing in ``HTTPHeaderDict`` using bytes keys.
