@@ -99,11 +99,11 @@ class EmscriptenHTTPConnection:
         self._closed = False
         if url.startswith("/"):
             if self.port is not None:
-                main = f"{self.host}:{self.port}"
+                port = f":{self.port}"
             else:
-                main = self.host
+                port = ""
             # no scheme / host / port included, make a full url
-            url = f"{self.scheme}://{main}{url}"
+            url = f"{self.scheme}://{self.host}{port}{url}"
         request = EmscriptenRequest(
             url=url,
             method=method,
