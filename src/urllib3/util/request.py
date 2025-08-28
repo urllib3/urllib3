@@ -241,7 +241,20 @@ def body_to_chunks(
                 yield datablock
 
         chunks = chunk_readable()
+
         content_length = None
+        body_tell = getattr(body, "tell", None)
+        body_seek = getattr(body, "seek", None)
+        if body_tell is not None and body_seek is not None:
+            try:
+                pos = body_tell()
+                body_seek(0, io.SEEK_END)
+                end = body_tell()
+                body_seek(pos)
+            except OSError:
+                pass
+            else:
+                content_length = end - pos
 
     # Otherwise we need to start checking via duck-typing.
     else:
