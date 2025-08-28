@@ -1272,7 +1272,7 @@ def test_has_jspi_exception(
     )
 
 
-@run_in_pyodide
+@run_in_pyodide  # type: ignore[misc]
 def test_pool_no_port(selenium_coverage: typing.Any) -> None:
     from unittest.mock import patch
 
