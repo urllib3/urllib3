@@ -1,1 +1,1 @@
-Fixed HTTPConnectionPool when used in Emscripten with no explicit port.
+Fixed ``HTTPConnectionPool`` when used in Emscripten with no explicit port.
