@@ -1270,3 +1270,22 @@ def test_has_jspi_exception(
     pyodide_test(
         selenium_coverage, testserver_http.http_host, testserver_http.http_port
     )
+
+
+@run_in_pyodide  # type: ignore[misc]
+def test_pool_no_port(selenium_coverage):
+    from unittest.mock import patch
+
+    from urllib3 import HTTPConnectionPool
+    from urllib3.contrib.emscripten.fetch import EmscriptenResponse
+
+    def send_request(request):
+        assert request.url == "http://example.com/"
+        return EmscriptenResponse(
+            status_code=200, headers={}, body=b"", request=request
+        )
+
+    with patch("urllib3.contrib.emscripten.connection.send_request", new=send_request):
+        pool = HTTPConnectionPool("example.com", maxsize=10, block=True)
+
+        pool.request("GET", "/")
