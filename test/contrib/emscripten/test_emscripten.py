@@ -1273,7 +1273,7 @@ def test_has_jspi_exception(
 
 
 @run_in_pyodide
-def test_pool_no_port(selenium_coverage):
+def test_pool_no_port(selenium_coverage: typing.Any) -> None:
     from unittest.mock import patch
 
     from urllib3 import HTTPConnectionPool
