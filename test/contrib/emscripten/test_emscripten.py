@@ -1272,14 +1272,15 @@ def test_has_jspi_exception(
     )
 
 
-@run_in_pyodide  # type: ignore[misc]
+@run_in_pyodide
 def test_pool_no_port(selenium_coverage):
     from unittest.mock import patch
 
     from urllib3 import HTTPConnectionPool
-    from urllib3.contrib.emscripten.fetch import EmscriptenResponse
+    from urllib3.contrib.emscripten.request import EmscriptenRequest
+    from urllib3.contrib.emscripten.response import EmscriptenResponse
 
-    def send_request(request):
+    def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
         assert request.url == "http://example.com/"
         return EmscriptenResponse(
             status_code=200, headers={}, body=b"", request=request
