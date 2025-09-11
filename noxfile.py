@@ -21,6 +21,7 @@ def tests_impl(
     integration: bool = False,
     pytest_extra_args: list[str] = [],
     dependency_group: str = "dev",
+    default_posargs: str = "test/",
 ) -> None:
     # Retrieve sys info from the Python implementation under test
     # to avoid enabling memray when nox runs under CPython but tests PyPy
@@ -84,7 +85,7 @@ def tests_impl(
         "--allow-unix-socket",
         "--allow-hosts=localhost,127.0.0.1,::1,127.0.0.0,240.0.0.0",  # See `TARPIT_HOST`
         *pytest_extra_args,
-        *(session.posargs or ("test/",)),
+        *(session.posargs or (default_posargs,)),
         env=pytest_session_envvars,
     )
 
@@ -121,6 +122,12 @@ def test_brotlipy(session: nox.Session) -> None:
     session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     session.install("brotlipy")
     tests_impl(session, extras="socks", byte_string_comparisons=False)
+
+
+@nox.session(python="3")
+def test_wasi(session: nox.Session) -> None:
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
+    tests_impl(session, dependency_group="wasi", default_posargs="test/contrib/wasi/")
 
 
 def git_clone(session: nox.Session, git_url: str) -> None:
