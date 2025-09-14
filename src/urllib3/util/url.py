@@ -107,8 +107,7 @@ class Url(
         query: str | None = None,
         fragment: str | None = None,
     ):
-        if path and not path.startswith("/"):
-            path = "/" + path
+
         if scheme is not None:
             scheme = scheme.lower()
         return super().__new__(cls, scheme, auth, host, port, path, query, fragment)
