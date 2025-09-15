@@ -1,1 +1,1 @@
-Add string representation for HTTPConnection class.
+Added host and port information to string representations of ``HTTPConnection``.
