@@ -186,7 +186,7 @@ def format(session: nox.Session) -> None:
     lint(session)
 
 
-@nox.session(python="3.12")
+@nox.session()
 def lint(session: nox.Session) -> None:
     session.install("pre-commit")
     session.run("pre-commit", "run", "--all-files")
