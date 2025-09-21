@@ -20,15 +20,11 @@ jobs:
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: "3.x"
-          cache: pip
-
-      - name: "Run pre-commit"
-        uses: pre-commit/action@646c83fcd040023954eafda54b4db0192ce70507 # v3.0.0
 
       - name: "Install uv"
         uses: astral-sh/setup-uv@05273c154d09957eb9a2377d9c988fbda431d1c5 # v6.4.0
         with:
           version: "0.7.12"
 
-      - name: "Run mypy"
-        run: uvx nox -s mypy
+      - name: "Lint code"
+        run: uvx nox -s lint
