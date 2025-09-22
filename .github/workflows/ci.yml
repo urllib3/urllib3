@@ -123,11 +123,13 @@ jobs:
           install-chromedriver: true
           chrome-version: canary
       - name: Force override system chrome
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: |
           sudo rm -f /usr/bin/google-chrome
           sudo rm -f /usr/bin/chrome
-          sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/google-chrome
-          sudo ln -s ${{ steps.setup-chrome.outputs.chrome-path }} /usr/bin/chrome
+          sudo ln -s $CHROME_PATH /usr/bin/google-chrome
+          sudo ln -s $CHROME_PATH /usr/bin/chrome
           google-chrome --version
         if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
       - name: "Install Firefox"
