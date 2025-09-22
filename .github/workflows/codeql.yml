@@ -12,6 +12,10 @@ on:
 permissions:
   contents: "read"
 
+env:
+  UV_NATIVE_TLS: "true"
+
+
 jobs:
   analyze:
     if: github.repository_owner == 'urllib3'

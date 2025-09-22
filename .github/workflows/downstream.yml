@@ -5,6 +5,10 @@ on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: "read"
 
+env:
+  UV_NATIVE_TLS: "true"
+
+
 jobs:
   downstream:
     strategy:
