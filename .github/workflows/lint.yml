@@ -30,4 +30,4 @@ jobs:
           version: "0.7.12"
 
       - name: "Lint code"
-        run: uvx nox -s lint
+        run: uvx --native-tls nox -s lint

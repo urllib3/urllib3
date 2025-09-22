@@ -163,7 +163,7 @@ jobs:
 
       - name: "Run tests"
         run: |
-          uvx nox -s "$NOX_SESSION"
+          uvx --native-tls nox -s "$NOX_SESSION"
         env:
           # If no explicit nox-session is set, run the default tests for the chosen Python version
           NOX_SESSION: ${{ matrix.nox-session != '' && matrix.nox-session || format('test-{0}', matrix.python-version) }}
