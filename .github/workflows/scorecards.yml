@@ -21,7 +21,7 @@ jobs:
       actions: read
 
     steps:
-      - uses: GitHubSecurityLab/actions-permissions/monitor@v1
+      - uses: GitHubSecurityLab/actions-permissions/monitor@31cf7361439cbdffbc73a3bb138b7e1662d46c9b
         with:
           config: ${{ vars.PERMISSIONS_CONFIG }}
       - name: "Checkout repository"
