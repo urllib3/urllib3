@@ -5,6 +5,10 @@ on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: "read"
 
+env:
+  FORCE_COLOR: 1
+  UV_NATIVE_TLS: "true"
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -30,4 +34,4 @@ jobs:
           version: "0.7.12"
 
       - name: "Lint code"
-        run: uvx --native-tls nox -s lint
+        run: uvx nox -s lint
