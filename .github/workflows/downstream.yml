@@ -2,8 +2,7 @@ name: Downstream
 
 on: [push, pull_request, workflow_dispatch]
 
-permissions:
-  contents: "read"
+permissions: {}
 
 env:
   UV_NATIVE_TLS: "true"
