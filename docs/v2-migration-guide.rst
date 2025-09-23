@@ -52,8 +52,8 @@ urllib3 1.26.x for Python 3.9 and earlier. If your organization would benefit fr
 continued support of urllib3 1.26.x, please contact sethmichaellarson@gmail.com to
 discuss sponsorship or contribution opportunities.
 
-However, upgrading is still recommended as **no new feature developments or non-critical
-bug fixes will be shipped to the 1.26.x release stream**.
+However, upgrading is still recommended as **no new feature developments or
+fixes will be shipped to the 1.26.x release stream**.
 
 **🤔 Common upgrading issues**
 ------------------------------
