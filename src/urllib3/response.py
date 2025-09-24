@@ -8,7 +8,11 @@ import re
 import socket
 import sys
 import typing
-import zlib
+
+try:
+    import zlib
+except ImportError:
+    zlib = None  # type: ignore[assignment]
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
 from http.client import HTTPResponse as _HttplibHTTPResponse
@@ -58,72 +62,72 @@ class ContentDecoder:
         raise NotImplementedError()
 
 
-class DeflateDecoder(ContentDecoder):
-    def __init__(self) -> None:
-        self._first_try = True
-        self._data = b""
-        self._obj = zlib.decompressobj()
+if zlib is not None:
 
-    def decompress(self, data: bytes) -> bytes:
-        if not data:
-            return data
+    class DeflateDecoder(ContentDecoder):
+        def __init__(self) -> None:
+            self._first_try = True
+            self._data = b""
+            self._obj = zlib.decompressobj()
 
-        if not self._first_try:
-            return self._obj.decompress(data)
-
-        self._data += data
-        try:
-            decompressed = self._obj.decompress(data)
-            if decompressed:
-                self._first_try = False
-                self._data = None  # type: ignore[assignment]
-            return decompressed
-        except zlib.error:
-            self._first_try = False
-            self._obj = zlib.decompressobj(-zlib.MAX_WBITS)
-            try:
-                return self.decompress(self._data)
-            finally:
-                self._data = None  # type: ignore[assignment]
-
-    def flush(self) -> bytes:
-        return self._obj.flush()
-
-
-class GzipDecoderState:
-    FIRST_MEMBER = 0
-    OTHER_MEMBERS = 1
-    SWALLOW_DATA = 2
-
-
-class GzipDecoder(ContentDecoder):
-    def __init__(self) -> None:
-        self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
-        self._state = GzipDecoderState.FIRST_MEMBER
-
-    def decompress(self, data: bytes) -> bytes:
-        ret = bytearray()
-        if self._state == GzipDecoderState.SWALLOW_DATA or not data:
-            return bytes(ret)
-        while True:
-            try:
-                ret += self._obj.decompress(data)
-            except zlib.error:
-                previous_state = self._state
-                # Ignore data after the first error
-                self._state = GzipDecoderState.SWALLOW_DATA
-                if previous_state == GzipDecoderState.OTHER_MEMBERS:
-                    # Allow trailing garbage acceptable in other gzip clients
-                    return bytes(ret)
-                raise
-            data = self._obj.unused_data
+        def decompress(self, data: bytes) -> bytes:
             if not data:
-                return bytes(ret)
-            self._state = GzipDecoderState.OTHER_MEMBERS
-            self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
+                return data
 
-    def flush(self) -> bytes:
-        return self._obj.flush()
+            if not self._first_try:
+                return self._obj.decompress(data)
+
+            self._data += data
+            try:
+                decompressed = self._obj.decompress(data)
+                if decompressed:
+                    self._first_try = False
+                    self._data = None  # type: ignore[assignment]
+                return decompressed
+            except zlib.error:
+                self._first_try = False
+                self._obj = zlib.decompressobj(-zlib.MAX_WBITS)
+                try:
+                    return self.decompress(self._data)
+                finally:
+                    self._data = None  # type: ignore[assignment]
+
+        def flush(self) -> bytes:
+            return self._obj.flush()
+
+    class GzipDecoderState:
+        FIRST_MEMBER = 0
+        OTHER_MEMBERS = 1
+        SWALLOW_DATA = 2
+
+    class GzipDecoder(ContentDecoder):
+        def __init__(self) -> None:
+            self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
+            self._state = GzipDecoderState.FIRST_MEMBER
+
+        def decompress(self, data: bytes) -> bytes:
+            ret = bytearray()
+            if self._state == GzipDecoderState.SWALLOW_DATA or not data:
+                return bytes(ret)
+            while True:
+                try:
+                    ret += self._obj.decompress(data)
+                except zlib.error:
+                    previous_state = self._state
+                    # Ignore data after the first error
+                    self._state = GzipDecoderState.SWALLOW_DATA
+                    if previous_state == GzipDecoderState.OTHER_MEMBERS:
+                        # Allow trailing garbage acceptable in other gzip clients
+                        return bytes(ret)
+                    raise
+                data = self._obj.unused_data
+                if not data:
+                    return bytes(ret)
+                self._state = GzipDecoderState.OTHER_MEMBERS
+                self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
+
+        def flush(self) -> bytes:
+            return self._obj.flush()
 
 
 if brotli is not None:
@@ -237,7 +241,7 @@ def _get_decoder(mode: str) -> ContentDecoder:
 
     # According to RFC 9110 section 8.4.1.3, recipients should
     # consider x-gzip equivalent to gzip
-    if mode in ("gzip", "x-gzip"):
+    if zlib is not None and mode in ("gzip", "x-gzip"):
         return GzipDecoder()
 
     if brotli is not None and mode == "br":
@@ -246,7 +250,12 @@ def _get_decoder(mode: str) -> ContentDecoder:
     if HAS_ZSTD and mode == "zstd":
         return ZstdDecoder()
 
-    return DeflateDecoder()
+    if zlib is not None and mode == "deflate":
+        return DeflateDecoder()
+
+    raise ValueError(
+        f"No decoder available for mode {mode}"
+    )  # Defensive: _get_decoder should not be called unless at least one decoder is available
 
 
 class BytesQueueBuffer:
@@ -323,14 +332,20 @@ class BytesQueueBuffer:
 
 
 class BaseHTTPResponse(io.IOBase):
-    CONTENT_DECODERS = ["gzip", "x-gzip", "deflate"]
+    CONTENT_DECODERS = []
+    if zlib is not None:
+        CONTENT_DECODERS += ["gzip", "x-gzip", "deflate"]
     if brotli is not None:
         CONTENT_DECODERS += ["br"]
     if HAS_ZSTD:
         CONTENT_DECODERS += ["zstd"]
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
-    DECODER_ERROR_CLASSES: tuple[type[Exception], ...] = (IOError, zlib.error)
+    DECODER_ERROR_CLASSES: tuple[type[Exception], ...] = (IOError,)
+
+    if zlib is not None:
+        DECODER_ERROR_CLASSES += (zlib.error,)
+
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
 
