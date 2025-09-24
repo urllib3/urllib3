@@ -5,7 +5,8 @@
 To report a security vulnerability, please use the [Tidelift security contact](https://tidelift.com/security).
 Tidelift will coordinate the fix and disclosure with maintainers.
 
-> [!WARNING] Please do **not** file a public GitHub issue for security reports.
+> [!WARNING]
+> Please do **not** file a public GitHub issue for security reports.
 
 When reporting, if possible, include:
 - A clear description of the issue and potential impact
