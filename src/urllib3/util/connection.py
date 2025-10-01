@@ -94,7 +94,8 @@ def create_connection(
     else:
         message = "getaddrinfo returns an empty list"
         if blocklist_applied:
-            message = f"getaddrinfo only returned addresses in the blocklist: [{', '.join(ip_addr_blocklist)}]"
+            blocklist_str = ", ".join(ip_addr_blocklist) if ip_addr_blocklist else ""
+            message = f"getaddrinfo only returned addresses in the blocklist: [{blocklist_str}]"
 
         raise OSError(message)
 
