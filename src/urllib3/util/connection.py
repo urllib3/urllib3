@@ -47,7 +47,7 @@ def create_connection(
     if host.startswith("["):
         host = host.strip("[]")
     err = None
-    blacklist_applied = False
+    blocklist_applied = False
 
     # Using the value from allowed_gai_family() in the context of getaddrinfo lets
     # us select whether to work with IPv4 DNS records, IPv6 records, or both.
@@ -62,7 +62,7 @@ def create_connection(
     for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
         af, socktype, proto, canonname, sa = res
         if ip_addr_blocklist and sa[0] in ip_addr_blocklist:
-            blacklist_applied = True
+            blocklist_applied = True
             continue
         sock = None
         try:
@@ -93,8 +93,8 @@ def create_connection(
             err = None
     else:
         message = "getaddrinfo returns an empty list"
-        if blacklist_applied:
-            message = "blacklist applied, getaddrinfo returns an empty list"
+        if blocklist_applied:
+            message = f"getaddrinfo only returned addresses in the blocklist: [{', '.join(ip_addr_blocklist)}]"
 
         raise OSError(message)
 

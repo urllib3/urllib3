@@ -935,7 +935,7 @@ class TestUtil:
         self, address: tuple[str, int], ip_addr_blocklist: list[str], expected: None
     ) -> None:
         with pytest.raises(
-            OSError, match="blacklist applied, getaddrinfo returns an empty list"
+            OSError, match="getaddrinfo only returned addresses in the blocklist:.*"
         ):
             create_connection(address, ip_addr_blocklist=ip_addr_blocklist)
 
@@ -1126,7 +1126,7 @@ class TestUtil:
                 if expected_error:
                     with pytest.raises(
                         OSError,
-                        match="blacklist applied, getaddrinfo returns an empty list",
+                        match="getaddrinfo only returned addresses in the blocklist:",
                     ):
                         create_connection(address, ip_addr_blocklist=ip_addr_blocklist)
                 else:
