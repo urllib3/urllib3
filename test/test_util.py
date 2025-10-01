@@ -1065,7 +1065,7 @@ class TestUtil:
     def test_create_connection_with_blocked_and_failed_ips(
         self,
         address: tuple[str, int],
-        ipaddres_blocklist: list[str],
+        ip_addr_blocklist: list[str],
         connection_failures: list[str],
         expected_result: str,
     ) -> None:
@@ -1089,11 +1089,9 @@ class TestUtil:
 
                 if expected_result == "ConnectionError":
                     with pytest.raises(ConnectionRefusedError):
-                        create_connection(
-                            address, ipaddres_blocklist=ipaddres_blocklist
-                        )
+                        create_connection(address, ipaddres_blocklist=ip_addr_blocklist)
                 else:
-                    create_connection(address, ipaddres_blocklist=ipaddres_blocklist)
+                    create_connection(address, ipaddres_blocklist=ip_addr_blocklist)
                     mock_sock.connect.assert_called_with((expected_result, 80))
 
     @pytest.mark.parametrize(
