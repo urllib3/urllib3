@@ -925,28 +925,28 @@ class TestUtil:
         fake_sock.connect.assert_called_once_with(fake_scoped_sa6)
 
     @pytest.mark.parametrize(
-        "address, ipaddres_blocklist, expected",
+        "address, ip_addr_blocklist, expected",
         [
             (("127.0.0.1", 80), ["127.0.0.1"], None),
             (("127.0.0.1", 80), ["127.0.0.1"], None),
         ],
     )
     def test_create_connection_with_all_ips_blocked(
-        self, address: tuple[str, int], ipaddres_blocklist: list[str], expected: None
+        self, address: tuple[str, int], ip_addr_blocklist: list[str], expected: None
     ) -> None:
         with pytest.raises(
             OSError, match="blacklist applied, getaddrinfo returns an empty list"
         ):
-            create_connection(address, ipaddres_blocklist=ipaddres_blocklist)
+            create_connection(address, ip_addr_blocklist=ip_addr_blocklist)
 
     @pytest.mark.parametrize(
-        "address, ipaddres_blocklist, expected",
+        "address, ip_addr_blocklist, expected",
         [
             (("127.0.0.1", 80), ["192.168.0.1"], None),
         ],
     )
     def test_create_connection_with_no_ips_blocked(
-        self, address: tuple[str, int], ipaddres_blocklist: list[str], expected: None
+        self, address: tuple[str, int], ip_addr_blocklist: list[str], expected: None
     ) -> None:
         with patch("socket.socket") as mock_socket_class:
             with patch("socket.getaddrinfo") as mock_getaddrinfo:
@@ -962,7 +962,7 @@ class TestUtil:
                 # Mock successful connection (no exception)
                 mock_sock.connect.return_value = None
 
-                test = create_connection(address, ipaddres_blocklist=ipaddres_blocklist)
+                test = create_connection(address, ip_addr_blocklist=ip_addr_blocklist)
                 assert test is not None
                 assert test == mock_sock
                 # Since we're mocking socket.socket, we verify it's the mock we created
@@ -975,7 +975,7 @@ class TestUtil:
                 mock_sock.connect.assert_called_once_with(("127.0.0.1", 80))
 
     @pytest.mark.parametrize(
-        "address, ipaddres_blocklist, expected_connected_ip",
+        "address, ip_addr_blocklist, expected_connected_ip",
         [
             # Test cycling: first IP blocked, second IP succeeds
             (("example.com", 80), ["192.168.1.1"], "192.168.1.2"),
@@ -990,7 +990,7 @@ class TestUtil:
     def test_create_connection_with_ip_cycling(
         self,
         address: tuple[str, int],
-        ipaddres_blocklist: list[str],
+        ip_addr_blocklist: list[str],
         expected_connected_ip: str,
     ) -> None:
         with patch("socket.getaddrinfo") as mock_getaddrinfo:
@@ -1007,14 +1007,14 @@ class TestUtil:
                 mock_socket_class.return_value = mock_sock
                 mock_sock.connect.return_value = None
 
-                sock = create_connection(address, ipaddres_blocklist=ipaddres_blocklist)
+                sock = create_connection(address, ip_addr_blocklist=ip_addr_blocklist)
 
                 # Verify the correct IP was connected to
                 mock_sock.connect.assert_called_once_with((expected_connected_ip, 80))
                 assert sock == mock_sock
 
     @pytest.mark.parametrize(
-        "address, ipaddres_blocklist, expected_ip_version",
+        "address, ip_addr_blocklist, expected_ip_version",
         [
             # Test localhost: IPv6 blocked, should fall back to IPv4
             (("localhost", 80), ["::1"], "127.0.0.1"),
@@ -1027,7 +1027,7 @@ class TestUtil:
     def test_create_connection_localhost_ip_preference(
         self,
         address: tuple[str, int],
-        ipaddres_blocklist: list[str],
+        ip_addr_blocklist: list[str],
         expected_ip_version: str,
     ) -> None:
         with patch("socket.getaddrinfo") as mock_getaddrinfo:
@@ -1042,14 +1042,14 @@ class TestUtil:
                 mock_socket_class.return_value = mock_sock
                 mock_sock.connect.return_value = None
 
-                sock = create_connection(address, ipaddres_blocklist=ipaddres_blocklist)
+                sock = create_connection(address, ip_addr_blocklist=ip_addr_blocklist)
 
                 # Verify connection to expected IP version
                 mock_sock.connect.assert_called_once_with((expected_ip_version, 80))
                 assert sock == mock_sock
 
     @pytest.mark.parametrize(
-        "address, ipaddres_blocklist, connection_failures, expected_result",
+        "address, ip_addr_blocklist, connection_failures, expected_result",
         [
             # First IP blocked, second fails to connect, third succeeds
             (("example.com", 80), ["192.168.1.1"], ["192.168.1.2"], "192.168.1.3"),
@@ -1080,7 +1080,7 @@ class TestUtil:
                 mock_sock = MagicMock()
                 mock_socket_class.return_value = mock_sock
 
-                def mock_connect(sa):
+                def mock_connect(sa: tuple[str, int]) -> None:
                     if sa[0] in connection_failures:
                         raise ConnectionRefusedError("Connection refused")
                     return None
@@ -1089,13 +1089,13 @@ class TestUtil:
 
                 if expected_result == "ConnectionError":
                     with pytest.raises(ConnectionRefusedError):
-                        create_connection(address, ipaddres_blocklist=ip_addr_blocklist)
+                        create_connection(address, ip_addr_blocklist=ip_addr_blocklist)
                 else:
-                    create_connection(address, ipaddres_blocklist=ip_addr_blocklist)
+                    create_connection(address, ip_addr_blocklist=ip_addr_blocklist)
                     mock_sock.connect.assert_called_with((expected_result, 80))
 
     @pytest.mark.parametrize(
-        "address, ipaddres_blocklist, expected_error",
+        "address, ip_addr_blocklist, expected_error",
         [
             # Empty blocklist should work normally
             (("127.0.0.1", 80), [], None),
@@ -1110,7 +1110,7 @@ class TestUtil:
     def test_create_connection_edge_cases(
         self,
         address: tuple[str, int],
-        ipaddres_blocklist: list[str] | None,
+        ip_addr_blocklist: list[str] | None,
         expected_error: str | None,
     ) -> None:
         with patch("socket.getaddrinfo") as mock_getaddrinfo:
@@ -1128,12 +1128,10 @@ class TestUtil:
                         OSError,
                         match="blacklist applied, getaddrinfo returns an empty list",
                     ):
-                        create_connection(
-                            address, ipaddres_blocklist=ipaddres_blocklist
-                        )
+                        create_connection(address, ip_addr_blocklist=ip_addr_blocklist)
                 else:
                     sock = create_connection(
-                        address, ipaddres_blocklist=ipaddres_blocklist
+                        address, ip_addr_blocklist=ip_addr_blocklist
                     )
                     assert sock is not None
                     mock_sock.connect.assert_called_once_with(("127.0.0.1", 80))
@@ -1154,7 +1152,7 @@ class TestUtil:
 
                 # Should try IPv6 first, then IPv4 if blocked
                 sock = create_connection(
-                    ("example.com", 80), ipaddres_blocklist=["2001:db8::1"]
+                    ("example.com", 80), ip_addr_blocklist=["2001:db8::1"]
                 )
                 mock_sock.connect.assert_called_with(("192.168.1.1", 80))
                 assert sock == mock_sock
@@ -1174,7 +1172,7 @@ class TestUtil:
                 mock_sock.connect.return_value = None
 
                 # This simulates requests-hardened blocking IPv6 localhost
-                sock = create_connection(("localhost", 80), ipaddres_blocklist=["::1"])
+                sock = create_connection(("localhost", 80), ip_addr_blocklist=["::1"])
 
                 # Should successfully connect to IPv4 localhost
                 mock_sock.connect.assert_called_once_with(("127.0.0.1", 80))

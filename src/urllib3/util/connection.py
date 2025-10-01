@@ -29,7 +29,7 @@ def create_connection(
     timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
     source_address: tuple[str, int] | None = None,
     socket_options: _TYPE_SOCKET_OPTIONS | None = None,
-    ipaddres_blocklist: list[str] | None = None,
+    ip_addr_blocklist: list[str] | None = None,
 ) -> socket.socket:
     """Connect to *address* and return the socket object.
 
@@ -61,7 +61,7 @@ def create_connection(
 
     for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
         af, socktype, proto, canonname, sa = res
-        if ipaddres_blocklist and sa[0] in ipaddres_blocklist:
+        if ip_addr_blocklist and sa[0] in ip_addr_blocklist:
             blacklist_applied = True
             continue
         sock = None
