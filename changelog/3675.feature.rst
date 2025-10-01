@@ -1,0 +1,1 @@
+Added ``ip_addr_blocklist`` parameter to ``urllib3.util.connection.create_connection()`` to allow filtering of IP addresses during connection attempts.
