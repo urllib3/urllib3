@@ -102,6 +102,10 @@ emscripten = [
     "pytest-pyodide>=0.58.4 ; python_full_version >= '3.10'",
     "selenium>=4.27.1",
 ]
+wasi = [
+    "componentize-py==0.17.0",
+    {include-group = "dev"},
+]
 docs = [
     "furo>=2024.8.6",
     "requests>=2.32.3",
@@ -133,6 +137,9 @@ include = [
   "/CHANGES.rst",
   "/README.md",
   "/LICENSE.txt",
+]
+exclude = [
+  "/src/wit_world"
 ]
 
 [tool.pytest.ini_options]
