@@ -1,0 +1,1 @@
+Added ability to specify ``Proxy-Authorization`` headers from the url
