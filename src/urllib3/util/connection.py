@@ -29,6 +29,7 @@ def create_connection(
     timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
     source_address: tuple[str, int] | None = None,
     socket_options: _TYPE_SOCKET_OPTIONS | None = None,
+    ip_addr_blocklist: list[str] | None = None,
 ) -> socket.socket:
     """Connect to *address* and return the socket object.
 
@@ -46,6 +47,7 @@ def create_connection(
     if host.startswith("["):
         host = host.strip("[]")
     err = None
+    blocklist_applied = False
 
     # Using the value from allowed_gai_family() in the context of getaddrinfo lets
     # us select whether to work with IPv4 DNS records, IPv6 records, or both.
@@ -59,6 +61,9 @@ def create_connection(
 
     for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
         af, socktype, proto, canonname, sa = res
+        if ip_addr_blocklist and sa[0] in ip_addr_blocklist:
+            blocklist_applied = True
+            continue
         sock = None
         try:
             sock = socket.socket(af, socktype, proto)
@@ -87,7 +92,12 @@ def create_connection(
             # Break explicitly a reference cycle
             err = None
     else:
-        raise OSError("getaddrinfo returns an empty list")
+        message = "getaddrinfo returns an empty list"
+        if blocklist_applied and ip_addr_blocklist:
+            blocklist_str = ", ".join(ip_addr_blocklist)
+            message = f"getaddrinfo only returned addresses in the blocklist: [{blocklist_str}]"
+
+        raise OSError(message)
 
 
 def _set_socket_options(
