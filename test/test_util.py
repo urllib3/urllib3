@@ -943,6 +943,23 @@ class TestUtil:
         "address, ip_addr_blocklist, expected",
         [
             (("127.0.0.1", 80), ["192.168.0.1"], None),
+            (("::1", 80), [], None),
+            (("example.com", 443), ["10.0.0.1", "172.16.0.1"], None),
+            (("192.168.1.1", 0), ["127.0.0.1"], None),
+            (("localhost", 8080), ["192.168.0.0/16"], None),
+            (("fe80::1%lo0", 80), ["::2"], None),
+            (("127.0.0.1", 80), [], None),
+            (("localhost", 80), None, None),
+        ],
+        ids=[
+            "ipv4_localhost_different_blocklist",
+            "ipv6_localhost_empty_blocklist",
+            "external_domain_no_matching_blocklist",
+            "ipv4_system_assigned_port",
+            "localhost_high_port",
+            "ipv6_with_scope",
+            "empty_blocklist",
+            "none_blocklist",
         ],
     )
     def test_create_connection_with_no_ips_blocked(
@@ -950,29 +967,26 @@ class TestUtil:
     ) -> None:
         with patch("socket.socket") as mock_socket_class:
             with patch("socket.getaddrinfo") as mock_getaddrinfo:
-                # Mock getaddrinfo to return the target IP (127.0.0.1) which is NOT in the blocklist
+                host, port = address
+
                 mock_getaddrinfo.return_value = [
-                    (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80))
+                    (socket.AF_INET, socket.SOCK_STREAM, 0, "", (host, port))
                 ]
 
-                # Mock the socket instance
                 mock_sock = MagicMock()
                 mock_socket_class.return_value = mock_sock
 
-                # Mock successful connection (no exception)
                 mock_sock.connect.return_value = None
 
                 test = create_connection(address, ip_addr_blocklist=ip_addr_blocklist)
                 assert test is not None
                 assert test == mock_sock
-                # Since we're mocking socket.socket, we verify it's the mock we created
                 assert mock_socket_class.called
 
-                # Verify the socket was created and connected
                 mock_socket_class.assert_called_once_with(
                     socket.AF_INET, socket.SOCK_STREAM, 0
                 )
-                mock_sock.connect.assert_called_once_with(("127.0.0.1", 80))
+                mock_sock.connect.assert_called_once_with((host, port))
 
     @pytest.mark.parametrize(
         "address, ip_addr_blocklist, expected_connected_ip",
@@ -1051,15 +1065,17 @@ class TestUtil:
     @pytest.mark.parametrize(
         "address, ip_addr_blocklist, connection_failures, expected_result",
         [
-            # First IP blocked, second fails to connect, third succeeds
             (("example.com", 80), ["192.168.1.1"], ["192.168.1.2"], "192.168.1.3"),
-            # All IPs either blocked or fail to connect
             (
                 ("example.com", 80),
                 ["192.168.1.1"],
                 ["192.168.1.2", "192.168.1.3"],
                 "ConnectionError",
             ),
+        ],
+        ids=[
+            "first_ip_blocked_second_fails_third_succeeds",
+            "all_ips_blocked_or_fail_to_connect",
         ],
     )
     def test_create_connection_with_blocked_and_failed_ips(
