@@ -1,5 +1,7 @@
 from __future__ import annotations
+from __future__ import absolute_import
 
+from functools import lru_cache
 import hashlib
 import hmac
 import os
@@ -221,6 +223,9 @@ def resolve_ssl_version(candidate: None | int | str) -> int:
 
     return candidate
 
+@lru_cache(maxsize=128)
+def load_verify_locations(context, ca_certs, ca_cert_dir, ca_cert_data):
+    context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
 
 def create_urllib3_context(
     ssl_version: int | None = None,
@@ -455,7 +460,7 @@ def ssl_wrap_socket(
 
     if ca_certs or ca_cert_dir or ca_cert_data:
         try:
-            context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
+            load_verify_locations(context, ca_certs, ca_cert_dir, ca_cert_data)
         except OSError as e:
             raise SSLError(e) from e
 
