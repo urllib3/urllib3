@@ -191,6 +191,45 @@ def rewind_body(body: typing.IO[typing.AnyStr], body_pos: _TYPE_BODY_POSITION) -
         )
 
 
+def _get_file_content_length(body: typing.Any) -> int | None:
+    """
+    Attempt to determine the content length of a file-like object using seek() and tell().
+
+    This function tries to calculate the remaining content length from the current position
+    to the end of the file. It handles various edge cases and errors gracefully.
+
+    :param body: File-like object to measure
+    :return: Content length in bytes if successfully determined, None otherwise
+    """
+    # Check if the object has the required methods
+    if not (hasattr(body, "tell") and hasattr(body, "seek")):
+        return None
+
+    # Check if the object is seekable (if method exists)
+    if hasattr(body, "seekable"):
+        try:
+            if not body.seekable():
+                return None
+        except (OSError, AttributeError):
+            return None
+
+    current_pos = None
+    try:
+        current_pos = body.tell()
+        body.seek(0, 2)
+        end_pos = body.tell()
+        content_length = end_pos - current_pos
+        body.seek(current_pos)
+        return content_length if content_length >= 0 else None
+    except (OSError, AttributeError):
+        if current_pos is not None:
+            try:
+                body.seek(current_pos)
+            except (OSError, AttributeError):
+                pass
+        return None
+
+
 class ChunksAndContentLength(typing.NamedTuple):
     chunks: typing.Iterable[bytes] | None
     content_length: int | None
@@ -206,6 +245,15 @@ def body_to_chunks(
     A 'Content-Length' of 'None' indicates the length of the body
     can't be determined so should use 'Transfer-Encoding: chunked'
     for framing instead.
+
+    For file-like objects that support seek() and tell(), this function
+    will attempt to determine the content length by seeking to the end
+    of the file and calculating the remaining bytes from the current
+    position. This optimization allows proper Content-Length headers
+    to be set instead of falling back to chunked encoding.
+
+    If seek/tell operations fail for any reason, the function gracefully
+    falls back to the previous behavior of returning None for content_length.
     """
 
     chunks: typing.Iterable[bytes] | None
@@ -226,8 +274,10 @@ def body_to_chunks(
         chunks = (to_bytes(body),)
         content_length = len(chunks[0])
 
-    # File-like object, TODO: use seek() and tell() for length?
+    # File-like object, use seek() and tell() for length if possible
     elif hasattr(body, "read"):
+        # Try to determine content length using seek/tell
+        content_length = _get_file_content_length(body)
 
         def chunk_readable() -> typing.Iterable[bytes]:
             nonlocal body, blocksize
@@ -241,7 +291,6 @@ def body_to_chunks(
                 yield datablock
 
         chunks = chunk_readable()
-        content_length = None
 
     # Otherwise we need to start checking via duck-typing.
     else:

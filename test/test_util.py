@@ -26,7 +26,7 @@ from urllib3.exceptions import (
 from urllib3.util import is_fp_closed
 from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
 from urllib3.util.proxy import connection_requires_http_tunnel
-from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
+from urllib3.util.request import _FAILEDTELL, body_to_chunks, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.ssl_ import (
     _TYPE_VERSION_INFO,
@@ -1124,3 +1124,408 @@ class TestUtilWithoutIdna:
         url = "http://\uD7FF.com"
         with pytest.raises(LocationParseError, match=f"Failed to parse: {url}"):
             parse_url(url)
+
+
+class TestBodyToChunks:
+    """Test the body_to_chunks function, especially the new seek/tell optimization."""
+
+    def test_body_to_chunks_none(self) -> None:
+        """Test with None body."""
+        result = body_to_chunks(None, "GET", 8192)
+        assert result.chunks is None
+        assert result.content_length is None
+
+    def test_body_to_chunks_string(self) -> None:
+        """Test with string body."""
+        body = "test data"
+        result = body_to_chunks(body, "POST", 8192)
+        assert result.content_length == 9
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == b"test data"
+
+    def test_body_to_chunks_bytes(self) -> None:
+        """Test with bytes body."""
+        body = b"test data"
+        result = body_to_chunks(body, "POST", 8192)
+        assert result.content_length == 9
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == b"test data"
+
+    def test_body_to_chunks_bytesio_with_content_length(self) -> None:
+        """Test BytesIO object - should determine content length."""
+        body = io.BytesIO(b"test data")
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should determine content length using seek/tell
+        assert result.content_length == 9
+
+        # Verify chunks are correct
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == b"test data"
+
+    def test_body_to_chunks_bytesio_partial_read(self) -> None:
+        """Test BytesIO object after partial read - should calculate remaining length."""
+        body = io.BytesIO(b"test data")
+        body.read(4)  # Read "test", leaving " data"
+
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should determine remaining content length
+        assert result.content_length == 5
+
+        # Verify chunks contain remaining data
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == b" data"
+
+    def test_body_to_chunks_bytesio_empty(self) -> None:
+        """Test empty BytesIO object."""
+        body = io.BytesIO(b"")
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should determine content length as 0
+        assert result.content_length == 0
+
+        # Should have no chunks
+        chunks = list(result.chunks)
+        assert len(chunks) == 0
+
+    def test_body_to_chunks_stringio_with_content_length(self) -> None:
+        """Test StringIO object - should determine content length."""
+        body = io.StringIO("test data")
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should determine content length
+        assert result.content_length == 9
+
+        # Verify chunks are correct (should be encoded to UTF-8)
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == b"test data"
+
+    def test_body_to_chunks_file_like_object(self) -> None:
+        """Test with a real file-like object."""
+        import os
+        import tempfile
+
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(b"test file content")
+            tmp_path = tmp.name
+
+        try:
+            # Open file and test
+            with open(tmp_path, "rb") as f:
+                result = body_to_chunks(f, "POST", 8192)
+
+                # Should determine content length
+                assert result.content_length == 17
+
+                # Verify chunks
+                chunks = list(result.chunks)
+                assert len(chunks) == 1
+                assert chunks[0] == b"test file content"
+        finally:
+            os.unlink(tmp_path)
+
+    def test_body_to_chunks_file_partial_read(self) -> None:
+        """Test file after partial read - should calculate remaining length."""
+        import os
+        import tempfile
+
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(b"test file content")
+            tmp_path = tmp.name
+
+        try:
+            # Open file, read part of it, then test
+            with open(tmp_path, "rb") as f:
+                f.read(5)  # Read "test ", leaving "file content"
+
+                result = body_to_chunks(f, "POST", 8192)
+
+                # Should determine remaining content length
+                assert result.content_length == 12
+
+                # Verify chunks contain remaining data
+                chunks = list(result.chunks)
+                assert len(chunks) == 1
+                assert chunks[0] == b"file content"
+        finally:
+            os.unlink(tmp_path)
+
+    def test_body_to_chunks_unseekable_stream(self) -> None:
+        """Test with an unseekable stream - should fall back to None content length."""
+
+        class UnseekableStream:
+            def __init__(self, data: bytes):
+                self.data = data
+                self.pos = 0
+
+            def read(self, size: int = -1) -> bytes:
+                if size == -1:
+                    result = self.data[self.pos :]
+                    self.pos = len(self.data)
+                else:
+                    result = self.data[self.pos : self.pos + size]
+                    self.pos += len(result)
+                return result
+
+            def seekable(self) -> bool:
+                return False
+
+        body = UnseekableStream(b"test data")
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should fall back to None content length
+        assert result.content_length is None
+
+        # Should still produce correct chunks
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == b"test data"
+
+    def test_body_to_chunks_no_seek_method(self) -> None:
+        """Test with object that has no seek method - should fall back to None content length."""
+
+        class NoSeekStream:
+            def __init__(self, data: bytes):
+                self.data = data
+                self.pos = 0
+
+            def read(self, size: int = -1) -> bytes:
+                if size == -1:
+                    result = self.data[self.pos :]
+                    self.pos = len(self.data)
+                else:
+                    result = self.data[self.pos : self.pos + size]
+                    self.pos += len(result)
+                return result
+
+            def tell(self) -> int:
+                return self.pos
+
+        body = NoSeekStream(b"test data")
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should fall back to None content length
+        assert result.content_length is None
+
+        # Should still produce correct chunks
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == b"test data"
+
+    def test_body_to_chunks_no_tell_method(self) -> None:
+        """Test with object that has no tell method - should fall back to None content length."""
+
+        class NoTellStream:
+            def __init__(self, data: bytes):
+                self.data = data
+                self.pos = 0
+
+            def read(self, size: int = -1) -> bytes:
+                if size == -1:
+                    result = self.data[self.pos :]
+                    self.pos = len(self.data)
+                else:
+                    result = self.data[self.pos : self.pos + size]
+                    self.pos += len(result)
+                return result
+
+            def seek(self, pos: int, whence: int = 0) -> int:
+                if whence == 0:  # SEEK_SET
+                    self.pos = pos
+                elif whence == 2:  # SEEK_END
+                    self.pos = len(self.data)
+                return self.pos
+
+        body = NoTellStream(b"test data")
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should fall back to None content length
+        assert result.content_length is None
+
+        # Should still produce correct chunks
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == b"test data"
+
+    def test_body_to_chunks_failing_seek(self) -> None:
+        """Test with object where seek raises OSError - should fall back gracefully."""
+
+        class FailingSeekStream:
+            def __init__(self, data: bytes):
+                self.data = data
+                self.pos = 0
+
+            def read(self, size: int = -1) -> bytes:
+                if size == -1:
+                    result = self.data[self.pos :]
+                    self.pos = len(self.data)
+                else:
+                    result = self.data[self.pos : self.pos + size]
+                    self.pos += len(result)
+                return result
+
+            def tell(self) -> int:
+                return self.pos
+
+            def seek(self, pos: int, whence: int = 0) -> int:
+                raise OSError("Seek failed")
+
+        body = FailingSeekStream(b"test data")
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should fall back to None content length
+        assert result.content_length is None
+
+        # Should still produce correct chunks
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == b"test data"
+
+    def test_body_to_chunks_failing_tell(self) -> None:
+        """Test with object where tell raises OSError - should fall back gracefully."""
+
+        class FailingTellStream:
+            def __init__(self, data: bytes):
+                self.data = data
+                self.pos = 0
+
+            def read(self, size: int = -1) -> bytes:
+                if size == -1:
+                    result = self.data[self.pos :]
+                    self.pos = len(self.data)
+                else:
+                    result = self.data[self.pos : self.pos + size]
+                    self.pos += len(result)
+                return result
+
+            def tell(self) -> int:
+                raise OSError("Tell failed")
+
+            def seek(self, pos: int, whence: int = 0) -> int:
+                if whence == 0:  # SEEK_SET
+                    self.pos = pos
+                elif whence == 2:  # SEEK_END
+                    self.pos = len(self.data)
+                return self.pos
+
+        body = FailingTellStream(b"test data")
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should fall back to None content length
+        assert result.content_length is None
+
+        # Should still produce correct chunks
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == b"test data"
+
+    def test_body_to_chunks_failing_seekable(self) -> None:
+        """Test with object where seekable() raises exception - should fall back gracefully."""
+
+        class FailingSeekableStream:
+            def __init__(self, data: bytes):
+                self.data = data
+                self.pos = 0
+
+            def read(self, size: int = -1) -> bytes:
+                if size == -1:
+                    result = self.data[self.pos :]
+                    self.pos = len(self.data)
+                else:
+                    result = self.data[self.pos : self.pos + size]
+                    self.pos += len(result)
+                return result
+
+            def tell(self) -> int:
+                return self.pos
+
+            def seek(self, pos: int, whence: int = 0) -> int:
+                if whence == 0:  # SEEK_SET
+                    self.pos = pos
+                elif whence == 2:  # SEEK_END
+                    self.pos = len(self.data)
+                return self.pos
+
+            def seekable(self) -> bool:
+                raise OSError("Seekable check failed")
+
+        body = FailingSeekableStream(b"test data")
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should fall back to None content length
+        assert result.content_length is None
+
+        # Should still produce correct chunks
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == b"test data"
+
+    def test_body_to_chunks_position_beyond_end(self) -> None:
+        """Test with file position beyond end - should return None content length."""
+        body = io.BytesIO(b"test")
+        body.seek(10)  # Seek beyond end
+
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should return None for negative content length
+        assert result.content_length is None
+
+        # Should still work for reading (though will be empty)
+        chunks = list(result.chunks)
+        assert len(chunks) == 0
+
+    def test_body_to_chunks_large_file(self) -> None:
+        """Test with a larger file to ensure no integer overflow issues."""
+        # Create a 1MB BytesIO object
+        large_data = b"x" * (1024 * 1024)
+        body = io.BytesIO(large_data)
+
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should determine correct content length
+        assert result.content_length == 1024 * 1024
+
+        # Verify we can read it in chunks
+        chunks = list(result.chunks)
+        total_size = sum(len(chunk) for chunk in chunks)
+        assert total_size == 1024 * 1024
+
+    def test_body_to_chunks_chunked_reading(self) -> None:
+        """Test that chunked reading works correctly with content length detection."""
+        # Create data larger than blocksize to test chunking
+        test_data = b"x" * 1000
+        body = io.BytesIO(test_data)
+        blocksize = 100
+
+        result = body_to_chunks(body, "POST", blocksize)
+
+        # Should determine correct content length
+        assert result.content_length == 1000
+
+        # Should read in chunks of blocksize
+        chunks = list(result.chunks)
+        assert len(chunks) == 10  # 1000 / 100
+        for chunk in chunks:
+            assert len(chunk) == blocksize
+            assert chunk == b"x" * blocksize
+
+    def test_body_to_chunks_text_file_encoding(self) -> None:
+        """Test that text files are properly encoded to UTF-8."""
+        body = io.StringIO("test ñoño")  # String with non-ASCII characters
+        result = body_to_chunks(body, "POST", 8192)
+
+        # Should determine content length (in characters, not bytes)
+        assert result.content_length == 9
+
+        # Should encode to UTF-8 bytes
+        chunks = list(result.chunks)
+        assert len(chunks) == 1
+        assert chunks[0] == "test ñoño".encode()
