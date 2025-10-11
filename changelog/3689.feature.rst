@@ -1,0 +1,1 @@
+Optimized file-like object handling in ``body_to_chunks()`` to use ``seek()`` and ``tell()`` for Content-Length determination instead of always using chunked encoding.
