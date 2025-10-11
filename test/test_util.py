@@ -1140,6 +1140,7 @@ class TestBodyToChunks:
         body = "test data"
         result = body_to_chunks(body, "POST", 8192)
         assert result.content_length == 9
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == b"test data"
@@ -1149,6 +1150,7 @@ class TestBodyToChunks:
         body = b"test data"
         result = body_to_chunks(body, "POST", 8192)
         assert result.content_length == 9
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == b"test data"
@@ -1162,6 +1164,7 @@ class TestBodyToChunks:
         assert result.content_length == 9
 
         # Verify chunks are correct
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == b"test data"
@@ -1177,6 +1180,7 @@ class TestBodyToChunks:
         assert result.content_length == 5
 
         # Verify chunks contain remaining data
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == b" data"
@@ -1190,6 +1194,7 @@ class TestBodyToChunks:
         assert result.content_length == 0
 
         # Should have no chunks
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 0
 
@@ -1202,6 +1207,7 @@ class TestBodyToChunks:
         assert result.content_length == 9
 
         # Verify chunks are correct (should be encoded to UTF-8)
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == b"test data"
@@ -1225,6 +1231,7 @@ class TestBodyToChunks:
                 assert result.content_length == 17
 
                 # Verify chunks
+                assert result.chunks is not None
                 chunks = list(result.chunks)
                 assert len(chunks) == 1
                 assert chunks[0] == b"test file content"
@@ -1252,6 +1259,7 @@ class TestBodyToChunks:
                 assert result.content_length == 12
 
                 # Verify chunks contain remaining data
+                assert result.chunks is not None
                 chunks = list(result.chunks)
                 assert len(chunks) == 1
                 assert chunks[0] == b"file content"
@@ -1285,6 +1293,7 @@ class TestBodyToChunks:
         assert result.content_length is None
 
         # Should still produce correct chunks
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == b"test data"
@@ -1316,6 +1325,7 @@ class TestBodyToChunks:
         assert result.content_length is None
 
         # Should still produce correct chunks
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == b"test data"
@@ -1351,6 +1361,7 @@ class TestBodyToChunks:
         assert result.content_length is None
 
         # Should still produce correct chunks
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == b"test data"
@@ -1385,6 +1396,7 @@ class TestBodyToChunks:
         assert result.content_length is None
 
         # Should still produce correct chunks
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == b"test data"
@@ -1423,6 +1435,7 @@ class TestBodyToChunks:
         assert result.content_length is None
 
         # Should still produce correct chunks
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == b"test data"
@@ -1464,6 +1477,7 @@ class TestBodyToChunks:
         assert result.content_length is None
 
         # Should still produce correct chunks
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == b"test data"
@@ -1479,6 +1493,7 @@ class TestBodyToChunks:
         assert result.content_length is None
 
         # Should still work for reading (though will be empty)
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 0
 
@@ -1494,6 +1509,7 @@ class TestBodyToChunks:
         assert result.content_length == 1024 * 1024
 
         # Verify we can read it in chunks
+        assert result.chunks is not None
         chunks = list(result.chunks)
         total_size = sum(len(chunk) for chunk in chunks)
         assert total_size == 1024 * 1024
@@ -1511,6 +1527,7 @@ class TestBodyToChunks:
         assert result.content_length == 1000
 
         # Should read in chunks of blocksize
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 10  # 1000 / 100
         for chunk in chunks:
@@ -1526,6 +1543,7 @@ class TestBodyToChunks:
         assert result.content_length == 9
 
         # Should encode to UTF-8 bytes
+        assert result.chunks is not None
         chunks = list(result.chunks)
         assert len(chunks) == 1
         assert chunks[0] == "test ñoño".encode()
