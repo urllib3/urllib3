@@ -89,8 +89,6 @@ jobs:
             os: ubuntu-24.04
             nox-session: emscripten(chrome)
             experimental: true
-          - python-version: 3.14
-            experimental: true
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-15":"macOS","windows-latest":"Windows","ubuntu-24.04":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
