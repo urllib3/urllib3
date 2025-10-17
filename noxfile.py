@@ -34,7 +34,7 @@ def tests_impl(
 
     # brotlicffi does not support free-threading
     if session.name.endswith("t"):
-       extras = "socks,zstd,h2"
+        extras = "socks,zstd,h2"
 
     # Install deps and the package itself.
     session.run_install(
