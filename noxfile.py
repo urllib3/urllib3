@@ -32,6 +32,10 @@ def tests_impl(
     ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
     implementation_name, release_level = session_python_info.split(" ")
 
+    # brotlicffi does not support free-threading
+    if session.name.endswith("t"):
+       extras = "socks,zstd,h2"
+
     # Install deps and the package itself.
     session.run_install(
         "uv",
@@ -97,6 +101,7 @@ def tests_impl(
         "3.12",
         "3.13",
         "3.14",
+        "3.14t",
         "pypy3.10",
         "pypy3.11",
     ]
