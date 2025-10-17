@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.14t"]
         os:
           - macos-15
           - windows-latest
@@ -145,13 +145,6 @@ jobs:
           path: .nox/.cache
           # noxfile.py contains the Pyodide version used currently.
           key: pyodide-downloads-${{ hashFiles('noxfile.py') }}
-
-      # https://github.com/wntrblm/nox/issues/986
-      - name: Create symlink to python.exe to help nox find Python
-        if: runner.os == 'Windows'
-        shell: cmd
-        run: |
-          mklink "%Python3_ROOT_DIR%\python${{ matrix.python-version }}.exe" "%Python3_ROOT_DIR%\python.exe"
 
       - name: "Run tests"
         run: |

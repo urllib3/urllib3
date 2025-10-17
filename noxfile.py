@@ -14,7 +14,7 @@ nox.options.default_venv_backend = "uv"
 
 def tests_impl(
     session: nox.Session,
-    extras: str = "socks,brotli,zstd,h2",
+    extras: str | None = None,
     # hypercorn dependency h2 compares bytes and strings
     # https://github.com/python-hyper/h2/issues/1236
     byte_string_comparisons: bool = False,
@@ -31,6 +31,9 @@ def tests_impl(
         silent=True,
     ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
     implementation_name, release_level = session_python_info.split(" ")
+
+    # brotlicffi does not support free-threading
+    extras = "socks,zstd,h2" if session.name.endswith("t") else "socks,brotli,zstd,h2"
 
     # Install deps and the package itself.
     session.run_install(
@@ -97,6 +100,7 @@ def tests_impl(
         "3.12",
         "3.13",
         "3.14",
+        "3.14t",
         "pypy3.10",
         "pypy3.11",
     ]
