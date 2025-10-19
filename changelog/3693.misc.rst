@@ -1,0 +1,1 @@
+Provide Zstandard support through the ``backports.zstd`` library for Python before 3.14.
