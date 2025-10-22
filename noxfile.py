@@ -27,10 +27,10 @@ def tests_impl(
     session_python_info = session.run(
         "python",
         "-c",
-        "import sys; print(sys.implementation.name, sys.version_info.releaselevel)",
+        "import sys; print(sys.implementation.name, sys.version_info.releaselevel, sys.abiflags or None)",
         silent=True,
     ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
-    implementation_name, release_level = session_python_info.split(" ")
+    implementation_name, release_level, abiflags = session_python_info.split(" ")
 
     # brotlicffi does not support free-threading
     extras = "socks,zstd,h2" if session.name.endswith("t") else "socks,brotli,zstd,h2"
@@ -53,7 +53,7 @@ def tests_impl(
     session.run("python", "-m", "OpenSSL.debug")
 
     memray_supported = True
-    if implementation_name != "cpython" or release_level != "final":
+    if implementation_name != "cpython" or release_level != "final" or abiflags == "t":
         memray_supported = False
     elif sys.platform == "win32":
         memray_supported = False
