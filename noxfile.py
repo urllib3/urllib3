@@ -50,7 +50,11 @@ def tests_impl(
     # Print the Python version, bytesize and free-threading status.
     session.run("python", "--version")
     session.run("python", "-c", "import struct; print(struct.calcsize('P') * 8)")
-    session.run("python", "-c", "import sys; print(getattr(sys, '_is_gil_enabled', lambda: True)())")
+    session.run(
+        "python",
+        "-c",
+        "import sys; print(getattr(sys, '_is_gil_enabled', lambda: True)())",
+    )
     # Print OpenSSL information.
     session.run("python", "-m", "OpenSSL.debug")
 
