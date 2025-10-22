@@ -27,11 +27,11 @@ def tests_impl(
     session_python_info = session.run(
         "python",
         "-c",
-        "import sys; print(sys.implementation.name, sys.version_info.releaselevel, getattr(sys, 'abiflags', None) or None)",
+        "import sys; print(sys.implementation.name, sys.version_info.releaselevel, getattr(sys, '_is_gil_enabled', lambda: True)())",
         silent=True,
     ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
-    implementation_name, release_level, abiflags = session_python_info.split(" ")
-    free_threading = abiflags == "t"
+    implementation_name, release_level, _is_gil_enabled = session_python_info.split(" ")
+    free_threading = _is_gil_enabled == "False"
 
     # brotlicffi does not support free-threading
     extras = "socks,zstd,h2" if free_threading else "socks,brotli,zstd,h2"
@@ -47,9 +47,10 @@ def tests_impl(
     )
     # Show the uv version.
     session.run("uv", "--version")
-    # Print the Python version and bytesize.
+    # Print the Python version, bytesize and free-threading status.
     session.run("python", "--version")
     session.run("python", "-c", "import struct; print(struct.calcsize('P') * 8)")
+    session.run("python", "-c", "import sys; print(getattr(sys, '_is_gil_enabled', lambda: True)())")
     # Print OpenSSL information.
     session.run("python", "-m", "OpenSSL.debug")
 
