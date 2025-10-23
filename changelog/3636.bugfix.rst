@@ -1,0 +1,1 @@
+Fixed partial/truncated data on partial then full read with decode_content=True
