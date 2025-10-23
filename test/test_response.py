@@ -4,6 +4,7 @@ import contextlib
 import http.client as httplib
 import socket
 import ssl
+import sys
 import typing
 import zlib
 from base64 import b64decode
@@ -35,11 +36,11 @@ from urllib3.util.retry import RequestHistory, Retry
 
 
 def zstd_compress(data: bytes) -> bytes:
-    try:
-        from compression import zstd  # type: ignore[import-not-found] # noqa: F401
-    except ImportError:
-        import zstandard as zstd
-    return zstd.compress(data)  # type: ignore[no-any-return]
+    if sys.version_info >= (3, 14):
+        from compression import zstd
+    else:
+        from backports import zstd
+    return zstd.compress(data)
 
 
 class TestBytesQueueBuffer:
