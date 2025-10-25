@@ -14,7 +14,7 @@ nox.options.default_venv_backend = "uv"
 
 def tests_impl(
     session: nox.Session,
-    extras: str = "socks,brotli,zstd,h2",
+    extras: str | None = None,
     # hypercorn dependency h2 compares bytes and strings
     # https://github.com/python-hyper/h2/issues/1236
     byte_string_comparisons: bool = False,
@@ -27,10 +27,14 @@ def tests_impl(
     session_python_info = session.run(
         "python",
         "-c",
-        "import sys; print(sys.implementation.name, sys.version_info.releaselevel)",
+        "import sys; print(sys.implementation.name, sys.version_info.releaselevel, getattr(sys, '_is_gil_enabled', lambda: True)())",
         silent=True,
     ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
-    implementation_name, release_level = session_python_info.split(" ")
+    implementation_name, release_level, _is_gil_enabled = session_python_info.split(" ")
+    free_threading = _is_gil_enabled == "False"
+
+    # brotlicffi does not support free-threading
+    extras = "socks,zstd,h2" if free_threading else "socks,brotli,zstd,h2"
 
     # Install deps and the package itself.
     session.run_install(
@@ -43,14 +47,19 @@ def tests_impl(
     )
     # Show the uv version.
     session.run("uv", "--version")
-    # Print the Python version and bytesize.
+    # Print the Python version, bytesize and free-threading status.
     session.run("python", "--version")
     session.run("python", "-c", "import struct; print(struct.calcsize('P') * 8)")
+    session.run(
+        "python",
+        "-c",
+        "import sys; print(getattr(sys, '_is_gil_enabled', lambda: True)())",
+    )
     # Print OpenSSL information.
     session.run("python", "-m", "OpenSSL.debug")
 
     memray_supported = True
-    if implementation_name != "cpython" or release_level != "final":
+    if implementation_name != "cpython" or release_level != "final" or free_threading:
         memray_supported = False
     elif sys.platform == "win32":
         memray_supported = False
@@ -97,6 +106,7 @@ def tests_impl(
         "3.12",
         "3.13",
         "3.14",
+        "3.14t",
         "pypy3.10",
         "pypy3.11",
     ]
