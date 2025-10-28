@@ -46,12 +46,8 @@ brotli = [
   "brotli>=1.0.9; platform_python_implementation == 'CPython'",
   "brotlicffi>=0.8.0; platform_python_implementation != 'CPython'"
 ]
-# Once we drop support for Python 3.13 this extra can be removed.
-# We'll need a deprecation period for the 'zstandard' module support
-# so that folks using Python without the 'compression.zstd' module
-# compiled will know to start doing so (although it'll likely be rare).
 zstd = [
-  "zstandard>=0.18.0",
+  "backports.zstd>=1.0.0; python_version<'3.14'",
 ]
 socks = [
   "PySocks>=1.5.6,<2.0,!=1.5.7",
@@ -84,6 +80,7 @@ dev = [
 ]
 mypy = [
     "anyio[trio]>=4.8.0",
+    "backports.zstd>=1.0.0; python_version<'3.14'",
     "cryptography>=44.0.2",
     "httpx>=0.28.1",
     "hypercorn>=0.15.0",
@@ -96,7 +93,6 @@ mypy = [
     "trustme>=1.2.1",
     "types-requests>=2.32.0.20241016",
     "nox>=2024.10.9",
-    "zstandard>=0.23.0",
 ]
 emscripten = [
     "build>=1.2.2.post1",
