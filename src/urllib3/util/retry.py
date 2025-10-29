@@ -386,8 +386,8 @@ class Retry:
 
     @property
     def disabled(self) -> bool:
-        """Check if retries are disabled. When self.total is set to False, the expected behavior is 
-        that retries will be disabled. The status_forcelist overrides this and will retry even 
+        """Check if retries are disabled. When self.total is set to False, the expected behavior is
+        that retries will be disabled. The status_forcelist overrides this and will retry even
         if self.total is False.
         """
         return self.total is False

@@ -1123,17 +1123,16 @@ class TestMaxRetryError(SocketDummyServerTestCase):
             b"HTTP/1.1 503 Service Unavailable\r\n",
         ],
     )
-    def test_retry_after_status_codes_raise_max_retry_error(self, status_line: bytes) -> None:
-        """A MaxRetryError should be raised when retries are exhausted for the codes 
+    def test_retry_after_status_codes_raise_max_retry_error(
+        self, status_line: bytes
+    ) -> None:
+        """A MaxRetryError should be raised when retries are exhausted for the codes
         in RETRY_AFTER_STATUS_CODES (413, 429, 503) even if the status code is not
         added to the forcelist.
         """
 
         raw_response = (
-            status_line +
-            b"Retry-After: 1\r\n"
-            b"Content-Length: 0\r\n"
-            b"\r\n"
+            status_line + b"Retry-After: 1\r\n" b"Content-Length: 0\r\n" b"\r\n"
         )
         self.start_response_handler(response=raw_response, num=3)
 
@@ -1141,6 +1140,7 @@ class TestMaxRetryError(SocketDummyServerTestCase):
             retry = Retry(2)
             with pytest.raises(MaxRetryError):
                 pool.request("GET", "/", retries=retry)
+
 
 class TestRetry(HypercornDummyServerTestCase):
     def test_max_retry(self) -> None:
