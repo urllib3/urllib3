@@ -154,11 +154,12 @@ jobs:
           NOX_SESSION: ${{ matrix.nox-session != '' && matrix.nox-session || format('test-{0}', matrix.python-version) }}
 
       - name: "Upload coverage data"
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: coverage-data-${{ matrix.python-version }}-${{ matrix.os }}-${{ matrix.experimental }}-${{ matrix.nox-session }}
           path: ".coverage.*"
           if-no-files-found: error
+          include-hidden-files: true
 
 
   coverage:
@@ -186,7 +187,7 @@ jobs:
         run: uv sync --dev --frozen
 
       - name: "Download coverage data"
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           pattern: coverage-data-*
           merge-multiple: true
@@ -200,7 +201,7 @@ jobs:
 
       - if: ${{ failure() }}
         name: "Upload report if check failed"
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: coverage-report
           path: htmlcov

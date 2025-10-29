@@ -4,7 +4,6 @@ import collections
 import io
 import json as _json
 import logging
-import re
 import socket
 import sys
 import typing
@@ -146,9 +145,13 @@ if brotli is not None:
 
 
 try:
-    # Python 3.14+
-    from compression import zstd  # type: ignore[import-not-found] # noqa: F401
-
+    if sys.version_info >= (3, 14):
+        from compression import zstd
+    else:
+        from backports import zstd
+except ImportError:
+    HAS_ZSTD = False
+else:
     HAS_ZSTD = True
 
     class ZstdDecoder(ContentDecoder):
@@ -169,45 +172,6 @@ try:
             if not self._obj.eof:
                 raise DecodeError("Zstandard data is incomplete")
             return b""
-
-except ImportError:
-    try:
-        # Python 3.13 and earlier require the 'zstandard' module.
-        import zstandard as zstd
-
-        # The package 'zstandard' added the 'eof' property starting
-        # in v0.18.0 which we require to ensure a complete and
-        # valid zstd stream was fed into the ZstdDecoder.
-        # See: https://github.com/urllib3/urllib3/pull/2624
-        _zstd_version = tuple(
-            map(int, re.search(r"^([0-9]+)\.([0-9]+)", zstd.__version__).groups())  # type: ignore[union-attr]
-        )
-        if _zstd_version < (0, 18):  # Defensive:
-            raise ImportError("zstandard module doesn't have eof")
-    except (AttributeError, ImportError, ValueError):  # Defensive:
-        HAS_ZSTD = False
-    else:
-        HAS_ZSTD = True
-
-        class ZstdDecoder(ContentDecoder):  # type: ignore[no-redef]
-            def __init__(self) -> None:
-                self._obj = zstd.ZstdDecompressor().decompressobj()
-
-            def decompress(self, data: bytes) -> bytes:
-                if not data:
-                    return b""
-                data_parts = [self._obj.decompress(data)]
-                while self._obj.eof and self._obj.unused_data:
-                    unused_data = self._obj.unused_data
-                    self._obj = zstd.ZstdDecompressor().decompressobj()
-                    data_parts.append(self._obj.decompress(unused_data))
-                return b"".join(data_parts)
-
-            def flush(self) -> bytes:
-                ret = self._obj.flush()  # note: this is a no-op
-                if not self._obj.eof:
-                    raise DecodeError("Zstandard data is incomplete")
-                return ret  # type: ignore[no-any-return]
 
 
 class MultiDecoder(ContentDecoder):
