@@ -159,6 +159,7 @@ jobs:
           name: coverage-data-${{ matrix.python-version }}-${{ matrix.os }}-${{ matrix.experimental }}-${{ matrix.nox-session }}
           path: ".coverage.*"
           if-no-files-found: error
+          include-hidden-files: true
 
 
   coverage:
