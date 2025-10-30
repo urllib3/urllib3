@@ -10,6 +10,7 @@ defaults:
     shell: bash
 env:
   FORCE_COLOR: 1
+  UV_NATIVE_TLS: "true"
 
 jobs:
   package:
@@ -17,6 +18,9 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      - uses: GitHubSecurityLab/actions-permissions/monitor@31cf7361439cbdffbc73a3bb138b7e1662d46c9b
+        with:
+          config: ${{ vars.PERMISSIONS_CONFIG }}
       - name: "Checkout repository"
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
@@ -95,6 +99,9 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     timeout-minutes: 10
     steps:
+      - uses: GitHubSecurityLab/actions-permissions/monitor@31cf7361439cbdffbc73a3bb138b7e1662d46c9b
+        with:
+          config: ${{ vars.PERMISSIONS_CONFIG }}
       - name: "Checkout repository"
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
@@ -167,6 +174,9 @@ jobs:
     runs-on: "ubuntu-24.04"
     needs: test
     steps:
+      - uses: GitHubSecurityLab/actions-permissions/monitor@31cf7361439cbdffbc73a3bb138b7e1662d46c9b
+        with:
+          config: ${{ vars.PERMISSIONS_CONFIG }}
       - name: "Checkout repository"
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
