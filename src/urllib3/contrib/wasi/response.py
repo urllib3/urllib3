@@ -103,12 +103,15 @@ class WasiHttpResponseWrapper(BaseHTTPResponse):
     def stream(
         self, amt: int | None = 2**16, decode_content: bool | None = None
     ) -> typing.Iterator[bytes]:
-        while True:
-            data = self.read(amt=amt, decode_content=decode_content)
-            if len(data) != 0:
-                yield data
-            else:
-                break
+        if self._body:
+            yield self._body
+        else:
+            while True:
+                data = self.read(amt=amt, decode_content=decode_content)
+                if len(data) != 0:
+                    yield data
+                else:
+                    break
 
     def read(
         self,
