@@ -364,7 +364,10 @@ def create_urllib3_context(
     except AttributeError:  # Defensive: for CPython < 3.9.3; for PyPy < 7.3.8
         pass
 
-    sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
+    if "SSLKEYLOGFILE" in os.environ:
+        sslkeylogfile = os.path.expandvars(os.environ.get("SSLKEYLOGFILE"))
+    else:
+        sslkeylogfile = None
     if sslkeylogfile:
         context.keylog_filename = sslkeylogfile
 
