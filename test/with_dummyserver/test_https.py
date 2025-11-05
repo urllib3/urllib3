@@ -6,6 +6,7 @@ import datetime
 import os.path
 import shutil
 import ssl
+import sys
 import tempfile
 import time
 import typing
@@ -925,7 +926,10 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         keylog_file = tmp_path / "keylogfile.txt"
         if use_env_var_expansion:
             monkeypatch.setenv("FILEPATH", str(keylog_file))
-            monkeypatch.setenv("SSLKEYLOGFILE", "%FILEPATH%")
+            if sys.platform == "win32":
+                monkeypatch.setenv("SSLKEYLOGFILE", "%FILEPATH%")
+            else:
+                monkeypatch.setenv("SSLKEYLOGFILE", "${FILEPATH}")
         else:
             monkeypatch.setenv("SSLKEYLOGFILE", str(keylog_file))
 
