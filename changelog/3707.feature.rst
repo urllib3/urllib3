@@ -1,0 +1,1 @@
+Made ``ConnectionPool`` and it's children pickleable by implementing ``__getstate__`` and ``__setstate__`` methods.

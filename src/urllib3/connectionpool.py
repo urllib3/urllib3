@@ -233,6 +233,21 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # HTTPConnectionPool object is garbage collected.
         weakref.finalize(self, _close_pool_connections, pool)
 
+    def __getstate__(self) -> dict[str, typing.Any]:
+        """
+        When pickling HTTPConnectionPool, we don't want to pickle the actual pool, just the metadata
+        around it.
+        """
+        d = self.__dict__.copy()
+        d["pool"] = None
+        return d
+
+    def __setstate__(self, state):
+        """
+        Restore the state during unpickling.
+        """
+        self.__dict__.update(state)
+
     def _new_conn(self) -> BaseHTTPConnection:
         """
         Return a fresh :class:`HTTPConnection`.
