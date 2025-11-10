@@ -242,7 +242,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         d["pool"] = None
         return d
 
-    def __setstate__(self, state):
+    def __setstate__(self, state) -> None:
         """
         Restore the state during unpickling.
         """
