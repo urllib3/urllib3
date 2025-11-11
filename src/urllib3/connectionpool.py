@@ -873,9 +873,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             else:
                 # Standard port, omit it
                 full_url = f"{self.scheme}://{self.host}{url}"
-            
+
             log.warning(
-                "Retrying (%r) after connection broken by '%r': %s", retries, err, full_url
+                "Retrying (%r) after connection broken by '%r': %s",
+                retries,
+                err,
+                full_url,
             )
             return self.urlopen(
                 method,
