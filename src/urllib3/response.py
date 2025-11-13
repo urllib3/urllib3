@@ -231,13 +231,13 @@ class BytesQueueBuffer:
     """
 
     def __init__(self) -> None:
-        self.buffer: typing.Deque[bytes] = collections.deque()
+        self.buffer: typing.Deque[bytes | memoryview[bytes]] = collections.deque()
         self._size: int = 0
 
     def __len__(self) -> int:
         return self._size
 
-    def put(self, data: bytes) -> None:
+    def put(self, data: bytes | memoryview[bytes]) -> None:
         self.buffer.append(data)
         self._size += len(data)
 
@@ -279,6 +279,8 @@ class BytesQueueBuffer:
             return b""
         if len(buffer) == 1:
             result = buffer.pop()
+            if isinstance(result, memoryview):
+                result = result.tobytes()
         else:
             ret = io.BytesIO()
             ret.writelines(buffer.popleft() for _ in range(len(buffer)))
