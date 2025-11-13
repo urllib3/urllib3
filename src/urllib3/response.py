@@ -256,7 +256,8 @@ class BytesQueueBuffer:
             chunk = self.buffer.popleft()
             chunk_length = len(chunk)
             if remaining < chunk_length:
-                left_chunk, right_chunk = chunk[:remaining], chunk[remaining:]
+                chunk_view = memoryview(chunk)
+                left_chunk, right_chunk = chunk_view[:remaining], chunk_view[remaining:]
                 ret.write(left_chunk)
                 self.buffer.appendleft(right_chunk)
                 self._size -= remaining
