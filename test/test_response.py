@@ -6,6 +6,7 @@ import socket
 import ssl
 import sys
 import typing
+import time
 import zlib
 from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
@@ -125,6 +126,15 @@ class TestBytesQueueBuffer:
         buffer.put(chunk)
         assert buffer.get_all() is chunk
 
+    def test_data_retrieval_time(self) -> None:
+        buffer = BytesQueueBuffer()
+        buffer.put(b"x" * 1024 * 1024 * 10)  # 10 MiB
+        now = time.perf_counter()
+        while len(buffer) > 0:
+            buffer.get(1024) # 1 KiB
+        delta = time.perf_counter() - now
+
+        assert delta < 1.0, f"Data retrieval time too long: {delta}s"
 
 # A known random (i.e, not-too-compressible) payload generated with:
 #    "".join(random.choice(string.printable) for i in range(512))
