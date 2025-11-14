@@ -126,15 +126,44 @@ class TestBytesQueueBuffer:
         buffer.put(chunk)
         assert buffer.get_all() is chunk
 
-    def test_data_retrieval_time(self) -> None:
+    @pytest.mark.parametrize(
+        "get_func",
+        (lambda b: b.get(1024), lambda b: b.get_all()),
+        ids=("get", "get_all"),
+    )
+    def test_performance_multi_chunk_get(
+        self, get_func: typing.Callable[[BytesQueueBuffer], str]
+    ) -> None:
         buffer = BytesQueueBuffer()
-        buffer.put(b"x" * 1024 * 1024 * 10)  # 10 MiB
         now = time.perf_counter()
+
+        for _ in range(10 * 1024):  # 10 MiB total
+            buffer.put(b"x" * 1024)  # 1 KiB
         while len(buffer) > 0:
-            buffer.get(1024)  # 1 KiB
+            get_func(buffer)
+
         delta = time.perf_counter() - now
 
-        assert delta < 1.0, f"Data retrieval time too long: {delta}s"
+        assert delta < 0.5, f"Data retrieval time too long: {delta}s"
+
+    @pytest.mark.parametrize(
+        "get_func",
+        (lambda b: b.get(1024), lambda b: b.get_all()),
+        ids=("get", "get_all"),
+    )
+    def test_performance_single_chunk(
+        self, get_func: typing.Callable[[BytesQueueBuffer], str]
+    ) -> None:
+        buffer = BytesQueueBuffer()
+
+        now = time.perf_counter()
+        buffer.put(b"x" * 1024 * 1024 * 10)  # 10 MiB
+        while len(buffer) > 0:
+            get_func(buffer)
+
+        delta = time.perf_counter() - now
+
+        assert delta < 0.5, f"Data retrieval time too long: {delta}s"
 
 
 # A known random (i.e, not-too-compressible) payload generated with:
