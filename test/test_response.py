@@ -131,7 +131,7 @@ class TestBytesQueueBuffer:
         (lambda b: b.get(1024), lambda b: b.get_all()),
         ids=("get", "get_all"),
     )
-    def test_performance_multi_chunk_get(
+    def test_performance_multi_chunk(
         self, get_func: typing.Callable[[BytesQueueBuffer], str]
     ) -> None:
         buffer = BytesQueueBuffer()
