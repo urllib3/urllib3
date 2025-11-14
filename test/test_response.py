@@ -144,7 +144,7 @@ class TestBytesQueueBuffer:
 
         delta = time.perf_counter() - now
 
-        assert delta < 0.5, f"Data retrieval time too long: {delta}s"
+        assert delta < 0.5, f"Data put & get time too long: {delta}s"
 
     @pytest.mark.parametrize(
         "get_func",
@@ -163,7 +163,7 @@ class TestBytesQueueBuffer:
 
         delta = time.perf_counter() - now
 
-        assert delta < 0.5, f"Data retrieval time too long: {delta}s"
+        assert delta < 0.5, f"Data put & get time too long: {delta}s"
 
 
 # A known random (i.e, not-too-compressible) payload generated with:
