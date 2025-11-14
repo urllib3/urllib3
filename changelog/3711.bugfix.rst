@@ -1,1 +1,1 @@
-Improved the performance of content decoding by optimizing `BytesQueueBuffer.get()` method.
+Improved the performance of content decoding by optimizing `BytesQueueBuffer` class.
