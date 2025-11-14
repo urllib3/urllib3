@@ -231,14 +231,14 @@ class BytesQueueBuffer:
     """
 
     def __init__(self) -> None:
-        self.buffer: typing.Deque[memoryview[bytes]] = collections.deque()
+        self.buffer: typing.Deque[bytes | memoryview[bytes]] = collections.deque()
         self._size: int = 0
 
     def __len__(self) -> int:
         return self._size
 
     def put(self, data: bytes | memoryview[bytes]) -> None:
-        self.buffer.append(memoryview(data))
+        self.buffer.append(data)
         self._size += len(data)
 
     def get(self, n: int) -> bytes:
@@ -256,6 +256,7 @@ class BytesQueueBuffer:
             chunk = self.buffer.popleft()
             chunk_length = len(chunk)
             if remaining < chunk_length:
+                chunk = memoryview(chunk)
                 left_chunk, right_chunk = chunk[:remaining], chunk[remaining:]
                 ret.write(left_chunk)
                 self.buffer.appendleft(right_chunk)
@@ -277,11 +278,9 @@ class BytesQueueBuffer:
             assert self._size == 0
             return b""
         if len(buffer) == 1:
-            view = buffer.pop()
-            if isinstance(view.obj, bytes) and len(view) == len(view.obj):
-                result = view.obj
-            else:
-                result = view.tobytes()
+            result = buffer.pop()
+            if isinstance(result, memoryview):
+                result = result.tobytes()
         else:
             ret = io.BytesIO()
             ret.writelines(buffer.popleft() for _ in range(len(buffer)))
