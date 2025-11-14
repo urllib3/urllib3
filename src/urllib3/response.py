@@ -278,7 +278,7 @@ class BytesQueueBuffer:
             return b""
         if len(buffer) == 1:
             view = buffer.pop()
-            if len(view) == len(view.obj):
+            if isinstance(view.obj, bytes) and len(view) == len(view.obj):
                 result = view.obj
             else:
                 result = view.tobytes()
