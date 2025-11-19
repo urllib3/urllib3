@@ -116,7 +116,9 @@ class TestBytesQueueBuffer:
             # This allocates 2MiB, putting the max at around 12MiB. Not sure why.
             buffer.put(bytes(2**20))
 
-        assert len(get_func(buffer)) == 10 * 2**20
+        result = get_func(buffer)
+        assert type(result) is bytes
+        assert len(result) == 10 * 2**20
 
     @pytest.mark.limit_memory("10.01 MB", current_thread_only=True)
     def test_get_all_memory_usage_single_chunk(self) -> None:
@@ -133,7 +135,25 @@ class TestBytesQueueBuffer:
         chunk = bytes(10 * 2**20)  # 10 MiB
         buffer.put(chunk)
         for _ in range(10):
-            assert len(buffer.get(2**20)) == 2**20
+            result = buffer.get(2**20)
+            assert type(result) is bytes
+            assert len(result) == 2**20
+            del result
+        assert len(buffer) == 0
+
+    @pytest.mark.limit_memory("11.01 MB", current_thread_only=True)
+    def test_memory_usage_splitting_chunk_finishing_with_get_all(self) -> None:
+        buffer = BytesQueueBuffer()
+        chunk = bytes(10 * 2**20)  # 10 MiB
+        buffer.put(chunk)
+        for i in range(10):
+            if i < 9:
+                result = buffer.get(2**20)
+            else:
+                result = buffer.get_all()
+            assert type(result) is bytes
+            assert len(result) == 2**20
+            del result
         assert len(buffer) == 0
 
 
