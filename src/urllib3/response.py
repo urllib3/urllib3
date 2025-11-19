@@ -237,7 +237,7 @@ class BytesQueueBuffer:
     def __len__(self) -> int:
         return self._size
 
-    def put(self, data: bytes | memoryview[bytes]) -> None:
+    def put(self, data: bytes) -> None:
         self.buffer.append(data)
         self._size += len(data)
 
