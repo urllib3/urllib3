@@ -23,7 +23,10 @@ from urllib3.util.request import SKIP_HEADER
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
-from urllib3.util.ssl_match_hostname import _dnsname_match, match_hostname
+from urllib3.util.ssl_match_hostname import (
+    _dnsname_match,
+    match_hostname,
+)
 
 if typing.TYPE_CHECKING:
     from urllib3.util.ssl_ import _TYPE_PEER_CERT_RET_DICT
