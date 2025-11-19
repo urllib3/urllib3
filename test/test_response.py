@@ -127,30 +127,23 @@ class TestBytesQueueBuffer:
         buffer.put(chunk)
         assert buffer.get_all() is chunk
 
+    @pytest.mark.parametrize(
+        "finish_with_get_all",
+        (True, False),
+        ids=("finish_with_get_all", "finish_with_get"),
+    )
     @pytest.mark.limit_memory("11.01 MB", current_thread_only=True)
-    def test_memory_usage_splitting_chunk(self) -> None:
+    def test_memory_usage_splitting_chunk(self, finish_with_get_all: bool) -> None:
         # Allocate a single 10MiB chunk, then read it in two parts.
         # Verifies that splitting a chunk doesn't cause additional memory allocation.
         buffer = BytesQueueBuffer()
         chunk = bytes(10 * 2**20)  # 10 MiB
         buffer.put(chunk)
-        for _ in range(10):
-            result = buffer.get(2**20)
-            assert type(result) is bytes
-            assert len(result) == 2**20
-            del result
-        assert len(buffer) == 0
-
-    @pytest.mark.limit_memory("11.01 MB", current_thread_only=True)
-    def test_memory_usage_splitting_chunk_finishing_with_get_all(self) -> None:
-        buffer = BytesQueueBuffer()
-        chunk = bytes(10 * 2**20)  # 10 MiB
-        buffer.put(chunk)
         for i in range(10):
-            if i < 9:
-                result = buffer.get(2**20)
-            else:
+            if finish_with_get_all and i == 9:
                 result = buffer.get_all()
+            else:
+                result = buffer.get(2**20)
             assert type(result) is bytes
             assert len(result) == 2**20
             del result
