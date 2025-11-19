@@ -182,7 +182,7 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
         return typing.cast(_TestFuncT, wrapper)
 
     def _decorator_requires_internet(
-        decorator: typing.Callable[[_TestFuncT], _TestFuncT]
+        decorator: typing.Callable[[_TestFuncT], _TestFuncT],
     ) -> typing.Callable[[_TestFuncT], _TestFuncT]:
         """Mark a decorator with the "requires_internet" mark"""
 

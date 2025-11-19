@@ -2041,7 +2041,7 @@ class TestHeaders(SocketDummyServerTestCase):
         ]
 
         def filter_non_x_headers(
-            d: typing.OrderedDict[str, str]
+            d: typing.OrderedDict[str, str],
         ) -> list[tuple[str, str]]:
             return [(k, v) for (k, v) in d.items() if k.startswith("X-Header-")]
 
