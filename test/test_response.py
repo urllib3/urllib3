@@ -108,7 +108,7 @@ class TestBytesQueueBuffer:
         "12.5 MB", current_thread_only=True
     )  # assert that we're not doubling memory usagelimit_mem
     def test_memory_usage(
-        self, get_func: typing.Callable[[BytesQueueBuffer], str]
+        self, get_func: typing.Callable[[BytesQueueBuffer], bytes]
     ) -> None:
         # Allocate 10 1MiB chunks
         buffer = BytesQueueBuffer()
