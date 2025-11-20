@@ -70,11 +70,7 @@ class TestSSL:
             assert context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN
             assert context.verify_flags & ssl.VERIFY_X509_STRICT
         else:
-            # Needed for Python 3.9 which does not define this
-            assert not (
-                context.verify_flags
-                & getattr(ssl, "VERIFY_X509_PARTIAL_CHAIN", 0x80000)
-            )
+            assert not (context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN)
             assert not (context.verify_flags & ssl.VERIFY_X509_STRICT)
 
     def test_create_urllib3_context_custom_verify_flags(self) -> None:

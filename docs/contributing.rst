@@ -66,7 +66,7 @@ suite::
   [ Nox will create virtualenv if needed, install the specified dependencies, and run the commands in order.]
   .......
   .......
-  nox > Session test-3.9 was successful.
+  nox > Session test-3.10 was successful.
   nox > Session test-3.10 was successful.
   nox > Session test-3.11 was successful.
   nox > Session test-3.12 was successful.

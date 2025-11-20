@@ -23,7 +23,10 @@ from urllib3.util.request import SKIP_HEADER
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
-from urllib3.util.ssl_match_hostname import _dnsname_match, match_hostname
+from urllib3.util.ssl_match_hostname import (
+    _dnsname_match,
+    match_hostname,
+)
 
 if typing.TYPE_CHECKING:
     from urllib3.util.ssl_ import _TYPE_PEER_CERT_RET_DICT
@@ -297,14 +300,14 @@ class TestConnection:
         if user_agent is not None:
             headers[user_agent] = SKIP_HEADER
 
-        # When dropping support for Python 3.9, this can be rewritten to parenthesized
-        # context managers
-        with mock.patch("urllib3.util.connection.create_connection"):
-            with mock.patch(
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch(
                 "urllib3.connection._HTTPConnection.putheader"
-            ) as http_client_putheader:
-                conn = HTTPConnection("")
-                conn.request("GET", "/headers", headers=headers, chunked=chunked)
+            ) as http_client_putheader,
+        ):
+            conn = HTTPConnection("")
+            conn.request("GET", "/headers", headers=headers, chunked=chunked)
 
         request_headers = {}
         for call in http_client_putheader.call_args_list:

@@ -1,18 +1,18 @@
 repos:
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.19.0
+    rev: v3.21.2
     hooks:
       - id: pyupgrade
-        args: ["--py39-plus"]
+        args: ["--py310-plus"]
 
   - repo: https://github.com/psf/black
-    rev: 24.10.0
+    rev: 25.11.0
     hooks:
       - id: black
-        args: ["--target-version", "py39"]
+        args: ["--target-version", "py310"]
 
   - repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
+    rev: 7.0.0
     hooks:
       - id: isort
 
