@@ -182,8 +182,7 @@ class TestBytesQueueBuffer:
 #    "".join(random.choice(string.printable) for i in range(512))
 #    .encode("zlib").encode("base64")
 # Randomness in tests == bad, and fixing a seed may not be sufficient.
-ZLIB_PAYLOAD = b64decode(
-    b"""\
+ZLIB_PAYLOAD = b64decode(b"""\
 eJwFweuaoQAAANDfineQhiKLUiaiCzvuTEmNNlJGiL5QhnGpZ99z8luQfe1AHoMioB+QSWHQu/L+
 lzd7W5CipqYmeVTBjdgSATdg4l4Z2zhikbuF+EKn69Q0DTpdmNJz8S33odfJoVEexw/l2SS9nFdi
 pis7KOwXzfSqarSo9uJYgbDGrs1VNnQpT9f8zAorhYCEZronZQF9DuDFfNK3Hecc+WHLnZLQptwk
@@ -192,8 +191,7 @@ Khe5TF36JbnKVjdcL1EUNpwrWVfQpFYJ/WWm2b74qNeSZeQv5/xBhRdOmKTJFYgO96PwrHBlsnLn
 a3l0LwJsloWpMbzByU5WLbRE6X5INFqjQOtIwYz5BAlhkn+kVqJvWM5vBlfrwP42ifonM5yF4ciJ
 auHVks62997mNGOsM7WXNG3P98dBHPo2NhbTvHleL0BI5dus2JY81MUOnK3SGWLH8HeWPa1t5KcW
 S5moAj5HexY/g/F8TctpxwsvyZp38dXeLDjSQvEQIkF7XR3YXbeZgKk3V34KGCPOAeeuQDIgyVhV
-nP4HF2uWHA=="""
-)
+nP4HF2uWHA==""")
 
 
 @pytest.fixture

@@ -105,10 +105,12 @@ mypy = [
     "backports.zstd>=1.0.0; python_version<'3.14'",
     "cryptography>=44.0.2",
     "idna>=3.10",
-    "mypy>=1.14.1",
+    "mypy>=1.18.2",
     "trustme>=1.2.1",
     "types-requests>=2.32.0.20241016",
     "nox>=2024.10.9",
+    "types-pysocks>=1.7.1.20251001",
+    "pyopenssl>=25.3.0",
 ]
 emscripten = [
     "build>=1.2.2.post1",
