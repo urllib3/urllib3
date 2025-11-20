@@ -6,6 +6,7 @@ import datetime
 import os.path
 import shutil
 import ssl
+import sys
 import tempfile
 import time
 import typing
@@ -912,14 +913,25 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 finally:
                     conn.close()
 
+    @pytest.mark.parametrize("use_env_var_expansion", [True, False])
     def test_sslkeylogfile(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        use_env_var_expansion: bool,
     ) -> None:
         if not hasattr(util.SSLContext, "keylog_filename"):
             pytest.skip("requires OpenSSL 1.1.1+")
 
         keylog_file = tmp_path / "keylogfile.txt"
-        monkeypatch.setenv("SSLKEYLOGFILE", str(keylog_file))
+        if use_env_var_expansion:
+            monkeypatch.setenv("FILEPATH", str(keylog_file))
+            if sys.platform == "win32":
+                monkeypatch.setenv("SSLKEYLOGFILE", "%FILEPATH%")
+            else:
+                monkeypatch.setenv("SSLKEYLOGFILE", "${FILEPATH}")
+        else:
+            monkeypatch.setenv("SSLKEYLOGFILE", str(keylog_file))
 
         with HTTPSConnectionPool(
             self.host,
