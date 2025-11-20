@@ -136,14 +136,14 @@ try:  # Do we have ssl at all?
 
     from .ssltransport import SSLTransport  # type: ignore[assignment]
 except ImportError:
-    OP_NO_COMPRESSION = 0x20000  # type: ignore[assignment]
-    OP_NO_TICKET = 0x4000  # type: ignore[assignment]
-    OP_NO_SSLv2 = 0x1000000  # type: ignore[assignment]
-    OP_NO_SSLv3 = 0x2000000  # type: ignore[assignment]
-    PROTOCOL_SSLv23 = PROTOCOL_TLS = 2  # type: ignore[assignment]
-    PROTOCOL_TLS_CLIENT = 16  # type: ignore[assignment]
+    OP_NO_COMPRESSION = 0x20000  # type: ignore[assignment,misc]
+    OP_NO_TICKET = 0x4000  # type: ignore[assignment,misc]
+    OP_NO_SSLv2 = 0x1000000  # type: ignore[assignment,misc]
+    OP_NO_SSLv3 = 0x2000000  # type: ignore[assignment,misc]
+    PROTOCOL_SSLv23 = PROTOCOL_TLS = 2  # type: ignore[assignment,misc]
+    PROTOCOL_TLS_CLIENT = 16  # type: ignore[assignment,misc]
     VERIFY_X509_PARTIAL_CHAIN = 0x80000
-    VERIFY_X509_STRICT = 0x20  # type: ignore[assignment]
+    VERIFY_X509_STRICT = 0x20  # type: ignore[assignment,misc]
 
 
 _TYPE_PEER_CERT_RET = typing.Union["_TYPE_PEER_CERT_RET_DICT", bytes, None]
