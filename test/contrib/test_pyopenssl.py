@@ -7,7 +7,7 @@ import pytest
 
 try:
     from cryptography import x509
-    from OpenSSL.crypto import (  # type: ignore[import-untyped]
+    from OpenSSL.crypto import (  # type: ignore[import-not-found]
         FILETYPE_PEM,
         load_certificate,
     )
