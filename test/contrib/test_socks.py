@@ -9,7 +9,7 @@ from test import SHORT_TIMEOUT
 from unittest.mock import Mock, patch
 
 import pytest
-import socks as py_socks  # type: ignore[import-not-found]
+import socks as py_socks
 
 from dummyserver.socketserver import DEFAULT_CA, DEFAULT_CERTS
 from dummyserver.testcase import IPV4SocketDummyServerTestCase
@@ -119,7 +119,9 @@ def _set_up_fake_getaddrinfo(monkeypatch: pytest.MonkeyPatch) -> None:
         gai_list = [gai for gai in gai_list if gai[0] == socket.AF_INET]
         return gai_list[:1]
 
-    monkeypatch.setattr(py_socks.socket, "getaddrinfo", fake_getaddrinfo)
+    monkeypatch.setattr(
+        py_socks.socket, "getaddrinfo", fake_getaddrinfo  # type:ignore[attr-defined]
+    )
 
 
 def handle_socks5_negotiation(
