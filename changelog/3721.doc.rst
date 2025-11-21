@@ -1,0 +1,1 @@
+Updated docs to reflect change in optional zstd dependency from ``zstandard`` to ``backports.zstd``.
