@@ -162,11 +162,11 @@ class TestUtil:
             "http://google.com:65536",
             "http://google.com:\xb2\xb2",  # \xb2 = ^2
             # Invalid IDNA labels
-            "http://\uD7FF.com",
+            "http://\ud7ff.com",
             "http://❤️",
             # Unicode surrogates
-            "http://\uD800.com",
-            "http://\uDC00.com",
+            "http://\ud800.com",
+            "http://\udc00.com",
         ],
     )
     def test_invalid_url(self, url: str) -> None:
@@ -217,7 +217,7 @@ class TestUtil:
         actual_normalized_url = parse_url(url).url
         assert actual_normalized_url == expected_normalized_url
 
-    @pytest.mark.parametrize("char", [chr(i) for i in range(0x00, 0x21)] + ["\x7F"])
+    @pytest.mark.parametrize("char", [chr(i) for i in range(0x00, 0x21)] + ["\x7f"])
     def test_control_characters_are_percent_encoded(self, char: str) -> None:
         percent_char = "%" + (hex(ord(char))[2:].zfill(2).upper())
         url = parse_url(
@@ -295,13 +295,13 @@ class TestUtil:
             Url("http", auth="user%22:quoted", host="example.com", path="/"),
         ),
         # Unicode Surrogates
-        ("http://google.com/\uD800", Url("http", host="google.com", path="%ED%A0%80")),
+        ("http://google.com/\ud800", Url("http", host="google.com", path="%ED%A0%80")),
         (
-            "http://google.com?q=\uDC00",
+            "http://google.com?q=\udc00",
             Url("http", host="google.com", path="", query="q=%ED%B0%80"),
         ),
         (
-            "http://google.com#\uDC00",
+            "http://google.com#\udc00",
             Url("http", host="google.com", path="", fragment="%ED%B0%80"),
         ),
     ]
@@ -1121,6 +1121,6 @@ class TestUtilWithoutIdna:
         module_stash.pop()
 
     def test_parse_url_without_idna(self) -> None:
-        url = "http://\uD7FF.com"
+        url = "http://\ud7ff.com"
         with pytest.raises(LocationParseError, match=f"Failed to parse: {url}"):
             parse_url(url)
