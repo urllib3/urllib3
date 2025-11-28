@@ -7,11 +7,14 @@ import warnings
 from types import TracebackType
 from urllib.parse import urljoin
 
+from urllib3.util.request import make_headers
+
 from ._collections import HTTPHeaderDict, RecentlyUsedContainer
 from ._request_methods import RequestMethods
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
+    InvalidHeader,
     LocationValueError,
     MaxRetryError,
     ProxySchemeUnknown,
@@ -563,7 +566,7 @@ class ProxyManager(PoolManager):
         proxy_url: str,
         num_pools: int = 10,
         headers: typing.Mapping[str, str] | None = None,
-        proxy_headers: typing.Mapping[str, str] | None = None,
+        proxy_headers: typing.MutableMapping[str, str] | None = None,
         proxy_ssl_context: ssl.SSLContext | None = None,
         use_forwarding_for_https: bool = False,
         proxy_assert_hostname: None | str | typing.Literal[False] = None,
@@ -592,6 +595,23 @@ class ProxyManager(PoolManager):
             proxy_assert_hostname,
             proxy_assert_fingerprint,
         )
+
+        if proxy.auth is not None:
+            split = proxy.auth.split(":")
+            if len(split) == 2:
+                auth = make_headers(proxy_basic_auth=proxy.auth)["proxy-authorization"]
+                if (
+                    "proxy-authorization" in self.proxy_headers
+                    and self.proxy_headers["proxy-authorization"] != auth
+                ) or (
+                    headers
+                    and "proxy-authorization" in headers
+                    and headers["proxy-authorization"] != auth
+                ):
+                    raise InvalidHeader(
+                        "Proxy-Authorization given in headers or proxy_headers and URL don't match"
+                    )
+                self.proxy_headers["proxy-authorization"] = auth
 
         connection_pool_kw["_proxy"] = self.proxy
         connection_pool_kw["_proxy_headers"] = self.proxy_headers
