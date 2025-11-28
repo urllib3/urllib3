@@ -93,7 +93,7 @@ class TestRequestField:
             ("näme", "näme"),
             (b"n\xc3\xa4me", "näme"),
             ("ski ⛷.txt", "ski ⛷.txt"),
-            ("control \x1A\x1B\x1C", "control \x1A\x1B\x1C"),
+            ("control \x1a\x1b\x1c", "control \x1a\x1b\x1c"),
             ("backslash \\", "backslash \\"),
             ("quotes '\"", "quotes '%22"),
             ("newline \n\r", "newline %0A%0D"),

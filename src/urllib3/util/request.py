@@ -228,7 +228,6 @@ def body_to_chunks(
     elif hasattr(body, "read"):
 
         def chunk_readable() -> typing.Iterable[bytes]:
-            nonlocal body, blocksize
             encode = isinstance(body, io.TextIOBase)
             while True:
                 datablock = body.read(blocksize)
