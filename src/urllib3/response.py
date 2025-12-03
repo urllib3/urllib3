@@ -1035,10 +1035,23 @@ class HTTPResponse(BaseHTTPResponse):
             yield from self.read_chunked(amt, decode_content=decode_content)
         else:
             while not is_fp_closed(self._fp) or len(self._decoded_buffer) > 0:
-                data = self.read(amt=amt, decode_content=decode_content)
-
+                if amt is None:
+                    data = self.read1(amt=amt, decode_content=decode_content)
+                else:
+                    data = self.read(amt=amt, decode_content=decode_content)
                 if data:
                     yield data
+                else:
+                    # http.client.HTTPResponse will often close this for us and
+                    # _raw_read handles a few more cases, but not all of them.
+                    # e.g., when using read1 with a HEAD request this won't
+                    # be closed automatically
+                    if self._fp:
+                        self._fp.close()
+                    break
+        # _raw_read does not raise when amt is None, do this now
+        if self.length_remaining and self.enforce_content_length:
+            raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
 
     # Overrides from io.IOBase
     def readable(self) -> bool:
