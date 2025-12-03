@@ -5,7 +5,7 @@ repos:
       - id: pyupgrade
         args: ["--py310-plus"]
 
-  - repo: https://github.com/psf/black
+  - repo: https://github.com/psf/black-pre-commit-mirror
     rev: 25.11.0
     hooks:
       - id: black
@@ -17,18 +17,18 @@ repos:
       - id: isort
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.1.1
+    rev: 7.3.0
     hooks:
       - id: flake8
         additional_dependencies: [flake8-2020]
 
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.7.8
+    rev: 0.9.10
     hooks:
       - id: uv-lock
 
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.13.0
+    rev: v1.16.3
     hooks:
       - id: zizmor
 

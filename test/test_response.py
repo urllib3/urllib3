@@ -108,7 +108,7 @@ class TestBytesQueueBuffer:
         "12.5 MB", current_thread_only=True
     )  # assert that we're not doubling memory usagelimit_mem
     def test_memory_usage(
-        self, get_func: typing.Callable[[BytesQueueBuffer], str]
+        self, get_func: typing.Callable[[BytesQueueBuffer], bytes]
     ) -> None:
         # Allocate 10 1MiB chunks
         buffer = BytesQueueBuffer()
@@ -116,7 +116,9 @@ class TestBytesQueueBuffer:
             # This allocates 2MiB, putting the max at around 12MiB. Not sure why.
             buffer.put(bytes(2**20))
 
-        assert len(get_func(buffer)) == 10 * 2**20
+        result = get_func(buffer)
+        assert type(result) is bytes
+        assert len(result) == 10 * 2**20
 
     @pytest.mark.limit_memory("10.01 MB", current_thread_only=True)
     def test_get_all_memory_usage_single_chunk(self) -> None:
@@ -124,6 +126,28 @@ class TestBytesQueueBuffer:
         chunk = bytes(10 * 2**20)  # 10 MiB
         buffer.put(chunk)
         assert buffer.get_all() is chunk
+
+    @pytest.mark.parametrize(
+        "finish_with_get_all",
+        (True, False),
+        ids=("finish_with_get_all", "finish_with_get"),
+    )
+    @pytest.mark.limit_memory("11.01 MB", current_thread_only=True)
+    def test_memory_usage_splitting_chunk(self, finish_with_get_all: bool) -> None:
+        # Allocate a single 10MiB chunk, then read it in two parts.
+        # Verifies that splitting a chunk doesn't cause additional memory allocation.
+        buffer = BytesQueueBuffer()
+        chunk = bytes(10 * 2**20)  # 10 MiB
+        buffer.put(chunk)
+        for i in range(10):
+            if finish_with_get_all and i == 9:
+                result = buffer.get_all()
+            else:
+                result = buffer.get(2**20)
+            assert type(result) is bytes
+            assert len(result) == 2**20
+            del result
+        assert len(buffer) == 0
 
 
 # A known random (i.e, not-too-compressible) payload generated with:

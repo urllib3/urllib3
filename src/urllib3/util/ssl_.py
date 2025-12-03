@@ -291,7 +291,10 @@ def create_urllib3_context(
 
     context.hostname_checks_common_name = False
 
-    sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
+    if "SSLKEYLOGFILE" in os.environ:
+        sslkeylogfile = os.path.expandvars(os.environ.get("SSLKEYLOGFILE"))
+    else:
+        sslkeylogfile = None
     if sslkeylogfile:
         context.keylog_filename = sslkeylogfile
 
