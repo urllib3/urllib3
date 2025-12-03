@@ -48,7 +48,7 @@ Sunsetting urllib3 1.26.x
 urllib3 1.26.x is not currently maintained. urllib3 2.x is the best version of urllib3
 and is widely supported by the larger Python ecosystem. That said, urllib3 1.26.x still
 sees significant download numbers, mainly because the botocore package still requires
-urllib3 1.26.x for Python 3.10 and earlier. If your organization would benefit from the
+urllib3 1.26.x for Python 3.9 and earlier. If your organization would benefit from the
 continued support of urllib3 1.26.x, please contact sethmichaellarson@gmail.com to
 discuss sponsorship or contribution opportunities.
 

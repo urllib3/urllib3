@@ -67,7 +67,6 @@ suite::
   .......
   .......
   nox > Session test-3.10 was successful.
-  nox > Session test-3.10 was successful.
   nox > Session test-3.11 was successful.
   nox > Session test-3.12 was successful.
   nox > Session test-3.13 was successful.

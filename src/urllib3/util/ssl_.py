@@ -26,53 +26,6 @@ HASHFUNC_MAP = {
     for length, algorithm in ((32, "md5"), (40, "sha1"), (64, "sha256"))
 }
 
-
-def _is_bpo_43522_fixed(
-    implementation_name: str,
-    version_info: _TYPE_VERSION_INFO,
-    pypy_version_info: _TYPE_VERSION_INFO | None,
-) -> bool:
-    """Return True for CPython and PyPy 7.3.8+ where
-    setting SSLContext.hostname_checks_common_name to False works.
-
-    Outside of CPython and PyPy we don't know which implementations work
-    or not so we conservatively use our hostname matching as we know that works
-    on all implementations.
-
-    https://github.com/urllib3/urllib3/issues/2192#issuecomment-821832963
-    https://foss.heptapod.net/pypy/pypy/-/issues/3539
-    """
-    if implementation_name == "pypy":
-        # https://foss.heptapod.net/pypy/pypy/-/issues/3129
-        return pypy_version_info >= (7, 3, 8)  # type: ignore[operator]
-    elif implementation_name == "cpython":
-        return True
-    else:  # Defensive:
-        return False
-
-
-def _is_has_never_check_common_name_reliable(
-    openssl_version: str,
-    openssl_version_number: int,
-    implementation_name: str,
-    version_info: _TYPE_VERSION_INFO,
-    pypy_version_info: _TYPE_VERSION_INFO | None,
-) -> bool:
-    # As of May 2023, all released versions of LibreSSL fail to reject certificates with
-    # only common names, see https://github.com/urllib3/urllib3/pull/3024
-    is_openssl = openssl_version.startswith("OpenSSL ")
-    # Before fixing OpenSSL issue #14579, the SSL_new() API was not copying hostflags
-    # like X509_CHECK_FLAG_NEVER_CHECK_SUBJECT, which tripped up CPython.
-    # https://github.com/openssl/openssl/issues/14579
-    # This was released in OpenSSL 1.1.1l+ (>=0x101010cf)
-    is_openssl_issue_14579_fixed = openssl_version_number >= 0x101010CF
-
-    return is_openssl and (
-        is_openssl_issue_14579_fixed
-        or _is_bpo_43522_fixed(implementation_name, version_info, pypy_version_info)
-    )
-
-
 if typing.TYPE_CHECKING:
     from ssl import VerifyMode
     from typing import TypedDict
@@ -92,11 +45,8 @@ try:  # Do we have ssl at all?
     import ssl
     from ssl import (  # type: ignore[assignment]
         CERT_REQUIRED,
-        HAS_NEVER_CHECK_COMMON_NAME,
         OP_NO_COMPRESSION,
         OP_NO_TICKET,
-        OPENSSL_VERSION,
-        OPENSSL_VERSION_NUMBER,
         PROTOCOL_TLS,
         PROTOCOL_TLS_CLIENT,
         VERIFY_X509_PARTIAL_CHAIN,
@@ -108,15 +58,6 @@ try:  # Do we have ssl at all?
     )
 
     PROTOCOL_SSLv23 = PROTOCOL_TLS
-
-    if HAS_NEVER_CHECK_COMMON_NAME and not _is_has_never_check_common_name_reliable(
-        OPENSSL_VERSION,
-        OPENSSL_VERSION_NUMBER,
-        sys.implementation.name,
-        sys.version_info,
-        sys.pypy_version_info if sys.implementation.name == "pypy" else None,  # type: ignore[attr-defined]
-    ):  # Defensive: for old PyPy and OpenSSL versions
-        HAS_NEVER_CHECK_COMMON_NAME = False
 
     # Need to be careful here in case old TLS versions get
     # removed in future 'ssl' module implementations.
@@ -348,10 +289,7 @@ def create_urllib3_context(
         context.check_hostname = False
         context.verify_mode = cert_reqs
 
-    try:
-        context.hostname_checks_common_name = False
-    except AttributeError:  # Defensive: for for PyPy < 7.3.8
-        pass
+    context.hostname_checks_common_name = False
 
     sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
     if sslkeylogfile:
