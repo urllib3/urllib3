@@ -932,7 +932,18 @@ class HTTPResponse(BaseHTTPResponse):
             return data
 
         if amt is None:
-            data = self._decode(data, decode_content, flush_decoder)
+            # When reading all remaining data (amt=None), we need to handle
+            # where previous partial reads leave decoded data in the buffer.
+            # The buffer contains already-decoded data from compressed streams.
+            decoded_data = self._decode(data, decode_content, flush_decoder)
+
+            # If there's buffered data, combine it with newly decoded data
+            if decode_content and len(self._decoded_buffer) > 0:
+                self._decoded_buffer.put(decoded_data)
+                data = self._decoded_buffer.get_all()
+            else:
+                data = decoded_data
+
             if cache_content:
                 self._body = data
         else:
