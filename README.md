@@ -27,6 +27,7 @@ standard libraries:
 - File uploads with multipart encoding.
 - Helpers for retrying requests and dealing with HTTP redirects.
 - Support for gzip, deflate, brotli, and zstd encoding.
+- Security and safety focused maintainer posture.
 - Proxy support for HTTP and SOCKS.
 - 100% test coverage.
 
@@ -85,6 +86,8 @@ Tidelift will coordinate the fix and disclosure with maintainers.
 
 ## Maintainers
 
+Meet our alumni of lead maintainers since 2008:
+
 - Lead: [@illia-v](https://github.com/illia-v) (Illia Volochii)
 - [@sethmlarson](https://github.com/sethmlarson) (Seth M. Larson)
 - [@pquentin](https://github.com/pquentin) (Quentin Pradet)
@@ -106,7 +109,7 @@ development](https://urllib3.readthedocs.io/en/latest/sponsors.html).
 ## For Enterprise
 
 Professional support for urllib3 is available as part of the [Tidelift
-Subscription][1].  Tidelift gives software development teams a single source for
+Subscription][1]. Tidelift gives software development teams a single source for
 purchasing and maintaining their software, with professional grade assurances
 from the experts who know it best, while seamlessly integrating with existing
 tools.
