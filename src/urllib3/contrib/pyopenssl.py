@@ -56,7 +56,6 @@ import ssl
 import typing
 from io import BytesIO
 from socket import socket as socket_cls
-from socket import timeout
 
 from .. import util
 
@@ -311,7 +310,7 @@ class WrappedSocket:
                 raise
         except OpenSSL.SSL.WantReadError as e:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out") from e
+                raise TimeoutError("The read operation timed out") from e
             else:
                 return self.recv(*args, **kwargs)
 
@@ -336,7 +335,7 @@ class WrappedSocket:
                 raise
         except OpenSSL.SSL.WantReadError as e:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out") from e
+                raise TimeoutError("The read operation timed out") from e
             else:
                 return self.recv_into(*args, **kwargs)
 
@@ -353,7 +352,7 @@ class WrappedSocket:
                 return self.connection.send(data)  # type: ignore[no-any-return]
             except OpenSSL.SSL.WantWriteError as e:
                 if not util.wait_for_write(self.socket, self.socket.gettimeout()):
-                    raise timeout() from e
+                    raise TimeoutError() from e
                 continue
             except OpenSSL.SSL.SysCallError as e:
                 raise OSError(e.args[0], str(e)) from e
@@ -520,7 +519,7 @@ class PyOpenSSLContext:
                 cnx.do_handshake()
             except OpenSSL.SSL.WantReadError as e:
                 if not util.wait_for_read(sock, sock.gettimeout()):
-                    raise timeout("select timed out") from e
+                    raise TimeoutError("select timed out") from e
                 continue
             except OpenSSL.SSL.Error as e:
                 raise ssl.SSLError(f"bad handshake: {e!r}") from e

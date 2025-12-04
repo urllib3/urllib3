@@ -300,14 +300,14 @@ class TestConnection:
         if user_agent is not None:
             headers[user_agent] = SKIP_HEADER
 
-        # When dropping support for Python 3.9, this can be rewritten to parenthesized
-        # context managers
-        with mock.patch("urllib3.util.connection.create_connection"):
-            with mock.patch(
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch(
                 "urllib3.connection._HTTPConnection.putheader"
-            ) as http_client_putheader:
-                conn = HTTPConnection("")
-                conn.request("GET", "/headers", headers=headers, chunked=chunked)
+            ) as http_client_putheader,
+        ):
+            conn = HTTPConnection("")
+            conn.request("GET", "/headers", headers=headers, chunked=chunked)
 
         request_headers = {}
         for call in http_client_putheader.call_args_list:
