@@ -232,6 +232,9 @@ def create_urllib3_context(
     context = SSLContext(PROTOCOL_TLS_CLIENT)
     if ssl_minimum_version is not None:
         context.minimum_version = ssl_minimum_version
+    else:  # pyOpenSSL defaults to 'MINIMUM_SUPPORTED' so explicitly set TLSv1.2 here
+        context.minimum_version = TLSVersion.TLSv1_2
+
     if ssl_maximum_version is not None:
         context.maximum_version = ssl_maximum_version
 
