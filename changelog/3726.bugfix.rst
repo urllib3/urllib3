@@ -1,0 +1,2 @@
+Fixed issue where `read()` after partial read `read(amt=n)`
+would return incomplete data.
