@@ -1,3 +1,25 @@
+2.6.0 (TBD)
+==================
+
+Bugfixes
+--------
+
+- Fixed a security issue where streaming API could improperly handle highly
+  compressed HTTP content ("decompression bombs") leading to excessive resource
+  consumption even when a small amount of data was requested. Reading small
+  chunks of compressed data is safer and much more efficient now.
+
+.. caution::
+  - If urllib3 is not installed with the optional `urllib3[brotli]` extra, but
+    your environment contains a Brotli/brotlicffi/brotlipy package anyway, make
+    sure to upgrade it to at least Brotli 1.2.0 or brotlicffi 1.2.0.0 to
+    benefit from the security fixes and avoid warnings. Prefer using
+    `urllib3[brotli]` to install a compatible Brotli package automatically.
+
+  - If you use custom decompressors, please make sure to update them to
+    respect the changed API of ``urllib3.response.ContentDecoder``.
+
+
 2.5.0 (2025-06-18)
 ==================
 
