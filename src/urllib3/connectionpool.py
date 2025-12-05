@@ -69,24 +69,19 @@ class _PoolMeta(type):
 
     def __getattribute__(cls, name: str) -> typing.Any:
         if name == "QueueCls":
-            try:
-                override = super().__getattribute__("_queue_cls_override")
-                if override is not None:
-                    return override
-            except AttributeError:
-                pass
+            override = super().__getattribute__("_queue_cls_override")
+            if override is not None:
+                return override
 
             import queue
 
             return queue.LifoQueue
-
         return super().__getattribute__(name)
 
     def __setattr__(cls, name: str, value: typing.Any) -> None:
         if name == "QueueCls":
-            super().__setattr__("_queue_cls_override", value)
-        else:
-            super().__setattr__(name, value)
+            name = "_queue_cls_override"
+        super().__setattr__(name, value)
 
 
 log = logging.getLogger(__name__)
