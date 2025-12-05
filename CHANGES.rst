@@ -34,6 +34,13 @@ Features
 - Added support for Python 3.14 free-threading builds explicitly. (`#3696 <https://github.com/urllib3/urllib3/issues/3696>`__)
 
 
+Removals
+--------
+
+- Removed the ``HTTPResponse.getheaders()`` method in favor of ``HTTPResponse.headers``.
+  Removed the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``. (`#3622 <https://github.com/urllib3/urllib3/issues/3622>`__)
+
+
 Bugfixes
 --------
 
@@ -50,13 +57,6 @@ Misc
 - Improved the performance of content decoding by optimizing ``BytesQueueBuffer`` class. (`#3710 <https://github.com/urllib3/urllib3/issues/3710>`__)
 - Allowed building the urllib3 package with newer setuptools-scm v9.x. (`#3652 <https://github.com/urllib3/urllib3/issues/3652>`__)
 - Ensured successful urllib3 builds by setting Hatchling requirement to >= 1.27.0. (`#3638 <https://github.com/urllib3/urllib3/issues/3638>`__)
-
-
-Deprecations and Removals
--------------------------
-
-- Removed the ``HTTPResponse.getheaders()`` method in favor of ``HTTPResponse.headers``.
-  Removed the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``. (`#3622 <https://github.com/urllib3/urllib3/issues/3622>`__)
 
 
 2.5.0 (2025-06-18)
