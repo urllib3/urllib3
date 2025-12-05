@@ -58,13 +58,41 @@ if typing.TYPE_CHECKING:
 
     from ._base_connection import BaseHTTPConnection, BaseHTTPSConnection
 
+class _PoolMeta(type):
+    """
+    Metaclass that provides late binding for QueueCls to support gevent monkey-patching.
+    
+    When QueueCls is accessed, it returns whatever queue.LifoQueue currently points to,
+    which respects any monkey-patching that occurred after urllib3 was imported.
+    """
+    
+    def __getattribute__(cls, name):
+        if name == 'QueueCls':
+            try:
+                override = super().__getattribute__('_queue_cls_override')
+                if override is not None:
+                    return override
+            except AttributeError:
+                pass
+            
+            import queue
+            return queue.LifoQueue
+        
+        return super().__getattribute__(name)
+    
+    def __setattr__(cls, name, value):
+        if name == 'QueueCls':
+            super().__setattr__('_queue_cls_override', value)
+        else:
+            super().__setattr__(name, value)
+
 log = logging.getLogger(__name__)
 
 _TYPE_TIMEOUT = typing.Union[Timeout, float, _TYPE_DEFAULT, None]
 
 
 # Pool objects
-class ConnectionPool:
+class ConnectionPool(metaclass=_PoolMeta):
     """
     Base class for all connection pools, such as
     :class:`.HTTPConnectionPool` and :class:`.HTTPSConnectionPool`.
@@ -76,7 +104,7 @@ class ConnectionPool:
     """
 
     scheme: str | None = None
-    QueueCls = queue.LifoQueue
+    _queue_cls_override: type | None = None
 
     def __init__(self, host: str, port: int | None = None) -> None:
         if not host:
