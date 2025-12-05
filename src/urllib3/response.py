@@ -932,6 +932,14 @@ class HTTPResponse(BaseHTTPResponse):
             return data
 
         if amt is None:
+            if not decode_content:
+                if self._has_decoded_content:
+                    raise RuntimeError(
+                        "Calling read(decode_content=False) is not supported after "
+                        "read(decode_content=True) was called."
+                    )
+                return self._decode(data, decode_content, flush_decoder)
+
             # When reading all remaining data (amt=None), we need to handle
             # where previous partial reads leave decoded data in the buffer.
             # The buffer contains already-decoded data from compressed streams.
@@ -941,6 +949,11 @@ class HTTPResponse(BaseHTTPResponse):
             if decode_content and len(self._decoded_buffer) > 0:
                 self._decoded_buffer.put(decoded_data)
                 data = self._decoded_buffer.get_all()
+
+                # We cannot cache this read because it is a mix of buffered data
+                # (from a previous partial read) and the remainder of the stream.
+                # It does not represent the full HTTP body.
+                cache_content = False
             else:
                 data = decoded_data
 
