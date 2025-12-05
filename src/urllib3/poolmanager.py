@@ -156,7 +156,10 @@ key_fn_by_scheme = {
     "https": functools.partial(_default_key_normalizer, PoolKey),
 }
 
-pool_classes_by_scheme = {"http": HTTPConnectionPool, "https": HTTPSConnectionPool}
+pool_classes_by_scheme: dict[str, type[HTTPConnectionPool]] = {
+    "http": HTTPConnectionPool,
+    "https": HTTPSConnectionPool,
+}
 
 
 class PoolManager(RequestMethods):
