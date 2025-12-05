@@ -464,11 +464,6 @@ class BaseHTTPResponse(io.IOBase):
         Decode the data passed in and potentially flush the decoder.
         """
         if not decode_content:
-            if self._has_decoded_content:
-                raise RuntimeError(
-                    "Calling read(decode_content=False) is not supported after "
-                    "read(decode_content=True) was called."
-                )
             return data
 
         try:
@@ -924,6 +919,12 @@ class HTTPResponse(BaseHTTPResponse):
             if len(self._decoded_buffer) >= amt:
                 return self._decoded_buffer.get(amt)
 
+        if decode_content is False and self._has_decoded_content:
+            raise RuntimeError(
+                "Calling read(decode_content=False) is not supported after "
+                "read(decode_content=True) was called."
+            )
+
         data = self._raw_read(amt)
 
         flush_decoder = amt is None or (amt != 0 and not data)
@@ -933,11 +934,6 @@ class HTTPResponse(BaseHTTPResponse):
 
         if amt is None:
             if not decode_content:
-                if self._has_decoded_content:
-                    raise RuntimeError(
-                        "Calling read(decode_content=False) is not supported after "
-                        "read(decode_content=True) was called."
-                    )
                 return self._decode(data, decode_content, flush_decoder)
 
             # When reading all remaining data (amt=None), we need to handle
@@ -962,11 +958,6 @@ class HTTPResponse(BaseHTTPResponse):
         else:
             # do not waste memory on buffer when not decoding
             if not decode_content:
-                if self._has_decoded_content:
-                    raise RuntimeError(
-                        "Calling read(decode_content=False) is not supported after "
-                        "read(decode_content=True) was called."
-                    )
                 return data
 
             decoded_data = self._decode(data, decode_content, flush_decoder)
