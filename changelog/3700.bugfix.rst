@@ -1,1 +1,0 @@
-Fixed set ``ssl.SSLContext.keylog_filename`` with expanded environment variable.
