@@ -671,6 +671,13 @@ class BaseHTTPResponse(io.IOBase):
             b[: len(temp)] = temp
             return len(temp)
 
+    # Methods used by dependent libraries
+    def getheaders(self) -> HTTPHeaderDict:
+        return self.headers
+
+    def getheader(self, name: str, default: str | None = None) -> str | None:
+        return self.headers.get(name, default)
+
     # Compatibility method for http.cookiejar
     def info(self) -> HTTPHeaderDict:
         return self.headers
