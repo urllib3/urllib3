@@ -1,2 +1,0 @@
-Restore previously removed ``HTTPResponse.getheaders()`` and
-``HTTPResponse.getheader()`` methods.
