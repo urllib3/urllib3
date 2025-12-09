@@ -1407,6 +1407,17 @@ class HTTPResponse(BaseHTTPResponse):
                 amt = None
 
             while True:
+                # First, check if any data is left in the decoder's buffer.
+                if self._decoder and self._decoder.has_unconsumed_tail:
+                    decoded = self._decode(
+                        b"",
+                        decode_content=decode_content,
+                        flush_decoder=False,
+                        max_length=amt,
+                    )
+                    if decoded:
+                        yield decoded
+                        continue
                 self._update_chunk_length()
                 if self.chunk_left == 0:
                     break
