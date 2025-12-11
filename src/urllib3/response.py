@@ -673,9 +673,21 @@ class BaseHTTPResponse(io.IOBase):
 
     # Methods used by dependent libraries
     def getheaders(self) -> HTTPHeaderDict:
+        warnings.warn(
+            "HTTPResponse.getheaders() is deprecated and will be removed "
+            "in urllib3 v2.6.0. Instead access HTTPResponse.headers directly.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         return self.headers
 
     def getheader(self, name: str, default: str | None = None) -> str | None:
+        warnings.warn(
+            "HTTPResponse.getheader() is deprecated and will be removed "
+            "in urllib3 v2.6.0. Instead use HTTPResponse.headers.get(name, default).",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         return self.headers.get(name, default)
 
     # Compatibility method for http.cookiejar

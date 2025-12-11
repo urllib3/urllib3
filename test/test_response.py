@@ -16,6 +16,7 @@ from unittest import mock
 
 import pytest
 
+from urllib3 import HTTPHeaderDict
 from urllib3.exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
@@ -201,6 +202,26 @@ def sock() -> typing.Generator[socket.socket]:
     s = socket.socket()
     yield s
     s.close()
+
+
+class TestLegacyResponse:
+    def test_getheaders(self) -> None:
+        headers = {"host": "example.com"}
+        r = HTTPResponse(headers=headers)
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"HTTPResponse.getheaders\(\) is deprecated",
+        ):
+            assert r.getheaders() == HTTPHeaderDict(headers)
+
+    def test_getheader(self) -> None:
+        headers = {"host": "example.com"}
+        r = HTTPResponse(headers=headers)
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"HTTPResponse.getheader\(\) is deprecated",
+        ):
+            assert r.getheader("host") == "example.com"
 
 
 class TestResponse:
@@ -1739,16 +1760,11 @@ class TestResponse:
             continue
         resp.release_conn.assert_called_once_with()  # type: ignore[attr-defined]
 
-    def test_getheaders(self) -> None:
-        headers = {"host": "example.com"}
-        r = HTTPResponse(headers=headers)
-        assert r.getheaders() is r.headers
-
     def test_get_case_insensitive_headers(self) -> None:
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.headers.get("host") == r.getheader("host") == "example.com"
-        assert r.headers.get("Host") == r.getheader("Host") == "example.com"
+        assert r.headers.get("host") == "example.com"
+        assert r.headers.get("Host") == "example.com"
 
     def test_retries(self) -> None:
         fp = BytesIO(b"")
