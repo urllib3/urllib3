@@ -209,7 +209,7 @@ class TestLegacyResponse:
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
         with pytest.warns(
-            DeprecationWarning,
+            FutureWarning,
             match=r"HTTPResponse.getheaders\(\) is deprecated",
         ):
             assert r.getheaders() == HTTPHeaderDict(headers)
@@ -218,7 +218,7 @@ class TestLegacyResponse:
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
         with pytest.warns(
-            DeprecationWarning,
+            FutureWarning,
             match=r"HTTPResponse.getheader\(\) is deprecated",
         ):
             assert r.getheader("host") == "example.com"
