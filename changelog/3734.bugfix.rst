@@ -1,2 +1,0 @@
-Fixed ``HTTPResponse.read_chunked()`` to properly handle leftover data in
-the decoder's buffer when reading compressed chunked responses.
