@@ -91,7 +91,7 @@ Tidelift will coordinate the fix and disclosure with maintainers.
 
 ## Maintainers
 
-Meet our alumni of maintainers since 2008:
+Meet our maintainers since 2008:
 
 - Current Lead: [@illia-v](https://github.com/illia-v) (Illia Volochii)
 - [@sethmlarson](https://github.com/sethmlarson) (Seth M. Larson)
