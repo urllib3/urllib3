@@ -320,6 +320,10 @@ class Retry:
 
         seconds = max(seconds, 0)
 
+        # Check the seconds do not exceed (32bit) PyTime_MAX to avoid an OverflowError
+        if seconds > 2147483647:
+            raise InvalidHeader(f"Invalid Retry-After header, value too big: {seconds}")
+
         return seconds
 
     def get_retry_after(self, response: BaseHTTPResponse) -> float | None:
