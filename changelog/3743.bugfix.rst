@@ -1,0 +1,1 @@
+Handle very large values for Retry-After HTTP headers in ``urllib3.utils.Retry.parse_retry_after()`` when calculating how long to sleep between retries.
