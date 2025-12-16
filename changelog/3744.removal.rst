@@ -1,0 +1,1 @@
+Reinstate warnings for ``getheaders`` and ``getheader`` and promote to ``FutureWarning``.
