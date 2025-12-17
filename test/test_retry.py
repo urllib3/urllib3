@@ -345,7 +345,7 @@ class TestRetry:
 
         assert retry.remove_headers_on_redirect == {"x-api-secret"}
 
-    @pytest.mark.parametrize("value", ["-1", "+1", "1.0", "\xb2"])  # \xb2 = ^2
+    @pytest.mark.parametrize("value", ["-1", "+1", "1.0", "\xb2", "2147483648"])  # \xb2 = ^2
     def test_parse_retry_after_invalid(self, value: str) -> None:
         retry = Retry()
         with pytest.raises(InvalidHeader):
