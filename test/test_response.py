@@ -688,6 +688,47 @@ class TestResponse:
         assert read(0) == b""
         assert read() == b""
 
+    @pytest.mark.parametrize("read_method", ("read_chunked", "stream"))
+    @pytest.mark.parametrize(
+        "data",
+        [d[1] for d in _test_compressor_params],
+        ids=[d[0] for d in _test_compressor_params],
+    )
+    def test_read_chunked_with_all_data_already_in_decompressor(
+        self,
+        request: pytest.FixtureRequest,
+        read_method: str,
+        data: tuple[str, typing.Callable[[bytes], bytes]] | None,
+    ) -> None:
+        if data is None:
+            pytest.skip(f"Proper {request.node.callspec.id} decoder is not available")
+        original_data = b"0" * 100_000  # 100 KB
+        name, compress_func = data
+        compressed_data = compress_func(original_data)
+        httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        httplib_r.fp = MockChunkedEncodingResponse([compressed_data])  # type: ignore[assignment]
+        r = HTTPResponse(
+            httplib_r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked", "content-encoding": name},
+        )
+        # Mark the current chunk as fully read.
+        r.chunk_left = 0
+        # Feed all compressed data to the decoder.
+        r._init_decoder()
+        assert r._decoder is not None  # for mypy
+        initially_decoded = r._decoder.decompress(compressed_data, max_length=0)
+        result = list(getattr(r, read_method)(amt=10240, decode_content=True))
+        if name == "br":
+            # It's known that some Brotli libraries do not respect
+            # `max_length`.
+            result = [initially_decoded] + list(result)
+        else:
+            assert initially_decoded == b""
+            assert all(len(chunk) == 10240 for chunk in result[:-1])
+            assert len(result[-1]) == len(original_data) % 10240
+        assert b"".join(result) == original_data
+
     @pytest.mark.parametrize(
         "delta",
         (
@@ -1698,11 +1739,16 @@ class TestResponse:
             continue
         resp.release_conn.assert_called_once_with()  # type: ignore[attr-defined]
 
+    def test_getheaders(self) -> None:
+        headers = {"host": "example.com"}
+        r = HTTPResponse(headers=headers)
+        assert r.getheaders() is r.headers
+
     def test_get_case_insensitive_headers(self) -> None:
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.headers.get("host") == "example.com"
-        assert r.headers.get("Host") == "example.com"
+        assert r.headers.get("host") == r.getheader("host") == "example.com"
+        assert r.headers.get("Host") == r.getheader("Host") == "example.com"
 
     def test_retries(self) -> None:
         fp = BytesIO(b"")

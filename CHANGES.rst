@@ -1,3 +1,19 @@
+2.6.2 (2025-12-11)
+==================
+
+- Fixed ``HTTPResponse.read_chunked()`` to properly handle leftover data in
+  the decoder's buffer when reading compressed chunked responses.
+  (`#3734 <https://github.com/urllib3/urllib3/issues/3734>`__)
+
+
+2.6.1 (2025-12-08)
+==================
+
+- Restore previously removed ``HTTPResponse.getheaders()`` and
+  ``HTTPResponse.getheader()`` methods.
+  (`#3731 <https://github.com/urllib3/urllib3/issues/3731>`__)
+
+
 2.6.0 (2025-12-05)
 ==================
 
