@@ -196,6 +196,11 @@ class Retry:
     #: Default maximum backoff time.
     DEFAULT_BACKOFF_MAX = 120
 
+    #: Default sanity check maximum allowed value for Retry-After headers
+    # when returning a number of seconds. This is "2**(32-1)-1" (32bit int size)
+    # and used to prevent ``OverflowError``s in ``time``.
+    DEFAULT_RETRY_AFTER_MAX: typing.Final[int] = 2_147_483_647
+
     # Backward compatibility; assigned outside of the class.
     DEFAULT: typing.ClassVar[Retry]
 
@@ -211,6 +216,7 @@ class Retry:
         status_forcelist: typing.Collection[int] | None = None,
         backoff_factor: float = 0,
         backoff_max: float = DEFAULT_BACKOFF_MAX,
+        retry_after_max: int = DEFAULT_RETRY_AFTER_MAX,
         raise_on_redirect: bool = True,
         raise_on_status: bool = True,
         history: tuple[RequestHistory, ...] | None = None,
@@ -235,6 +241,7 @@ class Retry:
         self.allowed_methods = allowed_methods
         self.backoff_factor = backoff_factor
         self.backoff_max = backoff_max
+        self.retry_after_max = retry_after_max
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
         self.history = history or ()
@@ -320,8 +327,8 @@ class Retry:
 
         seconds = max(seconds, 0)
 
-        # Check the seconds do not exceed (32bit) PyTime_MAX to avoid an OverflowError
-        if seconds > 2147483647:
+        # Check the seconds do not exceed a sanity check maximum value
+        if seconds > self.retry_after_max:
             raise InvalidHeader(f"Invalid Retry-After header, value too big: {seconds}")
 
         return seconds
