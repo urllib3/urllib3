@@ -33,7 +33,9 @@ the latest 2.x version.
 urllib3 contains two experimental modules: `emscripten` and `http2`.
 
 - **http2**: Issues in the HTTP/2 module are not considered security
-  vulnerabilities and should be opened as public GitHub issues.
+  vulnerabilities and should be opened as public GitHub issues after
+  checking missing features tracked in issue
+  https://github.com/urllib3/urllib3/issues/3000.
 - **emscripten**: Potential security issues in the `emscripten` module should
   be reported privately. Project maintainers will decide if they qualify as
   security issues to be handled through the standard flow or if they should be
