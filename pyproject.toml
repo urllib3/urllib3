@@ -43,8 +43,8 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 brotli = [
-  "brotli>=1.0.9; platform_python_implementation == 'CPython'",
-  "brotlicffi>=0.8.0; platform_python_implementation != 'CPython'"
+  "brotli>=1.2.0; platform_python_implementation == 'CPython'",
+  "brotlicffi>=1.2.0.0; platform_python_implementation != 'CPython'"
 ]
 zstd = [
   "backports.zstd>=1.0.0; python_version<'3.14'",
@@ -158,6 +158,7 @@ filterwarnings = [
     '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
+    '''default:Brotli >= 1.2.0 is required to prevent decompression bombs\.:urllib3.exceptions.DependencyWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/13328
     '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/14686

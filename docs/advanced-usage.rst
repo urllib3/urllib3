@@ -66,7 +66,8 @@ When using ``preload_content=True`` (the default setting) the
 response body will be read immediately into memory and the HTTP connection
 will be released back into the pool without manual intervention.
 
-However, when dealing with large responses it's often better to stream the response
+However, when dealing with responses of large or unknown length,
+it's often better to stream the response
 content using ``preload_content=False``. Setting ``preload_content`` to ``False`` means
 that urllib3 will only read from the socket when data is requested.
 

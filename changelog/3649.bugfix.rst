@@ -1,2 +1,0 @@
-Fixed redirect handling in ``urllib3.PoolManager`` when an integer is passed
-for the retries parameter.
