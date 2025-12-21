@@ -29,6 +29,7 @@ from .exceptions import (
     EmptyPoolError,
     FullPoolError,
     HostChangedError,
+    InsecureProxyWarning,
     InsecureRequestWarning,
     LocationValueError,
     MaxRetryError,
@@ -1092,11 +1093,21 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if conn.is_closed:
             conn.connect()
 
-        # TODO revise this, see https://github.com/urllib3/urllib3/issues/2791
+        if conn.proxy and conn.proxy.scheme == "https" and not conn.proxy_is_verified:
+            warnings.warn(
+                (
+                    f"Unverified HTTPS request is being made using proxy host '{conn.proxy.host}'. "
+                    "Adding certificate verification is strongly advised. See: "
+                    "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
+                    "#tls-warnings"
+                ),
+                InsecureProxyWarning,
+            )
+
         if not conn.is_verified and not conn.proxy_is_verified:
             warnings.warn(
                 (
-                    f"Unverified HTTPS request is being made to host '{conn.host}'. "
+                    f"Unverified HTTPS request is being made to host '{conn._tunnel_host if conn._tunnel_host else conn.host}'. "  # type: ignore[attr-defined]
                     "Adding certificate verification is strongly advised. See: "
                     "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
                     "#tls-warnings"
