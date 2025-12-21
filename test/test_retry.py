@@ -187,15 +187,11 @@ class TestRetry:
 
         retry = Retry(retry_after_max=max_retry_after)
         assert retry.parse_retry_after(str(max_retry_after)) == max_retry_after
-
-        with pytest.raises(InvalidHeader):
-            retry.parse_retry_after(retry_after=str(max_retry_after + 1))
+        assert retry.parse_retry_after(str(max_retry_after + 1)) == max_retry_after
 
         retry = Retry(retry_after_max=1)
         assert retry.parse_retry_after(str(1)) == 1
-
-        with pytest.raises(InvalidHeader):
-            retry.parse_retry_after(str(2))
+        assert retry.parse_retry_after(str(2)) == 1
 
     def test_backoff_jitter(self) -> None:
         """Backoff with jitter is computed correctly"""
@@ -362,7 +358,7 @@ class TestRetry:
         assert retry.remove_headers_on_redirect == {"x-api-secret"}
 
     @pytest.mark.parametrize(
-        "value", ["-1", "+1", "1.0", "\xb2", "2147483648"]
+        "value", ["-1", "+1", "1.0", "\xb2"]
     )  # \xb2 = ^2
     def test_parse_retry_after_invalid(self, value: str) -> None:
         retry = Retry()

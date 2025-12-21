@@ -196,10 +196,9 @@ class Retry:
     #: Default maximum backoff time.
     DEFAULT_BACKOFF_MAX = 120
 
-    #: Default sanity check maximum allowed value for Retry-After headers
-    # when returning a number of seconds. This is "2**(32-1)-1" (32bit int size)
-    # and used to prevent ``OverflowError``s in ``time``.
-    DEFAULT_RETRY_AFTER_MAX: typing.Final[int] = 2_147_483_647
+    #: Default maximum allowed value for Retry-After headers in seconds
+    # This is undocumented in the RFC. Setting to 6 hours matches other popular libraries.
+    DEFAULT_RETRY_AFTER_MAX: typing.Final[int] = 21600
 
     # Backward compatibility; assigned outside of the class.
     DEFAULT: typing.ClassVar[Retry]
@@ -327,9 +326,9 @@ class Retry:
 
         seconds = max(seconds, 0)
 
-        # Check the seconds do not exceed a sanity check maximum value
+        # Check the seconds do not exceed the specified maximum
         if seconds > self.retry_after_max:
-            raise InvalidHeader(f"Invalid Retry-After header, value too big: {seconds}")
+            seconds = self.retry_after_max
 
         return seconds
 
