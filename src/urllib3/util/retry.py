@@ -262,6 +262,7 @@ class Retry:
             status_forcelist=self.status_forcelist,
             backoff_factor=self.backoff_factor,
             backoff_max=self.backoff_max,
+            retry_after_max=self.retry_after_max,
             raise_on_redirect=self.raise_on_redirect,
             raise_on_status=self.raise_on_status,
             history=self.history,
