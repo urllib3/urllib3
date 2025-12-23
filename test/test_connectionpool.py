@@ -632,3 +632,25 @@ class TestConnectionPoolGevent:
         assert (
             current_queuecls is patched_lifoqueue
         ), "HTTPConnectionPool.QueueCls should resolve to the patched queue.LifoQueue"
+
+    def test_queuecls_custom_override(self) -> None:
+        """
+        Test that HTTPConnectionPool.QueueCls can be overridden with a custom queue class
+        """
+        import queue
+
+        from urllib3.connectionpool import HTTPConnectionPool
+
+        # Set a custom queue class, and verify it is used
+        class CustomQueue:
+            pass
+
+        setattr(HTTPConnectionPool, "QueueCls", CustomQueue)
+
+        assert getattr(HTTPConnectionPool, "QueueCls") is CustomQueue
+
+        # Reset to None to restore default behavior. After which is should
+        # return the standard queue.LifoQueue
+        setattr(HTTPConnectionPool, "QueueCls", None)
+
+        assert getattr(HTTPConnectionPool, "QueueCls") is queue.LifoQueue
