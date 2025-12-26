@@ -10,6 +10,7 @@ from urllib3.exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
     MaxRetryError,
+    MaxRetryWaitExceededError,
     ReadTimeoutError,
     ResponseError,
     SSLError,
@@ -426,3 +427,18 @@ class TestRetry:
                 sleep_mock.assert_called_with(sleep_duration)
             else:
                 sleep_mock.assert_not_called()
+
+    def test_max_retry_wait_length_exceeded(self) -> None:
+        max_retry_after = 3600
+        actual_retry_after = max_retry_after + 100
+        retry = Retry(
+            respect_retry_after_header=True, max_retry_wait_length=max_retry_after
+        )
+
+        response = HTTPResponse(
+            status=503, headers={"Retry-After": str(actual_retry_after)}
+        )
+
+        with pytest.raises(MaxRetryWaitExceededError) as e:
+            retry.sleep(response)
+        assert e.value.retry_after_header_value == actual_retry_after
