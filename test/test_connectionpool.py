@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.client as httplib
+import pickle
 import ssl
 import typing
 from http.client import HTTPException
@@ -16,6 +17,7 @@ from dummyserver.socketserver import DEFAULT_CA
 from urllib3 import Retry
 from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import (
+    ConnectionPool,
     HTTPConnectionPool,
     HTTPSConnectionPool,
     _url_from_pool,
@@ -592,3 +594,24 @@ class TestConnectionPool:
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout=timeout)
+
+    @pytest.mark.parametrize(
+        "PoolClass", (ConnectionPool, HTTPConnectionPool, HTTPSConnectionPool)
+    )
+    def test_connection_pool_pickleablity(
+        self, PoolClass: type[ConnectionPool]
+    ) -> None:
+        pool = PoolClass(host="localhost", port=1000)
+        pickled_pool = pickle.loads(pickle.dumps(pool))
+
+        orig_vars = vars(pool).copy()
+        if "pool" in orig_vars:
+            orig_vars["pool"] = None  # pool attribute is not pickled
+
+        pickled_vars = vars(pickled_pool)
+        assert len(orig_vars) == len(pickled_vars)
+
+        for key, value in orig_vars.items():
+            assert key in pickled_vars
+            # some special classes don't define __eq__, so compare their string representation
+            assert str(value) == str(pickled_vars[key])
