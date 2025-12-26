@@ -903,6 +903,21 @@ class TestResponse:
         assert resp.data == b"foo"
         assert resp.closed
 
+    def test_close_context_manager(self) -> None:
+        r = httplib.HTTPResponse(MockSock, method="HEAD")  # type: ignore[arg-type]
+        resp = HTTPResponse(
+            "",
+            original_response=r,
+        )
+        setattr(resp, "release_conn", mock.Mock())
+        setattr(resp, "close", mock.Mock())
+
+        with resp:
+            pass
+
+        resp.close.assert_called_once_with()  # type: ignore[attr-defined]
+        resp.release_conn.assert_called_once_with()  # type: ignore[attr-defined]
+
     @pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
     def test_base_io(self) -> None:
         resp = BaseHTTPResponse(
