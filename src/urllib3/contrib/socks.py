@@ -142,6 +142,7 @@ class SOCKSConnection(HTTPConnection):
                         self, f"Failed to establish a new connection: {error}"
                     )
             else:
+                raise ValueError("debug 2")
                 raise NewConnectionError(
                     self, f"Failed to establish a new connection: {e}"
                 ) from e
