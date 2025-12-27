@@ -180,8 +180,9 @@ class Retry:
         request.
 
     :param int retry_after_max: Number of seconds to allow as the maximum for
-        Retry-After headers. Defaults to 6 hours. Any Retry-After headers larger
-        than this value will be limited to this value.
+        Retry-After headers. Defaults to :attr:`Retry.DEFAULT_RETRY_AFTER_MAX`.
+        Any Retry-After headers larger than this value will be limited to this
+        value.
     """
 
     #: Default methods to be used for ``allowed_methods``
