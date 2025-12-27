@@ -196,8 +196,8 @@ class Retry:
     #: Default maximum backoff time.
     DEFAULT_BACKOFF_MAX = 120
 
-    #: Default maximum allowed value for Retry-After headers in seconds
     # This is undocumented in the RFC. Setting to 6 hours matches other popular libraries.
+    #: Default maximum allowed value for Retry-After headers in seconds
     DEFAULT_RETRY_AFTER_MAX: typing.Final[int] = 21600
 
     # Backward compatibility; assigned outside of the class.
@@ -215,7 +215,6 @@ class Retry:
         status_forcelist: typing.Collection[int] | None = None,
         backoff_factor: float = 0,
         backoff_max: float = DEFAULT_BACKOFF_MAX,
-        retry_after_max: int = DEFAULT_RETRY_AFTER_MAX,
         raise_on_redirect: bool = True,
         raise_on_status: bool = True,
         history: tuple[RequestHistory, ...] | None = None,
@@ -224,6 +223,7 @@ class Retry:
             str
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
         backoff_jitter: float = 0.0,
+        retry_after_max: int = DEFAULT_RETRY_AFTER_MAX,
     ) -> None:
         self.total = total
         self.connect = connect
