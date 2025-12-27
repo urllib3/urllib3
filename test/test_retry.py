@@ -185,7 +185,7 @@ class TestRetry:
         """Configurable retry after is computed correctly"""
         max_retry_after = Retry.DEFAULT_RETRY_AFTER_MAX
 
-        retry = Retry(retry_after_max=max_retry_after)
+        retry = Retry()
         assert retry.parse_retry_after(str(max_retry_after)) == max_retry_after
         assert retry.parse_retry_after(str(max_retry_after + 1)) == max_retry_after
 
