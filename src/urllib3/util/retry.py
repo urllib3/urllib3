@@ -178,6 +178,10 @@ class Retry:
         Sequence of headers to remove from the request when a response
         indicating a redirect is returned before firing off the redirected
         request.
+
+    :param int retry_after_max: Number of seconds to allow as the maximum for
+        Retry-After headers. Defaults to 6 hours. Any Retry-After headers larger
+        than this value will be limited to this value.
     """
 
     #: Default methods to be used for ``allowed_methods``
