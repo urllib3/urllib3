@@ -14,6 +14,7 @@ urllib3
    reference/index
    contributing
    changelog
+   deprecation-policy
 
 urllib3 is a powerful, *user-friendly* HTTP client for Python.
 :ref:`Much of the Python ecosystem already uses <who-uses>` urllib3 and you should too.
