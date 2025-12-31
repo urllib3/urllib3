@@ -66,6 +66,7 @@ class TestPoolManager:
             conn = p.connection_from_url(url)
             connections.add(conn)
 
+        #Connections are pooled by scheme, host, and port, not by full URL
         assert len(connections) == 5
 
     def test_manager_clear(self) -> None:
