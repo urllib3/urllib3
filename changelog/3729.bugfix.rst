@@ -1,0 +1,1 @@
+Fixed ``HTTPConnectionPool`` not using gevent's monkey-patched Queue
