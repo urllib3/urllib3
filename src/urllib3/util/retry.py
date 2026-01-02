@@ -400,14 +400,21 @@ class Retry:
             return False
         return True
 
+    @property
+    def disabled(self) -> bool:
+        """Check if retries are disabled. When self.total is set to False, the expected behavior is
+        that retries will be disabled. The status_forcelist overrides this and will retry even
+        if self.total is False.
+        """
+        return self.total is False
+
     def is_retry(
         self, method: str, status_code: int, has_retry_after: bool = False
     ) -> bool:
         """Is this method/status code retryable? (Based on allowlists and control
-        variables such as the number of total retries to allow, whether to
-        respect the Retry-After header, whether this header is present, and
-        whether the returned status code is on the list of status codes to
-        be retried upon on the presence of the aforementioned header)
+        variables such as the disabled property, whether to respect the Retry-After header, whether this
+        header is present, and whether the returned status code is on the list of
+        status codes to be retried upon on the presence of the aforementioned header)
         """
         if not self._is_method_retryable(method):
             return False
@@ -416,7 +423,7 @@ class Retry:
             return True
 
         return bool(
-            self.total
+            not self.disabled
             and self.respect_retry_after_header
             and has_retry_after
             and (status_code in self.RETRY_AFTER_STATUS_CODES)
