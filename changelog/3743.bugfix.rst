@@ -1,1 +1,0 @@
-Started treating ``Retry-After`` times greater than 6 hours as 6 hours by default.
