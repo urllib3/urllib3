@@ -1,14 +1,13 @@
-2.6.3 (TBD)
+2.6.3 (2026-01-07)
 ==================
-
-Bugfixes
---------
 
 - Fixed a high-severity security issue where decompression-bomb safeguards of
   the streaming API were bypassed when HTTP redirects were followed.
   (`GHSA-38jv-5279-wg99 <https://github.com/urllib3/urllib3/security/advisories/GHSA-38jv-5279-wg99>`__)
-
-TODO: add other entries.
+- Started treating ``Retry-After`` times greater than 6 hours as 6 hours by
+  default. (`#3743 <https://github.com/urllib3/urllib3/issues/3743>`__)
+- Fixed ``urllib3.connection.VerifiedHTTPSConnection`` on Emscripten.
+  (`#3752 <https://github.com/urllib3/urllib3/issues/3752>`__)
 
 
 2.6.2 (2025-12-11)
