@@ -1,3 +1,16 @@
+2.6.3 (TBD)
+==================
+
+Bugfixes
+--------
+
+- Fixed a high-severity security issue where decompression-bomb safeguards of
+  the streaming API were bypassed when HTTP redirects were followed.
+  (`GHSA-38jv-5279-wg99 <https://github.com/urllib3/urllib3/security/advisories/GHSA-38jv-5279-wg99>`__)
+
+TODO: add other entries.
+
+
 2.6.2 (2025-12-11)
 ==================
 
