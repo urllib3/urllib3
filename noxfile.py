@@ -142,6 +142,17 @@ def test_brotlipy(session: nox.Session) -> None:
     )
 
 
+@nox.session(python="3")
+def test_gevent(session: nox.Session) -> None:
+    """Check that gevent monkey-patching works correctly with urllib3."""
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
+    tests_impl(
+        session,
+        extras="socks,brotli,zstd,h2",
+        extra_dependencies=["gevent"],
+    )
+
+
 def git_clone(session: nox.Session, git_url: str) -> None:
     """We either clone the target repository or if already exist
     simply reset the state and pull.

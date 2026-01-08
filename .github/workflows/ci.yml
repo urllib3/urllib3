@@ -77,6 +77,11 @@ jobs:
             os: ubuntu-24.04
             experimental: false
             nox-session: test_brotlipy
+          - python-version: "3.x"
+          # gevent
+            os: ubuntu-24.04
+            experimental: false
+            nox-session: test_gevent
           - python-version: "3.12"
             os: ubuntu-24.04
             nox-session: emscripten(node)
