@@ -1,1 +1,0 @@
-Allowed building the urllib3 package with newer setuptools-scm v9.x.

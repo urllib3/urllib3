@@ -28,6 +28,22 @@ When reporting a potential vulnerability, confirm that it reproduces against
 the latest 2.x version.
 
 
+## Out of Scope Experimental Features
+
+urllib3 contains two experimental modules: `emscripten` and `http2`.
+
+- **http2**: Issues in the HTTP/2 module are not considered security
+  vulnerabilities and should be opened as public GitHub issues after
+  checking missing features tracked in issue
+  https://github.com/urllib3/urllib3/issues/3000.
+- **emscripten**: Potential security issues in the `emscripten` module should
+  be reported privately. Project maintainers will decide if they qualify as
+  security issues to be handled through the standard flow or if they should be
+  considered simple bugs and fixed publicly. Issues that would be considered
+  security vulnerabilities in the core package may not qualify as such for the
+  `emscripten` module.
+
+
 ## Our Process
 
 We follow the [Tidelift security process](https://support.tidelift.com/hc/en-us/articles/4406287910036-Security-process)

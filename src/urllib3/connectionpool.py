@@ -216,8 +216,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if self.proxy:
             # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
-            # We cannot know if the user has added default socket options, so we cannot replace the
-            # list.
+            # Defaulting `socket_options` to an empty list avoids it defaulting to
+            # ``HTTPConnection.default_socket_options``.
             self.conn_kw.setdefault("socket_options", [])
 
             self.conn_kw["proxy"] = self.proxy

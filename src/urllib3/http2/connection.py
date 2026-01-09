@@ -6,9 +6,9 @@ import threading
 import types
 import typing
 
-import h2.config  # type: ignore[import-untyped]
-import h2.connection  # type: ignore[import-untyped]
-import h2.events  # type: ignore[import-untyped]
+import h2.config
+import h2.connection
+import h2.events
 
 from .._base_connection import _TYPE_BODY
 from .._collections import HTTPHeaderDict
