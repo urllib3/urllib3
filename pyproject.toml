@@ -65,6 +65,7 @@ dev = [
     "h2>=4.1.0",
     "httpx>=0.28.1",
     "hypercorn",
+    "hypothesis>=6.122.4",
     "idna>=3.10",
     "pyopenssl>=25.0.0",
     "pysocks>=1.7.1",
