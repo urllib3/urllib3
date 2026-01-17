@@ -1,4 +1,4 @@
-# These helpers are copied from test/support/socket_helper.py in the Python 3.9 standard
+# These helpers are copied from test/support/socket_helper.py in the Python 3.10 standard
 # library test suite.
 
 from __future__ import annotations

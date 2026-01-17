@@ -32,7 +32,7 @@ def _is_bpo_43522_fixed(
     version_info: _TYPE_VERSION_INFO,
     pypy_version_info: _TYPE_VERSION_INFO | None,
 ) -> bool:
-    """Return True for CPython 3.9.3+ or 3.10+ and PyPy 7.3.8+ where
+    """Return True for CPython 3.10+ and PyPy 7.3.8+ where
     setting SSLContext.hostname_checks_common_name to False works.
 
     Outside of CPython and PyPy we don't know which implementations work
@@ -47,8 +47,7 @@ def _is_bpo_43522_fixed(
         return pypy_version_info >= (7, 3, 8)  # type: ignore[operator]
     elif implementation_name == "cpython":
         major_minor = version_info[:2]
-        micro = version_info[2]
-        return (major_minor == (3, 9) and micro >= 3) or major_minor >= (3, 10)
+        return major_minor >= (3, 10)
     else:  # Defensive:
         return False
 
@@ -110,18 +109,18 @@ try:  # Do we have ssl at all?
 
     PROTOCOL_SSLv23 = PROTOCOL_TLS
 
-    # Needed for Python 3.9 which does not define this
+    # Defensive for older Python implementations that may not define this
     VERIFY_X509_PARTIAL_CHAIN = getattr(ssl, "VERIFY_X509_PARTIAL_CHAIN", 0x80000)
 
-    # Setting SSLContext.hostname_checks_common_name = False didn't work before CPython
-    # 3.9.3, and 3.10 (but OK on PyPy) or OpenSSL 1.1.1l+
+    # Setting SSLContext.hostname_checks_common_name = False requires OpenSSL 1.1.1l+
+    # or a Python implementation that works around the OpenSSL issue
     if HAS_NEVER_CHECK_COMMON_NAME and not _is_has_never_check_common_name_reliable(
         OPENSSL_VERSION,
         OPENSSL_VERSION_NUMBER,
         sys.implementation.name,
         sys.version_info,
         sys.pypy_version_info if sys.implementation.name == "pypy" else None,  # type: ignore[attr-defined]
-    ):  # Defensive: for Python < 3.9.3
+    ):  # Defensive: for old OpenSSL or LibreSSL
         HAS_NEVER_CHECK_COMMON_NAME = False
 
     # Need to be careful here in case old TLS versions get
@@ -361,7 +360,7 @@ def create_urllib3_context(
 
     try:
         context.hostname_checks_common_name = False
-    except AttributeError:  # Defensive: for CPython < 3.9.3; for PyPy < 7.3.8
+    except AttributeError:  # Defensive: for alternative Python implementations
         pass
 
     if "SSLKEYLOGFILE" in os.environ:

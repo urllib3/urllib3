@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.14t", "3.15"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.14t", "3.15"]
         os:
           - macos-15
           - windows-latest
@@ -48,12 +48,6 @@ jobs:
         include:
           - experimental: false
           # integration
-          # 3.9 has a known issue with large SSL requests that we work around:
-          # https://github.com/urllib3/urllib3/pull/3181#issuecomment-1794830698
-          - python-version: "3.9"
-            os: ubuntu-24.04
-            experimental: false
-            nox-session: test_integration
           - python-version: "3.12"
             os: ubuntu-24.04
             experimental: false

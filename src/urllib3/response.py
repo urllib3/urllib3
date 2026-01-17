@@ -967,8 +967,6 @@ class HTTPResponse(BaseHTTPResponse):
         happen.
 
         The known cases:
-          * CPython < 3.9.7 because of a bug
-            https://github.com/urllib3/urllib3/issues/2513#issuecomment-1152559900.
           * urllib3 injected with pyOpenSSL-backed SSL-support.
           * CPython < 3.10 only when `amt` does not fit 32-bit int.
         """

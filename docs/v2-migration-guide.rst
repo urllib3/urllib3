@@ -23,7 +23,7 @@ What are the important changes?
 
 Here's a short summary of which changes in urllib3 2.x are most important:
 
-- Python version must be **3.9 or later** (previously supported Python 2.7, and 3.5 to 3.8).
+- Python version must be **3.10 or later** (previously supported Python 2.7, and 3.5 to 3.9).
 - Removed support for non-OpenSSL TLS libraries (like LibreSSL and wolfSSL).
 - Removed support for OpenSSL versions older than 1.1.1.
 - Removed support for Python implementations that aren't CPython or PyPy3 (previously supported Google App Engine, Jython).
@@ -46,7 +46,7 @@ Sunsetting urllib3 1.26.x
 urllib3 1.26.x is not currently maintained. urllib3 2.x is the best version of urllib3
 and is widely supported by the larger Python ecosystem. That said, urllib3 1.26.x still
 sees significant download numbers, mainly because the botocore package still requires
-urllib3 1.26.x for Python 3.9 and earlier. If your organization would benefit from the
+urllib3 1.26.x for Python 3.10 and earlier. If your organization would benefit from the
 continued support of urllib3 1.26.x, please contact sethmichaellarson@gmail.com to
 discuss sponsorship or contribution opportunities.
 
@@ -102,7 +102,7 @@ This likely happens because you're using botocore which `does not support urllib
 in its dependencies that it only supports ``urllib3<2``. Make sure to use a recent pip. That way, pip
 will install urllib3 1.26.x for versions of botocore that do not support urllib3 2.0.
 
-If you're deploying to an AWS environment such as Lambda with the Python 3.9 runtime or a host
+If you're deploying to an AWS environment such as Lambda with the Python 3.10 runtime or a host
 using Amazon Linux 2, you'll need to explicitly pin to ``urllib3<2`` in your project to ensure
 urllib3 2.0 isn't brought into your environment. Otherwise, this may result in unintended side
 effects with the default boto3 installation.
@@ -283,14 +283,14 @@ for requests and ``HTTPResponse.json()`` method on responses:
   }
 
 
-**✨ Optimized for Python 3.9+**
---------------------------------
+**✨ Optimized for Python 3.10+**
+---------------------------------
 
-urllib3 2.x specifically targets CPython 3.9+ and PyPy 7.3.17+ (compatible with CPython 3.10)
-and dropping support for Python versions 2.7, and 3.5 to 3.8.
+urllib3 2.x specifically targets CPython 3.10+ and PyPy 7.3.17+ (compatible with CPython 3.10)
+and dropping support for Python versions 2.7, and 3.5 to 3.9.
   
 By dropping end-of-life Python versions we're able to optimize
-the codebase for Python 3.9+ by using new features to improve
+the codebase for Python 3.10+ by using new features to improve
 performance and reduce the amount of code that needs to be executed
 in order to support legacy versions.
 
