@@ -261,23 +261,23 @@ class TestPoolManager:
 
     @patch("urllib3.poolmanager.PoolManager.connection_from_host")
     def test_deprecated_no_scheme(self, connection_from_host: mock.MagicMock) -> None:
-        # Don't actually make a network connection, just verify the DeprecationWarning
+        # Don't actually make a network connection, just verify the FutureWarning
         connection_from_host.side_effect = ConnectionError("Not attempting connection")
         p = PoolManager()
 
-        with pytest.warns(DeprecationWarning) as records:
+        with pytest.warns(FutureWarning) as records:
             with pytest.raises(ConnectionError):
                 p.request(method="GET", url="evil.com://good.com")
 
         msg = (
             "URLs without a scheme (ie 'https://') are deprecated and will raise an error "
-            "in a future version of urllib3. To avoid this DeprecationWarning ensure all URLs "
+            "in urllib3 v3.0. To avoid this FutureWarning ensure all URLs "
             "start with 'https://' or 'http://'. Read more in this issue: "
             "https://github.com/urllib3/urllib3/issues/2920"
         )
 
         assert len(records) == 1
-        assert isinstance(records[0].message, DeprecationWarning)
+        assert isinstance(records[0].message, FutureWarning)
         assert records[0].message.args[0] == msg
 
     @patch("urllib3.poolmanager.PoolManager.connection_from_pool_key")
@@ -291,12 +291,12 @@ class TestPoolManager:
             "port": 8080,
             "strict": True,
         }
-        with pytest.warns(DeprecationWarning) as records:
+        with pytest.warns(FutureWarning) as records:
             p.connection_from_context(context)
 
         msg = (
             "The 'strict' parameter is no longer needed on Python 3+. "
-            "This will raise an error in urllib3 v2.1.0."
+            "This will raise an error in urllib3 v3.0."
         )
         record = records[0]
         assert isinstance(record.message, Warning)

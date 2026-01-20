@@ -70,7 +70,7 @@ def tests_impl(
 
     # Environment variables being passed to the pytest run.
     pytest_session_envvars = {
-        "PYTHONWARNINGS": "always::DeprecationWarning",
+        "PYTHONWARNINGS": "always::FutureWarning",
         "COVERAGE_CORE": "sysmon",
     }
 
