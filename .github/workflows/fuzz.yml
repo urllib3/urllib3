@@ -1,0 +1,79 @@
+name: Fuzzing
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: "read"
+
+jobs:
+  fuzz:
+    if: github.repository == 'urllib3/urllib3' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: "Setup Python"
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: "3.14"
+
+      - name: "Install uv"
+        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+        with:
+          version: "0.9.5"
+
+      - name: "Restore cache"
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        with:
+          path: |
+            .nox/.cache
+            .hypothesis/examples
+          key: fuzz-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            fuzz-${{ runner.os }}-
+
+      - name: "Download example database"
+        uses: dawidd6/action-download-artifact@fa1fc1d86da44b5ab57d3274cd2fc126ca125c2a # v9
+        with:
+          name: urllib3-hypothesis-db
+          path: .hypothesis/examples
+          if_no_artifact_found: warn
+          workflow_conclusion: completed
+
+      - name: "Install dependencies"
+        run: |
+          uv sync --frozen --group dev
+          uv pip install hypofuzz
+
+      - name: "Run hypofuzz"
+        continue-on-error: true
+        run: |
+          timeout --preserve-status 5.5h \
+            uv run hypothesis fuzz -- test/ \
+              -k "test_hypothesis" \
+              --ignore=test/contrib/ \
+              --ignore=test/with_dummyserver/
+
+      - name: "Upload patch files"
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: urllib3-hypofuzz-patches
+          path: .hypothesis/patches/latest_hypofuzz_*.patch
+          if-no-files-found: ignore
+
+      - name: "Upload example database"
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: urllib3-hypothesis-db
+          path: .hypothesis/examples
