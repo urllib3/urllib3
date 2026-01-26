@@ -1,7 +1,7 @@
 # This file is protected via CODEOWNERS
 
 [build-system]
-requires = ["hatchling>=1.27.0,<2", "hatch-vcs>=0.4.0,<0.6.0", "setuptools-scm>=8,<9"]
+requires = ["hatchling>=1.27.0,<2", "hatch-vcs>=0.4.0,<0.6.0", "setuptools-scm>=8,<10"]
 build-backend = "hatchling.build"
 
 [project]
@@ -34,6 +34,7 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
+  "Programming Language :: Python :: Free Threading :: 2 - Beta",
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Software Development :: Libraries",
 ]
@@ -42,15 +43,11 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 brotli = [
-  "brotli>=1.0.9; platform_python_implementation == 'CPython'",
-  "brotlicffi>=0.8.0; platform_python_implementation != 'CPython'"
+  "brotli>=1.2.0; platform_python_implementation == 'CPython'",
+  "brotlicffi>=1.2.0.0; platform_python_implementation != 'CPython'"
 ]
-# Once we drop support for Python 3.13 this extra can be removed.
-# We'll need a deprecation period for the 'zstandard' module support
-# so that folks using Python without the 'compression.zstd' module
-# compiled will know to start doing so (although it'll likely be rare).
 zstd = [
-  "zstandard>=0.18.0",
+  "backports.zstd>=1.0.0; python_version<'3.14'",
 ]
 socks = [
   "PySocks>=1.5.6,<2.0,!=1.5.7",
@@ -72,7 +69,7 @@ dev = [
     "pyopenssl>=25.0.0",
     "pysocks>=1.7.1",
     "pytest>=8.3.4",
-    "pytest-memray==1.7.0 ; python_full_version < '3.14' and implementation_name == 'cpython' and sys_platform != 'win32'",
+    "pytest-memray==1.8.0 ; python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'",
     "pytest-socket>=0.7.0",
     "pytest-timeout>=2.3.1",
     "quart>=0.20.0",
@@ -83,6 +80,7 @@ dev = [
 ]
 mypy = [
     "anyio[trio]>=4.8.0",
+    "backports.zstd>=1.0.0; python_version<'3.14'",
     "cryptography>=44.0.2",
     "httpx>=0.28.1",
     "hypercorn>=0.15.0",
@@ -95,7 +93,6 @@ mypy = [
     "trustme>=1.2.1",
     "types-requests>=2.32.0.20241016",
     "nox>=2024.10.9",
-    "zstandard>=0.23.0",
 ]
 emscripten = [
     "build>=1.2.2.post1",
@@ -161,6 +158,7 @@ filterwarnings = [
     '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
+    '''default:Brotli >= 1.2.0 is required to prevent decompression bombs\.:urllib3.exceptions.DependencyWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/13328
     '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/14686

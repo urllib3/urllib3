@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           # `towncrier check` runs `git diff --name-only origin/main...`, which
           # needs a non-shallow clone.
@@ -25,7 +25,7 @@ jobs:
       - name: "Check changelog"
         if: "!contains(github.event.pull_request.labels.*.name, 'Skip Changelog')"
         run: |
-          if ! pipx run towncrier check --compare-with origin/${{ github.base_ref }}; then
+          if ! pipx run towncrier check --compare-with origin/$GITHUB_BASE_REF; then
           echo "Please see https://github.com/urllib3/urllib3/blob/main/changelog/README.rst for guidance."
             false
           fi

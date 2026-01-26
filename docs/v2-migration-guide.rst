@@ -1,4 +1,4 @@
-v2.0 Migration Guide
+v2 Migration Guide
 ====================
 
 **urllib3 2.x is now available!** Read below for how to get started and what is contained in the new major release.
@@ -30,8 +30,6 @@ Here's a short summary of which changes in urllib3 2.x are most important:
 - Removed the ``urllib3.contrib.ntlmpool`` module.
 - Removed the ``urllib3.contrib.securetransport`` module.
 - Removed the ``urllib3[secure]`` extra.
-- Removed the ``HTTPResponse.getheaders()`` method in favor of ``HTTPResponse.headers``.
-- Removed the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``.
 - Deprecated URLs without a scheme (ie 'https://') and will be raising an error in a future version of urllib3.
 - Changed the default minimum TLS version to TLS 1.2 (previously was TLS 1.0).
 - Changed the default request body encoding from 'ISO-8859-1' to 'UTF-8'.
@@ -52,8 +50,8 @@ urllib3 1.26.x for Python 3.9 and earlier. If your organization would benefit fr
 continued support of urllib3 1.26.x, please contact sethmichaellarson@gmail.com to
 discuss sponsorship or contribution opportunities.
 
-However, upgrading is still recommended as **no new feature developments or non-critical
-bug fixes will be shipped to the 1.26.x release stream**.
+However, upgrading is still recommended as **no new feature developments or
+fixes will be shipped to the 1.26.x release stream**.
 
 **🤔 Common upgrading issues**
 ------------------------------
@@ -63,7 +61,7 @@ ssl module is compiled with OpenSSL 1.0.2.k-fips
 
 .. code-block:: text
 
-  ImportError: urllib3 v2.0 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'OpenSSL 1.0.2k-fips  26 Jan 2017'.
+  ImportError: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'OpenSSL 1.0.2k-fips  26 Jan 2017'.
   See: https://github.com/urllib3/urllib3/issues/2168
 
 Remediation depends on your system:
@@ -180,7 +178,7 @@ ensure your package allows for both urllib3 1.26.x and 2.x to be used:
     "urllib3>=1.26,<3"
   ]
 
-Next you should try installing urllib3 v2.0 locally and run your test suite.
+Next you should try installing urllib3 v2.x locally and run your test suite.
 
 .. code-block:: bash
 
@@ -337,7 +335,7 @@ to support to ensure high security for data traveling
 over the wire.
 
 If you still need to use TLS 1.0 or 1.1 in your application
-you can still upgrade to v2.0, you'll only need to set
+you can still upgrade to v2.x, you'll only need to set
 ``ssl_minimum_version`` to the proper value to continue using
 legacy TLS versions.
 

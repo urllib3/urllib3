@@ -181,6 +181,18 @@ class TestRetry:
         retry = retry.increment(method="GET")
         assert retry.get_backoff_time() == max_backoff
 
+    def test_configurable_retry_after_max(self) -> None:
+        """Configurable retry after is computed correctly"""
+        max_retry_after = Retry.DEFAULT_RETRY_AFTER_MAX
+
+        retry = Retry()
+        assert retry.parse_retry_after(str(max_retry_after)) == max_retry_after
+        assert retry.parse_retry_after(str(max_retry_after + 1)) == max_retry_after
+
+        retry = Retry(retry_after_max=1)
+        assert retry.parse_retry_after(str(1)) == 1
+        assert retry.parse_retry_after(str(2)) == 1
+
     def test_backoff_jitter(self) -> None:
         """Backoff with jitter is computed correctly"""
         max_backoff = 1

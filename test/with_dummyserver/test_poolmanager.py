@@ -26,8 +26,12 @@ class TestPoolManager(HypercornDummyServerTestCase):
         cls.base_url = f"http://{cls.host}:{cls.port}"
         cls.base_url_alt = f"http://{cls.host_alt}:{cls.port}"
 
-    def test_redirect(self) -> None:
-        with PoolManager() as http:
+    @pytest.mark.parametrize(
+        "pool_manager_kwargs",
+        ({}, {"retries": None}, {"retries": 1}, {"retries": Retry(1)}),
+    )
+    def test_redirect(self, pool_manager_kwargs: dict[str, typing.Any]) -> None:
+        with PoolManager(**pool_manager_kwargs) as http:
             r = http.request(
                 "GET",
                 f"{self.base_url}/redirect",
@@ -46,8 +50,12 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r.status == 200
             assert r.data == b"Dummy server!"
 
-    def test_redirect_twice(self) -> None:
-        with PoolManager() as http:
+    @pytest.mark.parametrize(
+        "pool_manager_kwargs",
+        ({}, {"retries": None}, {"retries": 2}, {"retries": Retry(2)}),
+    )
+    def test_redirect_twice(self, pool_manager_kwargs: dict[str, typing.Any]) -> None:
+        with PoolManager(**pool_manager_kwargs) as http:
             r = http.request(
                 "GET",
                 f"{self.base_url}/redirect",
