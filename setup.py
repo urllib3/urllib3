@@ -89,8 +89,10 @@ setup(
         "brotli": [
             # https://github.com/google/brotli/issues/1074
             "brotli==1.0.9; os_name != 'nt' and python_version < '3' and platform_python_implementation == 'CPython'",
-            "brotli>=1.0.9; python_version >= '3' and platform_python_implementation == 'CPython'",
-            "brotlicffi>=0.8.0; (os_name != 'nt' or python_version >= '3') and platform_python_implementation != 'CPython'",
+            # Backport hardening: require newer brotli/brotlicffi to avoid decompression bombs.
+            # Upstream reference: c19571de34c47de3a766541b041637ba5f716ed7
+            "brotli>=1.2.0; python_version >= '3' and platform_python_implementation == 'CPython'",
+            "brotlicffi>=1.2.0.0; (os_name != 'nt' or python_version >= '3') and platform_python_implementation != 'CPython'",
             "brotlipy>=0.6.0; os_name == 'nt' and python_version < '3'",
         ],
         "secure": [
