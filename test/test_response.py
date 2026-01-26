@@ -295,6 +295,16 @@ class TestResponse(object):
 
         assert r.data == b"foo"
 
+    def test_multi_decoding_too_many_links(self):
+        fp = BytesIO(b"foo")
+        with pytest.raises(
+            DecodeError, match=r"Too many content encodings in the chain: 6 > 5"
+        ):
+            HTTPResponse(
+                fp,
+                headers={"content-encoding": "gzip, deflate, gzip, deflate, gzip, deflate"},
+            )
+
     def test_body_blob(self):
         resp = HTTPResponse(b"foo")
         assert resp.data == b"foo"

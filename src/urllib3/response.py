@@ -136,7 +136,22 @@ class MultiDecoder(object):
     """
 
     def __init__(self, modes):
-        self._decoders = [_get_decoder(m.strip()) for m in modes.split(",")]
+        # Maximum allowed number of chained HTTP encodings in the
+        # Content-Encoding header.
+        #
+        # Backport note: this mirrors upstream hardening that prevents a DoS via
+        # a very long Content-Encoding chain that can cause excessive resource
+        # usage during decoding.
+        max_decode_links = 5
+
+        encodings = [m.strip() for m in modes.split(",") if m.strip()]
+        if len(encodings) > max_decode_links:
+            raise DecodeError(
+                "Too many content encodings in the chain: %d > %d"
+                % (len(encodings), max_decode_links)
+            )
+
+        self._decoders = [_get_decoder(e) for e in encodings]
 
     def flush(self):
         return self._decoders[0].flush()
@@ -389,7 +404,10 @@ class HTTPResponse(io.IOBase):
                     if e.strip() in self.CONTENT_DECODERS
                 ]
                 if len(encodings):
-                    self._decoder = _get_decoder(content_encoding)
+                    # Only decode the encodings we support. Passing the full header
+                    # (including unknown encodings) would treat unknown values as
+                    # "deflate" due to _get_decoder fallback behavior.
+                    self._decoder = _get_decoder(",".join(encodings))
 
     DECODER_ERROR_CLASSES = (IOError, zlib.error)
     if brotli is not None:
