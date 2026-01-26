@@ -136,7 +136,7 @@ jobs:
         uses: browser-actions/setup-firefox@5914774dda97099441f02628f8d46411fcfbd208 # v1.7.0
         if: ${{ matrix.nox-session == 'emscripten(firefox)' }}
       - name: "Install node.js"
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         if: ${{ matrix.nox-session == 'emscripten(node)' }}
         with:
           node-version: 22
