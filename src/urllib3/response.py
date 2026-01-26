@@ -43,29 +43,46 @@ class DeflateDecoder(object):
         self._first_try = True
         self._data = b""
         self._obj = zlib.decompressobj()
+        # Any compressed input not yet consumed due to max_length output limiting.
+        self._unconsumed_tail = b""
 
     def __getattr__(self, name):
         return getattr(self._obj, name)
 
-    def decompress(self, data):
+    def decompress(self, data, max_length=None):
         if not data:
             return data
 
+        if self._unconsumed_tail:
+            data = self._unconsumed_tail + data
+            self._unconsumed_tail = b""
+
         if not self._first_try:
-            return self._obj.decompress(data)
+            if max_length is None:
+                out = self._obj.decompress(data)
+            else:
+                out = self._obj.decompress(data, max_length)
+            if self._obj.unconsumed_tail:
+                self._unconsumed_tail = self._obj.unconsumed_tail
+            return out
 
         self._data += data
         try:
-            decompressed = self._obj.decompress(data)
+            if max_length is None:
+                decompressed = self._obj.decompress(data)
+            else:
+                decompressed = self._obj.decompress(data, max_length)
             if decompressed:
                 self._first_try = False
                 self._data = None
+                if self._obj.unconsumed_tail:
+                    self._unconsumed_tail = self._obj.unconsumed_tail
             return decompressed
         except zlib.error:
             self._first_try = False
             self._obj = zlib.decompressobj(-zlib.MAX_WBITS)
             try:
-                return self.decompress(self._data)
+                return self.decompress(self._data, max_length=max_length)
             finally:
                 self._data = None
 
@@ -81,17 +98,30 @@ class GzipDecoder(object):
     def __init__(self):
         self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
         self._state = GzipDecoderState.FIRST_MEMBER
+        # Any compressed input not yet consumed due to max_length output limiting.
+        self._unconsumed_tail = b""
 
     def __getattr__(self, name):
         return getattr(self._obj, name)
 
-    def decompress(self, data):
+    def decompress(self, data, max_length=None):
         ret = bytearray()
         if self._state == GzipDecoderState.SWALLOW_DATA or not data:
             return bytes(ret)
+
+        if self._unconsumed_tail:
+            data = self._unconsumed_tail + data
+            self._unconsumed_tail = b""
+
+        remaining = max_length
         while True:
             try:
-                ret += self._obj.decompress(data)
+                if remaining is None:
+                    chunk = self._obj.decompress(data)
+                else:
+                    # Limit returned decompressed bytes to mitigate decompression bombs
+                    chunk = self._obj.decompress(data, remaining)
+                ret += chunk
             except zlib.error:
                 previous_state = self._state
                 # Ignore data after the first error
@@ -100,6 +130,19 @@ class GzipDecoder(object):
                     # Allow trailing garbage acceptable in other gzip clients
                     return bytes(ret)
                 raise
+            if remaining is not None:
+                remaining -= len(chunk)
+                if remaining <= 0:
+                    # Save unconsumed compressed input for the next call.
+                    if self._obj.unconsumed_tail:
+                        self._unconsumed_tail = self._obj.unconsumed_tail
+                    return bytes(ret)
+
+            # If we hit max_length, zlib stores remaining input in unconsumed_tail.
+            if self._obj.unconsumed_tail:
+                data = self._obj.unconsumed_tail
+                continue
+
             data = self._obj.unused_data
             if not data:
                 return bytes(ret)
@@ -115,15 +158,59 @@ if brotli is not None:
         # are for 'brotlipy' and bottom branches for 'Brotli'
         def __init__(self):
             self._obj = brotli.Decompressor()
-            if hasattr(self._obj, "decompress"):
-                self.decompress = self._obj.decompress
-            else:
-                self.decompress = self._obj.process
+            self._buffer = b""
 
         def flush(self):
             if hasattr(self._obj, "flush"):
                 return self._obj.flush()
             return b""
+
+        def decompress(self, data, max_length=None):
+            """
+            Best-effort max_length support.
+
+            Some brotli/brotlicffi implementations expose a bounded-output API.
+            If not available, we fall back to buffering and slicing, which does
+            not fully mitigate decompression bombs but keeps API compatibility.
+            """
+            if not data and not self._buffer:
+                return b""
+
+            # First, serve from buffer if we have leftovers.
+            if self._buffer:
+                if max_length is None or len(self._buffer) <= max_length:
+                    out, self._buffer = self._buffer, b""
+                    return out
+                out, self._buffer = self._buffer[:max_length], self._buffer[max_length:]
+                return out
+
+            # Prefer bounded-output APIs when available
+            if hasattr(self._obj, "decompress"):
+                try:
+                    out = (
+                        self._obj.decompress(data)
+                        if max_length is None
+                        else self._obj.decompress(data, max_length)
+                    )
+                    return out
+                except TypeError:
+                    out = self._obj.decompress(data)
+            else:
+                try:
+                    out = (
+                        self._obj.process(data)
+                        if max_length is None
+                        else self._obj.process(data, max_length)
+                    )
+                    return out
+                except TypeError:
+                    out = self._obj.process(data)
+
+            if max_length is None or len(out) <= max_length:
+                return out
+
+            self._buffer = out[max_length:]
+            return out[:max_length]
 
 
 class MultiDecoder(object):
@@ -156,9 +243,9 @@ class MultiDecoder(object):
     def flush(self):
         return self._decoders[0].flush()
 
-    def decompress(self, data):
+    def decompress(self, data, max_length=None):
         for d in reversed(self._decoders):
-            data = d.decompress(data)
+            data = d.decompress(data, max_length=max_length)
         return data
 
 
@@ -413,7 +500,7 @@ class HTTPResponse(io.IOBase):
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
 
-    def _decode(self, data, decode_content, flush_decoder):
+    def _decode(self, data, decode_content, flush_decoder, max_length=None):
         """
         Decode the data passed in and potentially flush the decoder.
         """
@@ -422,7 +509,7 @@ class HTTPResponse(io.IOBase):
 
         try:
             if self._decoder:
-                data = self._decoder.decompress(data)
+                data = self._decoder.decompress(data, max_length=max_length)
         except self.DECODER_ERROR_CLASSES as e:
             content_encoding = self.headers.get("content-encoding", "").lower()
             raise DecodeError(
@@ -615,7 +702,10 @@ class HTTPResponse(io.IOBase):
             if self.length_remaining is not None:
                 self.length_remaining -= len(data)
 
-            data = self._decode(data, decode_content, flush_decoder)
+            # When streaming with decoding enabled, cap the amount of decompressed
+            # output to the requested read size to mitigate decompression bombs.
+            max_length = amt if (decode_content and amt is not None) else None
+            data = self._decode(data, decode_content, flush_decoder, max_length=max_length)
 
             if cache_content:
                 self._body = data
@@ -847,8 +937,12 @@ class HTTPResponse(io.IOBase):
                 if self.chunk_left == 0:
                     break
                 chunk = self._handle_chunk(amt)
+                max_length = amt if (decode_content and amt is not None) else None
                 decoded = self._decode(
-                    chunk, decode_content=decode_content, flush_decoder=False
+                    chunk,
+                    decode_content=decode_content,
+                    flush_decoder=False,
+                    max_length=max_length,
                 )
                 if decoded:
                     yield decoded
