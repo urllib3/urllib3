@@ -955,7 +955,7 @@ def _ssl_wrap_socket_and_match_hostname(
     # custom pyOpenSSL SSLContext objects because they don't support
     # load_default_certs().
     if (
-        resolve_cert_reqs(cert_reqs) != ssl.CERT_NONE
+        context.verify_mode != ssl.CERT_NONE
         and not ca_certs
         and not ca_cert_dir
         and not ca_cert_data
