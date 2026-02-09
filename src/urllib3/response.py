@@ -292,7 +292,11 @@ class HTTPResponse(io.IOBase):
         Unread data in the HTTPResponse connection blocks the connection from being released back to the pool.
         """
         try:
-            self.read()
+            self.read(
+                # Do not spend resources decoding the content unless
+                # decoding has already been initiated.
+                decode_content=self._has_decoded_content,
+            )
         except (HTTPError, SocketError, BaseSSLError, HTTPException):
             pass
 
