@@ -1,0 +1,2 @@
+Fixed a bug where calling ``read(decode_content=True)`` after a partial decoded read
+could return truncated data.
