@@ -771,6 +771,27 @@ class TestResponse:
             == len(original_data) - initial_limit
         )
 
+    @pytest.mark.parametrize(
+        "data",
+        [d[1] for d in _test_compressor_params],
+        ids=[d[0] for d in _test_compressor_params],
+    )
+    def test_partial_read_then_read_all_returns_remaining(
+        self,
+        request: pytest.FixtureRequest,
+        data: tuple[str, typing.Callable[[bytes], bytes]] | None,
+    ) -> None:
+        if data is None:
+            pytest.skip(f"Proper {request.node.callspec.id} decoder is not available")
+        original_data = b"foobarbaz" * 1000
+        name, compress_func = data
+        compressed_data = compress_func(original_data)
+        fp = BytesIO(compressed_data)
+        r = HTTPResponse(fp, headers={"content-encoding": name}, preload_content=False)
+        first = r.read(5, decode_content=True)
+        rest = r.read(decode_content=True)
+        assert first + rest == original_data
+
     # Prepare 50 MB of compressed data outside of the test measuring
     # memory usage.
     _test_memory_usage_decode_with_max_length_params: list[

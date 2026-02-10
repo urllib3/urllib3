@@ -1121,7 +1121,11 @@ class HTTPResponse(BaseHTTPResponse):
             return data
 
         if amt is None:
-            data = self._decode(data, decode_content, flush_decoder)
+            if decode_content and len(self._decoded_buffer) > 0:
+                buffered = self._decoded_buffer.get_all()
+                data = buffered + self._decode(data, decode_content, flush_decoder)
+            else:
+                data = self._decode(data, decode_content, flush_decoder)
             if cache_content:
                 self._body = data
         else:
