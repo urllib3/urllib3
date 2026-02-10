@@ -1102,6 +1102,28 @@ class TestResponse:
         while not br.closed:
             br.read(5)
 
+    def test_readinto_with_memoryview(self) -> None:
+        data = b"hello world"
+        fp = BytesIO(data)
+        resp = HTTPResponse(fp, preload_content=False)
+
+        buf = bytearray(5)
+        mv = memoryview(buf)
+        n = resp.readinto(mv)
+        assert n == 5
+        assert buf == b"hello"
+
+        # Also test readinto with a bytearray directly
+        buf2 = bytearray(6)
+        n2 = resp.readinto(buf2)
+        assert n2 == 6
+        assert buf2 == b" world"
+
+        # Test readinto when no bytes are left
+        buf3 = bytearray(5)
+        n3 = resp.readinto(buf3)
+        assert n3 == 0
+
     def test_io_not_autoclose_bufferedreader(self) -> None:
         fp = BytesIO(b"hello\nworld")
         resp = HTTPResponse(fp, preload_content=False, auto_close=False)
