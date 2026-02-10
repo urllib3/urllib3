@@ -1075,7 +1075,7 @@ class TestResponse:
     def test_io_bufferedreader(self) -> None:
         fp = BytesIO(b"foo")
         resp = HTTPResponse(fp, preload_content=False)
-        br = BufferedReader(resp)  # type: ignore[type-var]
+        br = BufferedReader(resp)
 
         assert br.read() == b"foo"
 
@@ -1087,12 +1087,12 @@ class TestResponse:
         fp = BytesIO(b"hello\nworld")
         resp = HTTPResponse(fp, preload_content=False)
         with pytest.raises(ValueError, match="readline of closed file"):
-            list(BufferedReader(resp))  # type: ignore[type-var]
+            list(BufferedReader(resp))
 
         b = b"fooandahalf"
         fp = BytesIO(b)
         resp = HTTPResponse(fp, preload_content=False)
-        br = BufferedReader(resp, 5)  # type: ignore[type-var]
+        br = BufferedReader(resp, 5)
 
         br.read(1)  # sets up the buffer, reading 5
         assert len(fp.read()) == (len(b) - 5)
@@ -1127,7 +1127,7 @@ class TestResponse:
     def test_io_not_autoclose_bufferedreader(self) -> None:
         fp = BytesIO(b"hello\nworld")
         resp = HTTPResponse(fp, preload_content=False, auto_close=False)
-        reader = BufferedReader(resp)  # type: ignore[type-var]
+        reader = BufferedReader(resp)
         assert list(reader) == [b"hello\n", b"world"]
 
         assert not reader.closed
