@@ -826,7 +826,7 @@ class HTTPResponse(BaseHTTPResponse):
     def tell(self) -> int:
         """
         Obtain the number of bytes pulled over the wire so far. May differ from
-        the amount of content returned by :meth:``urllib3.response.HTTPResponse.read``
+        the amount of content returned by :meth:`HTTPResponse.read`
         if bytes are encoded on the wire (e.g, compressed).
         """
         return self._fp_bytes_read
