@@ -162,7 +162,7 @@ filterwarnings = [
     # https://github.com/SeleniumHQ/selenium/issues/13328
     '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/14686
-    '''default:setting remote_server_addr in RemoteConnection\(\) is deprecated, set in ClientConfig instance instead:DeprecationWarning'''
+    '''default:setting remote_server_addr in RemoteConnection\(\) is deprecated, set in ClientConfig instance instead:FutureWarning'''
 ]
 
 [tool.isort]

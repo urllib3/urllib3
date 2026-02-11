@@ -184,9 +184,9 @@ Next you should try installing urllib3 v2.x locally and run your test suite.
 
   $ python -m pip install -U 'urllib3>=2'
 
-Because there are new ``DeprecationWarnings`` you should ensure that you're
+Because there are new ``FutureWarnings`` you should ensure that you're
 able to see those warnings when running your test suite. To do so you can add
-the following to your test setup to ensure even ``DeprecationWarnings`` are
+the following to your test setup to ensure even ``FutureWarnings`` are
 output to the terminal:
 
 .. code-block:: bash
@@ -205,17 +205,17 @@ or you can opt-in within your Python code:
   # You can change warning filters according to the filter rules:
   # https://docs.python.org/3/library/warnings.html#warning-filter
   import warnings
-  warnings.filterwarnings("default", category=DeprecationWarning)
+  warnings.filterwarnings("default", category=FutureWarning)
 
-Any failures or deprecation warnings you receive should be fixed as urllib3 v2.1.0 will remove all
+Any failures or deprecation warnings you receive should be fixed as urllib3 v3.0 will remove all
 deprecated features. Many deprecation warnings will make suggestions about what to do to avoid the deprecated feature.
 
 Warnings will look something like this:
 
 .. code-block:: bash
 
-  DeprecationWarning: 'ssl_version' option is deprecated and will be removed
-  in urllib3 v2.6.0. Instead use 'ssl_minimum_version'
+  FutureWarning: 'ssl_version' option is deprecated and will be removed
+  in urllib3 v3.0. Instead use 'ssl_minimum_version'
 
 Continue removing deprecation warnings until there are no more. After this you can publish a new release of your package
 that supports both urllib3 1.26.x and 2.x.
@@ -288,7 +288,7 @@ for requests and ``HTTPResponse.json()`` method on responses:
 
 urllib3 2.x specifically targets CPython 3.9+ and PyPy 7.3.17+ (compatible with CPython 3.10)
 and dropping support for Python versions 2.7, and 3.5 to 3.8.
-  
+
 By dropping end-of-life Python versions we're able to optimize
 the codebase for Python 3.9+ by using new features to improve
 performance and reduce the amount of code that needs to be executed

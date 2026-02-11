@@ -72,16 +72,16 @@ class TestRequestField:
     def test_format_header_param_rfc2231_deprecated(
         self, value: bytes | str, expect: str
     ) -> None:
-        with pytest.deprecated_call(match=r"urllib3 v2\.1\.0"):
+        with pytest.deprecated_call(match=r"urllib3 v3\.0"):
             param = format_header_param_rfc2231("filename", value)
 
         assert param == expect
 
     def test_format_header_param_html5_deprecated(self) -> None:
-        with pytest.deprecated_call(match=r"urllib3 v2\.1\.0"):
+        with pytest.deprecated_call(match=r"urllib3 v3\.0"):
             param2 = format_header_param_html5("filename", "name")
 
-        with pytest.deprecated_call(match=r"urllib3 v2\.1\.0"):
+        with pytest.deprecated_call(match=r"urllib3 v3\.0"):
             param1 = format_header_param("filename", "name")
 
         assert param1 == param2
@@ -111,7 +111,7 @@ class TestRequestField:
         assert cd == 'form-data; name="file"; filename="スキー旅行.txt"'
 
     def test_from_tuples_rfc2231(self) -> None:
-        with pytest.deprecated_call(match=r"urllib3 v2\.1\.0"):
+        with pytest.deprecated_call(match=r"urllib3 v3\.0"):
             field = RequestField.from_tuples(
                 "file", ("näme", "data"), header_formatter=format_header_param_rfc2231
             )
