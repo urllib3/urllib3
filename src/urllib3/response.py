@@ -663,7 +663,7 @@ class BaseHTTPResponse(io.IOBase):
         return b""
 
     # Compatibility methods for `io` module
-    def readinto(self, b: bytearray) -> int:
+    def readinto(self, b: bytearray | memoryview[int]) -> int:
         temp = self.read(len(b))
         if len(temp) == 0:
             return 0

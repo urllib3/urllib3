@@ -1075,7 +1075,7 @@ class TestResponse:
     def test_io_bufferedreader(self) -> None:
         fp = BytesIO(b"foo")
         resp = HTTPResponse(fp, preload_content=False)
-        br = BufferedReader(resp)  # type: ignore[type-var]
+        br = BufferedReader(resp)
 
         assert br.read() == b"foo"
 
@@ -1087,12 +1087,12 @@ class TestResponse:
         fp = BytesIO(b"hello\nworld")
         resp = HTTPResponse(fp, preload_content=False)
         with pytest.raises(ValueError, match="readline of closed file"):
-            list(BufferedReader(resp))  # type: ignore[type-var]
+            list(BufferedReader(resp))
 
         b = b"fooandahalf"
         fp = BytesIO(b)
         resp = HTTPResponse(fp, preload_content=False)
-        br = BufferedReader(resp, 5)  # type: ignore[type-var]
+        br = BufferedReader(resp, 5)
 
         br.read(1)  # sets up the buffer, reading 5
         assert len(fp.read()) == (len(b) - 5)
@@ -1102,10 +1102,32 @@ class TestResponse:
         while not br.closed:
             br.read(5)
 
+    def test_readinto_with_memoryview(self) -> None:
+        data = b"hello world"
+        fp = BytesIO(data)
+        resp = HTTPResponse(fp, preload_content=False)
+
+        buf = bytearray(5)
+        mv = memoryview(buf)
+        n = resp.readinto(mv)
+        assert n == 5
+        assert buf == b"hello"
+
+        # Also test readinto with a bytearray directly
+        buf2 = bytearray(6)
+        n2 = resp.readinto(buf2)
+        assert n2 == 6
+        assert buf2 == b" world"
+
+        # Test readinto when no bytes are left
+        buf3 = bytearray(5)
+        n3 = resp.readinto(buf3)
+        assert n3 == 0
+
     def test_io_not_autoclose_bufferedreader(self) -> None:
         fp = BytesIO(b"hello\nworld")
         resp = HTTPResponse(fp, preload_content=False, auto_close=False)
-        reader = BufferedReader(resp)  # type: ignore[type-var]
+        reader = BufferedReader(resp)
         assert list(reader) == [b"hello\n", b"world"]
 
         assert not reader.closed
