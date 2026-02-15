@@ -1768,12 +1768,12 @@ wheels = [
 ]
 
 [[package]]
-name = "pysocks"
-version = "1.7.1"
+name = "python-socks"
+version = "2.8.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/bd/11/293dd436aea955d45fc4e8a35b6ae7270f5b8e00b53cf6c024c83b657a11/PySocks-1.7.1.tar.gz", hash = "sha256:3f8804571ebe159c380ac6de37643bb4685970655d3bba243530d6558b799aa0", size = 284429, upload-time = "2019-09-20T02:07:35.714Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6c/07/cfdd6a846ac859e513b4e68bb6c669a90a74d89d8d405516fba7fc9c6f0c/python_socks-2.8.0.tar.gz", hash = "sha256:340f82778b20a290bdd538ee47492978d603dff7826aaf2ce362d21ad9ee6f1b", size = 273130, upload-time = "2025-12-09T12:17:05.433Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8d/59/b4572118e098ac8e46e399a1dd0f2d85403ce8bbaad9ec79373ed6badaf9/PySocks-1.7.1-py3-none-any.whl", hash = "sha256:2725bd0a9925919b9b51739eea5f9e2bae91e83288108a9ad338b2e3a4435ee5", size = 16725, upload-time = "2019-09-20T02:06:22.938Z" },
+    { url = "https://files.pythonhosted.org/packages/13/10/e2b575faa32d1d32e5e6041fc64794fa9f09526852a06b25353b66f52cae/python_socks-2.8.0-py3-none-any.whl", hash = "sha256:57c24b416569ccea493a101d38b0c82ed54be603aa50b6afbe64c46e4a4e4315", size = 55075, upload-time = "2025-12-09T12:17:03.269Z" },
 ]
 
 [[package]]
@@ -2378,7 +2378,7 @@ h2 = [
     { name = "h2" },
 ]
 socks = [
-    { name = "pysocks" },
+    { name = "python-socks" },
 ]
 zstd = [
     { name = "backports-zstd", marker = "python_full_version < '3.14'" },
@@ -2396,7 +2396,7 @@ dev = [
     { name = "hypercorn" },
     { name = "idna" },
     { name = "pyopenssl" },
-    { name = "pysocks" },
+    { name = "python-socks" },
     { name = "pytest" },
     { name = "pytest-memray", marker = "python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'" },
     { name = "pytest-socket" },
@@ -2444,7 +2444,7 @@ requires-dist = [
     { name = "brotli", marker = "platform_python_implementation == 'CPython' and extra == 'brotli'", specifier = ">=1.2.0" },
     { name = "brotlicffi", marker = "platform_python_implementation != 'CPython' and extra == 'brotli'", specifier = ">=1.2.0.0" },
     { name = "h2", marker = "extra == 'h2'", specifier = ">=4,<5" },
-    { name = "pysocks", marker = "extra == 'socks'", specifier = ">=1.5.6,!=1.5.7,<2.0" },
+    { name = "python-socks", marker = "extra == 'socks'", specifier = ">=2.8.0,<3.0.0" },
 ]
 provides-extras = ["brotli", "h2", "socks", "zstd"]
 
@@ -2459,7 +2459,7 @@ dev = [
     { name = "hypercorn", git = "https://github.com/urllib3/hypercorn?rev=urllib3-changes" },
     { name = "idna", specifier = ">=3.10" },
     { name = "pyopenssl", specifier = ">=25.0.0" },
-    { name = "pysocks", specifier = ">=1.7.1" },
+    { name = "python-socks", specifier = ">=2.8.0,<3.0.0" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "pytest-memray", marker = "python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'", specifier = "==1.8.0" },
     { name = "pytest-socket", specifier = ">=0.7.0" },

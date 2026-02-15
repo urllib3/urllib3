@@ -4,12 +4,11 @@ import socket
 import threading
 import typing
 from socket import getaddrinfo as real_getaddrinfo
-from socket import timeout as SocketTimeout
 from test import SHORT_TIMEOUT
 from unittest.mock import Mock, patch
 
 import pytest
-import socks as py_socks  # type: ignore[import-untyped]
+from python_socks import ProxyTimeoutError
 
 from dummyserver.socketserver import DEFAULT_CA, DEFAULT_CERTS
 from dummyserver.testcase import IPV4SocketDummyServerTestCase
@@ -99,12 +98,12 @@ def _set_up_fake_getaddrinfo(monkeypatch: pytest.MonkeyPatch) -> None:
     # Nothing prevents localhost to point to two different IPs. For example, in the
     # Ubuntu set up by GitHub Actions, localhost points both to 127.0.0.1 and ::1.
     #
-    # In case of failure, PySocks will try the same request on both IPs, but our
+    # In case of failure, python-socks will try the same request on both IPs, but our
     # handle_socks[45]_negotiation functions don't handle retries, which leads either to
     # a deadlock or a timeout in case of a failure on the first address.
     #
     # However, some tests need to exercise failure. We don't want retries there, but
-    # can't affect PySocks retries via its API. Instead, we monkeypatch PySocks so that
+    # can't affect python-socks retries via its API. Instead, we monkeypatch python-socks so that
     # it only sees a single address, which effectively disables retries.
     def fake_getaddrinfo(addr: str, port: int, family: int, socket_type: int) -> list[
         tuple[
@@ -119,7 +118,7 @@ def _set_up_fake_getaddrinfo(monkeypatch: pytest.MonkeyPatch) -> None:
         gai_list = [gai for gai in gai_list if gai[0] == socket.AF_INET]
         return gai_list[:1]
 
-    monkeypatch.setattr(py_socks.socket, "getaddrinfo", fake_getaddrinfo)
+    monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
 
 
 def handle_socks5_negotiation(
@@ -182,11 +181,12 @@ def handle_socks5_negotiation(
     if succeed:
         # Hard-coded response for now.
         response = SOCKS_VERSION_SOCKS5 + b"\x00\x00\x01\x7f\x00\x00\x01\xea\x60"
+        sock.sendall(response)
     else:
         # Hard-coded response for now.
         response = SOCKS_VERSION_SOCKS5 + b"\x01\00"
-
-    sock.sendall(response)
+        sock.sendall(response)
+        sock.shutdown(socket.SHUT_RDWR)
 
 
 def handle_socks4_negotiation(
@@ -361,9 +361,9 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
                 )
             event.set()
 
-    @patch("socks.create_connection")
+    @patch("python_socks.sync.Proxy.connect")
     def test_socket_timeout(self, create_connection: Mock) -> None:
-        create_connection.side_effect = SocketTimeout()
+        create_connection.side_effect = ProxyTimeoutError()
         proxy_url = f"socks5h://{self.host}:{self.port}"
         with socks.SOCKSProxyManager(proxy_url) as pm:
             with pytest.raises(ConnectTimeoutError, match="timed out"):
@@ -500,7 +500,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             proxy_url, username="user", password="badpass"
         ) as pm:
             with pytest.raises(
-                NewConnectionError, match="SOCKS5 authentication failed"
+                NewConnectionError,
+                match="Username and password authentication failure",
             ):
                 pm.request("GET", "http://example.com", retries=False)
 
