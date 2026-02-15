@@ -181,12 +181,11 @@ def handle_socks5_negotiation(
     if succeed:
         # Hard-coded response for now.
         response = SOCKS_VERSION_SOCKS5 + b"\x00\x00\x01\x7f\x00\x00\x01\xea\x60"
-        sock.sendall(response)
     else:
         # Hard-coded response for now.
-        response = SOCKS_VERSION_SOCKS5 + b"\x01\00"
-        sock.sendall(response)
-        sock.shutdown(socket.SHUT_RDWR)
+        response = SOCKS_VERSION_SOCKS5 + b"\x01\x00\x00"
+
+    sock.sendall(response)
 
 
 def handle_socks4_negotiation(
