@@ -913,6 +913,7 @@ class HTTPResponse(BaseHTTPResponse):
                     # SSL errors related to framing/MAC get wrapped and reraised here
                     raise SSLError(e) from e
 
+                raise ValueError("debug")
                 raise ReadTimeoutError(self._pool, None, "Read timed out.") from e  # type: ignore[arg-type]
 
             except IncompleteRead as e:
