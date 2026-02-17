@@ -1064,26 +1064,23 @@ class TestUtilSSL:
         warn.assert_not_called()
 
     @pytest.mark.parametrize(
-        "openssl_version, openssl_version_number, reliable",
+        "openssl_version, reliable",
         [
-            # OpenSSL OK -> reliable
-            ("OpenSSL 1.1.1", 0x101010CF, True),
+            # any OpenSSL 1.1.1+ -> reliable since Python 3.10.0b1 according to
+            # https://github.com/python/cpython/issues/87688#issuecomment-1093906646
+            ("OpenSSL 1.1.1", True),
             # not OpenSSSL -> unreliable
-            ("LibreSSL 2.8.3", 0x101010CF, False),
-            # old OpenSSL 1.1.1k -> unreliable
-            ("OpenSSL 1.1.1", 0x101010B0, False),
+            ("LibreSSL 2.8.3", False),
         ],
     )
     def test_is_has_never_check_common_name_reliable(
         self,
         openssl_version: str,
-        openssl_version_number: int,
         reliable: bool,
     ) -> None:
         assert (
             _is_has_never_check_common_name_reliable(
                 openssl_version,
-                openssl_version_number,
             )
             == reliable
         )

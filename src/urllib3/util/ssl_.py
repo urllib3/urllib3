@@ -29,18 +29,12 @@ HASHFUNC_MAP = {
 
 def _is_has_never_check_common_name_reliable(
     openssl_version: str,
-    openssl_version_number: int,
 ) -> bool:
     # As of May 2023, all released versions of LibreSSL fail to reject certificates with
     # only common names, see https://github.com/urllib3/urllib3/pull/3024
     is_openssl = openssl_version.startswith("OpenSSL ")
-    # Before fixing OpenSSL issue #14579, the SSL_new() API was not copying hostflags
-    # like X509_CHECK_FLAG_NEVER_CHECK_SUBJECT, which tripped up CPython.
-    # https://github.com/openssl/openssl/issues/14579
-    # This was released in OpenSSL 1.1.1l+ (>=0x101010cf)
-    is_openssl_issue_14579_fixed = openssl_version_number >= 0x101010CF
 
-    return is_openssl and is_openssl_issue_14579_fixed
+    return is_openssl
 
 
 if typing.TYPE_CHECKING:
@@ -66,7 +60,6 @@ try:  # Do we have ssl at all?
         OP_NO_COMPRESSION,
         OP_NO_TICKET,
         OPENSSL_VERSION,
-        OPENSSL_VERSION_NUMBER,
         PROTOCOL_TLS,
         PROTOCOL_TLS_CLIENT,
         VERIFY_X509_PARTIAL_CHAIN,
@@ -79,11 +72,10 @@ try:  # Do we have ssl at all?
 
     PROTOCOL_SSLv23 = PROTOCOL_TLS
 
-    # Setting SSLContext.hostname_checks_common_name = False didn't work with some
-    # versions of OpenSSL and LibreSSL, check details in the used function.
+    # Setting SSLContext.hostname_checks_common_name = False didn't work with
+    # LibreSSL, check details in the used function.
     if HAS_NEVER_CHECK_COMMON_NAME and not _is_has_never_check_common_name_reliable(
         OPENSSL_VERSION,
-        OPENSSL_VERSION_NUMBER,
     ):  # Defensive:
         HAS_NEVER_CHECK_COMMON_NAME = False
 
