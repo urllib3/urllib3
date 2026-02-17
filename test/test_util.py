@@ -28,7 +28,12 @@ from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connec
 from urllib3.util.proxy import connection_requires_http_tunnel
 from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
-from urllib3.util.ssl_ import resolve_cert_reqs, resolve_ssl_version, ssl_wrap_socket
+from urllib3.util.ssl_ import (
+    _is_has_never_check_common_name_reliable,
+    resolve_cert_reqs,
+    resolve_ssl_version,
+    ssl_wrap_socket,
+)
 from urllib3.util.timeout import _DEFAULT_TIMEOUT, Timeout
 from urllib3.util.url import Url, _encode_invalid_chars, parse_url
 from urllib3.util.util import to_bytes, to_str
@@ -1057,6 +1062,31 @@ class TestUtilSSL:
         context, warn = self._wrap_socket_and_mock_warn(sock, None)
         context.wrap_socket.assert_called_once_with(sock, server_hostname=None)
         warn.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "openssl_version, openssl_version_number, reliable",
+        [
+            # OpenSSL OK -> reliable
+            ("OpenSSL 1.1.1", 0x101010CF, True),
+            # not OpenSSSL -> unreliable
+            ("LibreSSL 2.8.3", 0x101010CF, False),
+            # old OpenSSL 1.1.1k -> unreliable
+            ("OpenSSL 1.1.1", 0x101010B0, False),
+        ],
+    )
+    def test_is_has_never_check_common_name_reliable(
+        self,
+        openssl_version: str,
+        openssl_version_number: int,
+        reliable: bool,
+    ) -> None:
+        assert (
+            _is_has_never_check_common_name_reliable(
+                openssl_version,
+                openssl_version_number,
+            )
+            == reliable
+        )
 
 
 idna_blocker = ImportBlocker("idna")
