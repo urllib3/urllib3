@@ -145,8 +145,8 @@ to a byte string representing the response content:
     print(resp.data)
     # b"\xaa\xa5H?\x95\xe9\x9b\x11"
 
-.. note:: For larger responses, it's sometimes better to :ref:`stream <stream>`
-    the response.
+.. note:: For responses of large or unknown length, it's sometimes better to
+    :ref:`stream <stream>` the response.
 
 Using io Wrappers with Response Content
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

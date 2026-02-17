@@ -496,7 +496,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
     def test_redirect_relative_url_no_deprecation(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             with warnings.catch_warnings():
-                warnings.simplefilter("error", DeprecationWarning)
+                warnings.simplefilter("error", FutureWarning)
                 pool.request("GET", "/redirect", fields={"target": "/"})
 
     def test_redirect(self) -> None:
@@ -507,6 +507,25 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             r = pool.request("GET", "/redirect", fields={"target": "/"})
             assert r.status == 200
             assert r.data == b"Dummy server!"
+
+    @mock.patch("urllib3.response.GzipDecoder.decompress")
+    def test_no_decoding_with_redirect_when_preload_disabled(
+        self, gzip_decompress: mock.MagicMock
+    ) -> None:
+        """
+        Test that urllib3 does not attempt to decode a gzipped redirect
+        response when `preload_content` is set to `False`.
+        """
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            # Three requests are expected: two redirects and one final / 200 OK.
+            response = pool.request(
+                "GET",
+                "/redirect",
+                fields={"target": "/redirect?compressed=true", "compressed": "true"},
+                preload_content=False,
+            )
+        assert response.status == 200
+        gzip_decompress.assert_not_called()
 
     def test_303_redirect_makes_request_lose_body(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
@@ -1079,10 +1098,10 @@ class TestConnectionPool(HypercornDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             conn = pool._get_conn()
 
-            with pytest.warns(DeprecationWarning) as w:
+            with pytest.warns(FutureWarning) as w:
                 conn.request_chunked("GET", "/headers")  # type: ignore[attr-defined]
             assert len(w) == 1 and str(w[0].message) == (
-                "HTTPConnection.request_chunked() is deprecated and will be removed in urllib3 v2.1.0. "
+                "HTTPConnection.request_chunked() is deprecated and will be removed in urllib3 v3.0. "
                 "Instead use HTTPConnection.request(..., chunked=True)."
             )
 

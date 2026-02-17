@@ -302,15 +302,20 @@ def test_timeout_in_worker_streaming(
     run_from_server.run_webworker(worker_code)
 
 
+@pytest.mark.parametrize(
+    "connection_cls", ["HTTPSConnection", "VerifiedHTTPSConnection"]
+)
 def test_index_https(
-    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+    selenium_coverage: typing.Any,
+    testserver_http: PyodideServerInfo,
+    connection_cls: str,
 ) -> None:
     @run_in_pyodide  # type: ignore[misc]
-    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
-        from urllib3.connection import HTTPSConnection
+    def pyodide_test(selenium_coverage, host: str, port: int, connection_cls: str) -> None:  # type: ignore[no-untyped-def]
+        from urllib3 import connection
         from urllib3.response import BaseHTTPResponse
 
-        conn = HTTPSConnection(host, port)
+        conn = getattr(connection, connection_cls)(host, port)
         conn.request("GET", f"https://{host}:{port}/")
         response = conn.getresponse()
         assert isinstance(response, BaseHTTPResponse)
@@ -318,7 +323,10 @@ def test_index_https(
         assert data.decode("utf-8") == "Dummy server!"
 
     pyodide_test(
-        selenium_coverage, testserver_http.http_host, testserver_http.https_port
+        selenium_coverage,
+        testserver_http.http_host,
+        testserver_http.https_port,
+        connection_cls,
     )
 
 

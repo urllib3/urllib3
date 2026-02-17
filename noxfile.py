@@ -15,6 +15,7 @@ nox.options.default_venv_backend = "uv"
 def tests_impl(
     session: nox.Session,
     extras: str | None = None,
+    extra_dependencies: list[str] | None = None,
     # hypercorn dependency h2 compares bytes and strings
     # https://github.com/python-hyper/h2/issues/1236
     byte_string_comparisons: bool = False,
@@ -33,8 +34,9 @@ def tests_impl(
     implementation_name, release_level, _is_gil_enabled = session_python_info.split(" ")
     free_threading = _is_gil_enabled == "False"
 
-    # brotlicffi does not support free-threading
-    extras = "socks,zstd,h2" if free_threading else "socks,brotli,zstd,h2"
+    if extras is None:
+        # brotlicffi does not support free-threading
+        extras = "socks,zstd,h2" if free_threading else "socks,brotli,zstd,h2"
 
     # Install deps and the package itself.
     session.run_install(
@@ -45,6 +47,8 @@ def tests_impl(
         dependency_group,
         *(f"--extra={extra}" for extra in (extras.split(",") if extras else ())),
     )
+    if extra_dependencies:
+        session.install(*extra_dependencies)
     # Show the uv version.
     session.run("uv", "--version")
     # Print the Python version, bytesize and free-threading status.
@@ -66,7 +70,7 @@ def tests_impl(
 
     # Environment variables being passed to the pytest run.
     pytest_session_envvars = {
-        "PYTHONWARNINGS": "always::DeprecationWarning",
+        "PYTHONWARNINGS": "always::FutureWarning",
         "COVERAGE_CORE": "sysmon",
     }
 
@@ -129,8 +133,12 @@ def test_brotlipy(session: nox.Session) -> None:
     'brotlicffi' that we still don't blow up.
     """
     session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
-    session.install("brotlipy")
-    tests_impl(session, extras="socks", byte_string_comparisons=False)
+    tests_impl(
+        session,
+        extras="socks",
+        extra_dependencies=["brotlipy"],
+        byte_string_comparisons=False,
+    )
 
 
 def git_clone(session: nox.Session, git_url: str) -> None:
