@@ -62,6 +62,7 @@ try:  # Do we have ssl at all?
     import ssl
     from ssl import (  # type: ignore[assignment]
         CERT_REQUIRED,
+        HAS_NEVER_CHECK_COMMON_NAME,
         OP_NO_COMPRESSION,
         OP_NO_TICKET,
         OPENSSL_VERSION,
