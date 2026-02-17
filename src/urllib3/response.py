@@ -908,12 +908,8 @@ class HTTPResponse(BaseHTTPResponse):
                 raise ReadTimeoutError(self._pool, None, "Read timed out.") from e  # type: ignore[arg-type]
 
             except BaseSSLError as e:
-                # FIXME: Is there a better way to differentiate between SSLErrors?
-                if "read operation timed out" not in str(e):
-                    # SSL errors related to framing/MAC get wrapped and reraised here
-                    raise SSLError(e) from e
-
-                raise ReadTimeoutError(self._pool, None, "Read timed out.") from e  # type: ignore[arg-type]
+                # SSL errors related to framing/MAC get wrapped and reraised here
+                raise SSLError(e) from e
 
             except IncompleteRead as e:
                 if (
