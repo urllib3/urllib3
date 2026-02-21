@@ -159,7 +159,7 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
             sock = socket.create_connection((TARPIT_HOST, 80), 0.0001)
             sock.close()
             return True
-        except socket.timeout:
+        except TimeoutError:
             return True
         except OSError as e:
             if _is_unreachable_err(e):

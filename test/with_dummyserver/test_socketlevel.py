@@ -2485,7 +2485,7 @@ class TestMultipartResponse(SocketDummyServerTestCase):
                     try:
                         sock = listener.accept()[0]
                         break
-                    except (TimeoutError, socket.timeout):
+                    except TimeoutError:
                         continue
 
                 sock.settimeout(LONG_TIMEOUT)
@@ -2579,7 +2579,7 @@ class TestContentFraming(SocketDummyServerTestCase):
                 try:
                     sock = listener.accept()[0]
                     break
-                except (TimeoutError, socket.timeout):
+                except TimeoutError:
                     continue
             sock.settimeout(LONG_TIMEOUT)
 

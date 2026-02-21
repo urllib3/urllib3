@@ -25,7 +25,6 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -38,7 +37,7 @@ classifiers = [
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Software Development :: Libraries",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dynamic = ["version"]
 
 [project.optional-dependencies]
@@ -96,7 +95,7 @@ mypy = [
 ]
 emscripten = [
     "build>=1.2.2.post1",
-    "pytest-pyodide>=0.58.4 ; python_full_version >= '3.10'",
+    "pytest-pyodide>=0.58.4",
     "selenium>=4.27.1",
 ]
 docs = [
