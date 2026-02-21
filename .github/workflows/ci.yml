@@ -118,13 +118,9 @@ jobs:
 
       - name: "Setup Python ${{ matrix.python-version }}"
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        # These env vars are needed to avoid warnings about running pip
-        # as root in the container jobs.
-        # We could disable installing pip at all since we install uv later,
-        # but a needed setting is absent in the setup-python action.
-        env:
-          PIP_ROOT_USER_ACTION: ignore
-          PIP_NO_CACHE_DIR: "1"
+        # pip will emit a warning about running as root if setup-python
+        # is used in a container.
+        if: ${{ matrix.container == '' }}
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
