@@ -6,9 +6,9 @@ support for Python 2.7 all relevant Python versions support SNI so
 
 This needs the following packages installed:
 
-* `pyOpenSSL`_ (tested with 16.0.0)
-* `cryptography`_ (minimum 1.3.4, from pyopenssl)
-* `idna`_ (minimum 2.0)
+* `pyOpenSSL`_ (tested with 19.0.0)
+* `cryptography`_ (minimum 2.3, from pyopenssl)
+* `idna`_ (minimum 2.1, from cryptography)
 
 However, pyOpenSSL depends on cryptography, so while we use all three directly here we
 end up having relatively few packages required.

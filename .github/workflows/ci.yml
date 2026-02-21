@@ -45,6 +45,7 @@ jobs:
           - windows-latest
           - ubuntu-24.04
         nox-session: ['']
+        container: ['']
         include:
           - experimental: false
           - python-version: "3.12"
@@ -65,6 +66,16 @@ jobs:
             os: ubuntu-24.04
             experimental: false
             nox-session: test-pypy3.11
+          # Test with the minimum supported pyOpenSSL for OpenSSL 1.1.1.
+          # Ubuntu 20.04 was the oldest LTS release with OpenSSL 1.1.1.
+          # GitHub does not provide Ubuntu 20.04 runners anymore, so we
+          # use a container. Python 3.13 was the last version with
+          # stable version support for Ubuntu 20.04 by GitHub Actions.
+          - python-version: "3.13"
+            os: ubuntu-24.04
+            container: ubuntu:20.04
+            experimental: false
+            nox-session: test_min_pyopenssl
           - python-version: "3.x"
           # brotli
             os: ubuntu-24.04
@@ -86,10 +97,19 @@ jobs:
             experimental: true
 
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     name: ${{ fromJson('{"macos-15":"macOS","windows-latest":"Windows","ubuntu-24.04":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
     timeout-minutes: 10
     steps:
+      - name: "Install git"
+        if: ${{ matrix.container != '' }}
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update -q
+          apt-get install -y -q git tzdata
+
       - name: "Checkout repository"
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
