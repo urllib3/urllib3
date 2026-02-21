@@ -29,7 +29,7 @@ def consume_socket(
             break
         try:
             b = sock.recv(chunks)
-        except (TimeoutError, socket.timeout):
+        except TimeoutError:
             continue
         assert isinstance(b, bytes)
         consumed += b
@@ -102,7 +102,7 @@ class SocketDummyServerTestCase:
                     try:
                         sock = listener.accept()[0]
                         break
-                    except (TimeoutError, socket.timeout):
+                    except TimeoutError:
                         continue
                 consume_socket(sock, quit_event=quit_event)
                 if quit_event.is_set():

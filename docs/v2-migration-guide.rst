@@ -23,7 +23,7 @@ What are the important changes?
 
 Here's a short summary of which changes in urllib3 2.x are most important:
 
-- Python version must be **3.9 or later** (previously supported Python 2.7, and 3.5 to 3.8).
+- Python version must be **3.10 or later** (previously supported Python 2.7, and 3.5 to 3.9).
 - Removed support for non-OpenSSL TLS libraries (like LibreSSL and wolfSSL).
 - Removed support for OpenSSL versions older than 1.1.1.
 - Removed support for Python implementations that aren't CPython or PyPy3 (previously supported Google App Engine, Jython).
@@ -283,14 +283,14 @@ for requests and ``HTTPResponse.json()`` method on responses:
   }
 
 
-**✨ Optimized for Python 3.9+**
+**✨ Optimized for Python 3.10+**
 --------------------------------
 
-urllib3 2.x specifically targets CPython 3.9+ and PyPy 7.3.17+ (compatible with CPython 3.10)
-and dropping support for Python versions 2.7, and 3.5 to 3.8.
+urllib3 2.x specifically targets CPython 3.10+ and PyPy 7.3.17+ (compatible with CPython 3.10)
+and dropping support for Python versions 2.7, and 3.5 to 3.9.
 
 By dropping end-of-life Python versions we're able to optimize
-the codebase for Python 3.9+ by using new features to improve
+the codebase for Python 3.10+ by using new features to improve
 performance and reduce the amount of code that needs to be executed
 in order to support legacy versions.
 
