@@ -67,13 +67,11 @@ jobs:
             experimental: false
             nox-session: test-pypy3.11
           # Test with the minimum supported pyOpenSSL for OpenSSL 1.1.1.
-          # Ubuntu 20.04 was the oldest LTS release with OpenSSL 1.1.1.
-          # GitHub does not provide Ubuntu 20.04 runners anymore, so we
-          # use a container. Python 3.13 was the last version with
-          # stable version support for Ubuntu 20.04 by GitHub Actions.
+          # Debian Bullseye was the last release with OpenSSL 1.1.1, and
+          # 3.13-bullsey was the last published image.
           - python-version: "3.13"
             os: ubuntu-24.04
-            container: ubuntu:20.04
+            container: python:3.13-bullseye
             experimental: false
             nox-session: test_min_pyopenssl
           - python-version: "3.x"

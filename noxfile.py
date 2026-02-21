@@ -129,7 +129,8 @@ def test_integration(session: nox.Session) -> None:
     tests_impl(session, integration=True)
 
 
-@nox.session(python="3")
+# We use 3.13 in GitHub Actions.
+@nox.session(python="3.13")
 def test_min_pyopenssl(session: nox.Session) -> None:
     """
     Check that we do not break with the documented minimum supported
