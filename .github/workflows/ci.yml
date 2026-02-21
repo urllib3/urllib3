@@ -100,14 +100,6 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     timeout-minutes: 10
     steps:
-      - name: "Install git"
-        if: ${{ matrix.container != '' }}
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          apt-get update -q
-          apt-get install -y -q git tzdata
-
       - name: "Checkout repository"
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
