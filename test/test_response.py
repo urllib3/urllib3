@@ -5,6 +5,7 @@ import gzip
 import http.client as httplib
 import socket
 import ssl
+import string
 import sys
 import typing
 import zlib
@@ -373,6 +374,34 @@ class TestResponse:
         assert r.read() == b""
         assert r.read() == b""
 
+    def test_partial_read_then_full_read_gzip(self) -> None:
+        """
+        Test that a partial read followed by a full read returns all data correctly
+        when using gzip content-encoding. Issue #3636.
+        """
+        test_data = 100 * string.printable.encode()
+
+        compressed_data = gzip.compress(test_data)
+
+        # Create response with gzip-encoded content
+        fp = BytesIO(compressed_data)
+        resp = HTTPResponse(
+            fp,
+            headers={"content-encoding": "gzip"},
+            preload_content=False,
+            decode_content=True,
+        )
+
+        prefix = resp.read(512)
+        assert len(prefix) == 512
+
+        remainder = resp.read()
+
+        assert prefix + remainder == test_data, (
+            f"Expected {len(test_data)} bytes total, "
+            f"got {len(prefix)} + {len(remainder)} = {len(prefix + remainder)} bytes"
+        )
+
     def test_decode_gzip_multi_member(self) -> None:
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         data = compress.compress(b"foo")
@@ -543,6 +572,33 @@ class TestResponse:
         # Ensure no more data is left.
         assert r.read() == b""
         assert len(r._decoded_buffer) == 0
+
+    @onlyZstd()
+    def test_partial_read_then_full_read_zstd(self) -> None:
+        from test.test_response import zstd_compress
+
+        test_data = 100 * string.printable.encode()
+
+        compressed_data = zstd_compress(test_data)
+
+        # Create response with zstd-encoded content
+        fp = BytesIO(compressed_data)
+        resp = HTTPResponse(
+            fp,
+            headers={"content-encoding": "zstd"},
+            preload_content=False,
+            decode_content=True,
+        )
+
+        prefix = resp.read(256)
+        assert len(prefix) == 256
+
+        remainder = resp.read()
+
+        assert prefix + remainder == test_data, (
+            f"Expected {len(test_data)} bytes total, "
+            f"got {len(prefix)} + {len(remainder)} = {len(prefix + remainder)} bytes"
+        )
 
     @onlyZstd()
     def test_chunked_decoding_zstd(self) -> None:
