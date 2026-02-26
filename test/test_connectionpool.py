@@ -592,3 +592,65 @@ class TestConnectionPool:
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout=timeout)
+
+
+class TestConnectionPoolGevent:
+
+    def test_queuecls_late_binding_for_gevent(self) -> None:
+        """
+        Test that HTTPConnectionPool uses gevent monkey-patched queues
+        """
+        gevent = pytest.importorskip("gevent", reason="gevent not installed")
+        pytest.importorskip("gevent.monkey")
+
+        import queue
+
+        from urllib3.connectionpool import HTTPConnectionPool
+
+        # Capture the unpatched queue.LifoQueue
+        original_lifoqueue = queue.LifoQueue
+
+        # Before patching, QueueCls points to the original queue implementation
+        queuecls: typing.Any = HTTPConnectionPool.QueueCls
+        assert queuecls is queue.LifoQueue
+        assert queuecls is original_lifoqueue
+
+        # Apply gevent monkey-patch
+        gevent.monkey.patch_queue()
+
+        patched_lifoqueue = queue.LifoQueue
+
+        # Verify queue.LifoQueue was actually replaced
+        assert (
+            patched_lifoqueue is not original_lifoqueue
+        ), "gevent.monkey.patch_queue() should have replaced queue.LifoQueue with a new object"
+
+        # HTTPConnectionPool.QueueCls should now resolve to the PATCHED version
+        current_queuecls: typing.Any = HTTPConnectionPool.QueueCls
+
+        # This is what the fix enables: late binding
+        assert (
+            current_queuecls is patched_lifoqueue
+        ), "HTTPConnectionPool.QueueCls should resolve to the patched queue.LifoQueue"
+
+    def test_queuecls_custom_override(self) -> None:
+        """
+        Test that HTTPConnectionPool.QueueCls can be overridden with a custom queue class
+        """
+        import queue
+
+        from urllib3.connectionpool import HTTPConnectionPool
+
+        # Set a custom queue class, and verify it is used
+        class CustomQueue:
+            pass
+
+        setattr(HTTPConnectionPool, "QueueCls", CustomQueue)
+
+        assert getattr(HTTPConnectionPool, "QueueCls") is CustomQueue
+
+        # Reset to None to restore default behavior. After which is should
+        # return the standard queue.LifoQueue
+        setattr(HTTPConnectionPool, "QueueCls", None)
+
+        assert getattr(HTTPConnectionPool, "QueueCls") is queue.LifoQueue
