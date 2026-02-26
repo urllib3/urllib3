@@ -12,6 +12,10 @@ on:
 permissions:
   contents: "read"
 
+env:
+  UV_NATIVE_TLS: "true"
+
+
 jobs:
   analyze:
     if: github.repository_owner == 'urllib3'
@@ -22,6 +26,9 @@ jobs:
       contents: read
       security-events: write
     steps:
+    - uses: GitHubSecurityLab/actions-permissions/monitor@31cf7361439cbdffbc73a3bb138b7e1662d46c9b
+      with:
+        config: ${{ vars.PERMISSIONS_CONFIG }}
     - name: "Checkout repository"
       uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       with:
