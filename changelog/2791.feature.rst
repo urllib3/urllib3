@@ -1,0 +1,1 @@
+Emit ``InsecureProxyWarning`` when the proxy connection is not verified but the proxy.scheme is https
