@@ -1,0 +1,1 @@
+Bumped the minimum supported pyOpenSSL version to 19.0.0.
