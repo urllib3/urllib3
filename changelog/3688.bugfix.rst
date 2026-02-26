@@ -1,0 +1,2 @@
+Updated retry behavior so that a `MaxRetryError` is raised for `RETRY_AFTER_STATUS_CODES`
+(413, 429, 503), even if they are not added to the `status_forcelist`.
