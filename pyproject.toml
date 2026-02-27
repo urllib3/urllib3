@@ -56,16 +56,13 @@ h2 = [
 ]
 
 [dependency-groups]
-dev = [
+dev-base = [
     "anyio[trio]>=4.8.0",
     "build>=1.2.2.post1",
     "coverage>=7.8.0",
-    "cryptography>=44.0.2",
     "h2>=4.1.0",
     "httpx>=0.28.1",
     "hypercorn",
-    "idna>=3.10",
-    "pyopenssl>=25.0.0",
     "python-socks>=2.8.0",
     "pytest>=8.3.4",
     "pytest-memray==1.8.0 ; python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'",
@@ -74,8 +71,27 @@ dev = [
     "quart>=0.20.0",
     "quart-trio>=0.12.0",
     "towncrier>=24.8.0",
-    "trustme>=1.2.1",
     "trio>=0.27.0",
+]
+dev = [
+    {include-group = "dev-base"},
+    "cryptography>=44.0.2",
+    "idna>=3.10",
+    "pyopenssl>=25.0.0",
+    "trustme>=1.2.1",
+]
+dev-min-pyopenssl = [
+    {include-group = "dev-base"},
+    # 19.0.0 (2019-01-21) was the first version to support OpenSSL 1.1.1.
+    # The following versions of pyOpenSSL and cryptography are documented
+    # as the minimum supported ones in our docs.
+    "pyopenssl==19.0.0",
+    "cryptography==2.3",
+    # We document 2.1 as the minimum supported version of idna from
+    # cryptography, but 2.8 is the minimum needed for tests because of anyio.
+    "idna==2.8",
+    # The last version of trustme to support cryptography < 3.1.
+    "trustme==0.9.0",
 ]
 mypy = [
     "anyio[trio]>=4.8.0",
@@ -195,6 +211,16 @@ ignore_missing_imports = true
 
 [tool.uv]
 package = true
+conflicts = [
+  [
+    {group = "dev"},
+    {group = "dev-min-pyopenssl"},
+  ],
+  [
+    {group = "dev-min-pyopenssl"},
+    {group = "mypy"},
+  ],
+]
 
 [tool.uv.sources]
 hypercorn = { git = "https://github.com/urllib3/hypercorn", rev = "urllib3-changes" }
