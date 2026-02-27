@@ -11,7 +11,7 @@ from ..._base_connection import _TYPE_BODY
 from ...connection import HTTPConnection, ProxyConfig, port_by_scheme
 from ...exceptions import TimeoutError
 from ...response import BaseHTTPResponse
-from ...util.connection import _TYPE_SOCKET_OPTIONS
+from ...util.connection import _TYPE_SOCKET_OPTIONS, Resolver
 from ...util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from ...util.url import Url
 from .fetch import _RequestError, _TimeoutError, send_request, send_streaming_request
@@ -40,6 +40,8 @@ class EmscriptenHTTPConnection:
     is_verified: bool = False
     proxy_is_verified: bool | None = None
 
+    resolver: Resolver | None = None
+
     response_class: type[BaseHTTPResponse] = EmscriptenHttpResponseWrapper
     _response: EmscriptenResponse | None
 
@@ -54,6 +56,7 @@ class EmscriptenHTTPConnection:
         socket_options: _TYPE_SOCKET_OPTIONS | None = None,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
+        resolver: Resolver | None = None,
     ) -> None:
         self.host = host
         self.port = port
@@ -69,6 +72,7 @@ class EmscriptenHTTPConnection:
         self.source_address = None
         self.socket_options = None
         self.is_verified = False
+        self.resolver = resolver
 
     def set_tunnel(
         self,
@@ -206,6 +210,7 @@ class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
         cert_file: str | None = None,
         key_file: str | None = None,
         key_password: str | None = None,
+        resolver: Resolver | None = None,
     ) -> None:
         super().__init__(
             host,
@@ -216,6 +221,7 @@ class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
             socket_options=socket_options,
             proxy=proxy,
             proxy_config=proxy_config,
+            resolver=resolver,
         )
         self.scheme = "https"
 

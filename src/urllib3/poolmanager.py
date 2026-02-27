@@ -18,7 +18,7 @@ from .exceptions import (
     URLSchemeUnknown,
 )
 from .response import BaseHTTPResponse
-from .util.connection import _TYPE_SOCKET_OPTIONS
+from .util.connection import _TYPE_SOCKET_OPTIONS, Resolver
 from .util.proxy import connection_requires_http_tunnel
 from .util.retry import Retry
 from .util.timeout import Timeout
@@ -90,6 +90,7 @@ class PoolKey(typing.NamedTuple):
     key_assert_fingerprint: str | None
     key_server_hostname: str | None
     key_blocksize: int | None
+    key_resolver: Resolver | None
 
 
 def _default_key_normalizer(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typing
 
-from .util.connection import _TYPE_SOCKET_OPTIONS
+from .util.connection import _TYPE_SOCKET_OPTIONS, Resolver
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from .util.url import Url
 
@@ -51,6 +51,8 @@ if typing.TYPE_CHECKING:
         is_verified: bool
         proxy_is_verified: bool | None
 
+        resolver: Resolver | None = None
+
         def __init__(
             self,
             host: str,
@@ -62,6 +64,7 @@ if typing.TYPE_CHECKING:
             socket_options: _TYPE_SOCKET_OPTIONS | None = ...,
             proxy: Url | None = None,
             proxy_config: ProxyConfig | None = None,
+            resolver: Resolver | None = None,
         ) -> None: ...
 
         def set_tunnel(
@@ -162,4 +165,5 @@ if typing.TYPE_CHECKING:
             cert_file: str | None = None,
             key_file: str | None = None,
             key_password: str | None = None,
+            resolver: Resolver | None = None,
         ) -> None: ...

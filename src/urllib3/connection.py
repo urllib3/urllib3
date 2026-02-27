@@ -22,6 +22,7 @@ if typing.TYPE_CHECKING:
 
 from ._collections import HTTPHeaderDict
 from .http2 import probe as http2_probe
+from .util.connection import Resolver
 from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
@@ -142,6 +143,7 @@ class HTTPConnection(_HTTPConnection):
         ) = default_socket_options,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
+        resolver: Resolver | None = None,
     ) -> None:
         super().__init__(
             host=host,
@@ -153,6 +155,7 @@ class HTTPConnection(_HTTPConnection):
         self.socket_options = socket_options
         self.proxy = proxy
         self.proxy_config = proxy_config
+        self.resolver = resolver
 
         self._has_connected_to_proxy = False
         self._response_options = None
@@ -206,6 +209,7 @@ class HTTPConnection(_HTTPConnection):
                 self.timeout,
                 source_address=self.source_address,
                 socket_options=self.socket_options,
+                resolver=self.resolver,
             )
         except socket.gaierror as e:
             raise NameResolutionError(self.host, self, e) from e
@@ -645,6 +649,7 @@ class HTTPSConnection(HTTPConnection):
         cert_file: str | None = None,
         key_file: str | None = None,
         key_password: str | None = None,
+        resolver: Resolver | None = None,
     ) -> None:
         super().__init__(
             host,
@@ -655,6 +660,7 @@ class HTTPSConnection(HTTPConnection):
             socket_options=socket_options,
             proxy=proxy,
             proxy_config=proxy_config,
+            resolver=resolver,
         )
 
         self.key_file = key_file
