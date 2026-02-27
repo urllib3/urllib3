@@ -170,6 +170,11 @@ def rewind_body(body: typing.IO[typing.AnyStr], body_pos: _TYPE_BODY_POSITION) -
     :param int pos:
         Position to seek to in file.
     """
+    if body_pos is _FAILEDTELL:
+        raise UnrewindableBodyError(
+            "Unable to record file position for rewinding "
+            "request body during a redirect/retry."
+        )
     body_seek = getattr(body, "seek", None)
     if body_seek is not None and isinstance(body_pos, int):
         try:
@@ -178,11 +183,8 @@ def rewind_body(body: typing.IO[typing.AnyStr], body_pos: _TYPE_BODY_POSITION) -
             raise UnrewindableBodyError(
                 "An error occurred when rewinding request body for redirect/retry."
             ) from e
-    elif body_pos is _FAILEDTELL:
-        raise UnrewindableBodyError(
-            "Unable to record file position for rewinding "
-            "request body during a redirect/retry."
-        )
+    elif body_seek is None:
+        raise UnrewindableBodyError("body does not implement seek.")
     else:
         raise ValueError(
             f"body_pos must be of type integer, instead it was {type(body_pos)}."
