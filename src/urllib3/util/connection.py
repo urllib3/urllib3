@@ -59,7 +59,7 @@ def create_connection(
     timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
     source_address: tuple[str, int] | None = None,
     socket_options: _TYPE_SOCKET_OPTIONS | None = None,
-    resolver: Resolver | None = socket.getaddrinfo,
+    resolver: Resolver | None = None,
 ) -> socket.socket:
     """Connect to *address* and return the socket object.
 

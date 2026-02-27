@@ -237,9 +237,8 @@ class TestConnection:
             )
         ]
 
-        HTTPConnection("127.0.0.1", 80, resolver=custom_resolver).connect()
-
         # When passing a custom resolver, it should not call CPython's socket.getaddrinfo
+        HTTPConnection("127.0.0.1", 80, resolver=custom_resolver).connect()
         cpython_getaddrinfo.assert_not_called()
         custom_resolver.assert_has_calls([expected_call])
 
@@ -247,8 +246,6 @@ class TestConnection:
         cpython_getaddrinfo.reset_mock()
         custom_resolver.reset_mock()
         HTTPConnection("127.0.0.1", 80).connect()
-
-        # When passing a custom resolver, it should not call CPython's socket.getaddrinfo
         cpython_getaddrinfo.assert_has_calls([expected_call])
         custom_resolver.assert_not_called()
 
@@ -276,28 +273,24 @@ class TestConnection:
             )
         ]
 
+        # When passing a custom resolver, it should not call CPython's socket.getaddrinfo
         HTTPSConnection(
             "127.0.0.1",
             443,
             resolver=custom_resolver,
             ssl_context=ssl_context,
         ).connect()
-
-        # When passing a custom resolver, it should not call CPython's socket.getaddrinfo
         cpython_getaddrinfo.assert_not_called()
         custom_resolver.assert_has_calls([expected_call])
 
         # Sanity check: when using default resolver, it should call CPython's resolve
         cpython_getaddrinfo.reset_mock()
         custom_resolver.reset_mock()
-
         HTTPSConnection(
             "127.0.0.1",
             443,
             ssl_context=ssl_context,
         ).connect()
-
-        # When passing a custom resolver, it should not call CPython's socket.getaddrinfo
         cpython_getaddrinfo.assert_has_calls([expected_call])
         custom_resolver.assert_not_called()
 
