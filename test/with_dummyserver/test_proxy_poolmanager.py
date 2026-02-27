@@ -29,6 +29,7 @@ from urllib3.connectionpool import connection_from_url
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InsecureRequestWarning,
+    InvalidHeader,
     MaxRetryError,
     ProxyError,
     ProxySchemeUnknown,
@@ -37,6 +38,7 @@ from urllib3.exceptions import (
     SSLError,
 )
 from urllib3.poolmanager import ProxyManager, proxy_from_url
+from urllib3.util.request import make_headers
 from urllib3.util.ssl_ import create_urllib3_context
 from urllib3.util.timeout import Timeout
 
@@ -65,6 +67,9 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
         cls.https_url_fqdn = f"https://{cls.https_host}.:{int(cls.https_port)}"
         cls.proxy_url = f"http://{cls.proxy_host}:{int(cls.proxy_port)}"
         cls.https_proxy_url = f"https://{cls.proxy_host}:{int(cls.https_proxy_port)}"
+        cls.proxy_url_with_auth = (
+            f"http://user:password@{cls.proxy_host}:{int(cls.proxy_port)}"
+        )
 
         # Generate another CA to test verification failure
         cls.certs_dir = tempfile.mkdtemp()
@@ -320,6 +325,29 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert isinstance(r, HTTPResponse)
             assert r._pool is not None
             assert r._pool.host == self.https_host
+
+    def test_proxy_url_auth(self) -> None:
+        with proxy_from_url(self.proxy_url_with_auth) as http:
+            r = http.request_encode_url("GET", f"{self.http_url}/headers")
+            returned_headers = r.json()
+            assert (
+                returned_headers.get("Proxy-Authorization")
+                == "Basic dXNlcjpwYXNzd29yZA=="  # base64 encoded "user:password"
+            )
+        with pytest.raises(InvalidHeader):
+            proxy_from_url(
+                self.proxy_url_with_auth,
+                proxy_headers=make_headers(
+                    proxy_basic_auth="differentuser:differentpassword"
+                ),
+            )
+        with pytest.raises(InvalidHeader):
+            proxy_from_url(
+                self.proxy_url_with_auth,
+                headers=make_headers(
+                    proxy_basic_auth="differentuser:differentpassword"
+                ),
+            )
 
     def test_headers(self) -> None:
         with proxy_from_url(
