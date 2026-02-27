@@ -49,7 +49,7 @@ zstd = [
   "backports.zstd>=1.0.0; python_version<'3.14'",
 ]
 socks = [
-  "PySocks>=1.5.6,<2.0,!=1.5.7",
+  "python-socks>=2.8.0,<3.0.0",
 ]
 h2 = [
   "h2>=4,<5"
@@ -63,7 +63,7 @@ dev-base = [
     "h2>=4.1.0",
     "httpx>=0.28.1",
     "hypercorn",
-    "pysocks>=1.7.1",
+    "python-socks>=2.8.0",
     "pytest>=8.3.4",
     "pytest-memray==1.8.0 ; python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'",
     "pytest-socket>=0.7.0",
@@ -204,6 +204,10 @@ warn_unused_ignores = true
 enable_error_code = [
   "ignore-without-code",
 ]
+
+[[tool.mypy.overrides]]
+module = "python_socks.*"
+ignore_missing_imports = true
 
 [tool.uv]
 package = true

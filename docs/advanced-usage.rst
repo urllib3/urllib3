@@ -306,14 +306,14 @@ SOCKS Proxies
 
 For SOCKS, you can use :class:`~contrib.socks.SOCKSProxyManager` to connect to
 SOCKS4 or SOCKS5 proxies. In order to use SOCKS proxies you will need to
-install `PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with
+install `python-socks <https://pypi.org/project/python-socks/>`_ or install urllib3 with
 the ``socks`` extra:
 
 .. code-block:: bash
 
      python -m pip install urllib3[socks]
 
-Once PySocks is installed, you can use
+Once python-socks is installed, you can use
 :class:`~contrib.socks.SOCKSProxyManager`:
 
 .. code-block:: python

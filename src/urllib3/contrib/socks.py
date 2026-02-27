@@ -1,7 +1,7 @@
 """
 This module contains provisional support for SOCKS proxies from within
 urllib3. This module supports SOCKS4, SOCKS4A (an extension of SOCKS4), and
-SOCKS5. To enable its functionality, either install PySocks or install this
+SOCKS5. To enable its functionality, either install python-socks or install this
 module with the ``socks`` extra.
 
 The SOCKS implementation supports the full range of urllib3 features. It also
@@ -41,7 +41,7 @@ with the proxy:
 from __future__ import annotations
 
 try:
-    import socks  # type: ignore[import-untyped]
+    import python_socks  # noqa: F401
 except ImportError:
     import warnings
 
@@ -50,15 +50,24 @@ except ImportError:
     warnings.warn(
         (
             "SOCKS support in urllib3 requires the installation of optional "
-            "dependencies: specifically, PySocks.  For more information, see "
+            "dependencies: specifically, python-socks.  For more information, see "
             "https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies"
         ),
         DependencyWarning,
     )
     raise
 
+
+import socket
 import typing
-from socket import timeout as SocketTimeout
+
+from python_socks import (
+    ProxyConnectionError,
+    ProxyError,
+    ProxyTimeoutError,
+    ProxyType,
+)
+from python_socks.sync import Proxy
 
 from ..connection import HTTPConnection, HTTPSConnection
 from ..connectionpool import HTTPConnectionPool, HTTPSConnectionPool
@@ -95,63 +104,44 @@ class SOCKSConnection(HTTPConnection):
         self._socks_options = _socks_options
         super().__init__(*args, **kwargs)
 
-    def _new_conn(self) -> socks.socksocket:
+    def _new_conn(self) -> socket.socket:
         """
         Establish a new connection via the SOCKS proxy.
         """
         extra_kw: dict[str, typing.Any] = {}
         if self.source_address:
-            extra_kw["source_address"] = self.source_address
+            extra_kw["local_addr"] = self.source_address
 
-        if self.socket_options:
-            extra_kw["socket_options"] = self.socket_options
-
+        proxy = Proxy(
+            proxy_type=self._socks_options["socks_version"],
+            host=self._socks_options["proxy_host"],
+            port=self._socks_options["proxy_port"],
+            username=self._socks_options["username"],
+            password=self._socks_options["password"],
+            rdns=self._socks_options["rdns"],
+        )
         try:
-            conn = socks.create_connection(
-                (self.host, self.port),
-                proxy_type=self._socks_options["socks_version"],
-                proxy_addr=self._socks_options["proxy_host"],
-                proxy_port=self._socks_options["proxy_port"],
-                proxy_username=self._socks_options["username"],
-                proxy_password=self._socks_options["password"],
-                proxy_rdns=self._socks_options["rdns"],
+            conn = proxy.connect(
+                dest_host=self.host,
+                dest_port=self.port,
                 timeout=self.timeout,
                 **extra_kw,
             )
-
-        except SocketTimeout as e:
+        except (ProxyConnectionError, ProxyError) as e:
+            raise NewConnectionError(
+                self, f"Failed to establish a new connection: {e}"
+            ) from e
+        except ProxyTimeoutError as e:
             raise ConnectTimeoutError(
                 self,
                 f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
             ) from e
-
-        except socks.ProxyError as e:
-            # This is fragile as hell, but it seems to be the only way to raise
-            # useful errors here.
-            if e.socket_err:
-                error = e.socket_err
-                if isinstance(error, SocketTimeout):
-                    raise ConnectTimeoutError(
-                        self,
-                        f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
-                    ) from e
-                else:
-                    # Adding `from e` messes with coverage somehow, so it's omitted.
-                    # See #2386.
-                    raise NewConnectionError(
-                        self, f"Failed to establish a new connection: {error}"
-                    )
-            else:  # Defensive: see https://github.com/urllib3/urllib3/pull/3728#pullrequestreview-3816302703
-                raise NewConnectionError(
-                    self, f"Failed to establish a new connection: {e}"
-                ) from e
-
-        except OSError as e:  # Defensive: PySocks should catch all these.
+        except OSError as e:  # Defensive: python-socks should catch all these.
             raise NewConnectionError(
                 self, f"Failed to establish a new connection: {e}"
             ) from e
 
-        return conn
+        return conn  # type: ignore[no-any-return]
 
 
 # We don't need to duplicate the Verified/Unverified distinction from
@@ -197,16 +187,16 @@ class SOCKSProxyManager(PoolManager):
             if len(split) == 2:
                 username, password = split
         if parsed.scheme == "socks5":
-            socks_version = socks.PROXY_TYPE_SOCKS5
+            socks_version = ProxyType.SOCKS5
             rdns = False
         elif parsed.scheme == "socks5h":
-            socks_version = socks.PROXY_TYPE_SOCKS5
+            socks_version = ProxyType.SOCKS5
             rdns = True
         elif parsed.scheme == "socks4":
-            socks_version = socks.PROXY_TYPE_SOCKS4
+            socks_version = ProxyType.SOCKS4
             rdns = False
         elif parsed.scheme == "socks4a":
-            socks_version = socks.PROXY_TYPE_SOCKS4
+            socks_version = ProxyType.SOCKS4
             rdns = True
         else:
             raise ValueError(f"Unable to determine SOCKS version from {proxy_url}")
