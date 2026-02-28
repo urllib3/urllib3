@@ -98,7 +98,6 @@ class TestPoolManager:
             "block": True,
             "source_address": "127.0.0.1",
             "blocksize": _DEFAULT_BLOCKSIZE + 1,
-            "resolver": lambda: None,
         }
         p = PoolManager()
         conn_pools = [
@@ -132,7 +131,6 @@ class TestPoolManager:
             "ca_certs": "/root/path_to_pem",
             "ssl_version": "SSLv23_METHOD",
             "blocksize": _DEFAULT_BLOCKSIZE + 1,
-            "resolver": lambda: None,
         }
         p = PoolManager()
         conn_pools = [
@@ -172,7 +170,6 @@ class TestPoolManager:
             "cert_reqs": "CERT_REQUIRED",
             "ca_certs": "/root/path_to_pem",
             "ssl_version": "SSLv23_METHOD",
-            "resolver": lambda: None,
         }
         p = PoolManager(5, **ssl_kw)  # type: ignore[arg-type]
         conns = [p.connection_from_host("example.com", 443, scheme="https")]
@@ -437,9 +434,9 @@ class TestPoolManager:
         """Assert PoolManager properly sets the resolver property."""
 
         resolver = MagicMock()
-        manager = PoolManager()
+        manager = PoolManager(resolver=resolver)
 
-        pool = manager.connection_from_url("http://example.com", {"resolver": resolver})
+        pool = manager.connection_from_url("http://example.com")
 
         assert pool.conn_kw["resolver"] == resolver
         assert pool._get_conn().resolver == resolver
