@@ -430,6 +430,17 @@ class TestPoolManager:
         assert pool_blocksize.conn_kw["blocksize"] == expected_blocksize
         assert pool_blocksize._get_conn().blocksize == expected_blocksize
 
+    def test_poolmanager_create_http_connection_with_custom_resolver(self) -> None:
+        """Assert PoolManager properly sets the resolver property."""
+
+        resolver = MagicMock()
+        manager = PoolManager(resolver=resolver)
+
+        pool = manager.connection_from_url("http://example.com")
+
+        assert pool.conn_kw["resolver"] == resolver
+        assert pool._get_conn().resolver == resolver
+
     @pytest.mark.parametrize(
         "url",
         [

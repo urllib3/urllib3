@@ -923,6 +923,41 @@ class TestUtil:
         assert getaddrinfo.call_args[0][0] == "a::b%iface"
         fake_sock.connect.assert_called_once_with(fake_scoped_sa6)
 
+    @patch("socket.getaddrinfo")
+    @patch("socket.socket")
+    def test_create_connection_with_custom_resolver(
+        self, wrapped_socket: MagicMock, cpython_getaddrinfo: MagicMock
+    ) -> None:
+        """Passing a custom resolver should never call socket.getaddrinfo."""
+        wrapped_socket.return_value = MagicMock()
+
+        custom_resolver = MagicMock()
+        cpython_getaddrinfo.return_value = custom_resolver.return_value = [
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("127.0.0.1", 80),
+            )
+        ]
+
+        expected_call = mock.call(
+            "127.0.0.1", 80, allowed_gai_family(), socket.SOCK_STREAM
+        )
+
+        # When passing a custom resolver, it should not call CPython's socket.getaddrinfo
+        create_connection(("127.0.0.1", 80), resolver=custom_resolver)
+        cpython_getaddrinfo.assert_not_called()
+        custom_resolver.assert_has_calls([expected_call])
+
+        # Sanity check: when passing resolver=None, it should call CPython's socket.getaddrinfo
+        custom_resolver.reset_mock()
+        cpython_getaddrinfo.reset_mock()
+        create_connection(("127.0.0.1", 80), resolver=None)
+        custom_resolver.assert_not_called()
+        cpython_getaddrinfo.assert_has_calls([expected_call])
+
     @pytest.mark.parametrize(
         "input,params,expected",
         (
