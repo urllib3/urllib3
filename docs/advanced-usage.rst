@@ -86,7 +86,7 @@ that urllib3 will only read from the socket when data is requested.
     You can call the :meth:`~response.HTTPResponse.close` to close the connection,
     but this call doesn’t return the connection to the pool, throws away the unread
     data on the wire, and leaves the connection in an undefined protocol state.
-    This is desirable if you prefer not reading data from the socket to re-using the
+    This is desirable if you prefer not reading data from the socket to reusing the
     HTTP connection.
 
 :meth:`~response.HTTPResponse.stream` lets you iterate over chunks of the response content.
