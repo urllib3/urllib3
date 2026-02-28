@@ -2,44 +2,15 @@ from __future__ import annotations
 
 import socket
 import typing
-from typing import Protocol
 
 from ..exceptions import LocationParseError
+from .resolver import Resolver
 from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 
 _TYPE_SOCKET_OPTIONS = list[tuple[int, int, typing.Union[int, bytes]]]
 
 if typing.TYPE_CHECKING:
     from .._base_connection import BaseHTTPConnection
-
-
-class Resolver(Protocol):
-    """Type stub for the network address resolver.
-
-    This allows to override CPython's default `getaddrinfo()`_ function
-    which can be used to customize the resolution of domain names, hostnames,
-    and IP addresses.
-
-    .. _getaddrinfo(): https://docs.python.org/3/library/socket.html#socket.getaddrinfo
-    """
-
-    def __call__(
-        self,
-        host: bytes | str | None,
-        port: bytes | str | int | None,
-        family: int = 0,
-        type: int = 0,
-        proto: int = 0,
-        flags: int = 0,
-    ) -> list[
-        tuple[
-            socket.AddressFamily,
-            socket.SocketKind,
-            int,
-            str,
-            tuple[str, int] | tuple[str, int, int, int] | tuple[int, bytes],
-        ]
-    ]: ...
 
 
 def is_connection_dropped(conn: BaseHTTPConnection) -> bool:  # Platform-specific

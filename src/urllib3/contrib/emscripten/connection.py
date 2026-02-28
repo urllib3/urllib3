@@ -11,7 +11,8 @@ from ..._base_connection import _TYPE_BODY
 from ...connection import HTTPConnection, ProxyConfig, port_by_scheme
 from ...exceptions import TimeoutError
 from ...response import BaseHTTPResponse
-from ...util.connection import _TYPE_SOCKET_OPTIONS, Resolver
+from ...util.connection import _TYPE_SOCKET_OPTIONS
+from ...util.resolver import Resolver
 from ...util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from ...util.url import Url
 from .fetch import _RequestError, _TimeoutError, send_request, send_streaming_request

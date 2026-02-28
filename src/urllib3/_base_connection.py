@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import typing
 
-from .util.connection import _TYPE_SOCKET_OPTIONS, Resolver
+from .util.connection import _TYPE_SOCKET_OPTIONS
+from .util.resolver import Resolver
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from .util.url import Url
 

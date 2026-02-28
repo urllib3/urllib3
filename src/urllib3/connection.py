@@ -22,7 +22,7 @@ if typing.TYPE_CHECKING:
 
 from ._collections import HTTPHeaderDict
 from .http2 import probe as http2_probe
-from .util.connection import Resolver
+from .util.resolver import Resolver
 from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str

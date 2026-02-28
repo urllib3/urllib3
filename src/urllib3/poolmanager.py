@@ -18,8 +18,9 @@ from .exceptions import (
     URLSchemeUnknown,
 )
 from .response import BaseHTTPResponse
-from .util.connection import _TYPE_SOCKET_OPTIONS, Resolver
+from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.resolver import Resolver
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
