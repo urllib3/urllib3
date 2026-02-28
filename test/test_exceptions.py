@@ -21,6 +21,7 @@ from urllib3.exceptions import (
     NameResolutionError,
     NewConnectionError,
     ReadTimeoutError,
+    URLSchemeUnknown,
 )
 
 
@@ -47,11 +48,14 @@ class TestPickle:
             NameResolutionError(
                 "host", HTTPConnection("localhost"), socket.gaierror("error")
             ),
+            URLSchemeUnknown("ftp"),
         ],
     )
     def test_exceptions(self, exception: Exception) -> None:
         result = pickle.loads(pickle.dumps(exception))
         assert isinstance(result, type(exception))
+
+        assert str(exception) == str(result)
 
         if hasattr(exception, "_message"):
             assert exception._message == result._message  # type: ignore[attr-defined]

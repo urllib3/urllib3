@@ -36,7 +36,7 @@ class PoolError(HTTPError):
 
     def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
-        return self.__class__, (None, self._message)
+        return self.__class__, (self.pool, self._message)
 
 
 class RequestError(PoolError):
@@ -48,7 +48,7 @@ class RequestError(PoolError):
 
     def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
-        return self.__class__, (None, self.url, self._message)
+        return self.__class__, (self.pool, self.url, self._message)
 
 
 class SSLError(HTTPError):
@@ -103,7 +103,7 @@ class MaxRetryError(RequestError):
 
     def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
-        return self.__class__, (None, self.url, self.reason)
+        return self.__class__, (self.pool, self.url, self.reason)
 
 
 class HostChangedError(RequestError):
@@ -149,7 +149,7 @@ class NewConnectionError(ConnectTimeoutError, HTTPError):
 
     def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
-        return self.__class__, (None, self._message)
+        return self.__class__, (self.conn, self._message)
 
     @property
     def pool(self) -> HTTPConnection:
@@ -174,7 +174,7 @@ class NameResolutionError(NewConnectionError):
 
     def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
-        return self.__class__, (self._host, None, self._reason)
+        return self.__class__, (self._host, self.conn, self._reason)
 
 
 class EmptyPoolError(PoolError):
@@ -202,6 +202,10 @@ class LocationParseError(LocationValueError):
 
         self.location = location
 
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        # For pickling purposes.
+        return self.__class__, (self.location,)
+
 
 class URLSchemeUnknown(LocationValueError):
     """Raised when a URL input has an unsupported scheme."""
@@ -211,6 +215,10 @@ class URLSchemeUnknown(LocationValueError):
         super().__init__(message)
 
         self.scheme = scheme
+
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        # For pickling purposes.
+        return self.__class__, (self.scheme,)
 
 
 class ResponseError(HTTPError):
