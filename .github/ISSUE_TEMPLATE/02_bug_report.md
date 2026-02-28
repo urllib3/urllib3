@@ -1,6 +1,10 @@
 ---
-name: 🐞 Bug Report
+name: "\U0001F41E Bug Report"
 about: Something is broken
+title: ''
+labels: ''
+assignees: ''
+
 ---
 
 ### Subject

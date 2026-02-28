@@ -1,6 +1,10 @@
 ---
-name: 🎁 Feature Request
+name: "\U0001F381 Feature Request"
 about: Suggest a new feature
+title: ''
+labels: ''
+assignees: ''
+
 ---
 
 ### Context
