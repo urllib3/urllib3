@@ -123,4 +123,7 @@ nitpick_ignore = [
     ("py:class", "urllib3.contrib.socks._TYPE_SOCKS_OPTIONS"),
     ("py:class", "urllib3.util.timeout._TYPE_DEFAULT"),
     ("py:class", "BaseHTTPConnection"),
+    ("py:class", "_TYPE_FIELDS"),
+    ("py:class", "urllib3.multipart.decoder.MD"),
+    ("py:class", "Fields"),
 ]
