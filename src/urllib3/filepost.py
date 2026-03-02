@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import binascii
 import codecs
+import io
 import os
 import typing
-from io import BytesIO
 
 from .fields import _TYPE_FIELD_VALUE_TUPLE, RequestField
 
@@ -62,7 +62,7 @@ def encode_multipart_formdata(
         If not specified, then a random boundary will be generated using
         :func:`urllib3.filepost.choose_boundary`.
     """
-    body = BytesIO()
+    body = io.BytesIO()
     if boundary is None:
         boundary = choose_boundary()
 
@@ -77,6 +77,25 @@ def encode_multipart_formdata(
 
         if isinstance(data, str):
             writer(body).write(data)
+        elif isinstance(data, io.BytesIO):
+            body.write(data.getvalue())
+        elif isinstance(data, io.BufferedReader):
+            if data.seekable():
+                data.seek(0)
+            elif hasattr(data, "tell"):
+                if data.tell() != 0:
+                    raise ValueError(
+                        "Non-seekable stream is at a non-zero position; "
+                        "cannot encode partial data. Seek to position 0 before passing "
+                        "this stream, or use a seekable stream."
+                    )
+            else:
+                raise ValueError(
+                    "Non-seekable stream has no tell() method; cannot verify it is at "
+                    "position 0. Use a seekable stream, or ensure the stream is at "
+                    "position 0 and that tell() is available."
+                )
+            body.write(data.read())
         else:
             body.write(data)
 
