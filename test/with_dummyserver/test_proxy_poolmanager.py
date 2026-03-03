@@ -165,6 +165,25 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             r = https.request("GET", f"{self.https_url}/")
             assert r.status == 200
 
+    def test_https_proxy_forwarding_uses_proxy_ssl_context(self) -> None:
+        """proxy_ssl_context must be used (not ssl_context) for HTTPS forwarding proxies.
+
+        Regression test for https://github.com/urllib3/urllib3/issues/2577.
+        """
+        proxy_ssl_context = create_urllib3_context()
+        proxy_ssl_context.load_verify_locations(DEFAULT_CA)
+
+        with proxy_from_url(
+            self.https_proxy_url,
+            proxy_ssl_context=proxy_ssl_context,
+            use_forwarding_for_https=True,
+        ) as https:
+            r = https.request("GET", f"{self.http_url}/")
+            assert r.status == 200
+
+            r = https.request("GET", f"{self.https_url}/")
+            assert r.status == 200
+
     def test_nagle_proxy(self) -> None:
         """Test that proxy connections do not have TCP_NODELAY turned on"""
         with ProxyManager(self.proxy_url) as http:
@@ -633,9 +652,6 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
     def test_proxy_https_target_tls_error(
         self, proxy_scheme: str, use_forwarding_for_https: str
     ) -> None:
-        if proxy_scheme == "https" and use_forwarding_for_https:
-            pytest.skip("Test is expected to fail due to urllib3/urllib3#2577")
-
         proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
         proxy_ctx = ssl.create_default_context()
         proxy_ctx.load_verify_locations(DEFAULT_CA)
