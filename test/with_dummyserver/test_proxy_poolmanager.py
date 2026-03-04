@@ -657,15 +657,26 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
         proxy_ctx.load_verify_locations(DEFAULT_CA)
         ctx = ssl.create_default_context()
 
-        with proxy_from_url(
-            proxy_url,
-            proxy_ssl_context=proxy_ctx,
-            ssl_context=ctx,
-            use_forwarding_for_https=use_forwarding_for_https,
-        ) as proxy:
-            with pytest.raises(MaxRetryError) as e:
-                proxy.request("GET", self.https_url)
-            assert isinstance(e.value.reason, SSLError)
+        if use_forwarding_for_https:
+            # ssl_context is not valid with use_forwarding_for_https=True;
+            # proxy_ssl_context must be used instead.
+            with pytest.raises(ValueError, match="ssl_context is not applicable"):
+                proxy_from_url(
+                    proxy_url,
+                    proxy_ssl_context=proxy_ctx,
+                    ssl_context=ctx,
+                    use_forwarding_for_https=use_forwarding_for_https,
+                )
+        else:
+            with proxy_from_url(
+                proxy_url,
+                proxy_ssl_context=proxy_ctx,
+                ssl_context=ctx,
+                use_forwarding_for_https=use_forwarding_for_https,
+            ) as proxy:
+                with pytest.raises(MaxRetryError) as e:
+                    proxy.request("GET", self.https_url)
+                assert isinstance(e.value.reason, SSLError)
 
     def test_scheme_host_case_insensitive(self) -> None:
         """Assert that upper-case schemes and hosts are normalized."""

@@ -2,4 +2,6 @@ Fixed ``proxy_ssl_context`` being ignored for HTTPS forwarding proxies. When
 ``proxy_is_forwarding`` is ``True``, ``HTTPSConnection.connect()`` now correctly
 uses ``proxy_config.ssl_context`` (derived from ``proxy_ssl_context``) to
 establish the TLS connection to the proxy instead of ``ssl_context`` (which
-is intended for the destination origin).
+is intended for the destination origin). Passing ``ssl_context`` together with
+``use_forwarding_for_https=True`` now raises ``ValueError`` to make this
+separation explicit.

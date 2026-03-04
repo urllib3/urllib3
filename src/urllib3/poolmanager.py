@@ -579,6 +579,15 @@ class ProxyManager(PoolManager):
         if proxy.scheme not in ("http", "https"):
             raise ProxySchemeUnknown(proxy.scheme)
 
+        if (
+            use_forwarding_for_https
+            and connection_pool_kw.get("ssl_context") is not None
+        ):
+            raise ValueError(
+                "ssl_context is not applicable when use_forwarding_for_https=True. "
+                "Use proxy_ssl_context to configure the TLS connection to the proxy."
+            )
+
         if not proxy.port:
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
