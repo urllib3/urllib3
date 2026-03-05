@@ -604,6 +604,16 @@ class HTTPSConnection(HTTPConnection):
     """
     Many of the parameters to this constructor are passed to the underlying SSL
     socket by means of :py:func:`urllib3.util.ssl_wrap_socket`.
+
+    ``assert_hostname`` controls which hostname is used for certificate
+    verification. By default urllib3 verifies against the requested host (or
+    ``server_hostname`` when it is set). Set this to another hostname when
+    connecting by IP while validating a specific certificate identity, or set
+    it to ``False`` to disable hostname checks.
+
+    ``assert_fingerprint`` enables certificate pinning by verifying that the
+    peer certificate matches the expected fingerprint. SHA-256 is recommended.
+    See :ref:`assert_hostname` and :ref:`assert_fingerprint` for examples.
     """
 
     default_port = port_by_scheme["https"]  # type: ignore[misc]
