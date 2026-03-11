@@ -627,11 +627,6 @@ class BaseHTTPResponse(io.IOBase):
         Decode the data passed in and potentially flush the decoder.
         """
         if not decode_content:
-            if self._has_decoded_content:
-                raise RuntimeError(
-                    "Calling read(decode_content=False) is not supported after "
-                    "read(decode_content=True) was called."
-                )
             return data
 
         if max_length is None or flush_decoder:
@@ -1101,6 +1096,12 @@ class HTTPResponse(BaseHTTPResponse):
             if len(self._decoded_buffer) >= amt:
                 return self._decoded_buffer.get(amt)
 
+        if decode_content is False and self._has_decoded_content:
+            raise RuntimeError(
+                "Calling read(decode_content=False) is not supported after "
+                "read(decode_content=True) was called."
+            )
+
         data = self._raw_read(amt)
 
         flush_decoder = amt is None or (amt != 0 and not data)
@@ -1113,17 +1114,31 @@ class HTTPResponse(BaseHTTPResponse):
             return data
 
         if amt is None:
-            data = self._decode(data, decode_content, flush_decoder)
+            if not decode_content:
+                return self._decode(data, decode_content, flush_decoder)
+
+            # When reading all remaining data (amt=None), we need to handle
+            # where previous partial reads leave decoded data in the buffer.
+            # The buffer contains already-decoded data from compressed streams.
+            decoded_data = self._decode(data, decode_content, flush_decoder)
+
+            # If there's buffered data, combine it with newly decoded data
+            if decode_content and len(self._decoded_buffer) > 0:
+                self._decoded_buffer.put(decoded_data)
+                data = self._decoded_buffer.get_all()
+
+                # We cannot cache this read because it is a mix of buffered data
+                # (from a previous partial read) and the remainder of the stream.
+                # It does not represent the full HTTP body.
+                cache_content = False
+            else:
+                data = decoded_data
+
             if cache_content:
                 self._body = data
         else:
             # do not waste memory on buffer when not decoding
             if not decode_content:
-                if self._has_decoded_content:
-                    raise RuntimeError(
-                        "Calling read(decode_content=False) is not supported after "
-                        "read(decode_content=True) was called."
-                    )
                 return data
 
             decoded_data = self._decode(
