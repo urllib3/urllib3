@@ -19,6 +19,7 @@ from urllib3.connection import (  # type: ignore[attr-defined]
 )
 from urllib3.exceptions import HTTPError, ProxyError, SSLError
 from urllib3.util import ssl_
+from urllib3.util.connection import allowed_gai_family
 from urllib3.util.request import SKIP_HEADER
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
@@ -212,6 +213,86 @@ class TestConnection:
     def test_HTTPSConnection_default_socket_options(self) -> None:
         conn = HTTPSConnection("not.a.real.host", port=443)
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
+
+    @mock.patch("socket.getaddrinfo")
+    @mock.patch("socket.socket")
+    def test_create_http_connection_with_custom_resolver(
+        self,
+        _wrapped_socket: mock.MagicMock,
+        cpython_getaddrinfo: mock.MagicMock,
+    ) -> None:
+        """Passing a custom resolver should never call socket.getaddrinfo."""
+        expected_call = mock.call(
+            "127.0.0.1", 80, allowed_gai_family(), socket.SOCK_STREAM
+        )
+
+        custom_resolver = mock.MagicMock()
+        cpython_getaddrinfo.return_value = custom_resolver.return_value = [
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("127.0.0.1", 80),
+            )
+        ]
+
+        # When passing a custom resolver, it should not call CPython's socket.getaddrinfo
+        HTTPConnection("127.0.0.1", 80, resolver=custom_resolver).connect()
+        cpython_getaddrinfo.assert_not_called()
+        custom_resolver.assert_has_calls([expected_call])
+
+        # Sanity check: when using default resolver, it should call CPython's resolve
+        cpython_getaddrinfo.reset_mock()
+        custom_resolver.reset_mock()
+        HTTPConnection("127.0.0.1", 80).connect()
+        cpython_getaddrinfo.assert_has_calls([expected_call])
+        custom_resolver.assert_not_called()
+
+    @mock.patch("socket.getaddrinfo")
+    @mock.patch("socket.socket")
+    def test_create_https_connection_with_custom_resolver(
+        self,
+        _wrapped_socket: mock.MagicMock,
+        cpython_getaddrinfo: mock.MagicMock,
+    ) -> None:
+        """Passing a custom resolver should never call socket.getaddrinfo."""
+        expected_call = mock.call(
+            "127.0.0.1", 443, allowed_gai_family(), socket.SOCK_STREAM
+        )
+        ssl_context = mock.create_autospec(ssl_.SSLContext)
+
+        custom_resolver = mock.MagicMock()
+        cpython_getaddrinfo.return_value = custom_resolver.return_value = [
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("127.0.0.1", 443),
+            )
+        ]
+
+        # When passing a custom resolver, it should not call CPython's socket.getaddrinfo
+        HTTPSConnection(
+            "127.0.0.1",
+            443,
+            resolver=custom_resolver,
+            ssl_context=ssl_context,
+        ).connect()
+        cpython_getaddrinfo.assert_not_called()
+        custom_resolver.assert_has_calls([expected_call])
+
+        # Sanity check: when using default resolver, it should call CPython's resolve
+        cpython_getaddrinfo.reset_mock()
+        custom_resolver.reset_mock()
+        HTTPSConnection(
+            "127.0.0.1",
+            443,
+            ssl_context=ssl_context,
+        ).connect()
+        cpython_getaddrinfo.assert_has_calls([expected_call])
+        custom_resolver.assert_not_called()
 
     @pytest.mark.parametrize(
         "proxy_scheme, err_part",
