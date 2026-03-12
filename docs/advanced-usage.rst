@@ -415,6 +415,27 @@ hostname or the SNI hostname, you can use ``assert_hostname``:
     pool.request("GET", "/")
 
 
+.. _assert_fingerprint:
+
+Verifying TLS with certificate fingerprints
+-------------------------------------------
+
+If you need certificate pinning, pass ``assert_fingerprint`` with the expected
+certificate fingerprint. The value can be written with or without colons.
+SHA-256 fingerprints are recommended.
+
+.. code-block:: python
+
+    import urllib3
+
+    expected_fingerprint = "ab" * 32
+    pool = urllib3.HTTPSConnectionPool(
+        "example.com",
+        assert_fingerprint=expected_fingerprint,
+    )
+    pool.request("GET", "/")
+
+
 .. _ssl_client:
 
 Client Certificates
