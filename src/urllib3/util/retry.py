@@ -400,6 +400,16 @@ class Retry:
             return False
         return True
 
+    def is_response_retry(self, method: str, response: BaseHTTPResponse) -> bool:
+        """Is this method/response retryable? (Based on allowlists and control
+        variables such as the number of total retries to allow, whether to
+        respect the Retry-After header, whether this header is present, and
+        whether the returned status code is on the list of status codes to
+        be retried upon on the presence of the aforementioned header)
+        """
+        has_retry_after = bool(response.headers.get("Retry-After"))
+        return self.is_retry(method, response.status, has_retry_after)
+
     def is_retry(
         self, method: str, status_code: int, has_retry_after: bool = False
     ) -> bool:
