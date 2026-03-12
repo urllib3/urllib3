@@ -319,6 +319,30 @@ dictionary in the ``fields`` argument provided to
     print(resp.json()["form"])
     # {"field": "value"}
 
+If you have a large amount of data, you may prefer to avoid loading all of
+that into memory. To do so, urllib3 provides a ``MultipartEncoder`` that
+handles generating the request data on demand without loading everything in
+memory.
+
+.. code-block:: python
+
+    import urllib3
+    import urllib3.multipart
+
+    encoder = urllib3.multipart.MultipartEncoder({
+      "field": "value",
+      "myfile": ("filename.txt", open("filename.txt", "rb"), "text/plain"),
+    })
+    resp = urllib3.request(
+        "POST",
+        "https://httpbin.org/post",
+        body=encoder,
+        headers=encoder.headers,
+    )
+
+    print(resp.json()["form"])
+    # {"field": "value", "myfile": "..."}
+
 .. _json:
 
 JSON

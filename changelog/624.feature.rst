@@ -1,0 +1,46 @@
+Added support for reduced memory ``multipart/form-data`` uploads.
+
+Previously, one would need to specify ``fields=...`` with
+``encode_multipart=True`` and ``multipart_boundary=...`` to send a
+``multipart/form-data`` request to a server via urllib3's ``PoolManager``.
+This would encode all of the data into a buffer in memory to send it to the
+server.
+
+Now, one can use the ``urllib3.multipart.MultipartEncoder``. It accepts the
+same format of values as the ``fields=`` argument and accepts an optional
+``boundary=`` argument like ``PoolManager.urlopen`` and
+``PoolManager.request``. This will not load the entirety of your data into
+memory but will instead conservatively stream it by implementing a subset of
+the file API for ``http.client`` to use. The encoder supports ``seek(0, 0)``
+to rewind for request retries and redirects.
+
+Example:
+
+.. code-block:: python
+
+   import urllib3
+   from urllib3 import multipart
+
+   encoder = multipart.MultipartEncoder({
+      "field_1": "value_1",
+      "field_2": "value_2",
+      "field_3": (
+         "my_super_large_file.tar.gz",
+         open("my_super_large_file.tar.gz", "rb"),
+         "application/tar+gzip",
+      ),
+      "field_4": (
+         "big_data_dump.psql.gz",
+         open("big_data_dump.psql.gz", "rb"),
+         "application/gzip",
+      ),
+   })
+   response = urllib3.request(
+      "POST",
+      "https://httpbin.org/post",
+      headers=encoder.headers,
+      body=encoder,
+   )
+
+This also adds support for efficiently decoding ``multipart/form-data``
+responses via ``urllib3.multipart.MultipartDecoder``.

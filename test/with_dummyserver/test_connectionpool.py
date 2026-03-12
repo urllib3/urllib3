@@ -30,6 +30,7 @@ from urllib3.exceptions import (
     UnrewindableBodyError,
 )
 from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
+from urllib3.multipart import MultipartEncoder
 from urllib3.util import SKIP_HEADER, SKIPPABLE_HEADERS
 from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import _TYPE_TIMEOUT, Timeout
@@ -652,6 +653,20 @@ class TestConnectionPool(HypercornDummyServerTestCase):
                 b"world\r\n",
                 b"--boundary--\r\n",
             ]
+
+    def test_post_with_multipart_encoder_streaming(self) -> None:
+        """Verify MultipartEncoder streams correctly when passed as body."""
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            data = {"field": "value", "other": "data"}
+            encoder = MultipartEncoder(data, boundary="stream-boundary")
+            r = pool.request(
+                "POST",
+                "/echo",
+                body=encoder,
+                headers=encoder.headers,
+            )
+            expected = encode_multipart_formdata(data, boundary="stream-boundary")[0]
+            assert r.data == expected
 
     def test_check_gzip(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
