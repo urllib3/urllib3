@@ -237,6 +237,18 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
 
     _container: typing.MutableMapping[str, list[str]]
 
+    @staticmethod
+    def _normalize_key(key: str | bytes) -> str:
+        if isinstance(key, bytes):
+            return key.decode("latin-1")
+        return key
+
+    @staticmethod
+    def _normalize_value(value: str | bytes) -> str:
+        if isinstance(value, bytes):
+            return value.decode("latin-1")
+        return value
+
     def __init__(self, headers: ValidHTTPHeaderSource | None = None, **kwargs: str):
         super().__init__()
         self._container = {}  # 'dict' is insert-ordered
@@ -249,25 +261,23 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             self.extend(kwargs)
 
     def __setitem__(self, key: str, val: str) -> None:
-        # avoid a bytes/str comparison by decoding before httplib
-        if isinstance(key, bytes):
-            key = key.decode("latin-1")
+        # Preserve backwards-compatible runtime support for bytes.
+        key = self._normalize_key(key)
+        val = self._normalize_value(val)
         self._container[key.lower()] = [key, val]
 
     def __getitem__(self, key: str) -> str:
-        if isinstance(key, bytes):
-            key = key.decode("latin-1")
+        key = self._normalize_key(key)
         val = self._container[key.lower()]
         return ", ".join(val[1:])
 
     def __delitem__(self, key: str) -> None:
-        if isinstance(key, bytes):
-            key = key.decode("latin-1")
+        key = self._normalize_key(key)
         del self._container[key.lower()]
 
     def __contains__(self, key: object) -> bool:
         if isinstance(key, bytes):
-            key = key.decode("latin-1")
+            key = self._normalize_key(key)
         if isinstance(key, str):
             return key.lower() in self._container
         return False
@@ -322,9 +332,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         >>> list(headers.items())
         [('foo', 'bar, baz, quz')]
         """
-        # avoid a bytes/str comparison by decoding before httplib
-        if isinstance(key, bytes):
-            key = key.decode("latin-1")
+        key = self._normalize_key(key)
+        val = self._normalize_value(val)
         key_lower = key.lower()
         new_vals = [key, val]
         # Keep the common case aka no item present as fast as possible
@@ -383,7 +392,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
         if isinstance(key, bytes):
-            key = key.decode("latin-1")
+            key = self._normalize_key(key)
         try:
             vals = self._container[key.lower()]
         except KeyError:
