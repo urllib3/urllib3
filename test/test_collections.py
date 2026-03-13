@@ -221,7 +221,7 @@ class TestHTTPHeaderDict:
 
     def test_setitem_with_bytes_value(self) -> None:
         d = HTTPHeaderDict()
-        d["user-agent"] = b"Sch\xf6nefeld/1.18.0"  # type: ignore[index]
+        d["user-agent"] = b"Sch\xf6nefeld/1.18.0"  # type: ignore[assignment]
         assert d["user-agent"] == "Sch\xf6nefeld/1.18.0"
 
     def test_update(self, d: HTTPHeaderDict) -> None:
