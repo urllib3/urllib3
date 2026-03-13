@@ -221,7 +221,7 @@ class TestHTTPHeaderDict:
 
     def test_setitem_with_bytes_value(self) -> None:
         d = HTTPHeaderDict()
-        d["user-agent"] = "Sch\xf6nefeld/1.18.0".encode("latin-1")  # type: ignore[index]
+        d["user-agent"] = b"Sch\xf6nefeld/1.18.0"  # type: ignore[index]
         assert d["user-agent"] == "Sch\xf6nefeld/1.18.0"
 
     def test_update(self, d: HTTPHeaderDict) -> None:
@@ -232,7 +232,7 @@ class TestHTTPHeaderDict:
 
     def test_extend_with_bytes_value(self) -> None:
         d = HTTPHeaderDict()
-        d.extend([(b"user-agent", "Sch\xf6nefeld/1.18.0".encode("latin-1"))])  # type: ignore[list-item]
+        d.extend([(b"user-agent", b"Sch\xf6nefeld/1.18.0")])  # type: ignore[list-item]
         assert d["user-agent"] == "Sch\xf6nefeld/1.18.0"
 
     def test_delitem(self, d: HTTPHeaderDict) -> None:
@@ -260,8 +260,8 @@ class TestHTTPHeaderDict:
 
     def test_add_with_bytes_value(self) -> None:
         d = HTTPHeaderDict()
-        d.add("user-agent", "Sch\xf6nefeld/1.18.0".encode("latin-1"))  # type: ignore[arg-type]
-        d.add("user-agent", "caf\xe9/2.0".encode("latin-1"))  # type: ignore[arg-type]
+        d.add("user-agent", b"Sch\xf6nefeld/1.18.0")  # type: ignore[arg-type]
+        d.add("user-agent", b"caf\xe9/2.0")  # type: ignore[arg-type]
         assert d.getlist("user-agent") == ["Sch\xf6nefeld/1.18.0", "caf\xe9/2.0"]
         assert d["user-agent"] == "Sch\xf6nefeld/1.18.0, caf\xe9/2.0"
 
