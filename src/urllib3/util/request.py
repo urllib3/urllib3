@@ -22,7 +22,7 @@ SKIPPABLE_HEADERS = frozenset(["accept-encoding", "host", "user-agent"])
 ACCEPT_ENCODING = "*;q=0"
 
 try:
-    import zlib as _unused_module_zlib  # type: ignore[import-not-found] # noqa: F401
+    import zlib as _unused_module_zlib  # noqa: F401
 except ImportError:
     pass
 else:

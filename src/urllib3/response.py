@@ -196,6 +196,7 @@ if zlib is not None:
         def flush(self) -> bytes:
             return self._obj.flush()
 
+
 if brotli is not None:
 
     class BrotliDecoder(ContentDecoder):
