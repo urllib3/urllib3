@@ -6,6 +6,7 @@ import datetime
 import os.path
 import shutil
 import ssl
+import sys
 import tempfile
 import time
 import typing
@@ -760,9 +761,9 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 )
             else:
                 cmgr = pytest.warns(
-                    DeprecationWarning,
+                    FutureWarning,
                     match=r"'ssl_version' option is deprecated and will be removed "
-                    r"in urllib3 v2\.6\.0\. Instead use 'ssl_minimum_version'",
+                    r"in urllib3 v3\.0\. Instead use 'ssl_minimum_version'",
                 )
             with cmgr:
                 r = https_pool.request("GET", "/")
@@ -770,11 +771,11 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
 
     def test_set_cert_default_cert_required(self) -> None:
         conn = VerifiedHTTPSConnection(self.host, self.port)
-        with pytest.warns(DeprecationWarning) as w:
+        with pytest.warns(FutureWarning) as w:
             conn.set_cert()
         assert conn.cert_reqs == ssl.CERT_REQUIRED
         assert len(w) == 1 and str(w[0].message) == (
-            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v2.1.0. "
+            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v3.0. "
             "Instead provide the parameters to the HTTPSConnection constructor."
         )
 
@@ -786,7 +787,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         assert ssl_context.verify_mode == verify_mode
 
         conn = HTTPSConnection(self.host, self.port, ssl_context=ssl_context)
-        with pytest.warns(DeprecationWarning) as w:
+        with pytest.warns(FutureWarning) as w:
             conn.set_cert()
 
         assert conn.cert_reqs == verify_mode
@@ -794,7 +795,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             conn.ssl_context is not None and conn.ssl_context.verify_mode == verify_mode
         )
         assert len(w) == 1 and str(w[0].message) == (
-            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v2.1.0. "
+            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v3.0. "
             "Instead provide the parameters to the HTTPSConnection constructor."
         )
 
@@ -827,16 +828,16 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             self.host, self.port, ca_certs=DEFAULT_CA, ssl_version=self.ssl_version()
         ) as https_pool:
             with contextlib.closing(https_pool._get_conn()) as conn:
-                with pytest.warns(DeprecationWarning) as w:
+                with pytest.warns(FutureWarning) as w:
                     conn.connect()
 
         assert len(w) >= 1
-        assert any(x.category == DeprecationWarning for x in w)
+        assert any(x.category == FutureWarning for x in w)
         assert any(
             str(x.message)
             == (
                 "'ssl_version' option is deprecated and will be removed in "
-                "urllib3 v2.6.0. Instead use 'ssl_minimum_version'"
+                "urllib3 v3.0. Instead use 'ssl_minimum_version'"
             )
             for x in w
         )
@@ -912,14 +913,25 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 finally:
                     conn.close()
 
+    @pytest.mark.parametrize("use_env_var_expansion", [True, False])
     def test_sslkeylogfile(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        use_env_var_expansion: bool,
     ) -> None:
         if not hasattr(util.SSLContext, "keylog_filename"):
             pytest.skip("requires OpenSSL 1.1.1+")
 
         keylog_file = tmp_path / "keylogfile.txt"
-        monkeypatch.setenv("SSLKEYLOGFILE", str(keylog_file))
+        if use_env_var_expansion:
+            monkeypatch.setenv("FILEPATH", str(keylog_file))
+            if sys.platform == "win32":
+                monkeypatch.setenv("SSLKEYLOGFILE", "%FILEPATH%")
+            else:
+                monkeypatch.setenv("SSLKEYLOGFILE", "${FILEPATH}")
+        else:
+            monkeypatch.setenv("SSLKEYLOGFILE", str(keylog_file))
 
         with HTTPSConnectionPool(
             self.host,
@@ -1130,9 +1142,9 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             )
 
         with pytest.warns(
-            DeprecationWarning,
+            FutureWarning,
             match=r"'ssl_version' option is deprecated and will be removed in "
-            r"urllib3 v2\.6\.0\. Instead use 'ssl_minimum_version'",
+            r"urllib3 v3\.0\. Instead use 'ssl_minimum_version'",
         ):
             ctx = urllib3.util.ssl_.create_urllib3_context(
                 ssl_version=self.ssl_version()

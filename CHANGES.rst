@@ -1,3 +1,92 @@
+2.6.3 (2026-01-07)
+==================
+
+- Fixed a high-severity security issue where decompression-bomb safeguards of
+  the streaming API were bypassed when HTTP redirects were followed.
+  (`GHSA-38jv-5279-wg99 <https://github.com/urllib3/urllib3/security/advisories/GHSA-38jv-5279-wg99>`__)
+- Started treating ``Retry-After`` times greater than 6 hours as 6 hours by
+  default. (`#3743 <https://github.com/urllib3/urllib3/issues/3743>`__)
+- Fixed ``urllib3.connection.VerifiedHTTPSConnection`` on Emscripten.
+  (`#3752 <https://github.com/urllib3/urllib3/issues/3752>`__)
+
+
+2.6.2 (2025-12-11)
+==================
+
+- Fixed ``HTTPResponse.read_chunked()`` to properly handle leftover data in
+  the decoder's buffer when reading compressed chunked responses.
+  (`#3734 <https://github.com/urllib3/urllib3/issues/3734>`__)
+
+
+2.6.1 (2025-12-08)
+==================
+
+- Restore previously removed ``HTTPResponse.getheaders()`` and
+  ``HTTPResponse.getheader()`` methods.
+  (`#3731 <https://github.com/urllib3/urllib3/issues/3731>`__)
+
+
+2.6.0 (2025-12-05)
+==================
+
+Security
+--------
+
+- Fixed a security issue where streaming API could improperly handle highly
+  compressed HTTP content ("decompression bombs") leading to excessive resource
+  consumption even when a small amount of data was requested. Reading small
+  chunks of compressed data is safer and much more efficient now.
+  (`GHSA-2xpw-w6gg-jr37 <https://github.com/urllib3/urllib3/security/advisories/GHSA-2xpw-w6gg-jr37>`__)
+- Fixed a security issue where an attacker could compose an HTTP response with
+  virtually unlimited links in the ``Content-Encoding`` header, potentially
+  leading to a denial of service (DoS) attack by exhausting system resources
+  during decoding. The number of allowed chained encodings is now limited to 5.
+  (`GHSA-gm62-xv2j-4w53 <https://github.com/urllib3/urllib3/security/advisories/GHSA-gm62-xv2j-4w53>`__)
+
+.. caution::
+  - If urllib3 is not installed with the optional `urllib3[brotli]` extra, but
+    your environment contains a Brotli/brotlicffi/brotlipy package anyway, make
+    sure to upgrade it to at least Brotli 1.2.0 or brotlicffi 1.2.0.0 to
+    benefit from the security fixes and avoid warnings. Prefer using
+    `urllib3[brotli]` to install a compatible Brotli package automatically.
+
+  - If you use custom decompressors, please make sure to update them to
+    respect the changed API of ``urllib3.response.ContentDecoder``.
+
+
+Features
+--------
+
+- Enabled retrieval, deletion, and membership testing in ``HTTPHeaderDict`` using bytes keys. (`#3653 <https://github.com/urllib3/urllib3/issues/3653>`__)
+- Added host and port information to string representations of ``HTTPConnection``. (`#3666 <https://github.com/urllib3/urllib3/issues/3666>`__)
+- Added support for Python 3.14 free-threading builds explicitly. (`#3696 <https://github.com/urllib3/urllib3/issues/3696>`__)
+
+
+Removals
+--------
+
+- Removed the ``HTTPResponse.getheaders()`` method in favor of ``HTTPResponse.headers``.
+  Removed the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``. (`#3622 <https://github.com/urllib3/urllib3/issues/3622>`__)
+
+
+Bugfixes
+--------
+
+- Fixed redirect handling in ``urllib3.PoolManager`` when an integer is passed
+  for the retries parameter. (`#3649 <https://github.com/urllib3/urllib3/issues/3649>`__)
+- Fixed ``HTTPConnectionPool`` when used in Emscripten with no explicit port. (`#3664 <https://github.com/urllib3/urllib3/issues/3664>`__)
+- Fixed handling of ``SSLKEYLOGFILE`` with expandable variables. (`#3700 <https://github.com/urllib3/urllib3/issues/3700>`__)
+
+
+Misc
+----
+
+- Changed the ``zstd`` extra to install ``backports.zstd`` instead of ``zstandard`` on Python 3.13 and before. (`#3693 <https://github.com/urllib3/urllib3/issues/3693>`__)
+- Improved the performance of content decoding by optimizing ``BytesQueueBuffer`` class. (`#3710 <https://github.com/urllib3/urllib3/issues/3710>`__)
+- Allowed building the urllib3 package with newer setuptools-scm v9.x. (`#3652 <https://github.com/urllib3/urllib3/issues/3652>`__)
+- Ensured successful urllib3 builds by setting Hatchling requirement to >= 1.27.0. (`#3638 <https://github.com/urllib3/urllib3/issues/3638>`__)
+
+
 2.5.0 (2025-06-18)
 ==================
 

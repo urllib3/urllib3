@@ -40,6 +40,7 @@ class EmscriptenHTTPConnection:
     is_verified: bool = False
     proxy_is_verified: bool | None = None
 
+    response_class: type[BaseHTTPResponse] = EmscriptenHttpResponseWrapper
     _response: EmscriptenResponse | None
 
     def __init__(

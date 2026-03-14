@@ -1,7 +1,7 @@
 # This file is protected via CODEOWNERS
 
 [build-system]
-requires = ["hatchling>=1.27.0,<2", "hatch-vcs>=0.4.0,<0.6.0", "setuptools-scm>=8,<9"]
+requires = ["hatchling>=1.27.0,<2", "hatch-vcs>=0.4.0,<0.6.0", "setuptools-scm>=8,<10"]
 build-backend = "hatchling.build"
 
 [project]
@@ -25,7 +25,6 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -34,23 +33,20 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
+  "Programming Language :: Python :: Free Threading :: 2 - Beta",
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Software Development :: Libraries",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dynamic = ["version"]
 
 [project.optional-dependencies]
 brotli = [
-  "brotli>=1.0.9; platform_python_implementation == 'CPython'",
-  "brotlicffi>=0.8.0; platform_python_implementation != 'CPython'"
+  "brotli>=1.2.0; platform_python_implementation == 'CPython'",
+  "brotlicffi>=1.2.0.0; platform_python_implementation != 'CPython'"
 ]
-# Once we drop support for Python 3.13 this extra can be removed.
-# We'll need a deprecation period for the 'zstandard' module support
-# so that folks using Python without the 'compression.zstd' module
-# compiled will know to start doing so (although it'll likely be rare).
 zstd = [
-  "zstandard>=0.18.0",
+  "backports.zstd>=1.0.0; python_version<'3.14'",
 ]
 socks = [
   "PySocks>=1.5.6,<2.0,!=1.5.7",
@@ -60,29 +56,46 @@ h2 = [
 ]
 
 [dependency-groups]
-dev = [
+dev-base = [
     "anyio[trio]>=4.8.0",
     "build>=1.2.2.post1",
     "coverage>=7.8.0",
-    "cryptography>=44.0.2",
     "h2>=4.1.0",
     "httpx>=0.28.1",
     "hypercorn",
-    "idna>=3.10",
-    "pyopenssl>=25.0.0",
     "pysocks>=1.7.1",
     "pytest>=8.3.4",
-    "pytest-memray==1.7.0 ; python_full_version < '3.14' and implementation_name == 'cpython' and sys_platform != 'win32'",
+    "pytest-memray==1.8.0 ; python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'",
     "pytest-socket>=0.7.0",
     "pytest-timeout>=2.3.1",
     "quart>=0.20.0",
     "quart-trio>=0.12.0",
     "towncrier>=24.8.0",
-    "trustme>=1.2.1",
     "trio>=0.27.0",
+]
+dev = [
+    {include-group = "dev-base"},
+    "cryptography>=44.0.2",
+    "idna>=3.10",
+    "pyopenssl>=25.0.0",
+    "trustme>=1.2.1",
+]
+dev-min-pyopenssl = [
+    {include-group = "dev-base"},
+    # 19.0.0 (2019-01-21) was the first version to support OpenSSL 1.1.1.
+    # The following versions of pyOpenSSL and cryptography are documented
+    # as the minimum supported ones in our docs.
+    "pyopenssl==19.0.0",
+    "cryptography==2.3",
+    # We document 2.1 as the minimum supported version of idna from
+    # cryptography, but 2.8 is the minimum needed for tests because of anyio.
+    "idna==2.8",
+    # The last version of trustme to support cryptography < 3.1.
+    "trustme==0.9.0",
 ]
 mypy = [
     "anyio[trio]>=4.8.0",
+    "backports.zstd>=1.0.0; python_version<'3.14'",
     "cryptography>=44.0.2",
     "httpx>=0.28.1",
     "hypercorn>=0.15.0",
@@ -95,11 +108,10 @@ mypy = [
     "trustme>=1.2.1",
     "types-requests>=2.32.0.20241016",
     "nox>=2024.10.9",
-    "zstandard>=0.23.0",
 ]
 emscripten = [
     "build>=1.2.2.post1",
-    "pytest-pyodide>=0.58.4 ; python_full_version >= '3.10'",
+    "pytest-pyodide>=0.58.4",
     "selenium>=4.27.1",
 ]
 wasi = [
@@ -168,10 +180,11 @@ filterwarnings = [
     '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
+    '''default:Brotli >= 1.2.0 is required to prevent decompression bombs\.:urllib3.exceptions.DependencyWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/13328
     '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/14686
-    '''default:setting remote_server_addr in RemoteConnection\(\) is deprecated, set in ClientConfig instance instead:DeprecationWarning'''
+    '''default:setting remote_server_addr in RemoteConnection\(\) is deprecated, set in ClientConfig instance instead:FutureWarning'''
 ]
 
 [tool.isort]
@@ -201,6 +214,16 @@ enable_error_code = [
 
 [tool.uv]
 package = true
+conflicts = [
+  [
+    {group = "dev"},
+    {group = "dev-min-pyopenssl"},
+  ],
+  [
+    {group = "dev-min-pyopenssl"},
+    {group = "mypy"},
+  ],
+]
 
 [tool.uv.sources]
 hypercorn = { git = "https://github.com/urllib3/hypercorn", rev = "urllib3-changes" }

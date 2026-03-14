@@ -98,7 +98,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_unicode_body(self) -> None:
         self._test_body(
-            "thisshouldbeonechunk\r\näöüß\xFF",
+            "thisshouldbeonechunk\r\näöüß\xff",
             expected_data=b"thisshouldbeonechunk\r\n\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\xc3\xbf",
         )
 
@@ -114,7 +114,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_unicode_body_fileio(self) -> None:
         self._test_body(
-            io.StringIO("thisshouldbeonechunk\r\näöüß\xFF"),
+            io.StringIO("thisshouldbeonechunk\r\näöüß\xff"),
             expected_data=b"thisshouldbeonechunk\r\n\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\xc3\xbf",
         )
 
@@ -133,7 +133,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_unicode_body_iterable(self) -> None:
         def send_body() -> typing.Iterable[str]:
-            yield "thisshouldbeonechunk\r\näöüß\xFF"
+            yield "thisshouldbeonechunk\r\näöüß\xff"
 
         self._test_body(
             send_body(),

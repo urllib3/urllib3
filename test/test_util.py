@@ -29,7 +29,6 @@ from urllib3.util.proxy import connection_requires_http_tunnel
 from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.ssl_ import (
-    _TYPE_VERSION_INFO,
     _is_has_never_check_common_name_reliable,
     resolve_cert_reqs,
     resolve_ssl_version,
@@ -162,11 +161,11 @@ class TestUtil:
             "http://google.com:65536",
             "http://google.com:\xb2\xb2",  # \xb2 = ^2
             # Invalid IDNA labels
-            "http://\uD7FF.com",
+            "http://\ud7ff.com",
             "http://❤️",
             # Unicode surrogates
-            "http://\uD800.com",
-            "http://\uDC00.com",
+            "http://\ud800.com",
+            "http://\udc00.com",
         ],
     )
     def test_invalid_url(self, url: str) -> None:
@@ -217,7 +216,7 @@ class TestUtil:
         actual_normalized_url = parse_url(url).url
         assert actual_normalized_url == expected_normalized_url
 
-    @pytest.mark.parametrize("char", [chr(i) for i in range(0x00, 0x21)] + ["\x7F"])
+    @pytest.mark.parametrize("char", [chr(i) for i in range(0x00, 0x21)] + ["\x7f"])
     def test_control_characters_are_percent_encoded(self, char: str) -> None:
         percent_char = "%" + (hex(ord(char))[2:].zfill(2).upper())
         url = parse_url(
@@ -295,13 +294,13 @@ class TestUtil:
             Url("http", auth="user%22:quoted", host="example.com", path="/"),
         ),
         # Unicode Surrogates
-        ("http://google.com/\uD800", Url("http", host="google.com", path="%ED%A0%80")),
+        ("http://google.com/\ud800", Url("http", host="google.com", path="%ED%A0%80")),
         (
-            "http://google.com?q=\uDC00",
+            "http://google.com?q=\udc00",
             Url("http", host="google.com", path="", query="q=%ED%B0%80"),
         ),
         (
-            "http://google.com#\uDC00",
+            "http://google.com#\udc00",
             Url("http", host="google.com", path="", fragment="%ED%B0%80"),
         ),
     ]
@@ -1065,39 +1064,23 @@ class TestUtilSSL:
         warn.assert_not_called()
 
     @pytest.mark.parametrize(
-        "openssl_version, openssl_version_number, implementation_name, version_info, pypy_version_info, reliable",
+        "openssl_version, reliable",
         [
-            # OpenSSL and Python OK -> reliable
-            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 3), None, True),
-            # Python OK -> reliable
-            ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), None, True),
-            # PyPy: depends on the version
-            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 9, 9), (7, 3, 7), False),
-            ("OpenSSL 1.1.1", 0x101010CF, "pypy", (3, 9, 19), (7, 3, 16), True),
-            # OpenSSL OK -> reliable
-            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 2), None, True),
+            # any OpenSSL 1.1.1+ -> reliable since Python 3.10.0b1 according to
+            # https://github.com/python/cpython/issues/87688#issuecomment-1093906646
+            ("OpenSSL 1.1.1", True),
             # not OpenSSSL -> unreliable
-            ("LibreSSL 2.8.3", 0x101010CF, "cpython", (3, 10, 0), None, False),
-            # old OpenSSL and old Python, unreliable
-            ("OpenSSL 1.1.0", 0x10101000, "cpython", (3, 9, 2), None, False),
+            ("LibreSSL 2.8.3", False),
         ],
     )
     def test_is_has_never_check_common_name_reliable(
         self,
         openssl_version: str,
-        openssl_version_number: int,
-        implementation_name: str,
-        version_info: _TYPE_VERSION_INFO,
-        pypy_version_info: _TYPE_VERSION_INFO | None,
         reliable: bool,
     ) -> None:
         assert (
             _is_has_never_check_common_name_reliable(
                 openssl_version,
-                openssl_version_number,
-                implementation_name,
-                version_info,
-                pypy_version_info,
             )
             == reliable
         )
@@ -1121,6 +1104,6 @@ class TestUtilWithoutIdna:
         module_stash.pop()
 
     def test_parse_url_without_idna(self) -> None:
-        url = "http://\uD7FF.com"
+        url = "http://\ud7ff.com"
         with pytest.raises(LocationParseError, match=f"Failed to parse: {url}"):
             parse_url(url)

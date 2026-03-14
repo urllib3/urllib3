@@ -16,8 +16,7 @@
   <a href="https://bestpractices.coreinfrastructure.org/projects/6227"><img alt="CII Best Practices" src="https://bestpractices.coreinfrastructure.org/projects/6227/badge" /></a>
 </p>
 
-urllib3 is a powerful, *user-friendly* HTTP client for Python. Much of the
-Python ecosystem already uses urllib3 and you should too.
+urllib3 is a powerful, *user-friendly* HTTP client for Python.
 urllib3 brings many critical features that are missing from the Python
 standard libraries:
 
@@ -30,16 +29,13 @@ standard libraries:
 - Proxy support for HTTP and SOCKS.
 - 100% test coverage.
 
-urllib3 is powerful and easy to use:
+... and many more features, but most importantly: Our maintainers have a 15+
+year track record of maintaining urllib3 with the highest code standards and
+attention to security and safety.
 
-```python3
->>> import urllib3
->>> resp = urllib3.request("GET", "http://httpbin.org/robots.txt")
->>> resp.status
-200
->>> resp.data
-b"User-agent: *\nDisallow: /deny\n"
-```
+[Much of the Python ecosystem already uses urllib3](https://urllib3.readthedocs.io/en/stable/#who-uses)
+and you should too.
+
 
 ## Installing
 
@@ -57,8 +53,18 @@ $ cd urllib3
 $ pip install .
 ```
 
+## Getting Started
 
-## Documentation
+urllib3 is easy to use:
+
+```python3
+>>> import urllib3
+>>> resp = urllib3.request("GET", "http://httpbin.org/robots.txt")
+>>> resp.status
+200
+>>> resp.data
+b"User-agent: *\nDisallow: /deny\n"
+```
 
 urllib3 has usage and reference documentation at [urllib3.readthedocs.io](https://urllib3.readthedocs.io).
 
@@ -85,7 +91,9 @@ Tidelift will coordinate the fix and disclosure with maintainers.
 
 ## Maintainers
 
-- Lead: [@illia-v](https://github.com/illia-v) (Illia Volochii)
+Meet our maintainers since 2008:
+
+- Current Lead: [@illia-v](https://github.com/illia-v) (Illia Volochii)
 - [@sethmlarson](https://github.com/sethmlarson) (Seth M. Larson)
 - [@pquentin](https://github.com/pquentin) (Quentin Pradet)
 - [@theacodes](https://github.com/theacodes) (Thea Flowers)
@@ -106,7 +114,7 @@ development](https://urllib3.readthedocs.io/en/latest/sponsors.html).
 ## For Enterprise
 
 Professional support for urllib3 is available as part of the [Tidelift
-Subscription][1].  Tidelift gives software development teams a single source for
+Subscription][1]. Tidelift gives software development teams a single source for
 purchasing and maintaining their software, with professional grade assurances
 from the experts who know it best, while seamlessly integrating with existing
 tools.

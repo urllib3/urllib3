@@ -42,7 +42,7 @@ class PoolError(HTTPError):
 class RequestError(PoolError):
     """Base exception for PoolErrors that have associated URLs."""
 
-    def __init__(self, pool: ConnectionPool, url: str, message: str) -> None:
+    def __init__(self, pool: ConnectionPool, url: str | None, message: str) -> None:
         self.url = url
         super().__init__(pool, message)
 
@@ -93,7 +93,7 @@ class MaxRetryError(RequestError):
     """
 
     def __init__(
-        self, pool: ConnectionPool, url: str, reason: Exception | None = None
+        self, pool: ConnectionPool, url: str | None, reason: Exception | None = None
     ) -> None:
         self.reason = reason
 
@@ -155,8 +155,8 @@ class NewConnectionError(ConnectTimeoutError, HTTPError):
     def pool(self) -> HTTPConnection:
         warnings.warn(
             "The 'pool' property is deprecated and will be removed "
-            "in urllib3 v2.1.0. Use 'conn' instead.",
-            DeprecationWarning,
+            "in urllib3 v3.0. Use 'conn' instead.",
+            FutureWarning,
             stacklevel=2,
         )
 

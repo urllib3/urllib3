@@ -70,11 +70,7 @@ class TestSSL:
             assert context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN
             assert context.verify_flags & ssl.VERIFY_X509_STRICT
         else:
-            # Needed for Python 3.9 which does not define this
-            assert not (
-                context.verify_flags
-                & getattr(ssl, "VERIFY_X509_PARTIAL_CHAIN", 0x80000)
-            )
+            assert not (context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN)
             assert not (context.verify_flags & ssl.VERIFY_X509_STRICT)
 
     def test_create_urllib3_context_custom_verify_flags(self) -> None:
@@ -239,9 +235,9 @@ class TestSSL:
         self, kwargs: dict[str, typing.Any]
     ) -> None:
         with pytest.warns(
-            DeprecationWarning,
+            FutureWarning,
             match=r"'ssl_version' option is deprecated and will be removed in "
-            r"urllib3 v2\.6\.0\. Instead use 'ssl_minimum_version'",
+            r"urllib3 v3\.0\. Instead use 'ssl_minimum_version'",
         ):
             ssl_.create_urllib3_context(**kwargs)
 

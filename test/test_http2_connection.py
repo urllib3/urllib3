@@ -121,9 +121,9 @@ class TestHTTP2Connection:
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"bar")
-        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"bar")  # type: ignore[method-assign]
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
 
         conn.putrequest("GET", "/")
         conn.endheaders()
@@ -138,9 +138,9 @@ class TestHTTP2Connection:
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"bar")
-        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"bar")  # type: ignore[method-assign]
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
 
         conn.putrequest("GET", "/")
         conn.endheaders(message_body=b"foo")
@@ -155,10 +155,10 @@ class TestHTTP2Connection:
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"baz")
-        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-        conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"baz")  # type: ignore[method-assign]
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)  # type: ignore[method-assign]
 
         conn.putrequest("GET", "/")
         conn.endheaders(message_body=[b"foo", b"bar"])
@@ -191,10 +191,10 @@ class TestHTTP2Connection:
             conn.sock = mock.MagicMock(
                 sendall=mock.Mock(return_value=None),
             )
-            conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")
-            conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
-            conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-            conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
+            conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+            conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+            conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+            conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)  # type: ignore[method-assign]
 
             with open("foo") as body:
                 conn.putrequest("GET", "/")
@@ -215,10 +215,10 @@ class TestHTTP2Connection:
             conn.sock = mock.MagicMock(
                 sendall=mock.Mock(return_value=None),
             )
-            conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")
-            conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
-            conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-            conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)
+            conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+            conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+            conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+            conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)  # type: ignore[method-assign]
 
             body = open("foo", "rb")
             conn.putrequest("GET", "/")
@@ -244,11 +244,11 @@ class TestHTTP2Connection:
             sendall=mock.Mock(return_value=None),
         )
         sendall = conn.sock.sendall
-        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")
-        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)
-        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(
+        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
             return_value=None
         )
 
@@ -277,11 +277,11 @@ class TestHTTP2Connection:
             sendall=mock.Mock(return_value=None),
         )
         sendall = conn.sock.sendall
-        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")
-        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)
-        send_data = conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(
+        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        send_data = conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
             return_value=None
         )
 
@@ -310,8 +310,8 @@ class TestHTTP2Connection:
             sendall=mock.Mock(side_effect=Exception("foo")),
         )
         sendall = conn.sock.sendall
-        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")
-        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(
+        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
             return_value=None
         )
 
@@ -332,11 +332,11 @@ class TestHTTP2Connection:
             sendall=mock.Mock(return_value=None),
         )
         sendall = conn.sock.sendall
-        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")
-        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)
-        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)
-        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(
+        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
             return_value=None
         )
 

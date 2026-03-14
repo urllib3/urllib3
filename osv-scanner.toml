@@ -1,0 +1,4 @@
+# https://google.github.io/osv-scanner/configuration/#override-packages
+[[PackageOverrides]]
+vulnerability.ignore = true
+reason = "Vulnerabilities in dev dependencies should not affect our OpenSSF score."

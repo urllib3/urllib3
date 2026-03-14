@@ -7,13 +7,13 @@ urllib3
 
    For Enterprise <https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs>
    Community Discord <https://discord.gg/urllib3>
-   v2-migration-guide
    sponsors
    user-guide
    advanced-usage
    reference/index
    contributing
    changelog
+   v2-migration-guide
 
 urllib3 is a powerful, *user-friendly* HTTP client for Python.
 :ref:`Much of the Python ecosystem already uses <who-uses>` urllib3 and you should too.
