@@ -8,7 +8,12 @@ import socket
 import sys
 import typing
 import warnings
-import zlib
+
+try:
+    import zlib
+except ImportError:
+    zlib = None  # type: ignore[assignment]
+
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
 from http.client import HTTPResponse as _HttplibHTTPResponse
@@ -63,133 +68,133 @@ class ContentDecoder:
         raise NotImplementedError()
 
 
-class DeflateDecoder(ContentDecoder):
-    def __init__(self) -> None:
-        self._first_try = True
-        self._first_try_data = b""
-        self._unfed_data = b""
-        self._obj = zlib.decompressobj()
+if zlib is not None:
 
-    def decompress(self, data: bytes, max_length: int = -1) -> bytes:
-        data = self._unfed_data + data
-        self._unfed_data = b""
-        if not data and not self._obj.unconsumed_tail:
-            return data
-        original_max_length = max_length
-        if original_max_length < 0:
-            max_length = 0
-        elif original_max_length == 0:
-            # We should not pass 0 to the zlib decompressor because 0 is
-            # the default value that will make zlib decompress without a
-            # length limit.
-            # Data should be stored for subsequent calls.
-            self._unfed_data = data
-            return b""
+    class DeflateDecoder(ContentDecoder):
+        def __init__(self) -> None:
+            self._first_try = True
+            self._first_try_data = b""
+            self._unfed_data = b""
+            self._obj = zlib.decompressobj()
 
-        # Subsequent calls always reuse `self._obj`. zlib requires
-        # passing the unconsumed tail if decompression is to continue.
-        if not self._first_try:
-            return self._obj.decompress(
-                self._obj.unconsumed_tail + data, max_length=max_length
-            )
+        def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+            data = self._unfed_data + data
+            self._unfed_data = b""
+            if not data and not self._obj.unconsumed_tail:
+                return data
+            original_max_length = max_length
+            if original_max_length < 0:
+                max_length = 0
+            elif original_max_length == 0:
+                # We should not pass 0 to the zlib decompressor because 0 is
+                # the default value that will make zlib decompress without a
+                # length limit.
+                # Data should be stored for subsequent calls.
+                self._unfed_data = data
+                return b""
 
-        # First call tries with RFC 1950 ZLIB format.
-        self._first_try_data += data
-        try:
-            decompressed = self._obj.decompress(data, max_length=max_length)
-            if decompressed:
-                self._first_try = False
-                self._first_try_data = b""
-            return decompressed
-        # On failure, it falls back to RFC 1951 DEFLATE format.
-        except zlib.error:
-            self._first_try = False
-            self._obj = zlib.decompressobj(-zlib.MAX_WBITS)
-            try:
-                return self.decompress(
-                    self._first_try_data, max_length=original_max_length
+            # Subsequent calls always reuse `self._obj`. zlib requires
+            # passing the unconsumed tail if decompression is to continue.
+            if not self._first_try:
+                return self._obj.decompress(
+                    self._obj.unconsumed_tail + data, max_length=max_length
                 )
-            finally:
-                self._first_try_data = b""
 
-    @property
-    def has_unconsumed_tail(self) -> bool:
-        return bool(self._unfed_data) or (
-            bool(self._obj.unconsumed_tail) and not self._first_try
-        )
-
-    def flush(self) -> bytes:
-        return self._obj.flush()
-
-
-class GzipDecoderState:
-    FIRST_MEMBER = 0
-    OTHER_MEMBERS = 1
-    SWALLOW_DATA = 2
-
-
-class GzipDecoder(ContentDecoder):
-    def __init__(self) -> None:
-        self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
-        self._state = GzipDecoderState.FIRST_MEMBER
-        self._unconsumed_tail = b""
-
-    def decompress(self, data: bytes, max_length: int = -1) -> bytes:
-        ret = bytearray()
-        if self._state == GzipDecoderState.SWALLOW_DATA:
-            return bytes(ret)
-
-        if max_length == 0:
-            # We should not pass 0 to the zlib decompressor because 0 is
-            # the default value that will make zlib decompress without a
-            # length limit.
-            # Data should be stored for subsequent calls.
-            self._unconsumed_tail += data
-            return b""
-
-        # zlib requires passing the unconsumed tail to the subsequent
-        # call if decompression is to continue.
-        data = self._unconsumed_tail + data
-        if not data and self._obj.eof:
-            return bytes(ret)
-
-        while True:
+            # First call tries with RFC 1950 ZLIB format.
+            self._first_try_data += data
             try:
-                ret += self._obj.decompress(
-                    data, max_length=max(max_length - len(ret), 0)
-                )
+                decompressed = self._obj.decompress(data, max_length=max_length)
+                if decompressed:
+                    self._first_try = False
+                    self._first_try_data = b""
+                return decompressed
+            # On failure, it falls back to RFC 1951 DEFLATE format.
             except zlib.error:
-                previous_state = self._state
-                # Ignore data after the first error
-                self._state = GzipDecoderState.SWALLOW_DATA
-                self._unconsumed_tail = b""
-                if previous_state == GzipDecoderState.OTHER_MEMBERS:
-                    # Allow trailing garbage acceptable in other gzip clients
-                    return bytes(ret)
-                raise
+                self._first_try = False
+                self._obj = zlib.decompressobj(-zlib.MAX_WBITS)
+                try:
+                    return self.decompress(
+                        self._first_try_data, max_length=original_max_length
+                    )
+                finally:
+                    self._first_try_data = b""
 
-            self._unconsumed_tail = data = (
-                self._obj.unconsumed_tail or self._obj.unused_data
+        @property
+        def has_unconsumed_tail(self) -> bool:
+            return bool(self._unfed_data) or (
+                bool(self._obj.unconsumed_tail) and not self._first_try
             )
-            if max_length > 0 and len(ret) >= max_length:
-                break
 
-            if not data:
+        def flush(self) -> bytes:
+            return self._obj.flush()
+
+    class GzipDecoderState:
+        FIRST_MEMBER = 0
+        OTHER_MEMBERS = 1
+        SWALLOW_DATA = 2
+
+    class GzipDecoder(ContentDecoder):
+        def __init__(self) -> None:
+            self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
+            self._state = GzipDecoderState.FIRST_MEMBER
+            self._unconsumed_tail = b""
+
+        def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+            ret = bytearray()
+            if self._state == GzipDecoderState.SWALLOW_DATA:
                 return bytes(ret)
-            # When the end of a gzip member is reached, a new decompressor
-            # must be created for unused (possibly future) data.
-            if self._obj.eof:
-                self._state = GzipDecoderState.OTHER_MEMBERS
-                self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
-        return bytes(ret)
+            if max_length == 0:
+                # We should not pass 0 to the zlib decompressor because 0 is
+                # the default value that will make zlib decompress without a
+                # length limit.
+                # Data should be stored for subsequent calls.
+                self._unconsumed_tail += data
+                return b""
 
-    @property
-    def has_unconsumed_tail(self) -> bool:
-        return bool(self._unconsumed_tail)
+            # zlib requires passing the unconsumed tail to the subsequent
+            # call if decompression is to continue.
+            data = self._unconsumed_tail + data
+            if not data and self._obj.eof:
+                return bytes(ret)
 
-    def flush(self) -> bytes:
-        return self._obj.flush()
+            while True:
+                try:
+                    ret += self._obj.decompress(
+                        data, max_length=max(max_length - len(ret), 0)
+                    )
+                except zlib.error:
+                    previous_state = self._state
+                    # Ignore data after the first error
+                    self._state = GzipDecoderState.SWALLOW_DATA
+                    self._unconsumed_tail = b""
+                    if previous_state == GzipDecoderState.OTHER_MEMBERS:
+                        # Allow trailing garbage acceptable in other gzip clients
+                        return bytes(ret)
+                    raise
+
+                self._unconsumed_tail = data = (
+                    self._obj.unconsumed_tail or self._obj.unused_data
+                )
+                if max_length > 0 and len(ret) >= max_length:
+                    break
+
+                if not data:
+                    return bytes(ret)
+                # When the end of a gzip member is reached, a new decompressor
+                # must be created for unused (possibly future) data.
+                if self._obj.eof:
+                    self._state = GzipDecoderState.OTHER_MEMBERS
+                    self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
+
+            return bytes(ret)
+
+        @property
+        def has_unconsumed_tail(self) -> bool:
+            return bool(self._unconsumed_tail)
+
+        def flush(self) -> bytes:
+            return self._obj.flush()
 
 
 if brotli is not None:
@@ -359,7 +364,7 @@ def _get_decoder(mode: str) -> ContentDecoder:
 
     # According to RFC 9110 section 8.4.1.3, recipients should
     # consider x-gzip equivalent to gzip
-    if mode in ("gzip", "x-gzip"):
+    if zlib is not None and mode in ("gzip", "x-gzip"):
         return GzipDecoder()
 
     if brotli is not None and mode == "br":
@@ -368,7 +373,12 @@ def _get_decoder(mode: str) -> ContentDecoder:
     if HAS_ZSTD and mode == "zstd":
         return ZstdDecoder()
 
-    return DeflateDecoder()
+    if zlib is not None and mode == "deflate":
+        return DeflateDecoder()
+
+    raise ValueError(
+        f"No decoder available for mode {mode}"
+    )  # Defensive: _get_decoder should not be called unless at least one decoder is available
 
 
 class BytesQueueBuffer:
@@ -449,14 +459,20 @@ class BytesQueueBuffer:
 
 
 class BaseHTTPResponse(io.IOBase):
-    CONTENT_DECODERS = ["gzip", "x-gzip", "deflate"]
+    CONTENT_DECODERS = []
+    if zlib is not None:
+        CONTENT_DECODERS += ["gzip", "x-gzip", "deflate"]
     if brotli is not None:
         CONTENT_DECODERS += ["br"]
     if HAS_ZSTD:
         CONTENT_DECODERS += ["zstd"]
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
-    DECODER_ERROR_CLASSES: tuple[type[Exception], ...] = (IOError, zlib.error)
+    DECODER_ERROR_CLASSES: tuple[type[Exception], ...] = (IOError,)
+
+    if zlib is not None:
+        DECODER_ERROR_CLASSES += (zlib.error,)
+
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
 
