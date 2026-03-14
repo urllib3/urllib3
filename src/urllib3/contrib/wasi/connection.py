@@ -127,6 +127,8 @@ class WasiHTTPConnection:
         if self._response is not None:
             return WasiHttpResponseWrapper(
                 internal_response=self._response,
+                preload_content=self._response.request.preload_content,
+                decode_content=self._response.request.decode_content,
                 connection=self,
             )
         else:
