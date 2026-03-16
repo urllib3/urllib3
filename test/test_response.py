@@ -265,6 +265,14 @@ class TestResponse:
         assert r.read(2) == b"oo"
         assert r.read() == b""
         assert r.read() == b""
+        
+    def test_stream_amt_zero_raises_error(self) -> None:
+        fp = BytesIO(b"foo")
+        r = HTTPResponse(fp, preload_content=False)
+        
+        # amt=0 を渡した時に ValueError が発生することを検証
+        with pytest.raises(ValueError, match="amt cannot be 0"):
+            next(r.stream(amt=0))
 
     @pytest.mark.parametrize("read_args", ((), (None,), (-1,)))
     def test_reference_read_until_eof(self, read_args: tuple[typing.Any, ...]) -> None:

@@ -1,0 +1,1 @@
+Fixed an infinite loop in ``HTTPResponse.stream()`` when the ``amt`` parameter was set to ``0``.
