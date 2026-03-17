@@ -384,6 +384,29 @@ class TestHTTP2Connection:
         ):
             conn.getresponse()
 
+    def test_getresponse_raises_on_local_stream_reset_with_unknown_error_code(
+        self,
+    ) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(return_value=b"event-data"),
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[method-assign]
+            return_value=[
+                h2.events.StreamReset(stream_id=1, error_code=123, remote_reset=False)
+            ]
+        )
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+
+        conn.putrequest("GET", "/")
+
+        with pytest.raises(
+            ConnectionError, match=r"HTTP/2 stream 1 was reset locally: 123"
+        ):
+            conn.getresponse()
+
     def test_getresponse_raises_on_connection_terminated(self) -> None:
         conn = HTTP2Connection("example.com")
         conn.sock = mock.MagicMock(
@@ -405,6 +428,57 @@ class TestHTTP2Connection:
         with pytest.raises(
             ConnectionError,
             match=r"HTTP/2 connection was terminated: NO_ERROR \(last_stream_id=0\)",
+        ):
+            conn.getresponse()
+
+        old_h2_conn.close_connection.assert_not_called()
+        assert conn.sock is None
+        assert conn._h2_conn._obj is not old_h2_conn
+        assert conn._h2_stream is None
+
+    def test_getresponse_raises_on_unexpected_eof(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(return_value=b""),
+            sendall=mock.Mock(return_value=None),
+        )
+        old_h2_conn = conn._h2_conn._obj
+        old_h2_conn.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        old_h2_conn.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        old_h2_conn.close_connection = mock.Mock(return_value=None)  # type: ignore[method-assign]
+
+        conn.putrequest("GET", "/")
+
+        with pytest.raises(
+            ConnectionError, match="HTTP/2 connection closed unexpectedly"
+        ):
+            conn.getresponse()
+
+        old_h2_conn.close_connection.assert_called_once_with()
+        assert conn.sock is None
+        assert conn._h2_conn._obj is not old_h2_conn
+        assert conn._h2_stream is None
+
+    def test_getresponse_raises_on_connection_terminated_after_eof(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(side_effect=[b"event-data", b""]),
+            sendall=mock.Mock(return_value=None),
+        )
+        old_h2_conn = conn._h2_conn._obj
+        old_h2_conn.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        old_h2_conn.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        old_h2_conn.close_connection = mock.Mock(return_value=None)  # type: ignore[method-assign]
+
+        event = h2.events.ConnectionTerminated()
+        event.additional_data = b"bye"
+        old_h2_conn.receive_data = mock.Mock(return_value=[event])  # type: ignore[method-assign]
+
+        conn.putrequest("GET", "/")
+
+        with pytest.raises(
+            ConnectionError,
+            match=r"HTTP/2 connection was terminated: unknown error code \(b'bye'\)",
         ):
             conn.getresponse()
 
