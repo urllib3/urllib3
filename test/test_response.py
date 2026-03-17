@@ -270,7 +270,7 @@ class TestResponse:
         fp = BytesIO(b"foo")
         r = HTTPResponse(fp, preload_content=False)
 
-        # amt=0 を渡した時に ValueError が発生することを検証
+        # Ensure ValueError is raised when amt=0
         with pytest.raises(ValueError, match="amt cannot be 0"):
             next(r.stream(amt=0))
 
