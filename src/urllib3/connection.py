@@ -137,9 +137,7 @@ class HTTPConnection(_HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None | (
-            connection._TYPE_SOCKET_OPTIONS
-        ) = default_socket_options,
+        socket_options: connection._TYPE_SOCKET_OPTIONS | None = None,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
     ) -> None:
@@ -150,6 +148,8 @@ class HTTPConnection(_HTTPConnection):
             source_address=source_address,
             blocksize=blocksize,
         )
+        if socket_options is None:
+            socket_options = self.default_socket_options
         self.socket_options = socket_options
         self.proxy = proxy
         self.proxy_config = proxy_config
@@ -626,9 +626,7 @@ class HTTPSConnection(HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None | (
-            connection._TYPE_SOCKET_OPTIONS
-        ) = HTTPConnection.default_socket_options,
+        socket_options: connection._TYPE_SOCKET_OPTIONS | None = None,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
         cert_reqs: int | str | None = None,

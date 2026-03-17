@@ -1,0 +1,1 @@
+Fixed a bug where changes to ``HTTPConnection.default_socket_options`` were not reflected in new connections due to default arguments being evaluated at definition time.
