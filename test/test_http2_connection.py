@@ -3,6 +3,8 @@ from __future__ import annotations
 import socket
 from unittest import mock
 
+import h2.errors
+import h2.events
 import pytest
 
 from urllib3.connection import _get_default_user_agent
@@ -358,3 +360,100 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+    def test_getresponse_raises_on_stream_reset(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(return_value=b"event-data"),
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[method-assign]
+            return_value=[
+                h2.events.StreamReset(
+                    stream_id=1, error_code=h2.errors.ErrorCodes.REFUSED_STREAM
+                )
+            ]
+        )
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+
+        conn.putrequest("GET", "/")
+
+        with pytest.raises(
+            ConnectionError, match="HTTP/2 stream 1 was reset: REFUSED_STREAM"
+        ):
+            conn.getresponse()
+
+    def test_getresponse_raises_on_connection_terminated(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(return_value=b"event-data"),
+            sendall=mock.Mock(return_value=None),
+        )
+        old_h2_conn = conn._h2_conn._obj
+        old_h2_conn.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        old_h2_conn.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        old_h2_conn.close_connection = mock.Mock(return_value=None)  # type: ignore[method-assign]
+
+        event = h2.events.ConnectionTerminated()
+        event.error_code = h2.errors.ErrorCodes.NO_ERROR
+        event.last_stream_id = 0
+        old_h2_conn.receive_data = mock.Mock(return_value=[event])  # type: ignore[method-assign]
+
+        conn.putrequest("GET", "/")
+
+        with pytest.raises(
+            ConnectionError,
+            match=r"HTTP/2 connection was terminated: NO_ERROR \(last_stream_id=0\)",
+        ):
+            conn.getresponse()
+
+        old_h2_conn.close_connection.assert_not_called()
+        assert conn.sock is None
+        assert conn._h2_conn._obj is not old_h2_conn
+        assert conn._h2_stream is None
+
+    def test_getresponse_closes_connection_after_graceful_goaway(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(return_value=b"event-data"),
+            sendall=mock.Mock(return_value=None),
+        )
+        old_h2_conn = conn._h2_conn._obj
+        old_h2_conn.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        old_h2_conn.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        old_h2_conn.close_connection = mock.Mock(return_value=None)  # type: ignore[method-assign]
+
+        event = h2.events.ConnectionTerminated()
+        event.error_code = h2.errors.ErrorCodes.NO_ERROR
+        event.last_stream_id = 1
+        old_h2_conn.receive_data = mock.Mock(  # type: ignore[method-assign]
+            return_value=[
+                h2.events.ResponseReceived(
+                    stream_id=1,
+                    headers=[
+                        (b":status", b"200"),
+                        (b"server", b"hypercorn-h2"),
+                    ],
+                ),
+                h2.events.DataReceived(
+                    stream_id=1,
+                    data=b"foo",
+                    flow_controlled_length=3,
+                ),
+                event,
+                h2.events.StreamEnded(stream_id=1),
+            ]
+        )
+        old_h2_conn.acknowledge_received_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+
+        conn.putrequest("GET", "/")
+        response = conn.getresponse()
+
+        assert response.status == 200
+        assert response.data == b"foo"
+        assert response.headers["server"] == "hypercorn-h2"
+        old_h2_conn.close_connection.assert_not_called()
+        assert conn.sock is None
+        assert conn._h2_conn._obj is not old_h2_conn
+        assert conn._h2_stream is None
