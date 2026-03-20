@@ -223,6 +223,10 @@ conflicts = [
     {group = "dev-min-pyopenssl"},
     {group = "mypy"},
   ],
+  [
+    {group = "dev-min-pyopenssl"},
+    {group = "wasi"},
+  ],
 ]
 
 [tool.uv.sources]
