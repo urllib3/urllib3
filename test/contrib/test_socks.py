@@ -482,6 +482,47 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             assert response.data == b""
             assert response.headers["Server"] == "SocksTestServer"
 
+    def test_socks_with_percent_encoded_auth_in_url(self) -> None:
+        """
+        Test that percent-encoded userinfo in SOCKS proxy URIs is decoded,
+        e.g. socks5://us%65r:%70ass@host:port should authenticate as user:pass.
+        """
+
+        def request_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            handler = handle_socks5_negotiation(
+                sock, negotiate=True, username=b"user", password=b"pass"
+            )
+            addr, port = next(handler)
+
+            assert addr == "16.17.18.19"
+            assert port == 80
+            with pytest.raises(StopIteration):
+                handler.send(True)
+
+            while True:
+                buf = sock.recv(65535)
+                if buf.endswith(b"\r\n\r\n"):
+                    break
+
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: SocksTestServer\r\n"
+                b"Content-Length: 0\r\n"
+                b"\r\n"
+            )
+            sock.close()
+
+        self._start_server(request_handler)
+        proxy_url = f"socks5://us%65r:%70ass@{self.host}:{self.port}"
+        with socks.SOCKSProxyManager(proxy_url) as pm:
+            response = pm.request("GET", "http://16.17.18.19")
+
+            assert response.status == 200
+            assert response.data == b""
+            assert response.headers["Server"] == "SocksTestServer"
+
     def test_socks_with_invalid_password(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _set_up_fake_getaddrinfo(monkeypatch)
 

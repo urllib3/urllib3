@@ -1,0 +1,3 @@
+Fixed SOCKS proxy URIs with percent-encoded userinfo not being decoded before
+authentication, causing authentication failures when username or password
+contained percent-encoded characters.
