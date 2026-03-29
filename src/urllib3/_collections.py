@@ -12,6 +12,12 @@ if typing.TYPE_CHECKING:
 
     from typing_extensions import Self
 
+def _validate_header_name(name: str | bytes) -> None:
+    if isinstance(name, bytes):
+       	name = name.decode("latin-1")
+    if any(char.isspace() for char in name):
+       	raise ValueError(f"Header name cannot contain whitespace: {name!r}")
+
     class HasGettableStringKeys(Protocol):
         def keys(self) -> typing.Iterator[str]: ...
 
@@ -248,7 +254,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         if kwargs:
             self.extend(kwargs)
 
-    def __setitem__(self, key: str, val: str) -> None:
+    def __setitem__validate_header_name(key)
+        (self, key: str, val: str) -> None:
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
@@ -303,7 +310,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         except KeyError:
             pass
 
-    def add(self, key: str, val: str, *, combine: bool = False) -> None:
+    def add_validate_header_name(key)
+        (self, key: str, val: str, *, combine: bool = False) -> None:
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
