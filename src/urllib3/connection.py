@@ -77,6 +77,8 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+# Header value must not contain CR, LF, or NUL (RFC 7230 Section 3.2.4)
+_CONTAINS_ILLEGAL_HEADER_VALUE = re.compile(r"[\r\n\0]")
 
 
 class HTTPConnection(_HTTPConnection):
@@ -409,6 +411,14 @@ class HTTPConnection(_HTTPConnection):
 
     def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
+        # Validate header values don't contain control characters (CR, LF, NUL)
+        # This prevents CRLF injection attacks (CWE-93)
+        for value in values:
+            if isinstance(value, str) and _CONTAINS_ILLEGAL_HEADER_VALUE.search(value):
+                raise ValueError(
+                    f"Header value must not contain control characters: {value!r}"
+                )
+
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
