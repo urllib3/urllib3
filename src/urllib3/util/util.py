@@ -7,6 +7,22 @@ from types import TracebackType
 def to_bytes(
     x: str | bytes, encoding: str | None = None, errors: str | None = None
 ) -> bytes:
+    """
+    Encode a string to bytes, passing through bytes unchanged.
+
+    :param x:
+        The value to encode. Must be ``str`` or ``bytes``.
+    :param encoding:
+        The codec to use when encoding. Defaults to ``'utf-8'`` when
+        *encoding* or *errors* is provided.
+    :param errors:
+        The error handling scheme. Defaults to ``'strict'`` when
+        *encoding* or *errors* is provided.
+    :return:
+        The encoded bytes.
+    :raises TypeError:
+        If *x* is neither ``str`` nor ``bytes``.
+    """
     if isinstance(x, bytes):
         return x
     elif not isinstance(x, str):
@@ -19,6 +35,22 @@ def to_bytes(
 def to_str(
     x: str | bytes, encoding: str | None = None, errors: str | None = None
 ) -> str:
+    """
+    Decode bytes to a string, passing through strings unchanged.
+
+    :param x:
+        The value to decode. Must be ``str`` or ``bytes``.
+    :param encoding:
+        The codec to use when decoding. Defaults to ``'utf-8'`` when
+        *encoding* or *errors* is provided.
+    :param errors:
+        The error handling scheme. Defaults to ``'strict'`` when
+        *encoding* or *errors* is provided.
+    :return:
+        The decoded string.
+    :raises TypeError:
+        If *x* is neither ``str`` nor ``bytes``.
+    """
     if isinstance(x, str):
         return x
     elif not isinstance(x, bytes):
@@ -33,6 +65,20 @@ def reraise(
     value: BaseException,
     tb: TracebackType | None = None,
 ) -> typing.NoReturn:
+    """
+    Re-raise an exception, optionally with a different traceback.
+
+    This is used internally to preserve the original traceback when
+    re-raising errors during retries and redirects.
+
+    :param tp:
+        The exception type (unused, kept for backwards compatibility).
+    :param value:
+        The exception instance to re-raise.
+    :param tb:
+        The traceback to attach to the exception. If ``None``, the
+        existing traceback on *value* is used.
+    """
     try:
         if value.__traceback__ is not tb:
             raise value.with_traceback(tb)
