@@ -1248,6 +1248,15 @@ class TestResponse:
         assert resp.read(2, decode_content=False) is not None
         assert resp.read(1, decode_content=True) == b"f"
 
+    def test_streaming_amt_zero_raises(self) -> None:
+        """Calling stream() with amt=0 should raise ValueError to prevent
+        an infinite loop. See https://github.com/urllib3/urllib3/issues/3793."""
+        fp = BytesIO(b"foo")
+        resp = HTTPResponse(fp, preload_content=False)
+        with pytest.raises(ValueError, match="amt=0"):
+            for _ in resp.stream(0):
+                pass
+
     def test_streaming(self) -> None:
         fp = BytesIO(b"foo")
         resp = HTTPResponse(fp, preload_content=False)

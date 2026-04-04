@@ -1,0 +1,1 @@
+Fixed infinite loop in `HTTPResponse.stream()` when called with `amt=0`. (`#3793 <https://github.com/urllib3/urllib3/issues/3793>`__)
