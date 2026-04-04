@@ -1238,6 +1238,12 @@ class HTTPResponse(BaseHTTPResponse):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
+        if amt == 0:
+            raise ValueError(
+                "Calling stream() with amt=0 would cause an infinite loop. "
+                "Use amt=None to read all content or a positive integer."
+            )
+
         if self.chunked and self.supports_chunked_reads():
             yield from self.read_chunked(amt, decode_content=decode_content)
         else:
