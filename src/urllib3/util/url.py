@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import typing
+from urllib.parse import unquote
 
 from ..exceptions import LocationParseError
 from .util import to_str
@@ -421,8 +422,8 @@ def parse_url(url: str) -> Url:
             auth, _, host_port = authority.rpartition("@")
             auth = auth or None
             host, port = _HOST_PORT_RE.match(host_port).groups()  # type: ignore[union-attr]
-            if auth and normalize_uri:
-                auth = _encode_invalid_chars(auth, _USERINFO_CHARS)
+            if auth:
+                auth = unquote(auth)
             if port == "":
                 port = None
         else:
