@@ -1,1 +1,1 @@
-Fixed ``HTTPResponse.stream()`` to handle ``amt=0`` (returns empty bytes immediately) and negative ``amt`` (treats as ``None``, reading all data), matching ``read()`` behavior.
+Fixed ``HTTPResponse.stream()`` to handle ``amt=0``.
