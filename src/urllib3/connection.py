@@ -934,7 +934,12 @@ def _ssl_wrap_socket_and_match_hostname(
     else:
         context = ssl_context
 
-    context.verify_mode = resolve_cert_reqs(cert_reqs)
+    if not default_ssl_context:
+        # Only apply cert_reqs to a caller-supplied ssl_context.
+        # For contexts created by the factory above, cert_reqs was already
+        # passed in and applied — overriding here would silently undo any
+        # customization the factory made (e.g. patched verify_mode).
+        context.verify_mode = resolve_cert_reqs(cert_reqs)
 
     # In some cases, we want to verify hostnames ourselves
     if (
