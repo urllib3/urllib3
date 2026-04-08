@@ -91,6 +91,10 @@ jobs:
             os: ubuntu-24.04
             nox-session: emscripten(chrome)
             experimental: true
+          - python-version: "3.12"
+            os: ubuntu-24.04
+            nox-session: test_wasi
+            experimental: true
           - python-version: "3.15"
             experimental: true
 
@@ -153,6 +157,11 @@ jobs:
           path: .nox/.cache
           # noxfile.py contains the Pyodide version used currently.
           key: pyodide-downloads-${{ hashFiles('noxfile.py') }}
+
+        # Install dependencies for wasi tests. As the tests do not depend on the python version we are using to execute them, only run them for a single version
+      - name: "Install wasmtime"
+        uses: jcbhmr/setup-wasmtime@960c367a99921eb0b02f5778fce9ae8f110bf0f0
+        if: ${{ (matrix.nox-session == 'test_wasi') }}
 
       - name: "Run tests"
         run: |

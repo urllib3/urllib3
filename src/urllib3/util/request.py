@@ -19,7 +19,15 @@ if typing.TYPE_CHECKING:
 SKIP_HEADER = "@@@SKIP_HEADER@@@"
 SKIPPABLE_HEADERS = frozenset(["accept-encoding", "host", "user-agent"])
 
-ACCEPT_ENCODING = "gzip,deflate"
+ACCEPT_ENCODING = "*;q=0"
+
+try:
+    import zlib as _unused_module_zlib  # noqa: F401
+except ImportError:
+    pass
+else:
+    ACCEPT_ENCODING = "gzip,deflate"
+
 try:
     try:
         import brotlicffi as _unused_module_brotli  # type: ignore[import-not-found] # noqa: F401
@@ -73,11 +81,11 @@ def make_headers(
 
     :param accept_encoding:
         Can be a boolean, list, or string.
-        ``True`` translates to 'gzip,deflate'.  If the dependencies for
-        Brotli (either the ``brotli`` or ``brotlicffi`` package) and/or
-        Zstandard (the ``backports.zstd`` package for Python before 3.14)
+        ``True`` translates to '\\*;q=0'.  If the dependencies for Gzip/Deflate
+        (the ``zlib`` package), Brotli (either the ``brotli`` or ``brotlicffi``
+        package), and/or Zstandard (the ``backports.zstd`` package for Python before 3.14)
         algorithms are installed, then their encodings are
-        included in the string ('br' and 'zstd', respectively).
+        included in the string ('gzip', 'deflate', 'br', and 'zstd', respectively).
         List will get joined by comma.
         String will be used as provided.
 
