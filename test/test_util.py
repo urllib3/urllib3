@@ -622,6 +622,13 @@ class TestUtil:
         with pytest.raises(UnrewindableBodyError):
             rewind_body(BadSeek(), body_pos=2)
 
+    def test_rewind_body_no_seek(self) -> None:
+        class NoSeek(io.StringIO):
+            seek = None  # type: ignore[assignment]
+
+        with pytest.raises(UnrewindableBodyError):
+            rewind_body(NoSeek(), body_pos=2)
+
     def test_add_stderr_logger(self) -> None:
         handler = add_stderr_logger(level=logging.INFO)  # Don't actually print debug
         logger = logging.getLogger("urllib3")
