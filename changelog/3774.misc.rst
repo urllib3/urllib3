@@ -1,0 +1,1 @@
+Migrated from ``PySocks`` to ``python-socks`` for SOCKS proxy support.
