@@ -278,7 +278,8 @@ else:
                     unused_data,
                     max_length=(max_length - length) if max_length > 0 else -1,
                 )
-                if part_length := len(part):
+                part_length = len(part)
+                if part_length:
                     data_parts.append(part)
                     length += part_length
                 elif self._obj.needs_input:

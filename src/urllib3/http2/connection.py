@@ -106,7 +106,8 @@ class HTTP2Connection(HTTPSConnection):
         super().connect()
         with self._h2_conn as conn:
             conn.initiate_connection()
-            if data_to_send := conn.data_to_send():
+            data_to_send = conn.data_to_send()
+            if data_to_send:
                 self.sock.sendall(data_to_send)
 
     def putrequest(  # type: ignore[override]
@@ -163,7 +164,8 @@ class HTTP2Connection(HTTPSConnection):
                 headers=self._headers,
                 end_stream=(message_body is None),
             )
-            if data_to_send := conn.data_to_send():
+            data_to_send = conn.data_to_send()
+            if data_to_send:
                 self.sock.sendall(data_to_send)
         self._headers = []  # Reset headers for the next request.
 
@@ -176,7 +178,8 @@ class HTTP2Connection(HTTPSConnection):
             raise ConnectionError("Must call `putrequest` first.")
 
         with self._h2_conn as conn:
-            if data_to_send := conn.data_to_send():
+            data_to_send = conn.data_to_send()
+            if data_to_send:
                 self.sock.sendall(data_to_send)
 
             if hasattr(data, "read"):  # file-like objects
@@ -187,7 +190,8 @@ class HTTP2Connection(HTTPSConnection):
                     if isinstance(chunk, str):
                         chunk = chunk.encode()
                     conn.send_data(self._h2_stream, chunk, end_stream=False)
-                    if data_to_send := conn.data_to_send():
+                    data_to_send = conn.data_to_send()
+                    if data_to_send:
                         self.sock.sendall(data_to_send)
                 conn.end_stream(self._h2_stream)
                 return
@@ -198,12 +202,14 @@ class HTTP2Connection(HTTPSConnection):
             try:
                 if isinstance(data, bytes):
                     conn.send_data(self._h2_stream, data, end_stream=True)
-                    if data_to_send := conn.data_to_send():
+                    data_to_send = conn.data_to_send()
+                    if data_to_send:
                         self.sock.sendall(data_to_send)
                 else:
                     for chunk in data:
                         conn.send_data(self._h2_stream, chunk, end_stream=False)
-                        if data_to_send := conn.data_to_send():
+                        data_to_send = conn.data_to_send()
+                        if data_to_send:
                             self.sock.sendall(data_to_send)
                     conn.end_stream(self._h2_stream)
             except TypeError:
@@ -232,7 +238,8 @@ class HTTP2Connection(HTTPSConnection):
             end_stream = False
             while not end_stream:
                 # TODO: Arbitrary read value.
-                if received_data := self.sock.recv(65535):
+                received_data = self.sock.recv(65535)
+                if received_data:
                     events = conn.receive_data(received_data)
                     for event in events:
                         if isinstance(event, h2.events.ResponseReceived):
@@ -254,7 +261,8 @@ class HTTP2Connection(HTTPSConnection):
                         elif isinstance(event, h2.events.StreamEnded):
                             end_stream = True
 
-                if data_to_send := conn.data_to_send():
+                data_to_send = conn.data_to_send()
+                if data_to_send:
                     self.sock.sendall(data_to_send)
 
         assert status is not None
@@ -308,7 +316,8 @@ class HTTP2Connection(HTTPSConnection):
         with self._h2_conn as conn:
             try:
                 conn.close_connection()
-                if data := conn.data_to_send():
+                data = conn.data_to_send()
+                if data:
                     self.sock.sendall(data)
             except Exception:
                 pass

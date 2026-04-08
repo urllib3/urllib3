@@ -72,7 +72,13 @@ except ImportError:
     ssl = None  # type: ignore[assignment]
 
 
-class _TYPE_SOCKS_OPTIONS(typing.TypedDict):
+try:
+    _TypedDict = typing.TypedDict
+except AttributeError:
+    from typing_extensions import TypedDict as _TypedDict
+
+
+class _TYPE_SOCKS_OPTIONS(_TypedDict):
     socks_version: int
     proxy_host: str | None
     proxy_port: str | None

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from importlib.metadata import version
+try:
+    from importlib.metadata import version
+except ImportError:
+    from importlib_metadata import version  # type: ignore[no-redef]
 
 __all__ = [
     "inject_into_urllib3",
