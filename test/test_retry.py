@@ -251,27 +251,37 @@ class TestRetry:
     def test_status_forcelist(self) -> None:
         retry = Retry(status_forcelist=range(500, 600))
         assert not retry.is_retry("GET", status_code=200)
+        assert not retry.is_response_retry("GET", HTTPResponse(status=200))
         assert not retry.is_retry("GET", status_code=400)
+        assert not retry.is_response_retry("GET", HTTPResponse(status=400))
         assert retry.is_retry("GET", status_code=500)
+        assert retry.is_response_retry("GET", HTTPResponse(status=500))
 
         retry = Retry(total=1, status_forcelist=[418])
         assert not retry.is_retry("GET", status_code=400)
+        assert not retry.is_response_retry("GET", HTTPResponse(status=400))
         assert retry.is_retry("GET", status_code=418)
+        assert retry.is_response_retry("GET", HTTPResponse(status=418))
 
         # String status codes are not matched.
         retry = Retry(total=1, status_forcelist=["418"])  # type: ignore[list-item]
         assert not retry.is_retry("GET", status_code=418)
+        assert not retry.is_response_retry("GET", HTTPResponse(status=418))
 
     def test_allowed_methods_with_status_forcelist(self) -> None:
         # Falsey allowed_methods means to retry on any method.
         retry = Retry(status_forcelist=[500], allowed_methods=None)
         assert retry.is_retry("GET", status_code=500)
+        assert retry.is_response_retry("GET", HTTPResponse(status=500))
         assert retry.is_retry("POST", status_code=500)
+        assert retry.is_response_retry("POST", HTTPResponse(status=500))
 
         # Criteria of allowed_methods and status_forcelist are ANDed.
         retry = Retry(status_forcelist=[500], allowed_methods=["POST"])
         assert not retry.is_retry("GET", status_code=500)
+        assert not retry.is_response_retry("GET", HTTPResponse(status=500))
         assert retry.is_retry("POST", status_code=500)
+        assert retry.is_response_retry("POST", HTTPResponse(status=500))
 
     def test_exhausted(self) -> None:
         assert not Retry(0).is_exhausted()
@@ -428,6 +438,11 @@ class TestRetry:
             # for the default behavior, it must be in RETRY_AFTER_STATUS_CODES
             response = HTTPResponse(
                 status=503, headers={"Retry-After": retry_after_header}
+            )
+
+            # for the default behaviour, method must be in DEFAULT_ALLOWED_METHODS
+            assert (
+                retry.is_response_retry("GET", response) == respect_retry_after_header
             )
 
             retry.sleep(response)
