@@ -1,0 +1,1 @@
+When used with Emscripten/Pyodide, allow HTTP requests to carry any cookies already set in the browser for that URL.
