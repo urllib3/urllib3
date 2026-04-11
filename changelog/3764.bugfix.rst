@@ -1,0 +1,1 @@
+Fixed ``BaseHTTPResponse.readinto()`` type annotation to accept ``memoryview`` in addition to ``bytearray``, matching the ``io.RawIOBase.readinto`` contract and enabling use with ``io.BufferedReader`` without type errors.

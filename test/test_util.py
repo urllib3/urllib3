@@ -29,7 +29,6 @@ from urllib3.util.proxy import connection_requires_http_tunnel
 from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.ssl_ import (
-    _TYPE_VERSION_INFO,
     _is_has_never_check_common_name_reliable,
     resolve_cert_reqs,
     resolve_ssl_version,
@@ -1065,39 +1064,23 @@ class TestUtilSSL:
         warn.assert_not_called()
 
     @pytest.mark.parametrize(
-        "openssl_version, openssl_version_number, implementation_name, version_info, pypy_version_info, reliable",
+        "openssl_version, reliable",
         [
-            # OpenSSL and Python OK -> reliable
-            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 3), None, True),
-            # Python OK -> reliable
-            ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), None, True),
-            # PyPy: depends on the version
-            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 9, 9), (7, 3, 7), False),
-            ("OpenSSL 1.1.1", 0x101010CF, "pypy", (3, 9, 19), (7, 3, 16), True),
-            # OpenSSL OK -> reliable
-            ("OpenSSL 1.1.1", 0x101010CF, "cpython", (3, 9, 2), None, True),
+            # any OpenSSL 1.1.1+ -> reliable since Python 3.10.0b1 according to
+            # https://github.com/python/cpython/issues/87688#issuecomment-1093906646
+            ("OpenSSL 1.1.1", True),
             # not OpenSSSL -> unreliable
-            ("LibreSSL 2.8.3", 0x101010CF, "cpython", (3, 10, 0), None, False),
-            # old OpenSSL and old Python, unreliable
-            ("OpenSSL 1.1.0", 0x10101000, "cpython", (3, 9, 2), None, False),
+            ("LibreSSL 2.8.3", False),
         ],
     )
     def test_is_has_never_check_common_name_reliable(
         self,
         openssl_version: str,
-        openssl_version_number: int,
-        implementation_name: str,
-        version_info: _TYPE_VERSION_INFO,
-        pypy_version_info: _TYPE_VERSION_INFO | None,
         reliable: bool,
     ) -> None:
         assert (
             _is_has_never_check_common_name_reliable(
                 openssl_version,
-                openssl_version_number,
-                implementation_name,
-                version_info,
-                pypy_version_info,
             )
             == reliable
         )

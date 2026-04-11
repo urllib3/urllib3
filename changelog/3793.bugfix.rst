@@ -1,0 +1,1 @@
+Fixed ``HTTPResponse.stream()`` to handle ``amt=0``.

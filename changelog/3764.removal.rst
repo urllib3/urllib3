@@ -1,0 +1,3 @@
+Used ``FutureWarning`` instead of ``DeprecationWarning`` for better visibility
+of existing deprecation notices. Rescheduled the removal of deprecated features
+to version 3.0.

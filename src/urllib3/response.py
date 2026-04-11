@@ -658,7 +658,7 @@ class BaseHTTPResponse(io.IOBase):
         return b""
 
     # Compatibility methods for `io` module
-    def readinto(self, b: bytearray) -> int:
+    def readinto(self, b: bytearray | memoryview[int]) -> int:
         temp = self.read(len(b))
         if len(temp) == 0:
             return 0
@@ -821,7 +821,7 @@ class HTTPResponse(BaseHTTPResponse):
     def tell(self) -> int:
         """
         Obtain the number of bytes pulled over the wire so far. May differ from
-        the amount of content returned by :meth:``urllib3.response.HTTPResponse.read``
+        the amount of content returned by :meth:`HTTPResponse.read`
         if bytes are encoded on the wire (e.g, compressed).
         """
         return self._fp_bytes_read
@@ -903,12 +903,8 @@ class HTTPResponse(BaseHTTPResponse):
                 raise ReadTimeoutError(self._pool, None, "Read timed out.") from e  # type: ignore[arg-type]
 
             except BaseSSLError as e:
-                # FIXME: Is there a better way to differentiate between SSLErrors?
-                if "read operation timed out" not in str(e):
-                    # SSL errors related to framing/MAC get wrapped and reraised here
-                    raise SSLError(e) from e
-
-                raise ReadTimeoutError(self._pool, None, "Read timed out.") from e  # type: ignore[arg-type]
+                # SSL errors related to framing/MAC get wrapped and reraised here
+                raise SSLError(e) from e
 
             except IncompleteRead as e:
                 if (
@@ -961,11 +957,7 @@ class HTTPResponse(BaseHTTPResponse):
         if `amt` or `self.length_remaining` indicate that a problem may
         happen.
 
-        The known cases:
-          * CPython < 3.9.7 because of a bug
-            https://github.com/urllib3/urllib3/issues/2513#issuecomment-1152559900.
-          * urllib3 injected with pyOpenSSL-backed SSL-support.
-          * CPython < 3.10 only when `amt` does not fit 32-bit int.
+        This happens to urllib3 injected with pyOpenSSL-backed SSL-support.
         """
         assert self._fp
         c_int_max = 2**31 - 1
@@ -976,7 +968,7 @@ class HTTPResponse(BaseHTTPResponse):
                 and self.length_remaining
                 and self.length_remaining > c_int_max
             )
-        ) and (util.IS_PYOPENSSL or sys.version_info < (3, 10)):
+        ) and util.IS_PYOPENSSL:
             if read1:
                 return self._fp.read1(c_int_max)
             buffer = io.BytesIO()
@@ -1261,6 +1253,9 @@ class HTTPResponse(BaseHTTPResponse):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
+        if amt == 0:
+            return
+
         if self.chunked and self.supports_chunked_reads():
             yield from self.read_chunked(amt, decode_content=decode_content)
         else:
