@@ -485,6 +485,7 @@ class BaseHTTPResponse(io.IOBase):
         self.reason = reason
         self.decode_content = decode_content
         self._has_decoded_content = False
+        self._uncached_read_occured = False
         self._request_url: str | None = request_url
         self.retries = retries
 
@@ -1089,6 +1090,7 @@ class HTTPResponse(BaseHTTPResponse):
             amt = None
         elif amt is not None:
             cache_content = False
+            self._uncached_read_occured = True
 
             if self._decoder and self._decoder.has_unconsumed_tail:
                 decoded_data = self._decode(
@@ -1114,7 +1116,13 @@ class HTTPResponse(BaseHTTPResponse):
 
         if amt is None:
             data = self._decode(data, decode_content, flush_decoder)
-            if cache_content:
+            # It's possible that there is buffered decoded data after a
+            # partial read.
+            if decode_content and len(self._decoded_buffer) > 0:
+                self._decoded_buffer.put(data)
+                data = self._decoded_buffer.get_all()
+
+            if cache_content and not self._uncached_read_occured:
                 self._body = data
         else:
             # do not waste memory on buffer when not decoding
@@ -1167,6 +1175,7 @@ class HTTPResponse(BaseHTTPResponse):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
+        self._uncached_read_occured = True
         if decode_content is None:
             decode_content = self.decode_content
         if amt and amt < 0:
@@ -1376,6 +1385,7 @@ class HTTPResponse(BaseHTTPResponse):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
+        self._uncached_read_occured = True
         self._init_decoder()
         # FIXME: Rewrite this method and make it a class with a better structured logic.
         if not self.chunked:
