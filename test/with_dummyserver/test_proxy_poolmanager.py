@@ -10,6 +10,7 @@ import shutil
 import socket
 import ssl
 import tempfile
+import warnings
 from test import LONG_TIMEOUT, SHORT_TIMEOUT, resolvesLocalhostFQDN, withPyOpenSSL
 from test.conftest import ServerConfig
 
@@ -141,6 +142,26 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
 
             r = https.request("GET", f"{self.http_url}/")
             assert r.status == 200
+
+    def test_https_proxy_ssl_context_not_mutated(self) -> None:
+        proxy_ssl_context = create_urllib3_context()
+        proxy_ssl_context.load_verify_locations(DEFAULT_CA)
+        proxy_ssl_context.check_hostname = False
+        proxy_ssl_context.verify_mode = ssl.CERT_REQUIRED
+
+        with proxy_from_url(
+            self.https_proxy_url,
+            proxy_ssl_context=proxy_ssl_context,
+            cert_reqs="CERT_NONE",
+        ) as https:
+            with warnings.catch_warnings():
+                warnings.simplefilter(
+                    "ignore", urllib3.exceptions.InsecureRequestWarning
+                )
+                r = https.request("GET", f"{self.https_url}/")
+                assert r.status == 200
+
+        assert proxy_ssl_context.verify_mode == ssl.CERT_REQUIRED
 
     @withPyOpenSSL
     def test_https_proxy_pyopenssl_not_supported(self) -> None:
