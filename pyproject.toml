@@ -1,15 +1,14 @@
 # This file is protected via CODEOWNERS
 
 [build-system]
-requires = ["hatchling>=1.27.0,<2", "hatch-vcs>=0.4.0,<0.6.0", "setuptools-scm>=8,<10"]
-build-backend = "hatchling.build"
+requires = ["setuptools<69", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "urllib3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE.txt"]
 keywords = ["urllib", "httplib", "threadsafe", "filepost", "http", "https", "ssl", "pooling"]
 authors = [
   {name = "Andrey Petrov", email = "andrey.petrov@shazow.net"}
@@ -43,7 +42,7 @@ dependencies = [
   "typing_extensions>=3.7.4; python_version<'3.8'",
   "importlib_metadata>=1.0; python_version<'3.8'",
 ]
-dynamic = ["version"]
+version = "2.6.3.1"
 
 [project.optional-dependencies]
 brotli = [
@@ -117,24 +116,8 @@ docs = [
 "Code" = "https://github.com/urllib3/urllib3"
 "Issue tracker" = "https://github.com/urllib3/urllib3/issues"
 
-[tool.hatch.version]
-source = "vcs"
-[tool.hatch.version.raw-options]
-local_scheme = "no-local-version"
-[tool.hatch.build.hooks.vcs]
-version-file = "src/urllib3/_version.py"
-
-[tool.hatch.build.targets.sdist]
-include = [
-  "/docs",
-  "/dummyserver",
-  "/src",
-  "/test",
-  "/uv.lock",
-  "/CHANGES.rst",
-  "/README.md",
-  "/LICENSE.txt",
-]
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 xfail_strict = true
