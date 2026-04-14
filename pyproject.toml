@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 name = "urllib3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 readme = "README.md"
-license = "MIT"
+license = {text = "MIT"}
 keywords = ["urllib", "httplib", "threadsafe", "filepost", "http", "https", "ssl", "pooling"]
 authors = [
   {name = "Andrey Petrov", email = "andrey.petrov@shazow.net"}
