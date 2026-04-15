@@ -284,7 +284,7 @@ for requests and ``HTTPResponse.json()`` method on responses:
 
 
 **✨ Optimized for Python 3.10+**
---------------------------------
+---------------------------------
 
 urllib3 2.x specifically targets CPython 3.10+ and PyPy 7.3.17+ (compatible with CPython 3.10)
 and dropping support for Python versions 2.7, and 3.5 to 3.9.
