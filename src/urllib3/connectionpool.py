@@ -50,6 +50,7 @@ from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
 from .util.url import parse_url
 from .util.util import to_str
+from urllib.parse import urlsplit, urlunsplit
 
 if typing.TYPE_CHECKING:
     import ssl
@@ -701,16 +702,22 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Position to seek to in file-like body in the event of a retry or
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
-        """
-        # Ensure that the URL we're connecting to is properly encoded
+        """       
+        # Ensure that the URL we're connecting to is properly encoded    
         if url.startswith("/"):
             # URLs starting with / are inherently schemeless.
             url = to_str(_encode_target(url))
             destination_scheme = None
         else:
-            parsed_url = parse_url(url)
-            destination_scheme = parsed_url.scheme
-            url = to_str(parsed_url.url)
+            raw = urlsplit(url)                    
+            destination_scheme = raw.scheme 
+            url = to_str(urlunsplit((
+                raw.scheme.lower(),               
+                raw.netloc.lower(),               
+                raw.path,                          
+                raw.query,
+                '',                                
+            )))
 
         if headers is None:
             headers = self.headers
