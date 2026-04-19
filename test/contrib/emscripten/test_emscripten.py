@@ -76,7 +76,9 @@ def test_pool_requests(
 
         http = urllib3.PoolManager()
         resp = http.request("GET", f"http://{host}:{port}/")
-        assert resp.data.decode("utf-8") == "Dummy server!"
+        # ensure that the response is cached and can be read multiple times
+        for _ in range(2):
+            assert resp.data.decode("utf-8") == "Dummy server!"
 
         resp2 = http.request("GET", f"http://{host}:{port}/index")
         assert resp2.data.decode("utf-8") == "Dummy server!"
@@ -1100,6 +1102,9 @@ def test_streaming_jspi(
         # by checking that it took greater than the timeout
         assert time.time() - start_time > 2
         assert len(all_data.decode("utf-8")) == 17825792
+        # ensure that the content is not cached
+        assert response._body is None
+        assert response.data == b""
 
     pyodide_test(
         selenium_coverage,
@@ -1144,6 +1149,34 @@ def test_streaming2_jspi(
         testserver_http.http_host,
         testserver_http.http_port,
         bigfile_url,
+    )
+
+
+def test_cache_content_ignored_during_and_after_partial_read(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    @run_in_pyodide
+    def pyodide_test(selenium, host, port):  # type: ignore[no-untyped-def]
+        from urllib3.connection import HTTPConnection
+        from urllib3.response import BaseHTTPResponse
+
+        conn = HTTPConnection(host, port)
+        conn.request("GET", f"http://{host}:{port}/dripfeed", preload_content=False)
+        response = conn.getresponse()
+        assert isinstance(response, BaseHTTPResponse)
+        # read some of the data but not all of it
+        data = response.read(32768, cache_content=True)
+        assert len(data) == 32768
+        # check that the cached content is empty
+        assert response._body is None
+        # ensure the rest of the data is not cached either
+        data += response.read(cache_content=True)
+        assert len(data) == 17825792
+        assert response._body is None
+        assert response.data == b""
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.http_port
     )
 
 

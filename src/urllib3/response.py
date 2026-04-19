@@ -755,6 +755,7 @@ class HTTPResponse(BaseHTTPResponse):
         self.auto_close = auto_close
 
         self._body = None
+        self._uncached_read_occured = False
         self._fp: _HttplibHTTPResponse | None = None
         self._original_response = original_response
         self._fp_bytes_read = 0
@@ -1102,6 +1103,8 @@ class HTTPResponse(BaseHTTPResponse):
                 return self._decoded_buffer.get(amt)
 
         data = self._raw_read(amt)
+        if not cache_content:
+            self._uncached_read_occured = True
 
         flush_decoder = amt is None or (amt != 0 and not data)
 
@@ -1114,7 +1117,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         if amt is None:
             data = self._decode(data, decode_content, flush_decoder)
-            if cache_content:
+            if cache_content and not self._uncached_read_occured:
                 self._body = data
         else:
             # do not waste memory on buffer when not decoding
@@ -1202,6 +1205,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         # FIXME, this method's type doesn't say returning None is possible
         data = self._raw_read(amt, read1=True)
+        self._uncached_read_occured = True
         if not decode_content or data is None:
             return data
 
@@ -1411,6 +1415,7 @@ class HTTPResponse(BaseHTTPResponse):
                     chunk = b""
                 else:
                     self._update_chunk_length()
+                    self._uncached_read_occured = True
                     if self.chunk_left == 0:
                         break
                     chunk = self._handle_chunk(amt)
