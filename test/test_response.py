@@ -898,6 +898,35 @@ class TestResponse:
                 headers={"content-encoding": "gzip, deflate, br, zstd, gzip, deflate"},
             )
 
+    def test_full_read_after_partial_read_with_buffered_decoded_data(self) -> None:
+        data = zlib.compress(b"foobarbaz")
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+        assert r.read(3) == b"foo"
+        # Force putting some decoded data in the buffer as the buffer
+        # is normally empty unless decoder has issues like not
+        # respecting `max_length` https://github.com/google/brotli/issues/1396
+        middle_part = r._decode(
+            r._raw_read(), decode_content=True, flush_decoder=False, max_length=3
+        )
+        assert middle_part == b"bar"
+        r._decoded_buffer.put(middle_part)
+        # Here we expect data from `_decoded_buffer` to be joined with
+        # the remaining part.
+        assert r.read() == b"barbaz"
+
+    def test_full_read_after_partial_read_without_buffered_decoded_data(self) -> None:
+        data = zlib.compress(b"foobarbaz")
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+        assert r.read(3) == b"foo"
+        assert len(r._decoded_buffer) == 0
+        assert r.read() == b"barbaz"
+
     def test_body_blob(self) -> None:
         resp = HTTPResponse(b"foo")
         assert resp.data == b"foo"
