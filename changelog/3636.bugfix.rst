@@ -1,4 +1,2 @@
-Fixed a bug where ``HTTPResponse.read(amt=None)`` ignored decompressed data
-buffered from previous partial reads. Also prevented ``HTTPResponse.read()``
-from caching only a chunk of data after a partial read when
-``cache_content=True``.
+Fixed a bug where ``HTTPResponse.read(amt=None)`` was ignoring decompressed data
+buffered from previous partial reads.

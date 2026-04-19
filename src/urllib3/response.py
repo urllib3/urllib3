@@ -485,7 +485,6 @@ class BaseHTTPResponse(io.IOBase):
         self.reason = reason
         self.decode_content = decode_content
         self._has_decoded_content = False
-        self._uncached_read_occured = False
         self._request_url: str | None = request_url
         self.retries = retries
 
@@ -1090,7 +1089,6 @@ class HTTPResponse(BaseHTTPResponse):
             amt = None
         elif amt is not None:
             cache_content = False
-            self._uncached_read_occured = True
 
             if self._decoder and self._decoder.has_unconsumed_tail:
                 decoded_data = self._decode(
@@ -1122,7 +1120,7 @@ class HTTPResponse(BaseHTTPResponse):
                 self._decoded_buffer.put(data)
                 data = self._decoded_buffer.get_all()
 
-            if cache_content and not self._uncached_read_occured:
+            if cache_content:
                 self._body = data
         else:
             # do not waste memory on buffer when not decoding
@@ -1175,7 +1173,6 @@ class HTTPResponse(BaseHTTPResponse):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
-        self._uncached_read_occured = True
         if decode_content is None:
             decode_content = self.decode_content
         if amt and amt < 0:
@@ -1385,7 +1382,6 @@ class HTTPResponse(BaseHTTPResponse):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
-        self._uncached_read_occured = True
         self._init_decoder()
         # FIXME: Rewrite this method and make it a class with a better structured logic.
         if not self.chunked:
