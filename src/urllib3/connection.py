@@ -865,9 +865,19 @@ class HTTPSConnection(HTTPConnection):
         # `_connect_tls_proxy` is called when self._tunnel_host is truthy.
         proxy_config = typing.cast(ProxyConfig, self.proxy_config)
         ssl_context = proxy_config.ssl_context
+
+        # When a proxy_ssl_context is provided, derive cert_reqs from the
+        # proxy's own context rather than using the target connection's
+        # cert_reqs. Otherwise the target's CERT_NONE can leak into the
+        # proxy handshake, and the caller's context object gets mutated.
+        if ssl_context is not None:
+            proxy_cert_reqs = ssl_context.verify_mode
+        else:
+            proxy_cert_reqs = None
+
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
-            cert_reqs=self.cert_reqs,
+            cert_reqs=proxy_cert_reqs,
             ssl_version=self.ssl_version,
             ssl_minimum_version=self.ssl_minimum_version,
             ssl_maximum_version=self.ssl_maximum_version,
@@ -934,7 +944,10 @@ def _ssl_wrap_socket_and_match_hostname(
     else:
         context = ssl_context
 
-    context.verify_mode = resolve_cert_reqs(cert_reqs)
+    # Only override verify_mode on contexts we created ourselves.
+    # User-provided ssl_context objects must not be mutated.
+    if default_ssl_context:
+        context.verify_mode = resolve_cert_reqs(cert_reqs)
 
     # In some cases, we want to verify hostnames ourselves
     if (
