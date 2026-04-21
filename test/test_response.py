@@ -219,6 +219,47 @@ class TestResponse:
         assert r._body == b"foo"  # type: ignore[comparison-overlap]
         assert r.data == b"foo"
 
+    def test_cache_content_with_explicit_read_call(self) -> None:
+        fp = BytesIO(b"foo")
+        r = HTTPResponse(fp, preload_content=False)
+        assert r.read(cache_content=True) == b"foo"
+        assert r._body == b"foo"
+        assert r.data == b"foo"
+
+    @pytest.mark.parametrize(
+        "initial_read_method", ("read", "read1", "read_chunked", "stream")
+    )
+    def test_cache_content_ignored_during_and_after_partial_read(
+        self, initial_read_method: str
+    ) -> None:
+        data = b"foo"
+        initial_limit = 1
+        if initial_read_method in ("read_chunked", "stream"):
+            httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+            httplib_r.chunked = True
+            httplib_r.fp = MockChunkedEncodingResponse([data])  # type: ignore[assignment]
+            r = HTTPResponse(
+                httplib_r,
+                preload_content=False,
+                headers={"transfer-encoding": "chunked"},
+            )
+            # Partial read.
+            next(getattr(r, initial_read_method)(initial_limit))
+            httplib_r.chunk_left = len(data) - initial_limit
+        else:
+            fp = BytesIO(data)
+            r = HTTPResponse(fp, preload_content=False)
+            # Partial read.
+            if initial_read_method == "read":
+                r.read(initial_limit, cache_content=True)
+            else:
+                getattr(r, initial_read_method)(initial_limit)
+        assert r._body is None
+        # Full read (remaining content).
+        r.read(cache_content=True)
+        assert r._body is None
+        assert r.data == b""
+
     def test_default(self) -> None:
         r = HTTPResponse()
         assert r.data is None
@@ -1969,8 +2010,8 @@ class MockChunkedEncodingResponse:
                 self.cur_chunk = self.cur_chunk[amt:]
             return chunk_part
 
-    def readline(self) -> bytes:
-        return self.pop_current_chunk(till_crlf=True)
+    def readline(self, amt: int = -1) -> bytes:
+        return self.pop_current_chunk(amt, till_crlf=amt < 0)
 
     def read(self, amt: int = -1) -> bytes:
         return self.pop_current_chunk(amt)
