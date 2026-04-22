@@ -793,6 +793,15 @@ class HTTPSConnection(HTTPConnection):
             # Remove trailing '.' from fqdn hostnames to allow certificate validation
             server_hostname_rm_dot = server_hostname.rstrip(".")
 
+            # When forwarding through an HTTPS proxy we are connecting to the
+            # proxy itself, not the target origin, so the proxy's SSL context
+            # must be used.  Using self.ssl_context (the *destination* context)
+            # was the root cause of https://github.com/urllib3/urllib3/issues/2577.
+            if self.proxy_is_forwarding and self.proxy_config is not None:
+                tls_ssl_context = self.proxy_config.ssl_context
+            else:
+                tls_ssl_context = self.ssl_context
+
             sock_and_verified = _ssl_wrap_socket_and_match_hostname(
                 sock=sock,
                 cert_reqs=self.cert_reqs,
@@ -806,7 +815,7 @@ class HTTPSConnection(HTTPConnection):
                 key_file=self.key_file,
                 key_password=self.key_password,
                 server_hostname=server_hostname_rm_dot,
-                ssl_context=self.ssl_context,
+                ssl_context=tls_ssl_context,
                 tls_in_tls=tls_in_tls,
                 assert_hostname=self.assert_hostname,
                 assert_fingerprint=self.assert_fingerprint,
