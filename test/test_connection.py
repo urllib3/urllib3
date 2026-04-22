@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import socket
+import ssl
 import typing
 from http.client import ResponseNotReady
 from unittest import mock
@@ -14,6 +15,7 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     HTTPConnection,
     HTTPSConnection,
     _match_hostname,
+    _ssl_wrap_socket_and_match_hostname,
     _url_from_connection,
     _wrap_proxy_error,
 )
@@ -326,3 +328,94 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+
+class TestSslWrapSocketAndMatchHostname:
+    """
+    Tests for _ssl_wrap_socket_and_match_hostname verify_mode handling.
+    """
+
+    def _call(
+        self,
+        ssl_context: ssl.SSLContext | None,
+        cert_reqs: int,
+        mock_wrap: mock.Mock,
+    ) -> ssl.SSLContext:
+        """Call the function and return the context that was used."""
+        captured: list[ssl.SSLContext] = []
+
+        def capturing_wrap(**kwargs: typing.Any) -> mock.Mock:
+            captured.append(kwargs["ssl_context"])
+            sock = mock.Mock()
+            sock.getpeercert.return_value = {}
+            return sock
+
+        mock_wrap.side_effect = capturing_wrap
+
+        _ssl_wrap_socket_and_match_hostname(
+            sock=mock.Mock(spec=socket.socket),
+            cert_reqs=cert_reqs,
+            ssl_version=None,
+            ssl_minimum_version=None,
+            ssl_maximum_version=None,
+            cert_file=None,
+            key_file=None,
+            key_password=None,
+            ca_certs=None,
+            ca_cert_dir=None,
+            ca_cert_data=None,
+            assert_hostname=None,
+            assert_fingerprint=None,
+            server_hostname="example.com",
+            ssl_context=ssl_context,
+        )
+
+        return captured[0]
+
+    def test_factory_context_verify_mode_not_overridden(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        When ssl_context=None the factory creates the context. The factory already
+        applies cert_reqs, so _ssl_wrap_socket_and_match_hostname must NOT override
+        verify_mode afterward — doing so silently undoes any customization the factory
+        made (e.g. an application-level patch that sets CERT_NONE).
+        """
+
+        # Simulate a patched factory that sets CERT_NONE (e.g. enterprise sitecustomize)
+        def patched_factory(**kwargs: typing.Any) -> ssl.SSLContext:
+            ctx = ssl_.create_urllib3_context(**kwargs)
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            return ctx
+
+        monkeypatch.setattr(
+            "urllib3.connection.create_urllib3_context", patched_factory
+        )
+
+        with mock.patch("urllib3.connection.ssl_wrap_socket") as mock_wrap:
+            used_context = self._call(
+                ssl_context=None,
+                cert_reqs=ssl.CERT_REQUIRED,
+                mock_wrap=mock_wrap,
+            )
+
+        assert used_context.verify_mode == ssl.CERT_NONE
+
+    def test_caller_supplied_context_verify_mode_is_overridden(self) -> None:
+        """
+        When the caller supplies their own ssl_context, cert_reqs should be applied
+        to it — the caller's context is not managed by the factory.
+        """
+        caller_context = ssl_.create_urllib3_context()
+        caller_context.check_hostname = False
+        caller_context.verify_mode = ssl.CERT_REQUIRED
+
+        with mock.patch("urllib3.connection.ssl_wrap_socket") as mock_wrap:
+            used_context = self._call(
+                ssl_context=caller_context,
+                cert_reqs=ssl.CERT_NONE,
+                mock_wrap=mock_wrap,
+            )
+
+        assert used_context.verify_mode == ssl.CERT_NONE
