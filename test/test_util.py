@@ -306,6 +306,25 @@ class TestUtil:
     ]
 
     @pytest.mark.parametrize(
+        "url, expected_auth",
+        [
+            ("http://user:pass@example.com", "user:pass"),
+            ("http://u%7Ber:pass%7D%7Dword@example.com", "u{er:pass}}word"),
+            ("http://user%40name:pass%23word@example.com", "user@name:pass#word"),
+            ("http://simple@example.com", "simple"),
+            ("http://example.com", None),
+        ],
+    )
+    def test_parse_url_decodes_percent_encoded_auth(
+        self, url: str, expected_auth: str | None
+    ) -> None:
+        """Assert parse_url decodes percent-encoded auth credentials.
+
+        Regression test for #4945.
+        """
+        assert parse_url(url).auth == expected_auth
+
+    @pytest.mark.parametrize(
         "url, expected_url",
         chain(parse_url_host_map, non_round_tripping_parse_url_host_map),
     )
