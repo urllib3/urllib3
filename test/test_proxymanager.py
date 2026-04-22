@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from collections.abc import Mapping
 
 from urllib3.exceptions import MaxRetryError, NewConnectionError, ProxyError
 from urllib3.poolmanager import ProxyManager
@@ -8,6 +9,22 @@ from urllib3.util.retry import Retry
 from urllib3.util.url import parse_url
 
 from .port_helpers import find_unused_port
+
+
+class _MappingWithoutCopy(Mapping):
+    """A Mapping that does not implement .copy() to test abstract header support."""
+
+    def __init__(self, data: dict[str, str] | None = None) -> None:
+        self._data = data or {}
+
+    def __getitem__(self, key: str) -> str:
+        return self._data[key]
+
+    def __iter__(self):  # type: ignore[override]
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
 
 
 class TestProxyManager:
@@ -85,3 +102,11 @@ class TestProxyManager:
             assert ei1.value.reason is not None
             assert isinstance(ei1.value.reason, ProxyError)
             assert isinstance(ei1.value.reason.original_error, NewConnectionError)
+
+    def test_headers_accepts_abstract_mapping(self) -> None:
+        """Abstract Mapping without .copy() should work as headers."""
+        pm = ProxyManager("http://localhost:8080")
+        # This must not raise AttributeError: '...' has no attribute 'copy'
+        headers = _MappingWithoutCopy({"X-Custom": "value"})
+        pm._set_proxy_headers("http://example.com/", headers)
+        # If we get here, the fix works
