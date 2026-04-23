@@ -544,15 +544,17 @@ class ProxyManager(PoolManager):
 
         proxy = urllib3.ProxyManager("https://localhost:3128/")
 
-        resp1 = proxy.request("GET", "https://google.com/")
-        resp2 = proxy.request("GET", "https://httpbin.org/")
+        resp1 = proxy.request("GET", "http://google.com/")
+        resp2 = proxy.request("GET", "http://httpbin.org/")
 
+        # One pool was shared by both plain HTTP requests.
         print(len(proxy.pools))
         # 1
 
         resp3 = proxy.request("GET", "https://httpbin.org/")
         resp4 = proxy.request("GET", "https://twitter.com/")
 
+        # A separate pool was added for each HTTPS target.
         print(len(proxy.pools))
         # 3
 
