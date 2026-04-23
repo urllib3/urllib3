@@ -1,0 +1,1 @@
+Handled HTTP/2 stream reset and GOAWAY termination events by raising connection errors instead of hanging and by retiring terminated connections before reuse.
