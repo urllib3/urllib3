@@ -1,0 +1,2 @@
+Added documentation for ``assert_hostname`` and ``assert_fingerprint`` in the
+connection API reference and TLS advanced usage guide.
