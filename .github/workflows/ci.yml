@@ -122,7 +122,7 @@ jobs:
           version: "0.9.5"
 
       - name: "Install Chrome"
-        uses: browser-actions/setup-chrome@b94431e051d1c52dcbe9a7092a4f10f827795416 # v2.1.0
+        uses: browser-actions/setup-chrome@4f8e94349a351df0f048634f25fec36c3c91eded # v2.1.1
         id: setup-chrome
         if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
         with:
@@ -139,7 +139,7 @@ jobs:
           google-chrome --version
         if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
       - name: "Install Firefox"
-        uses: browser-actions/setup-firefox@5914774dda97099441f02628f8d46411fcfbd208 # v1.7.0
+        uses: browser-actions/setup-firefox@fcf821c621167805dd63a29662bd7cb5676c81a8 # v1.7.1
         if: ${{ matrix.nox-session == 'emscripten(firefox)' }}
       - name: "Install node.js"
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
