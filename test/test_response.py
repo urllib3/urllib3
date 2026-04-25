@@ -1424,6 +1424,12 @@ class TestResponse:
         with pytest.raises(StopIteration):
             next(stream)
 
+    def test_stream_zero_amt(self) -> None:
+        fp = BytesIO(b"hello")
+        resp = HTTPResponse(fp, preload_content=False)
+        data = list(resp.stream(0))
+        assert data == []
+
     @pytest.mark.parametrize(
         "preload_content, amt, read_meth",
         [

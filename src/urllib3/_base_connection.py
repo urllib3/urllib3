@@ -7,7 +7,9 @@ from .util.resolver import Resolver
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from .util.url import Url
 
-_TYPE_BODY = typing.Union[bytes, typing.IO[typing.Any], typing.Iterable[bytes], str]
+_TYPE_BODY = typing.Union[
+    bytes, typing.IO[typing.Any], typing.Iterable[bytes | str], str
+]
 
 
 class ProxyConfig(typing.NamedTuple):

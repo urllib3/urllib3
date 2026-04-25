@@ -702,8 +702,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
         """
-        parsed_url = parse_url(url)
-        destination_scheme = parsed_url.scheme
+        # Ensure that the URL we're connecting to is properly encoded
+        if url.startswith("/"):
+            # URLs starting with / are inherently schemeless.
+            url = to_str(_encode_target(url))
+            destination_scheme = None
+        else:
+            parsed_url = parse_url(url)
+            destination_scheme = parsed_url.scheme
+            url = to_str(parsed_url.url)
 
         if headers is None:
             headers = self.headers
@@ -717,12 +724,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Check host
         if assert_same_host and not self.is_same_host(url):
             raise HostChangedError(self, url, retries)
-
-        # Ensure that the URL we're connecting to is properly encoded
-        if url.startswith("/"):
-            url = to_str(_encode_target(url))
-        else:
-            url = to_str(parsed_url.url)
 
         conn = None
 
