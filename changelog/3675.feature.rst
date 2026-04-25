@@ -1,0 +1,7 @@
+Added possibility for overriding network address resolution.
+
+This allows to override CPython's default `getaddrinfo()`_ function
+which can be used to customize the resolution of domain names, hostnames,
+and IP addresses.
+
+.. _getaddrinfo(): https://docs.python.org/3/library/socket.html#socket.getaddrinfo
