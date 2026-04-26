@@ -1430,6 +1430,16 @@ class TestResponse:
         data = list(resp.stream(0))
         assert data == []
 
+    def test_read_chunked_zero_amt(self) -> None:
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = MockChunkedEncodingResponse([b"hello"])  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        assert len(list(resp.read_chunked(0))) == 0
+
     @pytest.mark.parametrize(
         "preload_content, amt, read_meth",
         [

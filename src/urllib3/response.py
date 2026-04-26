@@ -1400,7 +1400,9 @@ class HTTPResponse(BaseHTTPResponse):
             if self._fp.fp is None:  # type: ignore[union-attr]
                 return None
 
-            if amt and amt < 0:
+            if amt == 0:
+                return
+            elif amt and amt < 0:
                 # Negative numbers and `None` should be treated the same,
                 # but httplib handles only `None` correctly.
                 amt = None
