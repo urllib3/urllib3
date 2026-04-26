@@ -1,1 +1,1 @@
-Fixed ``HTTPResponse.stream()`` to handle ``amt=0``.
+Fixed ``HTTPResponse.stream()`` and ``HTTPResponse.read_chunked()`` to handle ``amt=0``.
