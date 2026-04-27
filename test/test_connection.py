@@ -214,6 +214,25 @@ class TestConnection:
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
     @pytest.mark.parametrize(
+        ("connection_cls", "port"),
+        ((HTTPConnection, 80), (HTTPSConnection, 443)),
+    )
+    def test_default_socket_options_follow_class_variable(
+        self,
+        connection_cls: type[HTTPConnection],
+        port: int,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        socket_options = connection_cls.default_socket_options + [
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        ]
+        monkeypatch.setattr(connection_cls, "default_socket_options", socket_options)
+
+        conn = connection_cls("not.a.real.host", port=port)
+
+        assert conn.socket_options == socket_options
+
+    @pytest.mark.parametrize(
         "proxy_scheme, err_part",
         [
             ("http", "Unable to connect to proxy"),
