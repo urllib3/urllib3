@@ -1,0 +1,1 @@
+Fixed ``HTTPConnection`` and ``HTTPSConnection`` so new instances respected updated ``default_socket_options`` values.

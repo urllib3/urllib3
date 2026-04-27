@@ -72,6 +72,8 @@ log = logging.getLogger(__name__)
 
 port_by_scheme = {"http": 80, "https": 443}
 
+_DEFAULT_SOCKET_OPTIONS = object()
+
 # When it comes time to update this value as a part of regular maintenance
 # (ie test_recent_date is failing) update it to ~6 months before the current date.
 RECENT_DATE = datetime.date(2025, 1, 1)
@@ -137,9 +139,7 @@ class HTTPConnection(_HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None | (
-            connection._TYPE_SOCKET_OPTIONS
-        ) = default_socket_options,
+        socket_options: connection._TYPE_SOCKET_OPTIONS | None | object = _DEFAULT_SOCKET_OPTIONS,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
     ) -> None:
@@ -150,6 +150,8 @@ class HTTPConnection(_HTTPConnection):
             source_address=source_address,
             blocksize=blocksize,
         )
+        if socket_options is _DEFAULT_SOCKET_OPTIONS:
+            socket_options = type(self).default_socket_options
         self.socket_options = socket_options
         self.proxy = proxy
         self.proxy_config = proxy_config
@@ -626,9 +628,7 @@ class HTTPSConnection(HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None | (
-            connection._TYPE_SOCKET_OPTIONS
-        ) = HTTPConnection.default_socket_options,
+        socket_options: connection._TYPE_SOCKET_OPTIONS | None | object = _DEFAULT_SOCKET_OPTIONS,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
         cert_reqs: int | str | None = None,
