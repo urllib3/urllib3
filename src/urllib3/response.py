@@ -1117,6 +1117,12 @@ class HTTPResponse(BaseHTTPResponse):
 
         if amt is None:
             data = self._decode(data, decode_content, flush_decoder)
+            # It's possible that there is buffered decoded data after a
+            # partial read.
+            if decode_content and len(self._decoded_buffer) > 0:
+                self._decoded_buffer.put(data)
+                data = self._decoded_buffer.get_all()
+
             if cache_content and not self._uncached_read_occured:
                 self._body = data
         else:
