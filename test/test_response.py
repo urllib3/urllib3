@@ -225,7 +225,7 @@ class TestResponse:
     ) -> None:
         fp = BytesIO(b"foo")
         r = HTTPResponse(fp, preload_content=False)
-        assert r.read(*read_args, cache_content=True) == b"foo"
+        assert r.read(*read_args, cache_content=True) == b"foo"  # type: ignore[misc]
         assert r._body == b"foo"
         assert r.data == b"foo"
 
