@@ -219,10 +219,13 @@ class TestResponse:
         assert r._body == b"foo"  # type: ignore[comparison-overlap]
         assert r.data == b"foo"
 
-    def test_cache_content_with_explicit_read_call(self) -> None:
+    @pytest.mark.parametrize("read_args", ((), (None,), (-1,)))
+    def test_cache_content_with_explicit_read_call(
+        self, read_args: tuple[typing.Any, ...]
+    ) -> None:
         fp = BytesIO(b"foo")
         r = HTTPResponse(fp, preload_content=False)
-        assert r.read(cache_content=True) == b"foo"
+        assert r.read(*read_args, cache_content=True) == b"foo"
         assert r._body == b"foo"
         assert r.data == b"foo"
 
