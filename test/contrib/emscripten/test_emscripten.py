@@ -31,7 +31,7 @@ pyodide_config.set_flags(
 def test_index(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo, prefer_jspi: bool
 ) -> None:
-    @run_in_pyodide # type: ignore[untyped-decorator]
+    @run_in_pyodide  # type: ignore[untyped-decorator]
     def pyodide_test(selenium_coverage, host: str, port: int, prefer_jspi: bool) -> None:  # type: ignore[no-untyped-def]
         import urllib3.contrib.emscripten.fetch
         from urllib3.connection import HTTPConnection
