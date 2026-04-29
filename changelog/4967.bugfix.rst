@@ -1,0 +1,2 @@
+Fixed a bug where ``HTTPResponse.read()`` could cache only part of the response
+after a partial read when ``cache_content=True``.
