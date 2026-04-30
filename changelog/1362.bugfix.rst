@@ -1,0 +1,1 @@
+Reject outbound HTTP/1.1 header names containing whitespace including tabs and newlines.

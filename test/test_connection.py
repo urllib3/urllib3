@@ -17,7 +17,7 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     _url_from_connection,
     _wrap_proxy_error,
 )
-from urllib3.exceptions import HTTPError, ProxyError, SSLError
+from urllib3.exceptions import HTTPError, InvalidHeader, ProxyError, SSLError
 from urllib3.util import ssl_
 from urllib3.util.request import SKIP_HEADER
 from urllib3.util.ssl_match_hostname import (
@@ -326,3 +326,50 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    @pytest.mark.parametrize(
+        "header",
+        ["Invalid Header", "Invalid\tHeader", "Invalid Header "],
+    )
+    def test_request_rejects_header_names_with_whitespace(self, header: str) -> None:
+        headers = {header: "value"}
+
+        with mock.patch("urllib3.util.connection.create_connection"):
+            conn = HTTPConnection("")
+            with pytest.raises(InvalidHeader, match="Invalid header name"):
+                conn.request("GET", "/headers", headers=headers)
+
+    def test_request_allows_invalid_header_names_when_disabled(self) -> None:
+        headers = {"Invalid Header": "value"}
+
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch(
+                "urllib3.connection._HTTPConnection.putheader"
+            ) as http_client_putheader,
+        ):
+            conn = HTTPConnection("", assert_header_names=False)
+            conn.request("GET", "/headers", headers=headers)
+
+        http_client_putheader.assert_any_call("Invalid Header", "value")
+
+    def test_putheader_rejects_non_ascii_bytes_header_name(self) -> None:
+        with mock.patch("urllib3.util.connection.create_connection"):
+            conn = HTTPConnection("")
+            conn.putrequest("GET", "/headers")
+
+            with pytest.raises(InvalidHeader, match="Invalid header name"):
+                conn.putheader(b"\xff", "value")  # type: ignore[arg-type]
+
+    def test_set_tunnel_rejects_header_names_with_whitespace(self) -> None:
+        conn = HTTPConnection("proxy.example")
+
+        with pytest.raises(InvalidHeader, match="Invalid header name"):
+            conn.set_tunnel("target.example", headers={"Proxy Authorization": "value"})
+
+    def test_set_tunnel_allows_invalid_header_names_when_disabled(self) -> None:
+        conn = HTTPConnection("proxy.example", assert_header_names=False)
+
+        conn.set_tunnel("target.example", headers={"Proxy Authorization": "value"})
+
+        assert getattr(conn, "_tunnel_headers")["Proxy Authorization"] == "value"
