@@ -771,6 +771,7 @@ class HTTPResponse(BaseHTTPResponse):
         self.auto_close = auto_close
 
         self._body = None
+        self._uncached_read_occurred = False
         self._fp: _HttplibHTTPResponse | None = None
         self._original_response = original_response
         self._fp_bytes_read = 0
@@ -1118,6 +1119,8 @@ class HTTPResponse(BaseHTTPResponse):
                 return self._decoded_buffer.get(amt)
 
         data = self._raw_read(amt)
+        if not cache_content:
+            self._uncached_read_occurred = True
 
         flush_decoder = amt is None or (amt != 0 and not data)
 
@@ -1130,7 +1133,13 @@ class HTTPResponse(BaseHTTPResponse):
 
         if amt is None:
             data = self._decode(data, decode_content, flush_decoder)
-            if cache_content:
+            # It's possible that there is buffered decoded data after a
+            # partial read.
+            if decode_content and len(self._decoded_buffer) > 0:
+                self._decoded_buffer.put(data)
+                data = self._decoded_buffer.get_all()
+
+            if cache_content and not self._uncached_read_occurred:
                 self._body = data
         else:
             # do not waste memory on buffer when not decoding
@@ -1218,6 +1227,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         # FIXME, this method's type doesn't say returning None is possible
         data = self._raw_read(amt, read1=True)
+        self._uncached_read_occurred = True
         if not decode_content or data is None:
             return data
 
@@ -1254,6 +1264,9 @@ class HTTPResponse(BaseHTTPResponse):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
+        if amt == 0:
+            return
+
         if self.chunked and self.supports_chunked_reads():
             yield from self.read_chunked(amt, decode_content=decode_content)
         else:
@@ -1413,7 +1426,9 @@ class HTTPResponse(BaseHTTPResponse):
             if self._fp.fp is None:  # type: ignore[union-attr]
                 return None
 
-            if amt and amt < 0:
+            if amt == 0:
+                return
+            elif amt and amt < 0:
                 # Negative numbers and `None` should be treated the same,
                 # but httplib handles only `None` correctly.
                 amt = None
@@ -1424,6 +1439,7 @@ class HTTPResponse(BaseHTTPResponse):
                     chunk = b""
                 else:
                     self._update_chunk_length()
+                    self._uncached_read_occurred = True
                     if self.chunk_left == 0:
                         break
                     chunk = self._handle_chunk(amt)

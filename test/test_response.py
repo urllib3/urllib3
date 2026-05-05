@@ -219,6 +219,50 @@ class TestResponse:
         assert r._body == b"foo"  # type: ignore[comparison-overlap]
         assert r.data == b"foo"
 
+    @pytest.mark.parametrize("read_args", ((), (None,), (-1,)))
+    def test_cache_content_with_explicit_read_call(
+        self, read_args: tuple[typing.Any, ...]
+    ) -> None:
+        fp = BytesIO(b"foo")
+        r = HTTPResponse(fp, preload_content=False)
+        assert r.read(*read_args, cache_content=True) == b"foo"  # type: ignore[misc]
+        assert r._body == b"foo"
+        assert r.data == b"foo"
+
+    @pytest.mark.parametrize(
+        "initial_read_method", ("read", "read1", "read_chunked", "stream")
+    )
+    def test_cache_content_ignored_during_and_after_partial_read(
+        self, initial_read_method: str
+    ) -> None:
+        data = b"foo"
+        initial_limit = 1
+        if initial_read_method in ("read_chunked", "stream"):
+            httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+            httplib_r.chunked = True
+            httplib_r.fp = MockChunkedEncodingResponse([data])  # type: ignore[assignment]
+            r = HTTPResponse(
+                httplib_r,
+                preload_content=False,
+                headers={"transfer-encoding": "chunked"},
+            )
+            # Partial read.
+            next(getattr(r, initial_read_method)(initial_limit))
+            httplib_r.chunk_left = len(data) - initial_limit
+        else:
+            fp = BytesIO(data)
+            r = HTTPResponse(fp, preload_content=False)
+            # Partial read.
+            if initial_read_method == "read":
+                r.read(initial_limit, cache_content=True)
+            else:
+                getattr(r, initial_read_method)(initial_limit)
+        assert r._body is None
+        # Full read (remaining content).
+        r.read(cache_content=True)
+        assert r._body is None
+        assert r.data == b""
+
     def test_default(self) -> None:
         r = HTTPResponse()
         assert r.data is None
@@ -898,6 +942,35 @@ class TestResponse:
                 headers={"content-encoding": "gzip, deflate, br, zstd, gzip, deflate"},
             )
 
+    def test_full_read_after_partial_read_with_buffered_decoded_data(self) -> None:
+        data = zlib.compress(b"foobarbaz")
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+        assert r.read(3) == b"foo"
+        # Force putting some decoded data in the buffer as the buffer
+        # is normally empty unless decoder has issues like not
+        # respecting `max_length` https://github.com/google/brotli/issues/1396
+        middle_part = r._decode(
+            r._raw_read(), decode_content=True, flush_decoder=False, max_length=3
+        )
+        assert middle_part == b"bar"
+        r._decoded_buffer.put(middle_part)
+        # Here we expect data from `_decoded_buffer` to be joined with
+        # the remaining part.
+        assert r.read() == b"barbaz"
+
+    def test_full_read_after_partial_read_without_buffered_decoded_data(self) -> None:
+        data = zlib.compress(b"foobarbaz")
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+        assert r.read(3) == b"foo"
+        assert len(r._decoded_buffer) == 0
+        assert r.read() == b"barbaz"
+
     def test_body_blob(self) -> None:
         resp = HTTPResponse(b"foo")
         assert resp.data == b"foo"
@@ -1423,6 +1496,22 @@ class TestResponse:
 
         with pytest.raises(StopIteration):
             next(stream)
+
+    def test_stream_zero_amt(self) -> None:
+        fp = BytesIO(b"hello")
+        resp = HTTPResponse(fp, preload_content=False)
+        data = list(resp.stream(0))
+        assert data == []
+
+    def test_read_chunked_zero_amt(self) -> None:
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = MockChunkedEncodingResponse([b"hello"])  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        assert len(list(resp.read_chunked(0))) == 0
 
     @pytest.mark.parametrize(
         "preload_content, amt, read_meth",
@@ -1963,8 +2052,8 @@ class MockChunkedEncodingResponse:
                 self.cur_chunk = self.cur_chunk[amt:]
             return chunk_part
 
-    def readline(self) -> bytes:
-        return self.pop_current_chunk(till_crlf=True)
+    def readline(self, amt: int = -1) -> bytes:
+        return self.pop_current_chunk(amt, till_crlf=amt < 0)
 
     def read(self, amt: int = -1) -> bytes:
         return self.pop_current_chunk(amt)
