@@ -58,7 +58,7 @@ jobs:
             experimental: false
             nox-session: test-3.12
           # pypy
-          - python-version: "pypy-3.11"
+          - python-version: "pypy-3.11-nightly"
             os: ubuntu-24.04
             experimental: false
             nox-session: test-pypy3.11
