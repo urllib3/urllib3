@@ -1,3 +1,70 @@
+2.7.0 (2026-05-07)
+=======================
+
+Security
+--------
+
+Addressed high-severity security issues.
+Impact was limited to specific use cases detailed in the accompanying
+advisories; overall user exposure was estimated to be marginal.
+
+- Decompression-bomb safeguards of the streaming API were bypassed:
+
+  1. When ``HTTPResponse.drain_conn()`` was called after the response had been
+     read and decompressed partially.
+  2. During the second ``HTTPResponse.read(amt=N)`` or
+     ``HTTPResponse.stream(amt=N)`` call when the response was decompressed
+     using the official `Brotli <https://pypi.org/project/brotli/>`__ library.
+
+  See `GHSA-mf9v-mfxr-j63j <https://github.com/urllib3/urllib3/security/advisories/GHSA-mf9v-mfxr-j63j>`__
+  for details.
+
+- HTTP pools created using ``ProxyManager.connection_from_url`` did not strip
+  sensitive headers specified in ``Retry.remove_headers_on_redirect`` when
+  redirecting to a different host.
+  (`GHSA-qccp-gfcp-xxvc <https://github.com/urllib3/urllib3/security/advisories/GHSA-qccp-gfcp-xxvc>`__)
+
+
+Deprecations and Removals
+-------------------------
+
+- Used ``FutureWarning`` instead of ``DeprecationWarning`` for better
+  visibility of existing deprecation notices. Rescheduled the removal of
+  deprecated features to version 3.0.
+  (`#3764 <https://github.com/urllib3/urllib3/issues/3764>`__)
+- Removed support for end-of-life Python 3.9.
+  (`#3720 <https://github.com/urllib3/urllib3/issues/3720>`__)
+- Removed support for end-of-life PyPy3.10.
+  (`#4979 <https://github.com/urllib3/urllib3/issues/4979>`__)
+- Bumped the minimum supported pyOpenSSL version to 19.0.0.
+  (`#3777 <https://github.com/urllib3/urllib3/issues/3777>`__)
+
+
+Bugfixes
+--------
+
+- Fixed a bug where ``HTTPResponse.read(amt=None)`` was ignoring decompressed
+  data buffered from previous partial reads.
+  (`#3636 <https://github.com/urllib3/urllib3/issues/3636>`__)
+- Fixed a bug where ``HTTPResponse.read()`` could cache only part of the
+  response after a partial read when ``cache_content=True``.
+  (`#4967 <https://github.com/urllib3/urllib3/issues/4967>`__)
+- Fixed ``HTTPResponse.stream()`` and ``HTTPResponse.read_chunked()`` to handle
+  ``amt=0``.
+  (`#3793 <https://github.com/urllib3/urllib3/issues/3793>`__)
+- Updated ``_TYPE_BODY`` type alias to include missing ``Iterable[str]``,
+  matching the documented and runtime behavior of chunked request bodies.
+  (`#3798 <https://github.com/urllib3/urllib3/issues/3798>`__)
+- Fixed ``LocationParseError`` when paths resembling schemeless URIs were
+  passed to ``HTTPConnectionPool.urlopen()``.
+  (`#3352 <https://github.com/urllib3/urllib3/issues/3352>`__)
+- Fixed ``BaseHTTPResponse.readinto()`` type annotation to accept
+  ``memoryview`` in addition to ``bytearray``, matching the
+  ``io.RawIOBase.readinto`` contract and enabling use with
+  ``io.BufferedReader`` without type errors.
+  (`#3764 <https://github.com/urllib3/urllib3/issues/3764>`__)
+
+
 2.6.3 (2026-01-07)
 ==================
 
