@@ -31,7 +31,7 @@ Deprecations and Removals
 - Used ``FutureWarning`` instead of ``DeprecationWarning`` for better
   visibility of existing deprecation notices. Rescheduled the removal of
   deprecated features to version 3.0.
-  (`#3764 <https://github.com/urllib3/urllib3/issues/3764>`__)
+  (`#3763 <https://github.com/urllib3/urllib3/issues/3763>`__)
 - Removed support for end-of-life Python 3.9.
   (`#3720 <https://github.com/urllib3/urllib3/issues/3720>`__)
 - Removed support for end-of-life PyPy3.10.
