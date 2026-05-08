@@ -6,16 +6,26 @@ resolution-markers = [
     "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
     "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
     "python_full_version < '3.11' and extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
-    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.11.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version < '3.11' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version < '3.11' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
+    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version < '3.11' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version < '3.11' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version < '3.11' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version < '3.11' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
 ]
 conflicts = [[
     { package = "urllib3", group = "dev" },
@@ -820,14 +830,22 @@ resolution-markers = [
     "python_full_version >= '3.13' and extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
     "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
     "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
-    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.11.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
+    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ae/b6/03bb70946330e88ffec97aefd3ea75ba575cb2e762061e0e62a213befee8/docutils-0.22.4.tar.gz", hash = "sha256:4db53b1fde9abecbb74d91230d32ab626d94f6badfc575d6db9194a49df29968", size = 2291750, upload-time = "2025-12-18T19:00:26.443Z" }
 wheels = [
@@ -1111,7 +1129,7 @@ name = "importlib-metadata"
 version = "9.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp", marker = "python_full_version < '3.13' or (extra == 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl') or (extra == 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy')" },
+    { name = "zipp", marker = "python_full_version < '3.11' or (extra == 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl') or (extra == 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a9/01/15bb152d77b21318514a96f43af312635eb2500c96b55398d020c93d86ea/importlib_metadata-9.0.0.tar.gz", hash = "sha256:a4f57ab599e6a2e3016d7595cfd72eb4661a5106e787a95bcc90c7105b831efc", size = 56405, upload-time = "2026-03-20T06:42:56.999Z" }
 wheels = [
@@ -1238,7 +1256,7 @@ name = "linkify-it-py"
 version = "2.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "uc-micro-py" },
+    { name = "uc-micro-py", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2e/c9/06ea13676ef354f0af6169587ae292d3e2406e212876a413bf9eece4eb23/linkify_it_py-2.1.0.tar.gz", hash = "sha256:43360231720999c10e9328dc3691160e27a718e280673d444c38d7d3aaa3b98b", size = 29158, upload-time = "2026-03-01T07:48:47.683Z" }
 wheels = [
@@ -1250,7 +1268,7 @@ name = "markdown-it-py"
 version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "mdurl" },
+    { name = "mdurl", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5b/f5/4ec618ed16cc4f8fb3b701563655a69816155e79e24a17b651541804721d/markdown_it_py-4.0.0.tar.gz", hash = "sha256:cb0a2b4aa34f932c007117b194e945bd74e0ec24133ceb5bac59009cda1cb9f3", size = 73070, upload-time = "2025-08-11T12:57:52.854Z" }
 wheels = [
@@ -1259,7 +1277,7 @@ wheels = [
 
 [package.optional-dependencies]
 linkify = [
-    { name = "linkify-it-py" },
+    { name = "linkify-it-py", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
 ]
 
 [[package]]
@@ -1352,7 +1370,7 @@ name = "mdit-py-plugins"
 version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "markdown-it-py" },
+    { name = "markdown-it-py", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b2/fd/a756d36c0bfba5f6e39a1cdbdbfdd448dc02692467d83816dff4592a1ebc/mdit_py_plugins-0.5.0.tar.gz", hash = "sha256:f4918cb50119f50446560513a8e311d574ff6aaed72606ddae6d35716fe809c6", size = 44655, upload-time = "2025-08-11T07:25:49.083Z" }
 wheels = [
@@ -1373,9 +1391,9 @@ name = "memray"
 version = "1.19.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "jinja2" },
-    { name = "rich" },
-    { name = "textual" },
+    { name = "jinja2", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
+    { name = "rich", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
+    { name = "textual", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/96/04/5b886a36df947599e0f37cd46e6e44e565299815f044e2303ab2ae9f8870/memray-1.19.3.tar.gz", hash = "sha256:4e0fb29ff0a50c0ec9dc84294d8f2c83419feba561a37628b304c2ae4fe73d03", size = 2417089, upload-time = "2026-04-08T18:49:32.409Z" }
 wheels = [
@@ -1724,8 +1742,8 @@ name = "pytest-memray"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "memray" },
-    { name = "pytest" },
+    { name = "memray", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
+    { name = "pytest", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3d/28/f67963efed56d847d028d0bb939f26cdeb32c4de474b3befc9da43bf18f9/pytest_memray-1.8.0.tar.gz", hash = "sha256:c0c706ef81941a7aa7064f2b3b8b5cdc0cea72b5277c6a6a09b113ca9ab30bdb", size = 240608, upload-time = "2025-08-18T17:32:47.329Z" }
 wheels = [
@@ -1761,14 +1779,22 @@ resolution-markers = [
     "python_full_version >= '3.13' and extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
     "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
     "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
-    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.11.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
+    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.11.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
 ]
 dependencies = [
     { name = "hypothesis", marker = "python_full_version >= '3.11' or (extra == 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl') or (extra == 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy')" },
@@ -1877,8 +1903,8 @@ name = "rich"
 version = "15.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "markdown-it-py" },
-    { name = "pygments" },
+    { name = "markdown-it-py", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
+    { name = "pygments", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c0/8f/0722ca900cc807c13a6a0c696dacf35430f72e0ec571c4275d2371fca3e9/rich-15.0.0.tar.gz", hash = "sha256:edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36", size = 230680, upload-time = "2026-04-12T08:24:00.75Z" }
 wheels = [
@@ -2025,12 +2051,18 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.13' and extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
     "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
-    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
-    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl'",
+    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra == 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy'",
+    "python_full_version == '3.12.*' and extra != 'group-7-urllib3-dev' and extra != 'group-7-urllib3-dev-min-pyopenssl' and extra != 'group-7-urllib3-mypy'",
 ]
 dependencies = [
     { name = "alabaster", marker = "python_full_version >= '3.12' or (extra == 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl') or (extra == 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy')" },
@@ -2157,8 +2189,8 @@ name = "taskgroup"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "exceptiongroup" },
-    { name = "typing-extensions" },
+    { name = "exceptiongroup", marker = "python_full_version < '3.11' or (extra == 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl') or (extra == 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy')" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11' or (extra == 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl') or (extra == 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f0/8d/e218e0160cc1b692e6e0e5ba34e8865dbb171efeb5fc9a704544b3020605/taskgroup-0.2.2.tar.gz", hash = "sha256:078483ac3e78f2e3f973e2edbf6941374fbea81b9c5d0a96f51d297717f4752d", size = 11504, upload-time = "2025-01-03T09:24:13.761Z" }
 wheels = [
@@ -2179,12 +2211,12 @@ name = "textual"
 version = "8.2.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "markdown-it-py", extra = ["linkify"] },
-    { name = "mdit-py-plugins" },
-    { name = "platformdirs" },
-    { name = "pygments" },
-    { name = "rich" },
-    { name = "typing-extensions" },
+    { name = "markdown-it-py", extra = ["linkify"], marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
+    { name = "mdit-py-plugins", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
+    { name = "platformdirs", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
+    { name = "pygments", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
+    { name = "rich", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.15' or extra == 'group-7-urllib3-dev-min-pyopenssl'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/19/89/bec5709fb759f9c784bbcb30b2e3497df3f901691d13c2b864dbf6694a17/textual-8.2.4.tar.gz", hash = "sha256:d4e2b2ddd7157191d00b228592b7c739ea080b7d792fd410f23ca75f05ea76c4", size = 1848933, upload-time = "2026-04-19T04:20:45.845Z" }
 wheels = [
@@ -2457,20 +2489,37 @@ emscripten = [
     { name = "selenium" },
 ]
 mypy = [
-    { name = "anyio", extra = ["trio"], marker = "extra == 'group-7-urllib3-dev' or extra != 'group-7-urllib3-dev-min-pyopenssl' or (extra == 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy')" },
+    { name = "anyio", extra = ["trio"], marker = "(extra == 'group-7-urllib3-dev' and extra == 'group-7-urllib3-dev-min-pyopenssl') or (extra != 'group-7-urllib3-dev-min-pyopenssl' and extra == 'group-7-urllib3-mypy') or (extra != 'group-7-urllib3-dev' and extra == 'group-7-urllib3-mypy')" },
     { name = "backports-zstd", marker = "python_full_version < '3.14'" },
     { name = "cryptography", version = "47.0.0", source = { registry = "https://pypi.org/simple" } },
+    { name = "h2" },
     { name = "httpx" },
     { name = "hypercorn" },
     { name = "idna", version = "3.13", source = { registry = "https://pypi.org/simple" } },
     { name = "mypy" },
     { name = "nox" },
+    { name = "pysocks" },
     { name = "pytest" },
+    { name = "pytest-socket" },
+    { name = "pytest-timeout" },
     { name = "quart" },
     { name = "quart-trio" },
     { name = "trio" },
     { name = "trustme", version = "1.2.1", source = { registry = "https://pypi.org/simple" } },
     { name = "types-requests" },
+]
+test = [
+    { name = "anyio", extra = ["trio"] },
+    { name = "h2" },
+    { name = "httpx" },
+    { name = "hypercorn" },
+    { name = "pysocks" },
+    { name = "pytest" },
+    { name = "pytest-socket" },
+    { name = "pytest-timeout" },
+    { name = "quart" },
+    { name = "quart-trio" },
+    { name = "trio" },
 ]
 
 [package.metadata]
@@ -2559,17 +2608,34 @@ mypy = [
     { name = "anyio", extras = ["trio"], specifier = ">=4.8.0" },
     { name = "backports-zstd", marker = "python_full_version < '3.14'", specifier = ">=1.0.0" },
     { name = "cryptography", specifier = ">=44.0.2" },
+    { name = "h2", specifier = ">=4.1.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "hypercorn", git = "https://github.com/urllib3/hypercorn?rev=urllib3-changes" },
     { name = "idna", specifier = ">=3.10" },
     { name = "mypy", specifier = ">=1.14.1" },
     { name = "nox", specifier = ">=2024.10.9" },
+    { name = "pysocks", specifier = ">=1.7.1" },
     { name = "pytest", specifier = ">=8.3.4" },
+    { name = "pytest-socket", specifier = ">=0.7.0" },
+    { name = "pytest-timeout", specifier = ">=2.3.1" },
     { name = "quart", specifier = ">=0.20.0" },
     { name = "quart-trio", specifier = ">=0.12.0" },
     { name = "trio", specifier = ">=0.27.0" },
     { name = "trustme", specifier = ">=1.2.1" },
     { name = "types-requests", specifier = ">=2.32.0.20241016" },
+]
+test = [
+    { name = "anyio", extras = ["trio"], specifier = ">=4.8.0" },
+    { name = "h2", specifier = ">=4.1.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "hypercorn", git = "https://github.com/urllib3/hypercorn?rev=urllib3-changes" },
+    { name = "pysocks", specifier = ">=1.7.1" },
+    { name = "pytest", specifier = ">=8.3.4" },
+    { name = "pytest-socket", specifier = ">=0.7.0" },
+    { name = "pytest-timeout", specifier = ">=2.3.1" },
+    { name = "quart", specifier = ">=0.20.0" },
+    { name = "quart-trio", specifier = ">=0.12.0" },
+    { name = "trio", specifier = ">=0.27.0" },
 ]
 
 [[package]]

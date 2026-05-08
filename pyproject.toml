@@ -56,22 +56,29 @@ h2 = [
 ]
 
 [dependency-groups]
-dev-base = [
+# Bare dependencies needed to run the test suite. Kept free of profiling
+# (`coverage`, `pytest-memray`) and maintainer tooling (`build`, `towncrier`)
+# so downstream packagers can install just this group when generating
+# build-time test requirements (see issue #3594).
+test = [
     "anyio[trio]>=4.8.0",
-    "build>=1.2.2.post1",
-    "coverage>=7.8.0",
     "h2>=4.1.0",
     "httpx>=0.28.1",
-    "hypercorn",
+    "hypercorn>=0.15.0",
     "pysocks>=1.7.1",
     "pytest>=8.3.4",
-    "pytest-memray==1.8.0 ; python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'",
     "pytest-socket>=0.7.0",
     "pytest-timeout>=2.3.1",
     "quart>=0.20.0",
     "quart-trio>=0.12.0",
-    "towncrier>=24.8.0",
     "trio>=0.27.0",
+]
+dev-base = [
+    {include-group = "test"},
+    "build>=1.2.2.post1",
+    "coverage>=7.8.0",
+    "pytest-memray==1.8.0 ; python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'",
+    "towncrier>=24.8.0",
 ]
 dev = [
     {include-group = "dev-base"},
@@ -94,17 +101,11 @@ dev-min-pyopenssl = [
     "trustme==0.9.0",
 ]
 mypy = [
-    "anyio[trio]>=4.8.0",
+    {include-group = "test"},
     "backports.zstd>=1.0.0; python_version<'3.14'",
     "cryptography>=44.0.2",
-    "httpx>=0.28.1",
-    "hypercorn>=0.15.0",
     "idna>=3.10",
     "mypy>=1.14.1",
-    "pytest>=8.3.4",
-    "quart>=0.20.0",
-    "quart-trio>=0.12.0",
-    "trio>=0.27.0",
     "trustme>=1.2.1",
     "types-requests>=2.32.0.20241016",
     "nox>=2024.10.9",
