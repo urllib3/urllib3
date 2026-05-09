@@ -10,6 +10,7 @@ import sys
 import threading
 import typing
 import warnings
+from enum import Enum
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
@@ -71,6 +72,18 @@ BrokenPipeError = BrokenPipeError
 log = logging.getLogger(__name__)
 
 port_by_scheme = {"http": 80, "https": 443}
+
+
+class _TYPE_DEFAULT_SOCKET_OPTIONS(Enum):
+    token = 0
+
+
+_DEFAULT_SOCKET_OPTIONS: typing.Final[_TYPE_DEFAULT_SOCKET_OPTIONS] = (
+    _TYPE_DEFAULT_SOCKET_OPTIONS.token
+)
+_TYPE_SOCKET_OPTIONS = typing.Union[
+    connection._TYPE_SOCKET_OPTIONS, None, _TYPE_DEFAULT_SOCKET_OPTIONS
+]
 
 # When it comes time to update this value as a part of regular maintenance
 # (ie test_recent_date is failing) update it to ~6 months before the current date.
@@ -137,9 +150,7 @@ class HTTPConnection(_HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None | (
-            connection._TYPE_SOCKET_OPTIONS
-        ) = default_socket_options,
+        socket_options: _TYPE_SOCKET_OPTIONS = _DEFAULT_SOCKET_OPTIONS,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
     ) -> None:
@@ -150,6 +161,8 @@ class HTTPConnection(_HTTPConnection):
             source_address=source_address,
             blocksize=blocksize,
         )
+        if socket_options is _DEFAULT_SOCKET_OPTIONS:
+            socket_options = self.default_socket_options
         self.socket_options = socket_options
         self.proxy = proxy
         self.proxy_config = proxy_config
@@ -626,9 +639,7 @@ class HTTPSConnection(HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None | (
-            connection._TYPE_SOCKET_OPTIONS
-        ) = HTTPConnection.default_socket_options,
+        socket_options: _TYPE_SOCKET_OPTIONS = _DEFAULT_SOCKET_OPTIONS,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
         cert_reqs: int | str | None = None,
