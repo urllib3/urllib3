@@ -1,0 +1,1 @@
+Decoded byte header values in ``HTTPHeaderDict`` using latin-1 to keep merged and iterated values as strings.
