@@ -15,6 +15,18 @@ class BadError(Exception):
     """
 
 
+class CustomLifoQueue(queue.LifoQueue[int]):
+    pass
+
+
+class OtherLifoQueue(queue.LifoQueue[int]):
+    pass
+
+
+class CustomQueueHTTPConnectionPool(HTTPConnectionPool):
+    QueueCls = CustomLifoQueue
+
+
 class TestMonkeypatchResistance:
     """
     Test that connection pool works even with a monkey patched Queue module,
@@ -27,3 +39,13 @@ class TestMonkeypatchResistance:
                 http._get_conn()
                 with pytest.raises(EmptyPoolError):
                     http._get_conn(timeout=0)
+
+    def test_default_queue_class_resolves_lazily(self) -> None:
+        with mock.patch("urllib3.connectionpool.queue.LifoQueue", CustomLifoQueue):
+            with HTTPConnectionPool(host="localhost", block=True) as http:
+                assert isinstance(http.pool, CustomLifoQueue)
+
+    def test_custom_queue_class_overrides_lazy_default(self) -> None:
+        with mock.patch("urllib3.connectionpool.queue.LifoQueue", OtherLifoQueue):
+            with CustomQueueHTTPConnectionPool(host="localhost", block=True) as http:
+                assert isinstance(http.pool, CustomLifoQueue)

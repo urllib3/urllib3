@@ -1,0 +1,1 @@
+Changed connection pools to resolve the default ``queue.LifoQueue`` class when a pool is constructed, allowing late monkey-patching to affect newly-created pools.
