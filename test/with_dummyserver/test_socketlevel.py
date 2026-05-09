@@ -1154,7 +1154,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         base_url = f"http://{self.host}:{self.port}"
 
         # Define some proxy headers.
-        proxy_headers = HTTPHeaderDict({"For The Proxy": "YEAH!"})
+        proxy_headers = HTTPHeaderDict({"For-The-Proxy": "YEAH!"})
         with proxy_from_url(base_url, proxy_headers=proxy_headers) as proxy:
             conn = proxy.connection_from_url("http://www.google.com/")
 
@@ -1164,7 +1164,7 @@ class TestProxyManager(SocketDummyServerTestCase):
             # FIXME: The order of the headers is not predictable right now. We
             # should fix that someday (maybe when we migrate to
             # OrderedDict/MultiDict).
-            assert b"For The Proxy: YEAH!\r\n" in r.data
+            assert b"For-The-Proxy: YEAH!\r\n" in r.data
 
     def test_retries(self) -> None:
         close_event = Event()
