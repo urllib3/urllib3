@@ -1,0 +1,2 @@
+Allowed proxy connections to inherit customized default socket options while
+keeping TCP_NODELAY disabled for proxies.

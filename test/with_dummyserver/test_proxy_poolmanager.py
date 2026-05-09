@@ -24,7 +24,7 @@ from dummyserver.testcase import (
 )
 from urllib3 import HTTPResponse
 from urllib3._collections import HTTPHeaderDict
-from urllib3.connection import VerifiedHTTPSConnection
+from urllib3.connection import HTTPConnection, VerifiedHTTPSConnection
 from urllib3.connectionpool import connection_from_url
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -182,6 +182,36 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
                 )
             finally:
                 conn.close()
+
+    def test_proxy_uses_custom_default_socket_options(self) -> None:
+        """Test that proxy connections inherit defaults except TCP_NODELAY."""
+        original_options = HTTPConnection.default_socket_options
+        keepalive = (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        custom_options: list[tuple[int, int, int | bytes]] = [
+            (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1),
+            keepalive,
+        ]
+        try:
+            HTTPConnection.default_socket_options = custom_options
+
+            with ProxyManager(self.proxy_url) as http:
+                hc2 = http.connection_from_host(self.http_host, self.http_port)
+                conn = hc2._get_conn()
+                try:
+                    assert hc2.conn_kw["socket_options"] == [keepalive]
+                    hc2._make_request(conn, "GET", f"{self.http_url}/")
+                    tcp_nodelay_setting = conn.sock.getsockopt(  # type: ignore[attr-defined]
+                        socket.IPPROTO_TCP, socket.TCP_NODELAY
+                    )
+                    keepalive_setting = conn.sock.getsockopt(  # type: ignore[attr-defined]
+                        socket.SOL_SOCKET, socket.SO_KEEPALIVE
+                    )
+                    assert tcp_nodelay_setting == 0
+                    assert keepalive_setting > 0
+                finally:
+                    conn.close()
+        finally:
+            HTTPConnection.default_socket_options = original_options
 
     @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
     @pytest.mark.parametrize("target_scheme", ["http", "https"])
