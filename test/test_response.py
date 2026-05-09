@@ -858,22 +858,33 @@ class TestResponse:
             pytest.skip(f"Proper {request.node.callspec.id} decoder is not available")
 
         name, compressed_data = data
-        limit = 1024 * 1024  # 1 MiB
+        limit1 = 1024 * 1024  # 1 MiB
+        # We test with two read calls because the second call may be
+        # able to use the internal buffer filled by the first call, and
+        # we want to ensure that full decompression is never triggered
+        # by the second call. The limit for the second call is lowered
+        # to make sure that the internal buffer is used for the Brotli
+        # case specifically https://github.com/google/brotli/issues/1396
+        limit2 = 1024  # 1 KiB
         if read_method in ("read_chunked", "stream"):
             httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+            httplib_r.chunked = True
+            httplib_r.chunk_left = 1
             httplib_r.fp = MockChunkedEncodingResponse([compressed_data])  # type: ignore[assignment]
             r = HTTPResponse(
                 httplib_r,
                 preload_content=False,
                 headers={"transfer-encoding": "chunked", "content-encoding": name},
             )
-            next(getattr(r, read_method)(amt=limit, decode_content=True))
+            for limit in (limit1, limit2):
+                next(getattr(r, read_method)(amt=limit, decode_content=True))
         else:
             fp = BytesIO(compressed_data)
             r = HTTPResponse(
                 fp, headers={"content-encoding": name}, preload_content=False
             )
-            getattr(r, read_method)(amt=limit, decode_content=True)
+            for limit in (limit1, limit2):
+                getattr(r, read_method)(amt=limit, decode_content=True)
 
         # Check that the internal decoded buffer is empty unless brotli
         # is used.
@@ -882,6 +893,13 @@ class TestResponse:
         # And unmaintained brotlipy cannot limit the output buffer size.
         if name != "br" or brotli.__name__ == "brotlicffi":
             assert len(r._decoded_buffer) == 0
+
+        # Check that memory usage is still within the limit while the
+        # connection is being drained, meaning that the call does not
+        # decompress the whole content.
+        r.drain_conn()
+        assert r._decoder is None
+        assert len(r._decoded_buffer) == 0
 
     def test_multi_decoding_deflate_deflate(self) -> None:
         data = zlib.compress(zlib.compress(b"foo"))

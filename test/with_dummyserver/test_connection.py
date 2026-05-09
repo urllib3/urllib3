@@ -138,3 +138,22 @@ def test_invalid_tunnel_scheme(pool: HTTPConnectionPool) -> None:
         str(e.value)
         == "Invalid proxy scheme for tunneling: 'socks', must be either 'http' or 'https'"
     )
+
+
+def test_response_after_drain_conn(pool: HTTPConnectionPool) -> None:
+    """
+    Test that a connection can be reused after calling `drain_conn` on
+    an unread response.
+    """
+    conn = pool._get_conn()
+
+    conn.request("GET", "/", preload_content=False)
+    response = conn.getresponse()
+    assert response.status == 200
+    response.drain_conn()
+
+    conn.request("GET", "/", preload_content=False)
+    response = conn.getresponse()
+    assert response.status == 200
+
+    conn.close()
