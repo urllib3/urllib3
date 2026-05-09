@@ -29,6 +29,7 @@ from urllib3.connectionpool import connection_from_url
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InsecureRequestWarning,
+    InvalidHeader,
     MaxRetryError,
     ProxyError,
     ProxySchemeUnknown,
@@ -392,6 +393,37 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert isinstance(r, HTTPResponse)
             assert r._pool is not None
             assert r._pool.host == self.https_host
+
+    def test_proxy_url_auth_sets_proxy_authorization_header(self) -> None:
+        proxy_url = f"http://user:password@{self.proxy_host}:{int(self.proxy_port)}"
+
+        with proxy_from_url(proxy_url) as http:
+            r = http.request_encode_url("GET", f"{self.http_url}/headers")
+            returned_headers = r.json()
+            assert (
+                returned_headers.get("Proxy-Authorization")
+                == "Basic dXNlcjpwYXNzd29yZA=="
+            )
+
+    def test_proxy_url_auth_conflicting_proxy_header_raises(self) -> None:
+        proxy_url = f"http://user:password@{self.proxy_host}:{int(self.proxy_port)}"
+
+        with pytest.raises(InvalidHeader):
+            proxy_from_url(
+                proxy_url,
+                proxy_headers={"Proxy-Authorization": "Basic d3Jvbmc6Y3JlZHM="},
+            )
+
+    def test_proxy_url_auth_conflicting_request_header_raises(self) -> None:
+        proxy_url = f"http://user:password@{self.proxy_host}:{int(self.proxy_port)}"
+
+        with proxy_from_url(proxy_url) as http:
+            with pytest.raises(InvalidHeader):
+                http.request_encode_url(
+                    "GET",
+                    f"{self.http_url}/headers",
+                    headers={"Proxy-Authorization": "Basic d3Jvbmc6Y3JlZHM="},
+                )
 
     def test_headers(self) -> None:
         with proxy_from_url(

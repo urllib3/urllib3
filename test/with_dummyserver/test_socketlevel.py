@@ -1166,6 +1166,60 @@ class TestProxyManager(SocketDummyServerTestCase):
             # OrderedDict/MultiDict).
             assert b"For The Proxy: YEAH!\r\n" in r.data
 
+    def test_url_auth_does_not_leak_in_proxy_request_target(self) -> None:
+        def echo_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+
+            sock.send(
+                (
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: text/plain\r\n"
+                    "Content-Length: %d\r\n"
+                    "\r\n"
+                    "%s" % (len(buf), buf.decode("utf-8"))
+                ).encode("utf-8")
+            )
+            sock.close()
+
+        self._start_server(echo_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+        with proxy_from_url(base_url) as proxy:
+            r = proxy.request("GET", "http://user:password@google.com/")
+
+            assert r.status == 200
+            assert b"GET http://google.com/ HTTP/1.1\r\n" in r.data
+            assert b"user:password" not in r.data
+            assert b"Authorization: Basic dXNlcjpwYXNzd29yZA==\r\n" in r.data
+
+    def test_proxy_url_auth_sent_on_connect(self) -> None:
+        request_data: list[bytes] = []
+
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+            request_data.append(buf)
+
+            sock.send(b"HTTP/1.0 501 Not Implemented\r\nConnection: close\r\n\r\n")
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"http://user:password@{self.host}:{self.port}"
+
+        with ProxyManager(base_url) as proxy:
+            with pytest.raises(MaxRetryError):
+                proxy.request("GET", "https://example.com", retries=0)
+
+        assert request_data
+        assert request_data[0].startswith(b"CONNECT example.com:443 HTTP/1.")
+        assert b"Proxy-Authorization: Basic dXNlcjpwYXNzd29yZA==\r\n" in request_data[0]
+
     def test_retries(self) -> None:
         close_event = Event()
 
