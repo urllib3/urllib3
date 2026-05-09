@@ -4,14 +4,16 @@ import functools
 import logging
 import typing
 import warnings
+from base64 import b64encode
 from types import TracebackType
-from urllib.parse import urljoin
+from urllib.parse import unquote_to_bytes, urljoin
 
 from ._collections import HTTPHeaderDict, RecentlyUsedContainer
 from ._request_methods import RequestMethods
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
+    InvalidHeader,
     LocationValueError,
     MaxRetryError,
     ProxySchemeUnknown,
@@ -51,6 +53,27 @@ SSL_KEYWORDS = (
 # Default value for `blocksize` - a new parameter introduced to
 # http.client.HTTPConnection & http.client.HTTPSConnection in Python 3.7
 _DEFAULT_BLOCKSIZE = 16384
+
+
+def _basic_auth_from_url_auth(auth: str | None) -> str | None:
+    if not auth or ":" not in auth:
+        return None
+    return f"Basic {b64encode(unquote_to_bytes(auth)).decode('ascii')}"
+
+
+def _merge_url_auth_header(
+    headers: typing.Mapping[str, str] | None,
+    header_name: str,
+    header_value: str,
+    url_name: str,
+) -> HTTPHeaderDict:
+    merged_headers = HTTPHeaderDict(headers)
+    if header_name in merged_headers:
+        if merged_headers[header_name] != header_value:
+            raise InvalidHeader(f"{header_name} header conflicts with {url_name} auth")
+    else:
+        merged_headers[header_name] = header_value
+    return merged_headers
 
 
 class PoolKey(typing.NamedTuple):
@@ -432,6 +455,9 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
+        auth_header = _basic_auth_from_url_auth(u.auth)
+        if u.auth is not None:
+            url = u._replace(auth=None).url
 
         if u.scheme is None:
             warnings.warn(
@@ -450,6 +476,10 @@ class PoolManager(RequestMethods):
 
         if "headers" not in kw:
             kw["headers"] = self.headers
+        if auth_header:
+            kw["headers"] = _merge_url_auth_header(
+                kw["headers"], "Authorization", auth_header, "URL"
+            )
 
         if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, url, **kw)
@@ -586,7 +616,15 @@ class ProxyManager(PoolManager):
             proxy = proxy._replace(port=port)
 
         self.proxy = proxy
-        self.proxy_headers = proxy_headers or {}
+        self.proxy_headers = HTTPHeaderDict(proxy_headers)
+        proxy_auth_header = _basic_auth_from_url_auth(proxy.auth)
+        if proxy_auth_header:
+            self.proxy_headers = _merge_url_auth_header(
+                self.proxy_headers,
+                "Proxy-Authorization",
+                proxy_auth_header,
+                "proxy URL",
+            )
         self.proxy_ssl_context = proxy_ssl_context
         self.proxy_config = ProxyConfig(
             proxy_ssl_context,
@@ -629,6 +667,14 @@ class ProxyManager(PoolManager):
         netloc = parse_url(url).netloc
         if netloc:
             headers_["Host"] = netloc
+
+        proxy_auth_header = _basic_auth_from_url_auth(
+            self.proxy.auth if self.proxy is not None else None
+        )
+        if proxy_auth_header:
+            headers = _merge_url_auth_header(
+                headers, "Proxy-Authorization", proxy_auth_header, "proxy URL"
+            )
 
         if headers:
             headers_.update(headers)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import typing
+from base64 import b64encode
 from test import LONG_TIMEOUT
 from unittest import mock
 
@@ -14,7 +15,7 @@ from dummyserver.testcase import (
 )
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
+from urllib3.exceptions import InvalidHeader, MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
@@ -507,6 +508,33 @@ class TestPoolManager(HypercornDummyServerTestCase):
             returned_headers = r.json()
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
+
+    def test_url_auth_sets_authorization_header(self) -> None:
+        with PoolManager() as http:
+            r = http.request(
+                "GET", f"http://user:password@{self.host}:{self.port}/headers"
+            )
+            returned_headers = r.json()
+            assert returned_headers.get("Authorization") == "Basic dXNlcjpwYXNzd29yZA=="
+
+    def test_url_auth_percent_decodes_authorization_header(self) -> None:
+        with PoolManager() as http:
+            r = http.request(
+                "GET",
+                f"http://user%40email.com:pass%3Aword@{self.host}:{self.port}/headers",
+            )
+            returned_headers = r.json()
+            expected = b64encode(b"user@email.com:pass:word").decode("ascii")
+            assert returned_headers.get("Authorization") == f"Basic {expected}"
+
+    def test_url_auth_conflicting_authorization_header_raises(self) -> None:
+        with PoolManager() as http:
+            with pytest.raises(InvalidHeader):
+                http.request(
+                    "GET",
+                    f"http://user:password@{self.host}:{self.port}/headers",
+                    headers={"Authorization": "Basic d3Jvbmc6Y3JlZHM="},
+                )
 
     def test_headers_http_header_dict(self) -> None:
         # Test uses a list of headers to assert the order
