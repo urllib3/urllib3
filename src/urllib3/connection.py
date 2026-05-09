@@ -77,6 +77,7 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+_HEADER_VALUE_FOLD_RE = re.compile(r"\r?\n[ \t]+")
 
 
 class HTTPConnection(_HTTPConnection):
@@ -580,7 +581,18 @@ class HTTPConnection(_HTTPConnection):
                 exc_info=True,
             )
 
-        headers = HTTPHeaderDict(httplib_response.msg.items())
+        header_items = []
+        header_items_changed = False
+        for key, value in httplib_response.msg.items():
+            header_value = _HEADER_VALUE_FOLD_RE.sub(" ", value)
+            header_items.append((key, header_value))
+            header_items_changed = header_items_changed or header_value != value
+
+        if header_items_changed:
+            # Some downstream consumers read the original HTTPMessage directly.
+            httplib_response.msg._headers = header_items  # type: ignore[attr-defined]
+
+        headers = HTTPHeaderDict(header_items)
 
         response = HTTPResponse(
             body=httplib_response,
