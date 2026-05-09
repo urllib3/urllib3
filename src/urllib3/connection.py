@@ -82,10 +82,14 @@ _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 def _validate_header_name(header: str | bytes) -> None:
     header_name = to_str(header)
     match = _CONTAINS_CONTROL_CHAR_RE.search(header_name)
-    if not header_name or match:
-        bad_char = "" if not header_name else f" (found at least {match.group()!r})"
+    if not header_name:
         raise ValueError(
-            f"Header name cannot contain non-token characters {header_name!r}{bad_char}"
+            f"Header name cannot contain non-token characters {header_name!r}"
+        )
+    if match:
+        raise ValueError(
+            f"Header name cannot contain non-token characters {header_name!r} "
+            f"(found at least {match.group()!r})"
         )
 
 
