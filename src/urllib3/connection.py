@@ -77,6 +77,9 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+_DEFAULT_SOCKET_OPTIONS: typing.Final[connection._TYPE_SOCKET_OPTIONS] = [
+    (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+]
 
 
 class HTTPConnection(_HTTPConnection):
@@ -108,9 +111,8 @@ class HTTPConnection(_HTTPConnection):
 
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options: typing.ClassVar[connection._TYPE_SOCKET_OPTIONS] = [
-        (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    ]
+    default_socket_options: typing.ClassVar[connection._TYPE_SOCKET_OPTIONS]
+    default_socket_options = _DEFAULT_SOCKET_OPTIONS
 
     #: Whether this connection verifies the host's certificate.
     is_verified: bool = False
@@ -139,7 +141,7 @@ class HTTPConnection(_HTTPConnection):
         blocksize: int = 16384,
         socket_options: None | (
             connection._TYPE_SOCKET_OPTIONS
-        ) = default_socket_options,
+        ) = _DEFAULT_SOCKET_OPTIONS,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
     ) -> None:
@@ -150,6 +152,8 @@ class HTTPConnection(_HTTPConnection):
             source_address=source_address,
             blocksize=blocksize,
         )
+        if socket_options is _DEFAULT_SOCKET_OPTIONS:
+            socket_options = self.default_socket_options
         self.socket_options = socket_options
         self.proxy = proxy
         self.proxy_config = proxy_config
@@ -628,7 +632,7 @@ class HTTPSConnection(HTTPConnection):
         blocksize: int = 16384,
         socket_options: None | (
             connection._TYPE_SOCKET_OPTIONS
-        ) = HTTPConnection.default_socket_options,
+        ) = _DEFAULT_SOCKET_OPTIONS,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
         cert_reqs: int | str | None = None,

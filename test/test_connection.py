@@ -213,6 +213,24 @@ class TestConnection:
         conn = HTTPSConnection("not.a.real.host", port=443)
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
+    def test_default_socket_options_are_loaded_at_construction(self) -> None:
+        original_options = HTTPConnection.default_socket_options
+        custom_options: list[tuple[int, int, int | bytes]] = [
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        ]
+        try:
+            HTTPConnection.default_socket_options = custom_options
+
+            http_conn = HTTPConnection("not.a.real.host")
+            https_conn = HTTPSConnection("not.a.real.host")
+            disabled_conn = HTTPConnection("not.a.real.host", socket_options=[])
+
+            assert http_conn.socket_options == custom_options
+            assert https_conn.socket_options == custom_options
+            assert disabled_conn.socket_options == []
+        finally:
+            HTTPConnection.default_socket_options = original_options
+
     @pytest.mark.parametrize(
         "proxy_scheme, err_part",
         [
