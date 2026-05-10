@@ -29,6 +29,7 @@ from urllib3.exceptions import (
 from urllib3.response import (  # type: ignore[attr-defined]
     BaseHTTPResponse,
     BytesQueueBuffer,
+    ContentDecoder,
     HTTPResponse,
     brotli,
 )
@@ -62,6 +63,18 @@ try:
     _zstd_available = True
 except ModuleNotFoundError:
     _zstd_available = False
+
+
+class NoFlushDecoder(ContentDecoder):
+    def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+        return data
+
+    @property
+    def has_unconsumed_tail(self) -> bool:
+        return False
+
+    def flush(self) -> bytes:
+        raise AssertionError("decoder should not be flushed")
 
 
 class TestBytesQueueBuffer:
@@ -970,14 +983,28 @@ class TestResponse:
         # Force putting some decoded data in the buffer as the buffer
         # is normally empty unless decoder has issues like not
         # respecting `max_length` https://github.com/google/brotli/issues/1396
-        middle_part = r._decode(
-            r._raw_read(), decode_content=True, flush_decoder=False, max_length=3
-        )
+        middle_part = r._decode(r._raw_read(), decode_content=True, max_length=3)
         assert middle_part == b"bar"
         r._decoded_buffer.put(middle_part)
         # Here we expect data from `_decoded_buffer` to be joined with
         # the remaining part.
         assert r.read() == b"barbaz"
+
+    def test_read_does_not_flush_decoder(self) -> None:
+        fp = BytesIO(b"foo")
+        r = HTTPResponse(fp, preload_content=False)
+        r._decoder = NoFlushDecoder()
+
+        assert r.read(decode_content=True) == b"foo"
+        assert r.read(decode_content=True) == b""
+
+    def test_read1_does_not_flush_decoder(self) -> None:
+        fp = BytesIO(b"foo")
+        r = HTTPResponse(fp, preload_content=False)
+        r._decoder = NoFlushDecoder()
+
+        assert r.read1(decode_content=True) == b"foo"
+        assert r.read1(decode_content=True) == b""
 
     def test_full_read_after_partial_read_without_buffered_decoded_data(self) -> None:
         data = zlib.compress(b"foobarbaz")
@@ -1708,6 +1735,19 @@ class TestResponse:
             data += c
 
         assert b"foobar" == data
+
+    def test_read_chunked_does_not_flush_decoder(self) -> None:
+        fp = MockChunkedEncodingResponse([b"foo"])
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        resp = HTTPResponse(
+            r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked"},
+        )
+        resp._decoder = NoFlushDecoder()
+
+        assert list(resp.read_chunked(decode_content=True)) == [b"foo"]
 
     def test_mock_transfer_encoding_chunked_custom_read(self) -> None:
         stream = [b"foooo", b"bbbbaaaaar"]
