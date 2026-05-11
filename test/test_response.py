@@ -661,6 +661,16 @@ class TestResponse:
                 amt_decoded += len(part)
 
     @onlyZstd()
+    def test_decode_zstd_incomplete_after_partial_decompress(self) -> None:
+        from urllib3.response import ZstdDecoder
+
+        decoder = ZstdDecoder()
+        assert decoder.decompress(zstd_compress(b"foo")[:-1], max_length=0) == b""
+
+        with pytest.raises(DecodeError, match="Zstandard data is incomplete"):
+            decoder.decompress(b"")
+
+    @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_read1(self, data: bytes) -> None:
         encoded_data = zstd_compress(data)
