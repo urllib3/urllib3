@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.client as httplib
+import socket
 import ssl
 import typing
 from http.client import HTTPException
@@ -614,3 +615,23 @@ class TestConnectionPool:
             # Verify the URL isn't mangled
             actual_url = mock_request.call_args[0][2]
             assert actual_url == path
+
+    def test_proxy_pool_honors_default_socket_options(self) -> None:
+        """See https://github.com/urllib3/urllib3/issues/2936."""
+        original_opts = HTTPConnection.default_socket_options.copy()
+        HTTPConnection.default_socket_options = original_opts + [
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
+        ]
+        try:
+            proxy_pool = HTTPConnectionPool(
+                "example.com",
+                80,
+                _proxy="http://proxy.example.com:8080",
+            )
+            proxy_opts = proxy_pool.conn_kw.get("socket_options", [])
+            # TCP_NODELAY should be excluded for proxy connections
+            assert (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) not in proxy_opts
+            # User-added default socket options should be present
+            assert (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1) in proxy_opts
+        finally:
+            HTTPConnection.default_socket_options = original_opts
