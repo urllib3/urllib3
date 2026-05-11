@@ -11,7 +11,7 @@ from socket import timeout as SocketTimeout
 from types import TracebackType
 
 from ._base_connection import _TYPE_BODY
-from ._collections import HTTPHeaderDict
+from ._collections import HTTPHeaderDict, HTTPHeaderMapping
 from ._request_methods import RequestMethods
 from .connection import (
     BaseSSLError,
@@ -179,10 +179,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         timeout: _TYPE_TIMEOUT | None = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: HTTPHeaderMapping | None = None,
         retries: Retry | bool | int | None = None,
         _proxy: Url | None = None,
-        _proxy_headers: typing.Mapping[str, str] | None = None,
+        _proxy_headers: HTTPHeaderMapping | None = None,
         _proxy_config: ProxyConfig | None = None,
         **conn_kw: typing.Any,
     ):
@@ -202,7 +202,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.block = block
 
         self.proxy = _proxy
-        self.proxy_headers = _proxy_headers or {}
+        self.proxy_headers = (
+            HTTPHeaderDict(_proxy_headers) if _proxy_headers is not None else HTTPHeaderDict()
+        )
         self.proxy_config = _proxy_config
 
         # Fill the queue up so that doing get() on it will block properly
@@ -380,7 +382,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: HTTPHeaderMapping | None = None,
         retries: Retry | None = None,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
@@ -594,7 +596,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: HTTPHeaderMapping | None = None,
         retries: Retry | bool | int | None = None,
         redirect: bool = True,
         assert_same_host: bool = True,
@@ -712,8 +714,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             destination_scheme = parsed_url.scheme
             url = to_str(parsed_url.url)
 
-        if headers is None:
-            headers = self.headers
+        request_headers = HTTPHeaderDict(self.headers if headers is None else headers)
 
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
@@ -746,8 +747,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
         if not http_tunnel_required:
-            headers = headers.copy()  # type: ignore[attr-defined]
-            headers.update(self.proxy_headers)  # type: ignore[union-attr]
+            request_headers = request_headers.copy()
+            request_headers.update(self.proxy_headers)
 
         # Must keep the exception bound to a separate variable or else Python 3
         # complains about UnboundLocalError.
@@ -791,7 +792,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 url,
                 timeout=timeout_obj,
                 body=body,
-                headers=headers,
+                headers=request_headers,
                 chunked=chunked,
                 retries=retries,
                 response_conn=response_conn,
@@ -873,7 +874,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 method,
                 url,
                 body,
-                headers,
+                request_headers,
                 retries,
                 redirect,
                 assert_same_host,
@@ -895,7 +896,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 method = "GET"
                 # And lose the body not to transfer anything sensitive.
                 body = None
-                headers = HTTPHeaderDict(headers)._prepare_for_method_change()
+                request_headers = request_headers._prepare_for_method_change()
 
             # Strip headers marked as unsafe to forward to the redirected location.
             # Check remove_headers_on_redirect to avoid a potential network call within
@@ -903,11 +904,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if retries.remove_headers_on_redirect and not self.is_same_host(
                 redirect_location
             ):
-                new_headers = headers.copy()  # type: ignore[union-attr]
-                for header in headers:
+                new_headers = request_headers.copy()
+                for header in request_headers:
                     if header.lower() in retries.remove_headers_on_redirect:
                         new_headers.pop(header, None)
-                headers = new_headers
+                request_headers = new_headers
 
             try:
                 retries = retries.increment(method, url, response=response, _pool=self)
@@ -924,7 +925,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 method,
                 redirect_location,
                 body,
-                headers,
+                request_headers,
                 retries=retries,
                 redirect=redirect,
                 assert_same_host=assert_same_host,
@@ -956,7 +957,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 method,
                 url,
                 body,
-                headers,
+                request_headers,
                 retries=retries,
                 redirect=redirect,
                 assert_same_host=assert_same_host,
@@ -997,10 +998,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         timeout: _TYPE_TIMEOUT | None = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: HTTPHeaderMapping | None = None,
         retries: Retry | bool | int | None = None,
         _proxy: Url | None = None,
-        _proxy_headers: typing.Mapping[str, str] | None = None,
+        _proxy_headers: HTTPHeaderMapping | None = None,
         key_file: str | None = None,
         cert_file: str | None = None,
         cert_reqs: int | str | None = None,

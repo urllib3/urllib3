@@ -20,7 +20,7 @@ if typing.TYPE_CHECKING:
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
 
-from ._collections import HTTPHeaderDict
+from ._collections import HTTPHeaderDict, HTTPHeaderMapping
 from .http2 import probe as http2_probe
 from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
@@ -228,14 +228,15 @@ class HTTPConnection(_HTTPConnection):
         self,
         host: str,
         port: int | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: HTTPHeaderMapping | None = None,
         scheme: str = "http",
     ) -> None:
         if scheme not in ("http", "https"):
             raise ValueError(
                 f"Invalid proxy scheme for tunneling: {scheme!r}, must be either 'http' or 'https'"
             )
-        super().set_tunnel(host, port=port, headers=headers)
+        tunnel_headers = HTTPHeaderDict(headers) if headers is not None else None
+        super().set_tunnel(host, port=port, headers=tunnel_headers)
         self._tunnel_scheme = scheme
 
     if sys.version_info < (3, 11, 9) or ((3, 12) <= sys.version_info < (3, 12, 3)):
@@ -426,7 +427,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: HTTPHeaderMapping | None = None,
         *,
         chunked: bool = False,
         preload_content: bool = True,
@@ -454,9 +455,8 @@ class HTTPConnection(_HTTPConnection):
             enforce_content_length=enforce_content_length,
         )
 
-        if headers is None:
-            headers = {}
-        header_keys = frozenset(to_str(k.lower()) for k in headers)
+        header_dict = HTTPHeaderDict(headers) if headers is not None else HTTPHeaderDict()
+        header_keys = frozenset(to_str(k.lower()) for k in header_dict)
         skip_accept_encoding = "accept-encoding" in header_keys
         skip_host = "host" in header_keys
         self.putrequest(
@@ -495,7 +495,7 @@ class HTTPConnection(_HTTPConnection):
         # Now that framing headers are out of the way we send all the other headers.
         if "user-agent" not in header_keys:
             self.putheader("User-Agent", _get_default_user_agent())
-        for header, value in headers.items():
+        for header, value in header_dict.items():
             self.putheader(header, value)
         self.endheaders()
 
@@ -523,7 +523,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: HTTPHeaderMapping | None = None,
     ) -> None:
         """
         Alternative to the common request method, which sends the

@@ -8,6 +8,7 @@ from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
 
 from ..._base_connection import _TYPE_BODY
+from ..._collections import HTTPHeaderDict, HTTPHeaderMapping
 from ...connection import HTTPConnection, ProxyConfig, port_by_scheme
 from ...exceptions import TimeoutError
 from ...response import BaseHTTPResponse
@@ -74,7 +75,7 @@ class EmscriptenHTTPConnection:
         self,
         host: str,
         port: int | None = 0,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: HTTPHeaderMapping | None = None,
         scheme: str = "http",
     ) -> None:
         pass
@@ -87,7 +88,7 @@ class EmscriptenHTTPConnection:
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: HTTPHeaderMapping | None = None,
         # We know *at least* botocore is depending on the order of the
         # first 3 parameters so to be safe we only mark the later ones
         # as keyword-only to ensure we have space to extend.
@@ -113,7 +114,7 @@ class EmscriptenHTTPConnection:
         )
         request.set_body(body)
         if headers:
-            for k, v in headers.items():
+            for k, v in HTTPHeaderDict(headers).items():
                 request.set_header(k, v)
         self._response = None
         try:
