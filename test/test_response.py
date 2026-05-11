@@ -970,9 +970,7 @@ class TestResponse:
         # Force putting some decoded data in the buffer as the buffer
         # is normally empty unless decoder has issues like not
         # respecting `max_length` https://github.com/google/brotli/issues/1396
-        middle_part = r._decode(
-            r._raw_read(), decode_content=True, flush_decoder=False, max_length=3
-        )
+        middle_part = r._decode(r._raw_read(), decode_content=True, max_length=3)
         assert middle_part == b"bar"
         r._decoded_buffer.put(middle_part)
         # Here we expect data from `_decoded_buffer` to be joined with
