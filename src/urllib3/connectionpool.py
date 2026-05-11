@@ -61,6 +61,7 @@ if typing.TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 _TYPE_TIMEOUT = typing.Union[Timeout, float, _TYPE_DEFAULT, None]
+_DEFAULT_QUEUE_CLASS = queue.LifoQueue
 
 
 # Pool objects
@@ -198,7 +199,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.timeout = timeout
         self.retries = retries
 
-        self.pool: queue.LifoQueue[typing.Any] | None = self.QueueCls(maxsize)
+        queue_cls = (
+            queue.LifoQueue if self.QueueCls is _DEFAULT_QUEUE_CLASS else self.QueueCls
+        )
+        self.pool: queue.LifoQueue[typing.Any] | None = queue_cls(maxsize)
         self.block = block
 
         self.proxy = _proxy

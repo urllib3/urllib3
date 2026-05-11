@@ -1,0 +1,1 @@
+Resolved connection pool queue classes at construction time so monkey-patched queue implementations are honored.

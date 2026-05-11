@@ -27,3 +27,25 @@ class TestMonkeypatchResistance:
                 http._get_conn()
                 with pytest.raises(EmptyPoolError):
                     http._get_conn(timeout=0)
+
+    def test_lifo_queue_monkeypatching(self) -> None:
+        class PatchedLifoQueue(queue.LifoQueue):
+            pass
+
+        with mock.patch.object(queue, "LifoQueue", PatchedLifoQueue):
+            with HTTPConnectionPool(host="localhost") as http:
+                assert isinstance(http.pool, PatchedLifoQueue)
+
+    def test_custom_queue_cls_ignores_lifo_queue_monkeypatching(self) -> None:
+        class CustomLifoQueue(queue.LifoQueue):
+            pass
+
+        class PatchedLifoQueue(queue.LifoQueue):
+            pass
+
+        class CustomQueueConnectionPool(HTTPConnectionPool):
+            QueueCls = CustomLifoQueue
+
+        with mock.patch.object(queue, "LifoQueue", PatchedLifoQueue):
+            with CustomQueueConnectionPool(host="localhost") as http:
+                assert isinstance(http.pool, CustomLifoQueue)
