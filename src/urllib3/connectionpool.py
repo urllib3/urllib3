@@ -42,7 +42,12 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
-from .util.request import _TYPE_BODY_POSITION, set_file_position
+from .util.request import (
+    _TYPE_BODY_POSITION,
+    _basic_auth_header_from_url,
+    _merge_url_auth_header,
+    set_file_position,
+)
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
@@ -1138,13 +1143,18 @@ def connection_from_url(url: str, **kw: typing.Any) -> HTTPConnectionPool:
         >>> conn = connection_from_url('http://google.com/')
         >>> r = conn.request('GET', '/')
     """
-    scheme, _, host, port, *_ = parse_url(url)
-    scheme = scheme or "http"
-    port = port or port_by_scheme.get(scheme, 80)
+    parsed_url = parse_url(url)
+    scheme = parsed_url.scheme or "http"
+    port = parsed_url.port or port_by_scheme.get(scheme, 80)
+
+    url_auth_header = _basic_auth_header_from_url(parsed_url.auth)
+    if url_auth_header:
+        kw["headers"] = _merge_url_auth_header(kw.get("headers"), *url_auth_header)
+
     if scheme == "https":
-        return HTTPSConnectionPool(host, port=port, **kw)  # type: ignore[arg-type]
+        return HTTPSConnectionPool(parsed_url.host, port=port, **kw)  # type: ignore[arg-type]
     else:
-        return HTTPConnectionPool(host, port=port, **kw)  # type: ignore[arg-type]
+        return HTTPConnectionPool(parsed_url.host, port=port, **kw)  # type: ignore[arg-type]
 
 
 @typing.overload

@@ -29,6 +29,7 @@ from urllib3.connectionpool import connection_from_url
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InsecureRequestWarning,
+    InvalidHeader,
     MaxRetryError,
     ProxyError,
     ProxySchemeUnknown,
@@ -466,6 +467,29 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert returned_headers.get("Hickory") is None
             assert (
                 returned_headers.get("Host") == f"{self.https_host}:{self.https_port}"
+            )
+
+    def test_proxy_basic_auth_from_url(self) -> None:
+        proxy_url = f"http://user:password@{self.proxy_host}:{self.proxy_port}"
+
+        with proxy_from_url(proxy_url, ca_certs=DEFAULT_CA) as http:
+            r = http.request_encode_url("GET", f"{self.http_url}/headers")
+            returned_headers = r.json()
+            assert (
+                returned_headers.get("Proxy-Authorization")
+                == "Basic dXNlcjpwYXNzd29yZA=="
+            )
+
+    def test_proxy_basic_auth_from_url_does_not_override_proxy_authorization(
+        self,
+    ) -> None:
+        proxy_url = f"http://user:password@{self.proxy_host}:{self.proxy_port}"
+
+        with pytest.raises(InvalidHeader):
+            proxy_from_url(
+                proxy_url,
+                proxy_headers={"Proxy-Authorization": "Basic other"},
+                ca_certs=DEFAULT_CA,
             )
 
     def test_https_headers(self) -> None:

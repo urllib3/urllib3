@@ -20,6 +20,11 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import (
+    _basic_auth_header_from_url,
+    _ensure_url_auth_header_doesnt_conflict,
+    _merge_url_auth_header,
+)
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -451,6 +456,10 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        url_auth_header = _basic_auth_header_from_url(u.auth)
+        if url_auth_header:
+            kw["headers"] = _merge_url_auth_header(kw["headers"], *url_auth_header)
+
         if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, url, **kw)
         else:
@@ -586,7 +595,14 @@ class ProxyManager(PoolManager):
             proxy = proxy._replace(port=port)
 
         self.proxy = proxy
-        self.proxy_headers = proxy_headers or {}
+        proxy_auth_header = _basic_auth_header_from_url(proxy.auth, proxy=True)
+        if proxy_auth_header:
+            _ensure_url_auth_header_doesnt_conflict(headers, *proxy_auth_header)
+            self.proxy_headers = _merge_url_auth_header(
+                proxy_headers, *proxy_auth_header
+            )
+        else:
+            self.proxy_headers = proxy_headers or {}
         self.proxy_ssl_context = proxy_ssl_context
         self.proxy_config = ProxyConfig(
             proxy_ssl_context,

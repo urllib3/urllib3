@@ -14,7 +14,7 @@ from dummyserver.testcase import (
 )
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
+from urllib3.exceptions import InvalidHeader, MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
@@ -544,6 +544,36 @@ class TestPoolManager(HypercornDummyServerTestCase):
                 ["Baz", "quux"],
                 ["Extra", "extra"],
             ]
+
+    def test_basic_auth_from_url(self) -> None:
+        with PoolManager() as http:
+            r = http.request(
+                "GET",
+                f"http://user:password@{self.host}:{self.port}/headers",
+            )
+            returned_headers = r.json()
+            assert returned_headers.get("Authorization") == "Basic dXNlcjpwYXNzd29yZA=="
+
+    def test_basic_auth_from_percent_encoded_url(self) -> None:
+        with PoolManager() as http:
+            r = http.request(
+                "GET",
+                f"http://user%40example.com:p%40ss@{self.host}:{self.port}/headers",
+            )
+            returned_headers = r.json()
+            assert (
+                returned_headers.get("Authorization")
+                == "Basic dXNlckBleGFtcGxlLmNvbTpwQHNz"
+            )
+
+    def test_basic_auth_from_url_does_not_override_authorization(self) -> None:
+        with PoolManager() as http:
+            with pytest.raises(InvalidHeader):
+                http.request(
+                    "GET",
+                    f"http://user:password@{self.host}:{self.port}/headers",
+                    headers={"Authorization": "Basic other"},
+                )
 
     def test_merge_headers_with_pool_manager_headers(self) -> None:
         headers = HTTPHeaderDict()
