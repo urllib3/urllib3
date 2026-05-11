@@ -1,0 +1,1 @@
+Replaced obsolete folded response headers with spaces before storing them.
