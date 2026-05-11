@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typing
 
+from ._collections import HTTPHeaderMapping
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from .util.url import Url
@@ -70,7 +71,7 @@ if typing.TYPE_CHECKING:
             self,
             host: str,
             port: int | None = None,
-            headers: typing.Mapping[str, str] | None = None,
+            headers: HTTPHeaderMapping | None = None,
             scheme: str = "http",
         ) -> None: ...
 
@@ -81,7 +82,7 @@ if typing.TYPE_CHECKING:
             method: str,
             url: str,
             body: _TYPE_BODY | None = None,
-            headers: typing.Mapping[str, str] | None = None,
+            headers: HTTPHeaderMapping | None = None,
             # We know *at least* botocore is depending on the order of the
             # first 3 parameters so to be safe we only mark the later ones
             # as keyword-only to ensure we have space to extend.
