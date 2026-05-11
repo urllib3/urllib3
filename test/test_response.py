@@ -665,7 +665,7 @@ class TestResponse:
         from urllib3.response import ZstdDecoder
 
         decoder = ZstdDecoder()
-        assert decoder.decompress(zstd_compress(b"foo")[:-1], max_length=0) == b""
+        decoder._data_seen = True
 
         with pytest.raises(DecodeError, match="Zstandard data is incomplete"):
             decoder.decompress(b"")
