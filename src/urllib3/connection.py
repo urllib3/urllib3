@@ -20,7 +20,7 @@ if typing.TYPE_CHECKING:
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
 
-from ._collections import HTTPHeaderDict
+from ._collections import _TYPE_HEADER_MAPPING, HTTPHeaderDict
 from .http2 import probe as http2_probe
 from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
@@ -228,14 +228,18 @@ class HTTPConnection(_HTTPConnection):
         self,
         host: str,
         port: int | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         scheme: str = "http",
     ) -> None:
         if scheme not in ("http", "https"):
             raise ValueError(
                 f"Invalid proxy scheme for tunneling: {scheme!r}, must be either 'http' or 'https'"
             )
-        super().set_tunnel(host, port=port, headers=headers)
+        super().set_tunnel(
+            host,
+            port=port,
+            headers=typing.cast(typing.Mapping[str, str] | None, headers),
+        )
         self._tunnel_scheme = scheme
 
     if sys.version_info < (3, 11, 9) or ((3, 12) <= sys.version_info < (3, 12, 3)):
@@ -426,7 +430,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         *,
         chunked: bool = False,
         preload_content: bool = True,
@@ -496,7 +500,7 @@ class HTTPConnection(_HTTPConnection):
         if "user-agent" not in header_keys:
             self.putheader("User-Agent", _get_default_user_agent())
         for header, value in headers.items():
-            self.putheader(header, value)
+            self.putheader(typing.cast(str, header), typing.cast(str, value))
         self.endheaders()
 
         # If we're given a body we start sending that in chunks.
@@ -523,7 +527,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
     ) -> None:
         """
         Alternative to the common request method, which sends the
