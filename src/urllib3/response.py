@@ -478,7 +478,7 @@ class BaseHTTPResponse(io.IOBase):
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
         else:
-            self.headers = HTTPHeaderDict(headers)  # type: ignore[arg-type]
+            self.headers = HTTPHeaderDict(headers)
         self.status = status
         self.version = version
         self.version_string = version_string
