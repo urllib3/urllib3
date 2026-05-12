@@ -1,0 +1,1 @@
+Added ``retry_after_max_strict`` parameter to :class:`~urllib3.util.retry.Retry`. When set to ``True``, a :exc:`~urllib3.exceptions.MaxRetryAfterWaitError` is raised instead of silently capping ``Retry-After`` values that exceed ``retry_after_max``.
