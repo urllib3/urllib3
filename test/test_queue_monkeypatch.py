@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import queue
+import typing
 from unittest import mock
 
 import pytest
@@ -29,7 +30,7 @@ class TestMonkeypatchResistance:
                     http._get_conn(timeout=0)
 
     def test_lifo_queue_monkeypatching(self) -> None:
-        class PatchedLifoQueue(queue.LifoQueue):
+        class PatchedLifoQueue(queue.LifoQueue[object]):
             pass
 
         with mock.patch.object(queue, "LifoQueue", PatchedLifoQueue):
@@ -37,14 +38,14 @@ class TestMonkeypatchResistance:
                 assert isinstance(http.pool, PatchedLifoQueue)
 
     def test_custom_queue_cls_ignores_lifo_queue_monkeypatching(self) -> None:
-        class CustomLifoQueue(queue.LifoQueue):
+        class CustomLifoQueue(queue.LifoQueue[object]):
             pass
 
-        class PatchedLifoQueue(queue.LifoQueue):
+        class PatchedLifoQueue(queue.LifoQueue[object]):
             pass
 
         class CustomQueueConnectionPool(HTTPConnectionPool):
-            QueueCls = CustomLifoQueue
+            QueueCls: typing.Any = CustomLifoQueue
 
         with mock.patch.object(queue, "LifoQueue", PatchedLifoQueue):
             with CustomQueueConnectionPool(host="localhost") as http:
