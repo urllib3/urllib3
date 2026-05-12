@@ -1,0 +1,1 @@
+Normalized obsolete folded response header values before storing them in response headers.

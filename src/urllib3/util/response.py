@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import http.client as httplib
+import re
 from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
 
 from ..exceptions import HeaderParsingError
+
+_OBS_FOLD_RE = re.compile(r"(?:\r\n|\r|\n)[ \t]+")
 
 
 def is_fp_closed(obj: object) -> bool:
@@ -86,6 +89,17 @@ def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
 
     if defects or unparsed_data:
         raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)
+
+
+def normalize_header_value(value: str) -> str:
+    """
+    Replace obsolete line folding with spaces per RFC 9112.
+
+    ``http.client`` preserves folded response header values as embedded newlines
+    with leading whitespace. Normalizing here prevents those bytes from leaking
+    into urllib3's header mapping and downstream generated request headers.
+    """
+    return _OBS_FOLD_RE.sub(" ", value)
 
 
 def is_response_to_head(response: httplib.HTTPResponse) -> bool:
