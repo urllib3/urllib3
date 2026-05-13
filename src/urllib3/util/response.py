@@ -87,20 +87,16 @@ def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
     ]
 
     if unparsed_data:
-        invalid_header_lines = (
-            unparsed_data.splitlines()
-            if isinstance(unparsed_data, bytes)
-            else unparsed_data.splitlines()
-        )
-        for line in invalid_header_lines:
-            if isinstance(line, bytes):
+        if isinstance(unparsed_data, bytes):
+            for line in unparsed_data.splitlines():
                 header_name, separator, _ = line.partition(b":")
                 if separator and header_name.rstrip(b" \t") != header_name:
                     raise InvalidHeader(
                         "Invalid leading whitespace, reserved character(s), or "
                         f"return character(s) in header name: {header_name!r}"
                     )
-            else:
+        else:
+            for line in unparsed_data.splitlines():
                 header_name, separator, _ = line.partition(":")
                 if separator and header_name.rstrip(" \t") != header_name:
                     raise InvalidHeader(

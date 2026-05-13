@@ -1,0 +1,1 @@
+Rejected malformed response headers that included whitespace before the colon in a field name.
