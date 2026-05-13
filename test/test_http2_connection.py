@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import socket
 import threading
+import typing
 from unittest import mock
 
 import h2.config
@@ -24,13 +25,20 @@ from urllib3.http2.connection import (
 # [1] https://httpwg.org/specs/rfc9113.html#n-field-validity
 
 
-def start_h2c_upgrade_server() -> (
-    tuple[
-        socket.socket, threading.Thread, dict[str, bytes], list[BaseException], str, int
-    ]
-):
+def start_h2c_server(
+    *,
+    upgrade: bool,
+    request_count: int = 1,
+) -> tuple[
+    socket.socket,
+    threading.Thread,
+    dict[str, typing.Any],
+    list[BaseException],
+    str,
+    int,
+]:
     ready = threading.Event()
-    result: dict[str, bytes] = {}
+    result: dict[str, typing.Any] = {"streams": []}
     errors: list[BaseException] = []
 
     def server(listener: socket.socket) -> None:
@@ -38,41 +46,61 @@ def start_h2c_upgrade_server() -> (
             ready.set()
             conn, _ = listener.accept()
             with conn:
-                request = b""
-                while b"\r\n\r\n" not in request:
-                    request += conn.recv(4096)
-                result["request"] = request
-
-                settings = None
-                for line in request.split(b"\r\n"):
-                    if line.lower().startswith(b"http2-settings:"):
-                        settings = line.split(b":", 1)[1].strip()
-                        break
-                assert settings is not None
-
-                conn.sendall(
-                    b"HTTP/1.1 101 Switching Protocols\r\n"
-                    b"Connection: Upgrade\r\n"
-                    b"Upgrade: h2c\r\n"
-                    b"\r\n"
-                )
-
                 h2_conn = h2.connection.H2Connection(
                     config=h2.config.H2Configuration(client_side=False)
                 )
-                h2_conn.initiate_upgrade_connection(settings)
-                h2_conn.send_headers(
-                    1,
-                    [(":status", "200"), ("content-length", "2")],
-                )
-                h2_conn.send_data(1, b"ok", end_stream=True)
-                conn.sendall(h2_conn.data_to_send())
 
-                conn.settimeout(0.5)
-                try:
-                    conn.recv(65535)
-                except OSError:
-                    pass
+                responses_sent = 0
+                pending_upgrade_response = False
+                if upgrade:
+                    request = b""
+                    while b"\r\n\r\n" not in request:
+                        request += conn.recv(4096)
+                    result["request"] = request
+
+                    settings = None
+                    for line in request.split(b"\r\n"):
+                        if line.lower().startswith(b"http2-settings:"):
+                            settings = line.split(b":", 1)[1].strip()
+                            break
+                    assert settings is not None
+
+                    conn.sendall(
+                        b"HTTP/1.1 101 Switching Protocols\r\n"
+                        b"Connection: Upgrade\r\n"
+                        b"Upgrade: h2c\r\n"
+                        b"\r\n"
+                    )
+
+                    h2_conn.initiate_upgrade_connection(settings)
+                    pending_upgrade_response = True
+                else:
+                    h2_conn.initiate_connection()
+                    conn.sendall(h2_conn.data_to_send())
+
+                while responses_sent < request_count:
+                    received_data = conn.recv(65535)
+                    if not received_data:
+                        break
+                    events = h2_conn.receive_data(received_data)
+                    if pending_upgrade_response:
+                        result["streams"].append(1)
+                        _send_h2_response(h2_conn, 1, responses_sent)
+                        responses_sent += 1
+                        pending_upgrade_response = False
+                    for event in events:
+                        if isinstance(event, h2.events.RequestReceived):
+                            result["streams"].append(event.stream_id)
+                            _send_h2_response(h2_conn, event.stream_id, responses_sent)
+                            responses_sent += 1
+                        elif isinstance(event, h2.events.DataReceived):
+                            h2_conn.acknowledge_received_data(
+                                event.flow_controlled_length, event.stream_id
+                            )
+                    if data_to_send := h2_conn.data_to_send():
+                        conn.sendall(data_to_send)
+
+                _drain_socket(conn)
         except BaseException as e:
             errors.append(e)
 
@@ -85,6 +113,36 @@ def start_h2c_upgrade_server() -> (
 
     host, port = listener.getsockname()
     return listener, thread, result, errors, host, port
+
+
+def start_h2c_upgrade_server() -> tuple[
+    socket.socket,
+    threading.Thread,
+    dict[str, typing.Any],
+    list[BaseException],
+    str,
+    int,
+]:
+    return start_h2c_server(upgrade=True)
+
+
+def _send_h2_response(
+    h2_conn: h2.connection.H2Connection, stream_id: int, index: int
+) -> None:
+    body = f"ok{index}".encode()
+    h2_conn.send_headers(
+        stream_id,
+        [(":status", "200"), ("content-length", str(len(body)))],
+    )
+    h2_conn.send_data(stream_id, body, end_stream=True)
+
+
+def _drain_socket(conn: socket.socket) -> None:
+    conn.settimeout(0.5)
+    try:
+        conn.recv(65535)
+    except OSError:
+        pass
 
 
 class TestHTTP2Connection:
@@ -501,7 +559,7 @@ class TestHTTP2Connection:
         assert not thread.is_alive()
         assert errors == []
         assert response.status == 200
-        assert response.data == b"ok"
+        assert response.data == b"ok0"
         assert result["request"].startswith(b"GET / HTTP/1.1\r\n")
         assert b"Upgrade: h2c\r\n" in result["request"]
         assert b"HTTP2-Settings:" in result["request"]
@@ -528,7 +586,74 @@ class TestHTTP2Connection:
         assert not thread.is_alive()
         assert errors == []
         assert response.status == 200
-        assert response.data == b"ok"
+        assert response.data == b"ok0"
+        assert result["request"].startswith(b"GET / HTTP/1.1\r\n")
+        assert b"Upgrade: h2c\r\n" in result["request"]
+        assert b"HTTP2-Settings:" in result["request"]
+
+    def test_cleartext_h2c_pool_reuses_connection(self) -> None:
+        listener, thread, result, errors, host, port = start_h2c_server(
+            upgrade=False, request_count=2
+        )
+        try:
+            urllib3.http2.inject_into_urllib3(h2c=True)
+            pool = urllib3.HTTPConnectionPool(
+                host,
+                port,
+                timeout=urllib3.Timeout(connect=2, read=2),
+                retries=False,
+            )
+            try:
+                first = pool.request("GET", "/")
+                second = pool.request("GET", "/again")
+                num_connections = pool.num_connections
+            finally:
+                pool.close()
+        finally:
+            urllib3.http2.extract_from_urllib3()
+            listener.close()
+            thread.join(2)
+
+        assert not thread.is_alive()
+        assert errors == []
+        assert first.status == 200
+        assert first.data == b"ok0"
+        assert second.status == 200
+        assert second.data == b"ok1"
+        assert num_connections == 1
+        assert result["streams"] == [1, 3]
+
+    def test_upgrade_h2c_pool_reuses_connection(self) -> None:
+        listener, thread, result, errors, host, port = start_h2c_server(
+            upgrade=True, request_count=2
+        )
+        try:
+            urllib3.http2.inject_into_urllib3(h2c="upgrade")
+            pool = urllib3.HTTPConnectionPool(
+                host,
+                port,
+                timeout=urllib3.Timeout(connect=2, read=2),
+                retries=False,
+            )
+            try:
+                first = pool.request("GET", "/")
+                second = pool.request("GET", "/again")
+                num_connections = pool.num_connections
+            finally:
+                pool.close()
+        finally:
+            urllib3.http2.extract_from_urllib3()
+            listener.close()
+            thread.join(2)
+
+        assert not thread.is_alive()
+        assert errors == []
+        assert first.status == 200
+        assert first.data == b"ok0"
+        assert second.status == 200
+        assert second.data == b"ok1"
+        assert num_connections == 1
+        assert result["streams"] == [1, 3]
         assert result["request"].startswith(b"GET / HTTP/1.1\r\n")
         assert b"Upgrade: h2c\r\n" in result["request"]
         assert b"HTTP2-Settings:" in result["request"]

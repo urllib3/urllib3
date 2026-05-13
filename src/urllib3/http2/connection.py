@@ -110,6 +110,12 @@ class HTTP2Connection(HTTPSConnection):
         super().connect()
         self._start_http2_connection()
 
+    @property
+    def is_connected(self) -> bool:
+        # Readable HTTP/2 sockets may only have control frames waiting, so the
+        # HTTP/1.1 dropped-connection probe is not reliable for HTTP/2.
+        return self.sock is not None
+
     def _start_http2_connection(self) -> None:
         with self._h2_conn as conn:
             conn.initiate_connection()
@@ -290,7 +296,9 @@ class HTTP2Connection(HTTPSConnection):
             # raise NotImplementedError("`chunked` isn't supported with HTTP/2")
             pass
 
-        if self.sock is not None:
+        if self.sock is None:
+            self.connect()
+        else:
             self.sock.settimeout(self.timeout)
 
         self.putrequest(method, url)
