@@ -3,8 +3,12 @@ from __future__ import annotations
 import socket
 from unittest import mock
 
+import h2.config
+import h2.connection
+import h2.events
 import pytest
 
+from urllib3 import HTTPSConnectionPool
 from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import ConnectionError
 from urllib3.http2.connection import (
@@ -79,6 +83,74 @@ class TestHTTP2Connection:
         conn = HTTP2Connection("example.com")
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
         assert conn.port == 443
+
+    def test_pool_reuses_connection_with_pending_control_frame(self) -> None:
+        client_sock, server_sock = socket.socketpair()
+        server_h2 = h2.connection.H2Connection(
+            config=h2.config.H2Configuration(client_side=False)
+        )
+        conn = HTTP2Connection("example.com")
+        pool = HTTPSConnectionPool("example.com", maxsize=1)
+
+        try:
+            conn.sock = client_sock
+            with conn._h2_conn as client_h2:
+                client_h2.initiate_connection()
+                client_sock.sendall(client_h2.data_to_send())
+
+            server_h2.initiate_connection()
+            server_h2.receive_data(server_sock.recv(65535))
+            server_sock.sendall(server_h2.data_to_send())
+
+            conn.request("GET", "/")
+            events = server_h2.receive_data(server_sock.recv(65535))
+            stream_id = next(
+                event.stream_id
+                for event in events
+                if isinstance(event, h2.events.RequestReceived)
+            )
+            server_h2.send_headers(
+                stream_id,
+                [(":status", "200"), ("content-length", "2")],
+            )
+            server_h2.send_data(stream_id, b"ok", end_stream=True)
+            server_sock.sendall(server_h2.data_to_send())
+
+            response = conn.getresponse()
+            assert response.data == b"ok"
+
+            server_h2.ping(b"12345678")
+            server_sock.sendall(server_h2.data_to_send())
+
+            assert pool.pool is not None
+            pool.pool.get(block=False)
+            pool._put_conn(conn)
+
+            reused = pool._get_conn()
+            assert reused is conn
+            assert conn.sock is client_sock
+
+            reused.request("GET", "/again")
+            events = server_h2.receive_data(server_sock.recv(65535))
+            second_stream_id = next(
+                event.stream_id
+                for event in events
+                if isinstance(event, h2.events.RequestReceived)
+            )
+            assert second_stream_id > stream_id
+            server_h2.send_headers(
+                second_stream_id,
+                [(":status", "200"), ("content-length", "5")],
+            )
+            server_h2.send_data(second_stream_id, b"again", end_stream=True)
+            server_sock.sendall(server_h2.data_to_send())
+
+            second_response = reused.getresponse()
+            assert second_response.data == b"again"
+        finally:
+            conn.close()
+            pool.close()
+            server_sock.close()
 
     def test_putheader(self) -> None:
         conn = HTTP2Connection("example.com")

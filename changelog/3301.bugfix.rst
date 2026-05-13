@@ -1,0 +1,1 @@
+Fixed HTTP/2 connection reuse when control frames are waiting on the socket.
