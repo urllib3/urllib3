@@ -3,7 +3,7 @@ from __future__ import annotations
 import http.client as httplib
 from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
 
-from ..exceptions import HeaderParsingError
+from ..exceptions import HeaderParsingError, InvalidHeader
 
 
 def is_fp_closed(obj: object) -> bool:
@@ -48,6 +48,8 @@ def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
 
     :raises urllib3.exceptions.HeaderParsingError:
         If parsing errors are found.
+    :raises urllib3.exceptions.InvalidHeader:
+        If a header field name contains whitespace before the colon.
     """
 
     # This will fail silently if we pass in the wrong kind of parameter.
@@ -83,6 +85,28 @@ def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
             defect, (StartBoundaryNotFoundDefect, MultipartInvariantViolationDefect)
         )
     ]
+
+    if unparsed_data:
+        invalid_header_lines = (
+            unparsed_data.splitlines()
+            if isinstance(unparsed_data, bytes)
+            else unparsed_data.splitlines()
+        )
+        for line in invalid_header_lines:
+            if isinstance(line, bytes):
+                header_name, separator, _ = line.partition(b":")
+                if separator and header_name.rstrip(b" \t") != header_name:
+                    raise InvalidHeader(
+                        "Invalid leading whitespace, reserved character(s), or "
+                        f"return character(s) in header name: {header_name!r}"
+                    )
+            else:
+                header_name, separator, _ = line.partition(":")
+                if separator and header_name.rstrip(" \t") != header_name:
+                    raise InvalidHeader(
+                        "Invalid leading whitespace, reserved character(s), or "
+                        f"return character(s) in header name: {header_name!r}"
+                    )
 
     if defects or unparsed_data:
         raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)

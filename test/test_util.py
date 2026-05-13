@@ -19,6 +19,7 @@ from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.connection import ProxyConfig
 from urllib3.exceptions import (
     InsecureRequestWarning,
+    InvalidHeader,
     LocationParseError,
     TimeoutStateError,
     UnrewindableBodyError,
@@ -851,6 +852,14 @@ class TestUtil:
         )
         header_msg.seek(0)
         assert_header_parsing(client.parse_headers(header_msg))
+
+    def test_assert_header_parsing_rejects_whitespace_before_colon(self) -> None:
+        from http import client
+
+        header_msg = io.BytesIO(b"Example-Header : value\r\n\r\n")
+
+        with pytest.raises(InvalidHeader):
+            assert_header_parsing(client.parse_headers(header_msg))
 
     @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
     def test_create_connection_with_invalid_idna_labels(self, host: str) -> None:
