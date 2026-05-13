@@ -406,7 +406,7 @@ class HTTP2UpgradeConnection(HTTP2CleartextConnection):
             settings_header = conn.initiate_upgrade_connection()
         assert settings_header is not None
 
-        upgrade_headers = dict(headers or {})
+        upgrade_headers = HTTPHeaderDict(headers or {})
         upgrade_headers["Connection"] = "Upgrade, HTTP2-Settings"
         upgrade_headers["Upgrade"] = "h2c"
         upgrade_headers["HTTP2-Settings"] = settings_header.decode("ascii")

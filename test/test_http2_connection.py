@@ -494,6 +494,44 @@ class TestHTTP2Connection:
         with pytest.raises(NotImplementedError):
             conn.request("POST", "/", body=b"body")
 
+    def test_upgrade_request_rejects_chunked_body(self) -> None:
+        conn = HTTP2UpgradeConnection("example.com")
+        with pytest.raises(NotImplementedError):
+            conn.request("POST", "/", chunked=True)
+
+    def test_upgrade_request_overrides_upgrade_headers_case_insensitively(
+        self,
+    ) -> None:
+        conn = HTTP2UpgradeConnection("example.com")
+        conn.sock = mock.MagicMock(sendall=mock.Mock(return_value=None))
+        conn._h2_conn._obj.initiate_upgrade_connection = mock.Mock(  # type: ignore[method-assign]
+            return_value=b"settings"
+        )
+
+        conn.request(
+            "GET",
+            "/",
+            headers={
+                "connection": "keep-alive",
+                "upgrade": "websocket",
+                "http2-settings": "old-settings",
+                "Host": "custom.example",
+                "Accept-Encoding": "gzip",
+                "User-Agent": "agent",
+            },
+        )
+
+        sent = b"".join(call.args[0] for call in conn.sock.sendall.call_args_list)
+        assert b"Connection: Upgrade, HTTP2-Settings\r\n" in sent
+        assert b"Upgrade: h2c\r\n" in sent
+        assert b"HTTP2-Settings: settings\r\n" in sent
+        assert b"connection: keep-alive\r\n" not in sent
+        assert b"upgrade: websocket\r\n" not in sent
+        assert b"http2-settings: old-settings\r\n" not in sent
+        assert b"Host: custom.example\r\n" in sent
+        assert b"Accept-Encoding: gzip\r\n" in sent
+        assert b"User-Agent: agent\r\n" in sent
+
     def test_upgrade_getresponse_switches_to_http2(self) -> None:
         conn = HTTP2UpgradeConnection("example.com")
         conn.sock = mock.MagicMock()
