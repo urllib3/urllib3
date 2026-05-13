@@ -861,6 +861,17 @@ class TestUtil:
         with pytest.raises(InvalidHeader):
             assert_header_parsing(client.parse_headers(header_msg))
 
+    def test_assert_header_parsing_rejects_bytes_payload_with_whitespace_before_colon(
+        self,
+    ) -> None:
+        from http import client
+
+        headers = client.parse_headers(io.BytesIO(b"\r\n"))
+        headers.get_payload = lambda: b"Example-Header : value\r\n\r\n"  # type: ignore[method-assign]
+
+        with pytest.raises(InvalidHeader):
+            assert_header_parsing(headers)
+
     @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
     def test_create_connection_with_invalid_idna_labels(self, host: str) -> None:
         with pytest.raises(
