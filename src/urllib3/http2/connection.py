@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import logging
 import re
 import threading
@@ -10,9 +11,9 @@ import h2.config
 import h2.connection
 import h2.events
 
-from .._base_connection import _TYPE_BODY
+from .._base_connection import _TYPE_BODY, _ResponseOptions
 from .._collections import HTTPHeaderDict
-from ..connection import HTTPSConnection, _get_default_user_agent
+from ..connection import HTTPConnection, HTTPSConnection, _get_default_user_agent
 from ..exceptions import ConnectionError
 from ..response import BaseHTTPResponse
 
@@ -83,6 +84,9 @@ class _LockedObject(typing.Generic[T]):
 
 
 class HTTP2Connection(HTTPSConnection):
+    _http2_scheme: typing.ClassVar[bytes] = b"https"
+    _http2_default_port: typing.ClassVar[int] = 443
+
     def __init__(
         self, host: str, port: int | None = None, **kwargs: typing.Any
     ) -> None:
@@ -104,6 +108,9 @@ class HTTP2Connection(HTTPSConnection):
 
     def connect(self) -> None:
         super().connect()
+        self._start_http2_connection()
+
+    def _start_http2_connection(self) -> None:
         with self._h2_conn as conn:
             conn.initiate_connection()
             if data_to_send := conn.data_to_send():
@@ -128,11 +135,11 @@ class HTTP2Connection(HTTPSConnection):
         self._validate_path(url)  # type: ignore[attr-defined]
 
         if ":" in self.host:
-            authority = f"[{self.host}]:{self.port or 443}"
+            authority = f"[{self.host}]:{self.port or self._http2_default_port}"
         else:
-            authority = f"{self.host}:{self.port or 443}"
+            authority = f"{self.host}:{self.port or self._http2_default_port}"
 
-        self._headers.append((b":scheme", b"https"))
+        self._headers.append((b":scheme", self._http2_scheme))
         self._headers.append((b":method", method.encode()))
         self._headers.append((b":authority", authority.encode()))
         self._headers.append((b":path", url.encode()))
@@ -314,10 +321,149 @@ class HTTP2Connection(HTTPSConnection):
                 pass
 
         # Reset all our HTTP/2 connection state.
+        self._reset_http2_state()
+        super().close()
+
+    def _reset_http2_state(self) -> None:
         self._h2_conn = self._new_h2_conn()
         self._h2_stream = None
         self._headers = []
 
+
+class HTTP2CleartextConnection(HTTP2Connection):
+    _http2_scheme = b"http"
+    _http2_default_port = 80
+
+    def __init__(
+        self, host: str, port: int | None = None, **kwargs: typing.Any
+    ) -> None:
+        super().__init__(
+            host,
+            port=self._http2_default_port if port is None else port,
+            **kwargs,
+        )
+
+    def connect(self) -> None:
+        HTTPConnection.connect(self)
+        self._start_http2_connection()
+
+
+class HTTP2UpgradeConnection(HTTP2CleartextConnection):
+    def __init__(
+        self, host: str, port: int | None = None, **kwargs: typing.Any
+    ) -> None:
+        self._h2_upgrade_complete = False
+        super().__init__(host, port=port, **kwargs)
+
+    def connect(self) -> None:
+        HTTPConnection.connect(self)
+
+    def request(  # type: ignore[override]
+        self,
+        method: str,
+        url: str,
+        body: _TYPE_BODY | None = None,
+        headers: typing.Mapping[str, str] | None = None,
+        *,
+        preload_content: bool = True,
+        decode_content: bool = True,
+        enforce_content_length: bool = True,
+        **kwargs: typing.Any,
+    ) -> None:
+        if self._h2_upgrade_complete:
+            return super().request(
+                method,
+                url,
+                body=body,
+                headers=headers,
+                preload_content=preload_content,
+                decode_content=decode_content,
+                enforce_content_length=enforce_content_length,
+                **kwargs,
+            )
+
+        if body is not None:
+            raise NotImplementedError(
+                "HTTP/2 upgrade requests with a body aren't supported"
+            )
+        if kwargs.get("chunked"):
+            raise NotImplementedError(
+                "Chunked HTTP/2 upgrade requests aren't supported"
+            )
+
+        if self.sock is not None:
+            self.sock.settimeout(self.timeout)
+
+        with self._h2_conn as conn:
+            settings_header = conn.initiate_upgrade_connection()
+        assert settings_header is not None
+
+        upgrade_headers = dict(headers or {})
+        upgrade_headers["Connection"] = "Upgrade, HTTP2-Settings"
+        upgrade_headers["Upgrade"] = "h2c"
+        upgrade_headers["HTTP2-Settings"] = settings_header.decode("ascii")
+
+        self._h2_stream = 1
+        self._request_url = url or "/"
+
+        self._response_options = _ResponseOptions(
+            request_method=method,
+            request_url=url,
+            preload_content=preload_content,
+            decode_content=decode_content,
+            enforce_content_length=enforce_content_length,
+        )
+
+        header_keys = frozenset(k.lower() for k in upgrade_headers)
+        HTTPConnection.putrequest(
+            self,
+            method,
+            url,
+            skip_accept_encoding=True,
+            skip_host=True,
+        )
+        if "host" not in header_keys:
+            HTTPConnection.putheader(self, "Host", self._http2_authority())
+        if "accept-encoding" not in header_keys:
+            HTTPConnection.putheader(self, "Accept-Encoding", "identity")
+        if "user-agent" not in header_keys:
+            HTTPConnection.putheader(self, "User-Agent", _get_default_user_agent())
+        for header, value in upgrade_headers.items():
+            HTTPConnection.putheader(self, header, value)
+        self._send_http1_headers()
+
+    def _http2_authority(self) -> str:
+        if ":" in self.host:
+            return f"[{self.host}]:{self.port or self._http2_default_port}"
+        return f"{self.host}:{self.port or self._http2_default_port}"
+
+    def _send_http1_headers(self) -> None:
+        self._buffer.extend((b"", b""))  # type: ignore[attr-defined]
+        message = b"\r\n".join(self._buffer)  # type: ignore[attr-defined]
+        del self._buffer[:]  # type: ignore[attr-defined]
+        HTTPConnection.send(self, message)
+        self._HTTPConnection__state = http.client._CS_REQ_SENT  # type: ignore[attr-defined]
+
+    def getresponse(  # type: ignore[override]
+        self,
+    ) -> BaseHTTPResponse:
+        if self._h2_upgrade_complete:
+            return super().getresponse()
+
+        response = HTTPConnection.getresponse(self)
+        if response.status != 101:
+            self._reset_http2_state()
+            return response
+
+        with self._h2_conn as conn:
+            if data_to_send := conn.data_to_send():
+                self.sock.sendall(data_to_send)
+
+        self._h2_upgrade_complete = True
+        return super().getresponse()
+
+    def close(self) -> None:
+        self._h2_upgrade_complete = False
         super().close()
 
 

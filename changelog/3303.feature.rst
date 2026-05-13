@@ -1,0 +1,1 @@
+Added opt-in support for cleartext HTTP/2 h2c using prior knowledge and HTTP/1.1 Upgrade.
