@@ -865,12 +865,17 @@ class TestUtil:
         self,
     ) -> None:
         from http import client
+        from unittest.mock import patch
 
         headers = client.parse_headers(io.BytesIO(b"\r\n"))
-        headers.get_payload = lambda: b"Example-Header : value\r\n\r\n"  # type: ignore[method-assign]
 
-        with pytest.raises(InvalidHeader):
-            assert_header_parsing(headers)
+        with patch.object(
+            headers,
+            "get_payload",
+            return_value=b"Example-Header : value\r\n\r\n",
+        ):
+            with pytest.raises(InvalidHeader):
+                assert_header_parsing(headers)
 
     @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
     def test_create_connection_with_invalid_idna_labels(self, host: str) -> None:
