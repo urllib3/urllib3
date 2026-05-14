@@ -50,6 +50,9 @@ if typing.TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
+# Read in 128 KiB chunks, CPython http.client uses 1 MiB limit before chunking.
+_READ_CHUNK_SIZE = 1 << 17
+
 
 class ContentDecoder:
     def decompress(self, data: bytes, max_length: int = -1) -> bytes:
@@ -798,7 +801,8 @@ class HTTPResponse(BaseHTTPResponse):
         Unread data in the HTTPResponse connection blocks the connection from being released back to the pool.
         """
         try:
-            self._raw_read()
+            while self._raw_read(_READ_CHUNK_SIZE):
+                pass
         except (HTTPError, OSError, BaseSSLError, HTTPException):
             pass
         if self._has_decoded_content:
