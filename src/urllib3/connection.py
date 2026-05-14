@@ -77,6 +77,11 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+_OBSOLETE_FOLD_RE = re.compile(r"\r\n[ \t]+")
+
+
+def _normalize_header_value(value: str) -> str:
+    return _OBSOLETE_FOLD_RE.sub(" ", value)
 
 
 class HTTPConnection(_HTTPConnection):
@@ -584,7 +589,10 @@ class HTTPConnection(_HTTPConnection):
                 exc_info=True,
             )
 
-        headers = HTTPHeaderDict(httplib_response.msg.items())
+        headers = HTTPHeaderDict(
+            (name, _normalize_header_value(value))
+            for name, value in httplib_response.msg.items()
+        )
 
         response = HTTPResponse(
             body=httplib_response,
