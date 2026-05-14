@@ -88,6 +88,22 @@ class TestCookies(SocketDummyServerTestCase):
             assert r.headers == {"set-cookie": "foo=1, bar=1"}
             assert r.headers.getlist("set-cookie") == ["foo=1", "bar=1"]
 
+    def test_setcookie_obs_fold_is_replaced_by_space(self) -> None:
+        self.start_response_handler(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Length: 0\r\n"
+            b"Set-Cookie: ___utmvbtouVBFmB=gZg\r\n"
+            b"    XbNOjalT: Lte; path=/; Max-Age=900\r\n"
+            b"\r\n"
+        )
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/", retries=0)
+
+        assert r.headers.getlist("set-cookie") == [
+            "___utmvbtouVBFmB=gZg XbNOjalT: Lte; path=/; Max-Age=900"
+        ]
+
 
 class TestSNI(SocketDummyServerTestCase):
     def test_hostname_in_first_request_packet(self) -> None:
