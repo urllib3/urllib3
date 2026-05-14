@@ -1,0 +1,1 @@
+Replaced obsolete line folding in response header values with spaces.
