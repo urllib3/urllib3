@@ -15,8 +15,8 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     CertificateError,
     HTTPConnection,
     HTTPSConnection,
-    _response_message_to_header_dict,
     _match_hostname,
+    _response_message_to_header_dict,
     _url_from_connection,
     _wrap_proxy_error,
 )
