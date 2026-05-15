@@ -1,0 +1,1 @@
+Normalized obsolete folded whitespace in parsed response header values before exposing them to users.

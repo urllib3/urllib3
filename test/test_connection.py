@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import datetime
+import http.client as httplib
 import socket
 import typing
 from http.client import ResponseNotReady
+from io import BytesIO
 from unittest import mock
 
 import pytest
@@ -13,6 +15,7 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     CertificateError,
     HTTPConnection,
     HTTPSConnection,
+    _response_message_to_header_dict,
     _match_hostname,
     _url_from_connection,
     _wrap_proxy_error,
@@ -240,6 +243,22 @@ class TestConnection:
         # Should error if a request has not been sent
         with pytest.raises(ResponseNotReady):
             conn.getresponse()
+
+    def test_response_headers_unfold_obs_fold_values(self) -> None:
+        message = httplib.parse_headers(
+            BytesIO(
+                b"Set-Cookie: ___utmvbtouVBFmB=gZg\r\n"
+                b"    XbNOjalT: Lte; path=/; Max-Age=900\r\n"
+                b"Content-Length: 2\r\n"
+                b"\r\n"
+            )
+        )
+
+        headers = _response_message_to_header_dict(message)
+
+        assert headers["set-cookie"] == (
+            "___utmvbtouVBFmB=gZg XbNOjalT: Lte; path=/; Max-Age=900"
+        )
 
     def test_assert_fingerprint_closes_socket(self) -> None:
         context = mock.create_autospec(ssl_.SSLContext)

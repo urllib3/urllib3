@@ -77,6 +77,27 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+_HEADER_OBS_FOLD_RE = re.compile(r"\r\n[ \t]+")
+
+
+def _normalize_response_header_value(value: str) -> str:
+    """
+    Replace obsolete folded whitespace in parsed response header values with
+    a single space as required by RFC 7230 Section 3.2.4.
+    """
+    if "\r" not in value and "\n" not in value:
+        return value
+
+    return _HEADER_OBS_FOLD_RE.sub(" ", value)
+
+
+def _response_message_to_header_dict(
+    message: http.client.HTTPMessage,
+) -> HTTPHeaderDict:
+    return HTTPHeaderDict(
+        (header, _normalize_response_header_value(value))
+        for header, value in message.items()
+    )
 
 
 class HTTPConnection(_HTTPConnection):
@@ -580,7 +601,7 @@ class HTTPConnection(_HTTPConnection):
                 exc_info=True,
             )
 
-        headers = HTTPHeaderDict(httplib_response.msg.items())
+        headers = _response_message_to_header_dict(httplib_response.msg)
 
         response = HTTPResponse(
             body=httplib_response,
