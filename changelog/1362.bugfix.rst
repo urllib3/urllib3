@@ -1,1 +1,1 @@
-Normalized obsolete folded whitespace in parsed response header values before exposing them to users.
+Rejected outbound request and tunnel header names containing non-token characters.

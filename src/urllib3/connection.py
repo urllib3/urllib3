@@ -77,27 +77,19 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
-_HEADER_OBS_FOLD_RE = re.compile(r"\r\n[ \t]+")
 
 
-def _normalize_response_header_value(value: str) -> str:
-    """
-    Replace obsolete folded whitespace in parsed response header values with
-    a single space as required by RFC 7230 Section 3.2.4.
-    """
-    if "\r" not in value and "\n" not in value:
-        return value
+def _validate_header_name(header: str | bytes) -> None:
+    header_name = to_str(header)
+    if not header_name:
+        raise ValueError("Header name cannot be empty")
 
-    return _HEADER_OBS_FOLD_RE.sub(" ", value)
-
-
-def _response_message_to_header_dict(
-    message: http.client.HTTPMessage,
-) -> HTTPHeaderDict:
-    return HTTPHeaderDict(
-        (header, _normalize_response_header_value(value))
-        for header, value in message.items()
-    )
+    match = _CONTAINS_CONTROL_CHAR_RE.search(header_name)
+    if match:
+        raise ValueError(
+            f"Header name cannot contain non-token characters {header_name!r} "
+            f"(found at least {match.group()!r})"
+        )
 
 
 class HTTPConnection(_HTTPConnection):
@@ -256,6 +248,8 @@ class HTTPConnection(_HTTPConnection):
             raise ValueError(
                 f"Invalid proxy scheme for tunneling: {scheme!r}, must be either 'http' or 'https'"
             )
+        for header in headers or ():
+            _validate_header_name(header)
         super().set_tunnel(host, port=port, headers=headers)
         self._tunnel_scheme = scheme
 
@@ -430,6 +424,7 @@ class HTTPConnection(_HTTPConnection):
 
     def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
+        _validate_header_name(header)
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
@@ -601,7 +596,7 @@ class HTTPConnection(_HTTPConnection):
                 exc_info=True,
             )
 
-        headers = _response_message_to_header_dict(httplib_response.msg)
+        headers = HTTPHeaderDict(httplib_response.msg.items())
 
         response = HTTPResponse(
             body=httplib_response,

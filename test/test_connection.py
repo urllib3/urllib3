@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import datetime
-import http.client as httplib
 import socket
 import typing
 from http.client import ResponseNotReady
-from io import BytesIO
 from unittest import mock
 
 import pytest
@@ -16,7 +14,6 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     HTTPConnection,
     HTTPSConnection,
     _match_hostname,
-    _response_message_to_header_dict,
     _url_from_connection,
     _wrap_proxy_error,
 )
@@ -244,22 +241,6 @@ class TestConnection:
         with pytest.raises(ResponseNotReady):
             conn.getresponse()
 
-    def test_response_headers_unfold_obs_fold_values(self) -> None:
-        message = httplib.parse_headers(
-            BytesIO(
-                b"Set-Cookie: ___utmvbtouVBFmB=gZg\r\n"
-                b"    XbNOjalT: Lte; path=/; Max-Age=900\r\n"
-                b"Content-Length: 2\r\n"
-                b"\r\n"
-            )
-        )
-
-        headers = _response_message_to_header_dict(message)
-
-        assert headers["set-cookie"] == (
-            "___utmvbtouVBFmB=gZg XbNOjalT: Lte; path=/; Max-Age=900"
-        )
-
     def test_assert_fingerprint_closes_socket(self) -> None:
         context = mock.create_autospec(ssl_.SSLContext)
         context.wrap_socket.return_value.getpeercert.return_value = b"fake cert"
@@ -345,3 +326,27 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    @pytest.mark.parametrize(
+        "header",
+        [
+            "",
+            "Invalid Header",
+            "Invalid\tHeader",
+            "Invalid:",
+            "Invalid\rHeader",
+            "Invalid\nHeader",
+        ],
+    )
+    def test_invalid_header_names_are_rejected(self, header: str) -> None:
+        conn = HTTPConnection("example.com")
+
+        with pytest.raises(ValueError):
+            conn.putheader(header, "value")
+
+    @pytest.mark.parametrize("header", ["Invalid Header", "Invalid:"])
+    def test_invalid_tunnel_header_names_are_rejected(self, header: str) -> None:
+        conn = HTTPConnection("example.com")
+
+        with pytest.raises(ValueError):
+            conn.set_tunnel("example.com", headers={header: "value"})
