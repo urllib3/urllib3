@@ -50,8 +50,8 @@ if typing.TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-# Read in 128 KiB chunks, CPython http.client uses 1 MiB limit before chunking.
-_READ_CHUNK_SIZE = 1 << 17
+# Read in 64 KiB chunks
+_READ_CHUNK_SIZE = 1 << 16
 
 
 class ContentDecoder:

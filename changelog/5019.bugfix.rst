@@ -1,1 +1,1 @@
-Fixed ``HTTPResponse.drain_conn()`` to discard unread response data in 128 KiB chunks, updated ``HTTPResponse.stream(...)`` default ``amt`` value to the same 128 KiB constant (increased from 64 KiB).
+Fixed ``HTTPResponse.drain_conn()`` to discard unread response data in 64 KiB chunks (same as the default ``amt`` when doing ``HTTPResponse.stream(...)``).
