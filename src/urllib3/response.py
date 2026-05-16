@@ -562,7 +562,7 @@ class BaseHTTPResponse(io.IOBase):
         self._retries = retries
 
     def stream(
-        self, amt: int | None = 2**16, decode_content: bool | None = None
+        self, amt: int | None = _READ_CHUNK_SIZE, decode_content: bool | None = None
     ) -> typing.Iterator[bytes]:
         raise NotImplementedError()
 
@@ -1240,7 +1240,7 @@ class HTTPResponse(BaseHTTPResponse):
         return self._decoded_buffer.get(amt)
 
     def stream(
-        self, amt: int | None = 2**16, decode_content: bool | None = None
+        self, amt: int | None = _READ_CHUNK_SIZE, decode_content: bool | None = None
     ) -> typing.Generator[bytes]:
         """
         A generator wrapper for the read() method. A call will block until
