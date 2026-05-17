@@ -622,8 +622,9 @@ class TestUtil:
             def read(self, size: int = -1) -> bytes:
                 return b""
 
+        body = typing.cast(typing.IO[bytes], TellableBody())
         with pytest.raises(UnrewindableBodyError, match="does not support seek"):
-            rewind_body(TellableBody(), body_pos=0)
+            rewind_body(body, body_pos=0)
 
     def test_rewind_body_failed_seek(self) -> None:
         class BadSeek(io.StringIO):
