@@ -1,0 +1,1 @@
+Fixed HTTPS proxy SSL contexts being downgraded when certificate verification was disabled for the target connection.

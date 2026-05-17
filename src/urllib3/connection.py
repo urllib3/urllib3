@@ -268,7 +268,7 @@ class HTTPConnection(_HTTPConnection):
 
                 response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
                 try:
-                    (version, code, message) = response._read_status()  # type: ignore[attr-defined]
+                    version, code, message = response._read_status()  # type: ignore[attr-defined]
 
                     if code != http.HTTPStatus.OK:
                         self.close()
@@ -310,7 +310,7 @@ class HTTPConnection(_HTTPConnection):
 
                 response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
                 try:
-                    (version, code, message) = response._read_status()  # type: ignore[attr-defined]
+                    version, code, message = response._read_status()  # type: ignore[attr-defined]
 
                     self._raw_proxy_headers = http.client._read_headers(response.fp)  # type: ignore[attr-defined]
 
@@ -865,9 +865,12 @@ class HTTPSConnection(HTTPConnection):
         # `_connect_tls_proxy` is called when self._tunnel_host is truthy.
         proxy_config = typing.cast(ProxyConfig, self.proxy_config)
         ssl_context = proxy_config.ssl_context
+        proxy_cert_reqs = (
+            ssl_context.verify_mode if ssl_context is not None else self.cert_reqs
+        )
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
-            cert_reqs=self.cert_reqs,
+            cert_reqs=proxy_cert_reqs,
             ssl_version=self.ssl_version,
             ssl_minimum_version=self.ssl_minimum_version,
             ssl_maximum_version=self.ssl_maximum_version,
