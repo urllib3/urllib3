@@ -76,6 +76,15 @@ port_by_scheme = {"http": 80, "https": 443}
 # (ie test_recent_date is failing) update it to ~6 months before the current date.
 RECENT_DATE = datetime.date(2025, 1, 1)
 
+_DEFAULT_SOCKET_OPTIONS = ((socket.IPPROTO_TCP, socket.TCP_NODELAY, 1),)
+
+
+class _DefaultSocketOptionsType:
+    pass
+
+
+_DEFAULT_SOCKET_OPTIONS_SENTINEL = _DefaultSocketOptionsType()
+
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
@@ -109,7 +118,7 @@ class HTTPConnection(_HTTPConnection):
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
     default_socket_options: typing.ClassVar[connection._TYPE_SOCKET_OPTIONS] = [
-        (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        *_DEFAULT_SOCKET_OPTIONS
     ]
 
     #: Whether this connection verifies the host's certificate.
@@ -137,9 +146,9 @@ class HTTPConnection(_HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None | (
-            connection._TYPE_SOCKET_OPTIONS
-        ) = default_socket_options,
+        socket_options: (
+            None | (connection._TYPE_SOCKET_OPTIONS) | _DefaultSocketOptionsType
+        ) = _DEFAULT_SOCKET_OPTIONS_SENTINEL,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
     ) -> None:
@@ -150,6 +159,8 @@ class HTTPConnection(_HTTPConnection):
             source_address=source_address,
             blocksize=blocksize,
         )
+        if isinstance(socket_options, _DefaultSocketOptionsType):
+            socket_options = self.default_socket_options
         self.socket_options = socket_options
         self.proxy = proxy
         self.proxy_config = proxy_config
@@ -268,7 +279,7 @@ class HTTPConnection(_HTTPConnection):
 
                 response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
                 try:
-                    (version, code, message) = response._read_status()  # type: ignore[attr-defined]
+                    version, code, message = response._read_status()  # type: ignore[attr-defined]
 
                     if code != http.HTTPStatus.OK:
                         self.close()
@@ -310,7 +321,7 @@ class HTTPConnection(_HTTPConnection):
 
                 response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
                 try:
-                    (version, code, message) = response._read_status()  # type: ignore[attr-defined]
+                    version, code, message = response._read_status()  # type: ignore[attr-defined]
 
                     self._raw_proxy_headers = http.client._read_headers(response.fp)  # type: ignore[attr-defined]
 
@@ -626,9 +637,9 @@ class HTTPSConnection(HTTPConnection):
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 16384,
-        socket_options: None | (
-            connection._TYPE_SOCKET_OPTIONS
-        ) = HTTPConnection.default_socket_options,
+        socket_options: (
+            None | (connection._TYPE_SOCKET_OPTIONS) | _DefaultSocketOptionsType
+        ) = _DEFAULT_SOCKET_OPTIONS_SENTINEL,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
         cert_reqs: int | str | None = None,

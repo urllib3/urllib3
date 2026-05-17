@@ -213,6 +213,20 @@ class TestConnection:
         conn = HTTPSConnection("not.a.real.host", port=443)
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
+    def test_connection_default_socket_options_are_dynamic(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        socket_options = HTTPConnection.default_socket_options + [
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        ]
+        monkeypatch.setattr(HTTPConnection, "default_socket_options", socket_options)
+
+        http_conn = HTTPConnection("not.a.real.host", port=80)
+        https_conn = HTTPSConnection("not.a.real.host", port=443)
+
+        assert http_conn.socket_options == socket_options
+        assert https_conn.socket_options == socket_options
+
     @pytest.mark.parametrize(
         "proxy_scheme, err_part",
         [

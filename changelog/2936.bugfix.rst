@@ -1,0 +1,1 @@
+Fixed ``ProxyManager`` ignoring customized ``HTTPConnection.default_socket_options`` values when creating proxy connections.

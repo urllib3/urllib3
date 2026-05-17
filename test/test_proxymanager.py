@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import socket
+
 import pytest
 
+from urllib3.connection import HTTPConnection
 from urllib3.exceptions import MaxRetryError, NewConnectionError, ProxyError
 from urllib3.poolmanager import ProxyManager
 from urllib3.util.retry import Retry
@@ -48,6 +51,26 @@ class TestProxyManager:
         with ProxyManager("https://something") as p:
             assert p.proxy is not None
             assert p.proxy.port == 443
+
+    def test_default_proxy_socket_options_are_empty(self) -> None:
+        with ProxyManager("http://proxy:8080") as p:
+            pool = p.connection_from_host("example.com", scheme="http")
+            assert pool.conn_kw["socket_options"] == []
+
+    def test_custom_default_socket_options_are_honored(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        socket_options = HTTPConnection.default_socket_options + [
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        ]
+        monkeypatch.setattr(HTTPConnection, "default_socket_options", socket_options)
+
+        with ProxyManager("http://proxy:8080") as p:
+            pool = p.connection_from_host("example.com", scheme="http")
+            conn = pool._new_conn()
+
+        assert "socket_options" not in pool.conn_kw
+        assert conn.socket_options == socket_options
 
     def test_invalid_scheme(self) -> None:
         with pytest.raises(AssertionError):

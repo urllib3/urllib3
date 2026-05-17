@@ -14,6 +14,7 @@ from ._base_connection import _TYPE_BODY
 from ._collections import HTTPHeaderDict
 from ._request_methods import RequestMethods
 from .connection import (
+    _DEFAULT_SOCKET_OPTIONS,
     BaseSSLError,
     BrokenPipeError,
     DummyConnection,
@@ -216,9 +217,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if self.proxy:
             # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
-            # Defaulting `socket_options` to an empty list avoids it defaulting to
-            # ``HTTPConnection.default_socket_options``.
-            self.conn_kw.setdefault("socket_options", [])
+            # Defaulting `socket_options` to an empty list avoids using the
+            # built-in ``HTTPConnection.default_socket_options``. If the
+            # default options have been customized then respect that value.
+            if (
+                "socket_options" not in self.conn_kw
+                and tuple(self.ConnectionCls.default_socket_options)
+                == _DEFAULT_SOCKET_OPTIONS
+            ):
+                self.conn_kw["socket_options"] = []
 
             self.conn_kw["proxy"] = self.proxy
             self.conn_kw["proxy_config"] = self.proxy_config
