@@ -143,6 +143,24 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             r = https.request("GET", f"{self.http_url}/")
             assert r.status == 200
 
+    def test_https_proxy_ssl_context_not_downgraded_by_target_cert_reqs(
+        self,
+    ) -> None:
+        proxy_ssl_context = create_urllib3_context()
+        proxy_ssl_context.load_verify_locations(DEFAULT_CA)
+        assert proxy_ssl_context.verify_mode == ssl.CERT_REQUIRED
+
+        with proxy_from_url(
+            self.https_proxy_url,
+            proxy_ssl_context=proxy_ssl_context,
+            cert_reqs="CERT_NONE",
+        ) as https:
+            r = https.request("GET", f"{self.https_url}/")
+            assert r.status == 200
+            assert_is_verified(https, proxy=True, target=False)
+
+        assert proxy_ssl_context.verify_mode == ssl.CERT_REQUIRED
+
     @withPyOpenSSL
     def test_https_proxy_pyopenssl_not_supported(self) -> None:
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
