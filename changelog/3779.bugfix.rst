@@ -1,0 +1,1 @@
+Fixed ``rewind_body()`` raising a misleading ``ValueError`` instead of ``UnrewindableBodyError`` when a request body has a recorded position but does not support ``seek()``.

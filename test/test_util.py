@@ -614,6 +614,17 @@ class TestUtil:
         with pytest.raises(ValueError):
             rewind_body(body, body_pos=object())  # type: ignore[arg-type]
 
+    def test_rewind_body_missing_seek(self) -> None:
+        class TellableBody:
+            def tell(self) -> int:
+                return 0
+
+            def read(self, size: int = -1) -> bytes:
+                return b""
+
+        with pytest.raises(UnrewindableBodyError, match="does not support seek"):
+            rewind_body(TellableBody(), body_pos=0)
+
     def test_rewind_body_failed_seek(self) -> None:
         class BadSeek(io.StringIO):
             def seek(self, offset: int, whence: int = 0) -> typing.NoReturn:
