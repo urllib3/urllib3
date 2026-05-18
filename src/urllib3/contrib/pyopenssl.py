@@ -389,11 +389,6 @@ class WrappedSocket:
     @typing.overload
     def getpeercert(self, binary_form: typing.Literal[True]) -> bytes | None: ...
 
-    @typing.overload
-    def getpeercert(
-        self, binary_form: bool
-    ) -> dict[str, list[typing.Any]] | bytes | None: ...
-
     def getpeercert(
         self, binary_form: bool = False
     ) -> dict[str, list[typing.Any]] | bytes | None:
