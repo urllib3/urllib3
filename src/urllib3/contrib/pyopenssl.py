@@ -381,13 +381,26 @@ class WrappedSocket:
         except OpenSSL.SSL.Error:
             return
 
+    @typing.overload
+    def getpeercert(
+        self, binary_form: typing.Literal[False] = False
+    ) -> dict[str, list[typing.Any]] | None: ...
+
+    @typing.overload
+    def getpeercert(self, binary_form: typing.Literal[True]) -> bytes | None: ...
+
+    @typing.overload
+    def getpeercert(
+        self, binary_form: bool
+    ) -> dict[str, list[typing.Any]] | bytes | None: ...
+
     def getpeercert(
         self, binary_form: bool = False
-    ) -> dict[str, list[typing.Any]] | bytes | X509 | None:
+    ) -> dict[str, list[typing.Any]] | bytes | None:
         x509 = self.connection.get_peer_certificate()
 
-        if not x509:
-            return x509
+        if x509 is None:
+            return None
 
         if binary_form:
             return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)
