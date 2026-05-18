@@ -596,6 +596,23 @@ For example, to do a total of 3 retries, but limit to only 2 redirects:
     )
     # MaxRetryError
 
+When enabling retries after failures, set a non-zero ``backoff_factor`` so
+urllib3 waits between attempts instead of retrying immediately. If many clients
+may retry at the same time, ``backoff_jitter`` can help spread those attempts
+out:
+
+.. code-block:: python
+
+    urllib3.request(
+        "GET",
+        "https://httpbin.org/status/503",
+        retries=urllib3.Retry(
+            total=5,
+            backoff_factor=0.2,
+            backoff_jitter=0.1,
+        ),
+    )
+
 You can also disable exceptions for too many redirects and just return the
 ``302`` response:
 

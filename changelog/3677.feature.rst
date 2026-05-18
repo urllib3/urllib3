@@ -1,0 +1,1 @@
+Documented how to configure retry backoff when enabling retries.
