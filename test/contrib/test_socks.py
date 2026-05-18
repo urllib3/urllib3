@@ -482,6 +482,42 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             assert response.data == b""
             assert response.headers["Server"] == "SocksTestServer"
 
+    def test_socks_with_percent_encoded_auth_in_url(self) -> None:
+        def request_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            handler = handle_socks5_negotiation(
+                sock, negotiate=True, username=b"user:name", password=b"pa@ss"
+            )
+            addr, port = next(handler)
+
+            assert addr == "16.17.18.19"
+            assert port == 80
+            with pytest.raises(StopIteration):
+                handler.send(True)
+
+            while True:
+                buf = sock.recv(65535)
+                if buf.endswith(b"\r\n\r\n"):
+                    break
+
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: SocksTestServer\r\n"
+                b"Content-Length: 0\r\n"
+                b"\r\n"
+            )
+            sock.close()
+
+        self._start_server(request_handler)
+        proxy_url = f"socks5://user%3Aname:pa%40ss@{self.host}:{self.port}"
+        with socks.SOCKSProxyManager(proxy_url) as pm:
+            response = pm.request("GET", "http://16.17.18.19")
+
+            assert response.status == 200
+            assert response.data == b""
+            assert response.headers["Server"] == "SocksTestServer"
+
     def test_socks_with_invalid_password(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _set_up_fake_getaddrinfo(monkeypatch)
 
@@ -703,6 +739,40 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self._start_server(request_handler)
         proxy_url = f"socks4://{self.host}:{self.port}"
         with socks.SOCKSProxyManager(proxy_url, username="user") as pm:
+            response = pm.request("GET", "http://16.17.18.19")
+
+            assert response.status == 200
+            assert response.data == b""
+            assert response.headers["Server"] == "SocksTestServer"
+
+    def test_socks4_with_percent_encoded_username_in_url(self) -> None:
+        def request_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            handler = handle_socks4_negotiation(sock, username=b"user:name")
+            addr, port = next(handler)
+
+            assert addr == "16.17.18.19"
+            assert port == 80
+            with pytest.raises(StopIteration):
+                handler.send(True)
+
+            while True:
+                buf = sock.recv(65535)
+                if buf.endswith(b"\r\n\r\n"):
+                    break
+
+            sock.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Server: SocksTestServer\r\n"
+                b"Content-Length: 0\r\n"
+                b"\r\n"
+            )
+            sock.close()
+
+        self._start_server(request_handler)
+        proxy_url = f"socks4://user%3Aname@{self.host}:{self.port}"
+        with socks.SOCKSProxyManager(proxy_url) as pm:
             response = pm.request("GET", "http://16.17.18.19")
 
             assert response.status == 200

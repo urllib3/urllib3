@@ -59,6 +59,7 @@ except ImportError:
 
 import typing
 from socket import timeout as SocketTimeout
+from urllib.parse import unquote
 
 from ..connection import HTTPConnection, HTTPSConnection
 from ..connectionpool import HTTPConnectionPool, HTTPSConnectionPool
@@ -193,9 +194,9 @@ class SOCKSProxyManager(PoolManager):
         parsed = parse_url(proxy_url)
 
         if username is None and password is None and parsed.auth is not None:
-            split = parsed.auth.split(":")
-            if len(split) == 2:
-                username, password = split
+            username, separator, password = parsed.auth.partition(":")
+            username = unquote(username)
+            password = unquote(password) if separator else None
         if parsed.scheme == "socks5":
             socks_version = socks.PROXY_TYPE_SOCKS5
             rdns = False
