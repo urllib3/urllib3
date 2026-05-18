@@ -51,7 +51,7 @@ if typing.TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 # Read in 64 KiB chunks
-_READ_CHUNK_SIZE = 1 << 16
+_READ_CHUNK_SIZE = 2 ** 16
 
 
 class ContentDecoder:
