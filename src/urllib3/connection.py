@@ -583,18 +583,9 @@ class HTTPConnection(_HTTPConnection):
             )
 
         sanitized_items: list[tuple[str, str]] = []
-        sanitized_values = False
         for name, value in httplib_response.msg.items():
-            sanitized_value, changed = _sanitize_header_value(value)
-            sanitized_values |= changed
+            sanitized_value, _changed = _sanitize_header_value(value)
             sanitized_items.append((name, sanitized_value))
-
-        if sanitized_values:
-            log.warning(  # pragma: no cover
-                "Received response with invalid folded headers (url=%s). "
-                "Newlines were removed from header values.",
-                response_url,
-            )
 
         headers = HTTPHeaderDict(sanitized_items)
 
