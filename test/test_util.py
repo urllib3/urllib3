@@ -19,6 +19,7 @@ from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.connection import ProxyConfig
 from urllib3.exceptions import (
     InsecureRequestWarning,
+    InvalidHeader,
     LocationParseError,
     TimeoutStateError,
     UnrewindableBodyError,
@@ -851,6 +852,26 @@ class TestUtil:
         )
         header_msg.seek(0)
         assert_header_parsing(client.parse_headers(header_msg))
+
+    def test_assert_header_parsing_raises_on_header_value_with_newlines(self) -> None:
+        from http import client
+
+        header_msg = io.BytesIO()
+        header_msg.write(b"Set-Cookie: a=b\n\tX-Foo: bar\n\n")
+        header_msg.seek(0)
+
+        with pytest.raises(InvalidHeader):
+            assert_header_parsing(client.parse_headers(header_msg))
+
+    def test_assert_header_parsing_raises_on_header_name_with_whitespace(self) -> None:
+        from http import client
+
+        header_msg = io.BytesIO()
+        header_msg.write(b"Bad Header: x\n\n")
+        header_msg.seek(0)
+
+        with pytest.raises(InvalidHeader):
+            assert_header_parsing(client.parse_headers(header_msg))
 
     @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
     def test_create_connection_with_invalid_idna_labels(self, host: str) -> None:

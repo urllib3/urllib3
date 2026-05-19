@@ -1,9 +1,30 @@
 from __future__ import annotations
 
 import http.client as httplib
-from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
+import re
+from email.errors import (
+    FirstHeaderLineIsContinuationDefect,
+    InvalidHeaderDefect,
+    MalformedHeaderDefect,
+    MissingHeaderBodySeparatorDefect,
+    MultipartInvariantViolationDefect,
+    NonPrintableDefect,
+    ObsoleteHeaderDefect,
+    StartBoundaryNotFoundDefect,
+)
 
-from ..exceptions import HeaderParsingError
+from ..exceptions import HeaderParsingError, InvalidHeader
+
+_HEADER_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
+
+
+def _validate_headers_for_parsing_issues(headers: httplib.HTTPMessage) -> None:
+    for name, value in headers.items():
+        if not _HEADER_NAME_RE.match(name):
+            raise InvalidHeader(f"Invalid header name {name!r}")
+
+        if "\r" in value or "\n" in value:
+            raise InvalidHeader(f"Invalid header value for {name!r}")
 
 
 def is_fp_closed(obj: object) -> bool:
@@ -83,6 +104,21 @@ def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
             defect, (StartBoundaryNotFoundDefect, MultipartInvariantViolationDefect)
         )
     ]
+
+    # Certain header defects indicate malformed / security-sensitive responses.
+    # These should hard-fail rather than just logging a warning.
+    fatal_defects = (
+        ObsoleteHeaderDefect,
+        NonPrintableDefect,
+        InvalidHeaderDefect,
+        MalformedHeaderDefect,
+        FirstHeaderLineIsContinuationDefect,
+        MissingHeaderBodySeparatorDefect,
+    )
+    if any(isinstance(defect, fatal_defects) for defect in defects):
+        raise InvalidHeader("Invalid headers")
+
+    _validate_headers_for_parsing_issues(headers)
 
     if defects or unparsed_data:
         raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)
