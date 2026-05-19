@@ -2211,6 +2211,30 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
         )
 
 
+class TestFoldedHeaders(SocketDummyServerTestCase):
+    host = "127.0.0.1"
+
+    def test_folded_header_value_is_sanitized_and_logged(self) -> None:
+        self.start_response_handler(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Length: 0\r\n"
+            b"Content-type: text/plain\r\n"
+            b"Set-Cookie: a=b\r\n"
+            b"\tX-Foo: bar\r\n"
+            b"\r\n"
+        )
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            with LogRecorder() as logs:
+                resp = pool.request("GET", "/")
+
+        assert resp.headers["set-cookie"] == "a=b X-Foo: bar"
+        assert any(
+            "Received response with invalid folded headers" in record.getMessage()
+            for record in logs
+        )
+
+
 class TestHeaderParsingContentType(SocketDummyServerTestCase):
     def _test_okay_header_parsing(self, header: bytes) -> None:
         self.start_response_handler(
