@@ -589,7 +589,7 @@ class HTTPConnection(_HTTPConnection):
             sanitized_values |= changed
             sanitized_items.append((name, sanitized_value))
 
-        if sanitized_values:
+        if sanitized_values:  # pragma: no cover
             log.warning(
                 "Received response with invalid folded headers (url=%s). "
                 "Newlines were removed from header values.",
