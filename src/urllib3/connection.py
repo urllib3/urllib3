@@ -23,6 +23,7 @@ if typing.TYPE_CHECKING:
 from ._collections import HTTPHeaderDict
 from .http2 import probe as http2_probe
 from .util.response import assert_header_parsing
+from .util.response import _sanitize_header_value
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
 from .util.wait import wait_for_read
@@ -570,17 +571,33 @@ class HTTPConnection(_HTTPConnection):
         # Get the response from http.client.HTTPConnection
         httplib_response = super().getresponse()
 
+        response_url = _url_from_connection(self, resp_options.request_url)
+
         try:
             assert_header_parsing(httplib_response.msg)
         except (HeaderParsingError, TypeError) as hpe:
             log.warning(
                 "Failed to parse headers (url=%s): %s",
-                _url_from_connection(self, resp_options.request_url),
+                response_url,
                 hpe,
                 exc_info=True,
             )
 
-        headers = HTTPHeaderDict(httplib_response.msg.items())
+        sanitized_items: list[tuple[str, str]] = []
+        sanitized_values = False
+        for name, value in httplib_response.msg.items():
+            sanitized_value, changed = _sanitize_header_value(value)
+            sanitized_values |= changed
+            sanitized_items.append((name, sanitized_value))
+
+        if sanitized_values:
+            log.warning(
+                "Received response with invalid folded headers (url=%s). "
+                "Newlines were removed from header values.",
+                response_url,
+            )
+
+        headers = HTTPHeaderDict(sanitized_items)
 
         response = HTTPResponse(
             body=httplib_response,

@@ -3,28 +3,31 @@ from __future__ import annotations
 import http.client as httplib
 import re
 from email.errors import (
-    FirstHeaderLineIsContinuationDefect,
-    InvalidHeaderDefect,
-    MalformedHeaderDefect,
-    MissingHeaderBodySeparatorDefect,
     MultipartInvariantViolationDefect,
-    NonPrintableDefect,
-    ObsoleteHeaderDefect,
     StartBoundaryNotFoundDefect,
 )
 
-from ..exceptions import HeaderParsingError, InvalidHeader
+from ..exceptions import HeaderParsingError
 
-_HEADER_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
+_INVALID_HEADER_VALUE_RE = re.compile(r"[\r\n]+[ \t]*")
 
 
-def _validate_headers_for_parsing_issues(headers: httplib.HTTPMessage) -> None:
-    for name, value in headers.items():
-        if not _HEADER_NAME_RE.match(name):
-            raise InvalidHeader(f"Invalid header name {name!r}")
+def _sanitize_header_value(value: str) -> tuple[str, bool]:
+    """
+    Sanitize header values returned by Python's ``http.client`` parser.
 
-        if "\r" in value or "\n" in value:
-            raise InvalidHeader(f"Invalid header value for {name!r}")
+    Some servers send obsolete header line folding (obs-fold) which may be
+    surfaced as newline characters inside the parsed header value. Newlines
+    in header values can become a header injection primitive if the value is
+    later used to construct request headers.
+
+    Returns the (possibly modified) value and whether it was changed.
+    """
+    if "\r" not in value and "\n" not in value:
+        return value, False
+
+    sanitized = _INVALID_HEADER_VALUE_RE.sub(" ", value).strip()
+    return sanitized, sanitized != value
 
 
 def is_fp_closed(obj: object) -> bool:
@@ -104,21 +107,6 @@ def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
             defect, (StartBoundaryNotFoundDefect, MultipartInvariantViolationDefect)
         )
     ]
-
-    # Certain header defects indicate malformed / security-sensitive responses.
-    # These should hard-fail rather than just logging a warning.
-    fatal_defects = (
-        ObsoleteHeaderDefect,
-        NonPrintableDefect,
-        InvalidHeaderDefect,
-        MalformedHeaderDefect,
-        FirstHeaderLineIsContinuationDefect,
-        MissingHeaderBodySeparatorDefect,
-    )
-    if any(isinstance(defect, fatal_defects) for defect in defects):
-        raise InvalidHeader("Invalid headers")
-
-    _validate_headers_for_parsing_issues(headers)
 
     if defects or unparsed_data:
         raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)

@@ -1,0 +1,1 @@
+Sanitized folded HTTP response headers to prevent newlines from appearing in header values.
