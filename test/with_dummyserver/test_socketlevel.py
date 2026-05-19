@@ -88,6 +88,31 @@ class TestCookies(SocketDummyServerTestCase):
             assert r.headers == {"set-cookie": "foo=1, bar=1"}
             assert r.headers.getlist("set-cookie") == ["foo=1", "bar=1"]
 
+    def test_folded_set_cookie_header_is_unfolded(self) -> None:
+        def folded_cookie_response_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+
+            sock.send(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Set-Cookie: foo=bar\r\n"
+                b"\tbaz=qux; Path=/\r\n"
+                b"Content-Length: 0\r\n"
+                b"\r\n"
+            )
+            sock.close()
+
+        self._start_server(folded_cookie_response_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request("GET", "/", retries=0)
+            cookie = response.headers["set-cookie"]
+            assert "\r" not in cookie
+            assert "\n" not in cookie
+            assert cookie == "foo=bar baz=qux; Path=/"
+
 
 class TestSNI(SocketDummyServerTestCase):
     def test_hostname_in_first_request_packet(self) -> None:
