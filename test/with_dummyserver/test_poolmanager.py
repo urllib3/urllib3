@@ -515,10 +515,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
                 f"http://user:password@{self.host}:{self.port}/headers",
             )
             returned_headers = r.json()
-            assert (
-                returned_headers.get("Authorization")
-                == "Basic dXNlcjpwYXNzd29yZA=="
-            )
+            assert returned_headers.get("Authorization") == "Basic dXNlcjpwYXNzd29yZA=="
             assert returned_headers.get("Host") == f"{self.host}:{self.port}"
 
     def test_authorization_header_not_overridden_by_url_auth(self) -> None:
