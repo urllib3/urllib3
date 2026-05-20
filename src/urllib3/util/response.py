@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import http.client as httplib
+import re
 from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
 
+from ..exceptions import InvalidHeader
 from ..exceptions import HeaderParsingError
 
 
@@ -86,6 +88,50 @@ def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
 
     if defects or unparsed_data:
         raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)
+
+
+_HEADER_VALUE_OBS_FOLD_RE = re.compile(r"(?:\r\n|\n)[ \t]+")
+
+
+def sanitize_header_items(
+    header_items: list[tuple[str, str]] | list[tuple[bytes, bytes]],
+) -> list[tuple[str, str]] | list[tuple[bytes, bytes]]:
+    """
+    Sanitize header items from ``http.client``.
+
+    Historically, ``http.client`` may return values containing obsolete line folding
+    (CRLF + leading whitespace). This is deprecated and can lead to header injection
+    when upstream libraries consume values verbatim.
+
+    This function unfolds obs-fold sequences into a single space and rejects any
+    remaining CR/LF characters in header names or values.
+    """
+
+    sanitized: list[tuple[object, object]] = []
+
+    for name, value in header_items:
+        if isinstance(name, str) and ("\r" in name or "\n" in name):
+            raise InvalidHeader(f"Invalid header name {name!r}")
+        if isinstance(name, (bytes, bytearray, memoryview)):
+            name_bytes = bytes(name)
+            if b"\r" in name_bytes or b"\n" in name_bytes:
+                raise InvalidHeader(f"Invalid header name {name_bytes!r}")
+
+        if isinstance(value, str):
+            unfolded = _HEADER_VALUE_OBS_FOLD_RE.sub(" ", value)
+            if "\r" in unfolded or "\n" in unfolded:
+                raise InvalidHeader(f"Invalid header value for {name!r}")
+            sanitized.append((name, unfolded))
+        elif isinstance(value, (bytes, bytearray, memoryview)):
+            value_bytes = bytes(value)
+            unfolded_bytes = re.sub(rb"(?:\r\n|\n)[ \t]+", b" ", value_bytes)
+            if b"\r" in unfolded_bytes or b"\n" in unfolded_bytes:
+                raise InvalidHeader(f"Invalid header value for {name!r}")
+            sanitized.append((name, unfolded_bytes))
+        else:
+            sanitized.append((name, value))
+
+    return sanitized  # type: ignore[return-value]
 
 
 def is_response_to_head(response: httplib.HTTPResponse) -> bool:
