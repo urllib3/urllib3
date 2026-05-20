@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import typing
 from collections import OrderedDict
 from enum import Enum, auto
@@ -38,6 +39,16 @@ ValidHTTPHeaderSource = typing.Union[
 
 class _Sentinel(Enum):
     not_passed = auto()
+
+
+_HEADER_VALUE_OBS_FOLD_RE = re.compile(r"\r?\n[ \t]*")
+
+
+def _normalize_header_value(value: str) -> str:
+    """Collapse obsolete line folding into a single space."""
+    if "\r" not in value and "\n" not in value:
+        return value
+    return _HEADER_VALUE_OBS_FOLD_RE.sub(" ", value)
 
 
 def ensure_can_construct_http_header_dict(
@@ -252,7 +263,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
-        self._container[key.lower()] = [key, val]
+        self._container[key.lower()] = [key, _normalize_header_value(val)]
 
     def __getitem__(self, key: str) -> str:
         if isinstance(key, bytes):
@@ -326,6 +337,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         if isinstance(key, bytes):
             key = key.decode("latin-1")
         key_lower = key.lower()
+        val = _normalize_header_value(val)
         new_vals = [key, val]
         # Keep the common case aka no item present as fast as possible
         vals = self._container.setdefault(key_lower, new_vals)

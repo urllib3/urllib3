@@ -25,6 +25,22 @@ class TestCookiejar:
         cookiejar.extract_cookies(response, request)  # type: ignore[arg-type]
         assert len(cookiejar) == len(cookies)
 
+    def test_extract_unfolds_obs_folded_set_cookie_header(self) -> None:
+        request = urllib.request.Request("http://google.com")
+        cookiejar = http.cookiejar.CookieJar()
+        response = HTTPResponse()
+
+        response.headers.add(
+            "set-cookie",
+            "___utmvbtouVBFmB=gZg\r\n    XbNOjalT: Lte; path=/; Max-Age=900",
+        )
+
+        cookiejar.extract_cookies(response, request)  # type: ignore[arg-type]
+        cookies = list(cookiejar)
+        assert len(cookies) == 1
+        assert cookies[0].name == "___utmvbtouVBFmB"
+        assert cookies[0].value == "gZg XbNOjalT: Lte"
+
 
 class TestInitialization:
     @mock.patch("urllib3.http2.version")
