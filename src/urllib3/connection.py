@@ -22,7 +22,7 @@ if typing.TYPE_CHECKING:
 
 from ._collections import HTTPHeaderDict
 from .http2 import probe as http2_probe
-from .util.response import assert_header_parsing
+from .util.response import _normalize_header_value, assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_str
 from .util.wait import wait_for_read
@@ -580,7 +580,10 @@ class HTTPConnection(_HTTPConnection):
                 exc_info=True,
             )
 
-        headers = HTTPHeaderDict(httplib_response.msg.items())
+        headers = HTTPHeaderDict(
+            (key, _normalize_header_value(value))
+            for key, value in httplib_response.msg.items()
+        )
 
         response = HTTPResponse(
             body=httplib_response,

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import http.client as httplib
+import re
 from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
 
 from ..exceptions import HeaderParsingError
+
+_OBSOLETE_FOLD_RE = re.compile(r"\r\n[ \t]+")
 
 
 def is_fp_closed(obj: object) -> bool:
@@ -86,6 +89,19 @@ def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
 
     if defects or unparsed_data:
         raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)
+
+
+def _normalize_header_value(value: str) -> str:
+    """
+    Replaces obsolete line folding with a single space.
+
+    RFC 9112 section 5.2 permits recipients to replace obs-fold with SP before
+    interpreting a header field value. Python's ``http.client`` parser preserves
+    the original CRLF bytes in parsed values, so urllib3 normalizes them before
+    exposing response headers to callers.
+    """
+
+    return _OBSOLETE_FOLD_RE.sub(" ", value)
 
 
 def is_response_to_head(response: httplib.HTTPResponse) -> bool:
