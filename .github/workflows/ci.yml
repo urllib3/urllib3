@@ -58,7 +58,9 @@ jobs:
             experimental: false
             nox-session: test-3.12
           # pypy
-          - python-version: "pypy-3.11"
+          # Nightly should be used until PyPy v7.3.23 is released.
+          # https://github.com/python-trio/trio/issues/3433#issuecomment-4349552625
+          - python-version: "pypy-3.11-nightly"
             os: ubuntu-24.04
             experimental: false
             nox-session: test-pypy3.11

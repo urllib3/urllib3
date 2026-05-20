@@ -1,2 +1,0 @@
-Updated ``_TYPE_BODY`` type alias to include missing ``Iterable[str]``, matching
-the documented and runtime behavior of chunked request bodies.

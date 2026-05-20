@@ -1,2 +1,0 @@
-Fixed a bug where ``HTTPResponse.read(amt=None)`` was ignoring decompressed data
-buffered from previous partial reads.

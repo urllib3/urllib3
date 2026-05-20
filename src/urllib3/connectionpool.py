@@ -897,6 +897,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 body = None
                 headers = HTTPHeaderDict(headers)._prepare_for_method_change()
 
+            # Strip headers marked as unsafe to forward to the redirected location.
+            # Check remove_headers_on_redirect to avoid a potential network call within
+            # self.is_same_host() which may use socket.gethostbyname() in the future.
+            if retries.remove_headers_on_redirect and not self.is_same_host(
+                redirect_location
+            ):
+                new_headers = headers.copy()  # type: ignore[union-attr]
+                for header in headers:
+                    if header.lower() in retries.remove_headers_on_redirect:
+                        new_headers.pop(header, None)
+                headers = new_headers
+
             try:
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
