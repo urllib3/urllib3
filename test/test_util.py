@@ -622,6 +622,14 @@ class TestUtil:
         with pytest.raises(UnrewindableBodyError):
             rewind_body(BadSeek(), body_pos=2)
 
+    def test_rewind_body_missing_seek(self) -> None:
+        class TellOnly:
+            def tell(self) -> int:
+                return 0
+
+        with pytest.raises(UnrewindableBodyError, match="does not support seeking"):
+            rewind_body(TellOnly(), body_pos=0)  # type: ignore[arg-type]
+
     def test_add_stderr_logger(self) -> None:
         handler = add_stderr_logger(level=logging.INFO)  # Don't actually print debug
         logger = logging.getLogger("urllib3")

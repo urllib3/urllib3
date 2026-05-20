@@ -171,22 +171,28 @@ def rewind_body(body: typing.IO[typing.AnyStr], body_pos: _TYPE_BODY_POSITION) -
         Position to seek to in file.
     """
     body_seek = getattr(body, "seek", None)
-    if body_seek is not None and isinstance(body_pos, int):
-        try:
-            body_seek(body_pos)
-        except OSError as e:
-            raise UnrewindableBodyError(
-                "An error occurred when rewinding request body for redirect/retry."
-            ) from e
-    elif body_pos is _FAILEDTELL:
+    if body_pos is _FAILEDTELL:
         raise UnrewindableBodyError(
             "Unable to record file position for rewinding "
             "request body during a redirect/retry."
         )
-    else:
+    if not isinstance(body_pos, int):
         raise ValueError(
             f"body_pos must be of type integer, instead it was {type(body_pos)}."
         )
+
+    if body_seek is None:
+        raise UnrewindableBodyError(
+            "Unable to rewind request body for redirect/retry because "
+            "the body does not support seeking."
+        )
+
+    try:
+        body_seek(body_pos)
+    except OSError as e:
+        raise UnrewindableBodyError(
+            "An error occurred when rewinding request body for redirect/retry."
+        ) from e
 
 
 class ChunksAndContentLength(typing.NamedTuple):

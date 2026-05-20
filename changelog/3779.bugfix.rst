@@ -1,0 +1,3 @@
+Fixed ``rewind_body()`` to raise ``UnrewindableBodyError`` instead of a misleading
+``ValueError`` when a retry or redirect attempts to rewind a body that reports a
+position but does not support seeking.
