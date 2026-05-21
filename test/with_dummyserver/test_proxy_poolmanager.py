@@ -473,9 +473,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
         with proxy_from_url(proxy_url, ca_certs=DEFAULT_CA) as http:
             r = http.request_encode_url("GET", f"{self.http_url}/headers")
             returned_headers = r.json()
-            assert returned_headers.get("Proxy-Authorization") == (
-                "Basic dXNlcjpwYXNz"
-            )
+            assert returned_headers.get("Proxy-Authorization") == "Basic dXNlcjpwYXNz"
 
     def test_https_headers(self) -> None:
         with proxy_from_url(
