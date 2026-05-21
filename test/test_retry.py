@@ -263,10 +263,15 @@ class TestRetry:
         assert not retry.is_retry("GET", status_code=418)
 
     def test_allowed_methods_with_status_forcelist(self) -> None:
-        # Falsey allowed_methods means to retry on any method.
+        # None means to retry on any method.
         retry = Retry(status_forcelist=[500], allowed_methods=None)
         assert retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
+
+        # Empty allowed_methods means to retry on no methods.
+        retry = Retry(status_forcelist=[500], allowed_methods=set())
+        assert not retry.is_retry("GET", status_code=500)
+        assert not retry.is_retry("POST", status_code=500)
 
         # Criteria of allowed_methods and status_forcelist are ANDed.
         retry = Retry(status_forcelist=[500], allowed_methods=["POST"])

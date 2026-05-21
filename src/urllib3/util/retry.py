@@ -404,7 +404,10 @@ class Retry:
         """Checks if a given HTTP method should be retried upon, depending if
         it is included in the allowed_methods
         """
-        if self.allowed_methods and method.upper() not in self.allowed_methods:
+        if (
+            self.allowed_methods is not None
+            and method.upper() not in self.allowed_methods
+        ):
             return False
         return True
 

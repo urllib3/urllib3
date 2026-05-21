@@ -1,0 +1,1 @@
+Treated an empty ``Retry.allowed_methods`` container as retrying no methods instead of all methods.
