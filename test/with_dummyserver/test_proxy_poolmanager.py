@@ -468,6 +468,15 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
                 returned_headers.get("Host") == f"{self.https_host}:{self.https_port}"
             )
 
+    def test_proxy_headers_from_url_userinfo(self) -> None:
+        proxy_url = f"http://user:pass@{self.proxy_host}:{self.proxy_port}"
+        with proxy_from_url(proxy_url, ca_certs=DEFAULT_CA) as http:
+            r = http.request_encode_url("GET", f"{self.http_url}/headers")
+            returned_headers = r.json()
+            assert returned_headers.get("Proxy-Authorization") == (
+                "Basic dXNlcjpwYXNz"
+            )
+
     def test_https_headers(self) -> None:
         with proxy_from_url(
             self.https_proxy_url,

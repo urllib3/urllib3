@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -586,7 +587,11 @@ class ProxyManager(PoolManager):
             proxy = proxy._replace(port=port)
 
         self.proxy = proxy
-        self.proxy_headers = proxy_headers or {}
+        self.proxy_headers = dict(proxy_headers or {})
+        if proxy.auth is not None and not any(
+            key.lower() == "proxy-authorization" for key in self.proxy_headers
+        ):
+            self.proxy_headers.update(make_headers(proxy_basic_auth=proxy.auth))
         self.proxy_ssl_context = proxy_ssl_context
         self.proxy_config = ProxyConfig(
             proxy_ssl_context,
