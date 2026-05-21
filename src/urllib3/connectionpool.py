@@ -13,6 +13,7 @@ from types import TracebackType
 from ._base_connection import _TYPE_BODY
 from ._collections import HTTPHeaderDict
 from ._request_methods import RequestMethods
+from ._typing import _TYPE_HEADERS
 from .connection import (
     BaseSSLError,
     BrokenPipeError,
@@ -179,10 +180,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         timeout: _TYPE_TIMEOUT | None = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
         retries: Retry | bool | int | None = None,
         _proxy: Url | None = None,
-        _proxy_headers: typing.Mapping[str, str] | None = None,
+        _proxy_headers: _TYPE_HEADERS | None = None,
         _proxy_config: ProxyConfig | None = None,
         **conn_kw: typing.Any,
     ):
@@ -380,7 +381,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
         retries: Retry | None = None,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
@@ -594,7 +595,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
         retries: Retry | bool | int | None = None,
         redirect: bool = True,
         assert_same_host: bool = True,
@@ -746,8 +747,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
         if not http_tunnel_required:
-            headers = headers.copy()  # type: ignore[attr-defined]
-            headers.update(self.proxy_headers)  # type: ignore[union-attr]
+            headers = HTTPHeaderDict(typing.cast(typing.Mapping[str, str], headers))
+            headers.update(typing.cast(typing.Mapping[str, str], self.proxy_headers))
 
         # Must keep the exception bound to a separate variable or else Python 3
         # complains about UnboundLocalError.
@@ -895,7 +896,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 method = "GET"
                 # And lose the body not to transfer anything sensitive.
                 body = None
-                headers = HTTPHeaderDict(headers)._prepare_for_method_change()
+                headers = HTTPHeaderDict(
+                    typing.cast(typing.Mapping[str, str], headers)
+                )._prepare_for_method_change()
 
             # Strip headers marked as unsafe to forward to the redirected location.
             # Check remove_headers_on_redirect to avoid a potential network call within
@@ -997,10 +1000,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         timeout: _TYPE_TIMEOUT | None = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
         retries: Retry | bool | int | None = None,
         _proxy: Url | None = None,
-        _proxy_headers: typing.Mapping[str, str] | None = None,
+        _proxy_headers: _TYPE_HEADERS | None = None,
         key_file: str | None = None,
         cert_file: str | None = None,
         cert_reqs: int | str | None = None,
