@@ -1,0 +1,1 @@
+Unfolded obsolete line folding in response header values before interpreting them.
