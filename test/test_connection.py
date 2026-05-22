@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import io
 import socket
 import typing
 from http.client import ResponseNotReady
@@ -240,6 +241,40 @@ class TestConnection:
         # Should error if a request has not been sent
         with pytest.raises(ResponseNotReady):
             conn.getresponse()
+
+    def test_getresponse_normalizes_folded_header_values(self) -> None:
+        class MockSocket:
+            def makefile(self, *args: typing.Any, **kwargs: typing.Any) -> io.BytesIO:
+                return io.BytesIO(
+                    b"HTTP/1.1 200 OK\r\n"
+                    b"Set-Cookie: ___utmvbtouVBFmB=gZg\r\n"
+                    b"    XbNOjalT: Lte; path=/; Max-Age=900\r\n"
+                    b"Content-Length: 0\r\n"
+                    b"\r\n"
+                )
+
+            def settimeout(self, timeout: object) -> None:
+                pass
+
+            def sendall(self, data: bytes) -> None:
+                pass
+
+            def shutdown(self, how: int) -> None:
+                pass
+
+            def close(self) -> None:
+                pass
+
+        conn = HTTPConnection("example.com", port=80)
+        conn.sock = typing.cast(typing.Any, MockSocket())
+        conn.request("GET", "/", preload_content=False, decode_content=False)
+
+        response = conn.getresponse()
+
+        assert (
+            response.headers["Set-Cookie"]
+            == "___utmvbtouVBFmB=gZg XbNOjalT: Lte; path=/; Max-Age=900"
+        )
 
     def test_assert_fingerprint_closes_socket(self) -> None:
         context = mock.create_autospec(ssl_.SSLContext)
