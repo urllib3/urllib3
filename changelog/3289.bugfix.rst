@@ -1,0 +1,1 @@
+Resolved the default connection pool queue class at pool construction time so queue monkey patches applied after importing urllib3 can be honored while preserving custom ``QueueCls`` subclasses.

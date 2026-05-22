@@ -76,7 +76,13 @@ class ConnectionPool:
     """
 
     scheme: str | None = None
-    QueueCls = queue.LifoQueue
+    QueueCls: type[queue.LifoQueue[typing.Any]] = queue.LifoQueue
+
+    def _get_queue_cls(self) -> type[queue.LifoQueue[typing.Any]]:
+        if self.QueueCls is ConnectionPool.QueueCls:
+            return queue.LifoQueue
+
+        return self.QueueCls
 
     def __init__(self, host: str, port: int | None = None) -> None:
         if not host:
@@ -198,7 +204,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.timeout = timeout
         self.retries = retries
 
-        self.pool: queue.LifoQueue[typing.Any] | None = self.QueueCls(maxsize)
+        self.pool: queue.LifoQueue[typing.Any] | None = self._get_queue_cls()(maxsize)
         self.block = block
 
         self.proxy = _proxy
