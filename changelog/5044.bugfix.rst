@@ -1,0 +1,2 @@
+Fixed ``Retry(allowed_methods=...)`` to distinguish ``None`` from an empty
+collection, so an explicitly empty collection retries no request methods.
