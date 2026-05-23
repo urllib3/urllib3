@@ -8,6 +8,7 @@ from unittest import mock
 
 import pytest
 
+from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import (  # type: ignore[attr-defined]
     RECENT_DATE,
     CertificateError,
@@ -287,12 +288,12 @@ class TestConnection:
     @pytest.mark.parametrize("chunked", [True, False])
     def test_skip_header(
         self,
-        accept_encoding: str | None,
-        host: str | None,
-        user_agent: str | None,
+        accept_encoding: str | bytes | None,
+        host: str | bytes | None,
+        user_agent: str | bytes | None,
         chunked: bool,
     ) -> None:
-        headers = {}
+        headers = HTTPHeaderDict()
         if accept_encoding is not None:
             headers[accept_encoding] = SKIP_HEADER
         if host is not None:

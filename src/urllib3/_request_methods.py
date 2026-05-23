@@ -5,7 +5,7 @@ import typing
 from urllib.parse import urlencode
 
 from ._base_connection import _TYPE_BODY
-from ._collections import HTTPHeaderDict
+from ._collections import HTTPHeaderDict, _TYPE_HTTP_HEADER_MAPPING
 from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .response import BaseHTTPResponse
 
@@ -48,7 +48,7 @@ class RequestMethods:
 
     _encode_url_methods = {"DELETE", "GET", "HEAD", "OPTIONS"}
 
-    def __init__(self, headers: typing.Mapping[str, str] | None = None) -> None:
+    def __init__(self, headers: _TYPE_HTTP_HEADER_MAPPING | None = None) -> None:
         self.headers = headers or {}
 
     def urlopen(
@@ -56,7 +56,7 @@ class RequestMethods:
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         encode_multipart: bool = True,
         multipart_boundary: str | None = None,
         **kw: typing.Any,
@@ -72,7 +72,7 @@ class RequestMethods:
         url: str,
         body: _TYPE_BODY | None = None,
         fields: _TYPE_FIELDS | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         json: typing.Any | None = None,
         **urlopen_kw: typing.Any,
     ) -> BaseHTTPResponse:
@@ -120,9 +120,10 @@ class RequestMethods:
             if headers is None:
                 headers = self.headers
 
-            if not ("content-type" in map(str.lower, headers.keys())):
-                headers = HTTPHeaderDict(headers)
-                headers["Content-Type"] = "application/json"
+            header_dict = HTTPHeaderDict(headers)
+            if "content-type" not in header_dict:
+                header_dict["Content-Type"] = "application/json"
+            headers = header_dict
 
             body = _json.dumps(json, separators=(",", ":"), ensure_ascii=False).encode(
                 "utf-8"
@@ -149,7 +150,7 @@ class RequestMethods:
         method: str,
         url: str,
         fields: _TYPE_ENCODE_URL_FIELDS | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
@@ -186,7 +187,7 @@ class RequestMethods:
         method: str,
         url: str,
         fields: _TYPE_FIELDS | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         encode_multipart: bool = True,
         multipart_boundary: str | None = None,
         **urlopen_kw: str,
