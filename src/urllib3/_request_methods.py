@@ -5,7 +5,7 @@ import typing
 from urllib.parse import urlencode
 
 from ._base_connection import _TYPE_BODY
-from ._collections import HTTPHeaderDict, _TYPE_HTTP_HEADER_MAPPING
+from ._collections import _TYPE_HTTP_HEADER_MAPPING, HTTPHeaderDict
 from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .response import BaseHTTPResponse
 

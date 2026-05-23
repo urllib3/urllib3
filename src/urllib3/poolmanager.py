@@ -8,10 +8,10 @@ from types import TracebackType
 from urllib.parse import urljoin
 
 from ._collections import (
-    HTTPHeaderDict,
-    RecentlyUsedContainer,
     _TYPE_HTTP_HEADER,
     _TYPE_HTTP_HEADER_MAPPING,
+    HTTPHeaderDict,
+    RecentlyUsedContainer,
 )
 from ._request_methods import RequestMethods
 from .connection import ProxyConfig

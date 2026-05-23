@@ -11,7 +11,7 @@ import h2.connection
 import h2.events
 
 from .._base_connection import _TYPE_BODY
-from .._collections import HTTPHeaderDict, _TYPE_HTTP_HEADER_MAPPING
+from .._collections import _TYPE_HTTP_HEADER_MAPPING, HTTPHeaderDict
 from ..connection import HTTPSConnection, _get_default_user_agent
 from ..exceptions import ConnectionError
 from ..response import BaseHTTPResponse

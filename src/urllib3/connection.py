@@ -21,10 +21,9 @@ if typing.TYPE_CHECKING:
     from .util.ssltransport import SSLTransport
 
 from ._collections import (
-    HTTPHeaderDict,
     _TYPE_HTTP_HEADER_KEY,
     _TYPE_HTTP_HEADER_MAPPING,
-    _TYPE_HTTP_HEADER_VALUE,
+    HTTPHeaderDict,
 )
 from .http2 import probe as http2_probe
 from .util.response import assert_header_parsing
@@ -412,9 +411,7 @@ class HTTPConnection(_HTTPConnection):
             method, url, skip_host=skip_host, skip_accept_encoding=skip_accept_encoding
         )
 
-    def putheader(
-        self, header: _TYPE_HTTP_HEADER_KEY, *values: typing.Any
-    ) -> None:
+    def putheader(self, header: _TYPE_HTTP_HEADER_KEY, *values: typing.Any) -> None:
         """"""
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(

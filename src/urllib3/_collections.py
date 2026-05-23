@@ -34,6 +34,7 @@ _TYPE_HTTP_HEADER = tuple[_TYPE_HTTP_HEADER_KEY, _TYPE_HTTP_HEADER_VALUE]
 _TYPE_HTTP_HEADER_PLAIN_MAPPING = (
     typing.Mapping[str, _TYPE_HTTP_HEADER_VALUE]
     | typing.Mapping[bytes, _TYPE_HTTP_HEADER_VALUE]
+    | typing.Mapping[_TYPE_HTTP_HEADER_KEY, _TYPE_HTTP_HEADER_VALUE]
 )
 _TYPE_HTTP_HEADER_MAPPING = typing.Union[
     "HTTPHeaderDict",
@@ -255,7 +256,9 @@ class HTTPHeaderDict(typing.MutableMapping[_TYPE_HTTP_HEADER_KEY, str]):
     _container: typing.MutableMapping[str, list[str]]
 
     def __init__(
-        self, headers: ValidHTTPHeaderSource | None = None, **kwargs: _TYPE_HTTP_HEADER_VALUE
+        self,
+        headers: ValidHTTPHeaderSource | None = None,
+        **kwargs: _TYPE_HTTP_HEADER_VALUE,
     ):
         super().__init__()
         self._container = {}  # 'dict' is insert-ordered
@@ -327,7 +330,11 @@ class HTTPHeaderDict(typing.MutableMapping[_TYPE_HTTP_HEADER_KEY, str]):
             pass
 
     def add(
-        self, key: _TYPE_HTTP_HEADER_KEY, val: _TYPE_HTTP_HEADER_VALUE, *, combine: bool = False
+        self,
+        key: _TYPE_HTTP_HEADER_KEY,
+        val: _TYPE_HTTP_HEADER_VALUE,
+        *,
+        combine: bool = False,
     ) -> None:
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.

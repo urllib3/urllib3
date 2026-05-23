@@ -11,7 +11,7 @@ from socket import timeout as SocketTimeout
 from types import TracebackType
 
 from ._base_connection import _TYPE_BODY
-from ._collections import HTTPHeaderDict, _TYPE_HTTP_HEADER_MAPPING
+from ._collections import _TYPE_HTTP_HEADER_MAPPING, HTTPHeaderDict
 from ._request_methods import RequestMethods
 from .connection import (
     BaseSSLError,

@@ -27,7 +27,7 @@ except ImportError:
 
 from . import util
 from ._base_connection import _TYPE_BODY
-from ._collections import HTTPHeaderDict, _TYPE_HTTP_HEADER_MAPPING
+from ._collections import _TYPE_HTTP_HEADER_MAPPING, HTTPHeaderDict
 from .connection import BaseSSLError, HTTPConnection, HTTPException
 from .exceptions import (
     BodyNotHttplibCompatible,
