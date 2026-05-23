@@ -7,6 +7,7 @@ from unittest import mock
 
 import pytest
 
+from urllib3.connection import _ssl_wrap_socket_and_match_hostname
 from urllib3.exceptions import ProxySchemeUnsupported, SSLError
 from urllib3.util import ssl_
 
@@ -253,3 +254,54 @@ class TestSSL:
             ssl_.assert_fingerprint(
                 cert=None, fingerprint="55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
             )
+
+
+class TestSslWrapSocketAndMatchHostname:
+    """Tests for _ssl_wrap_socket_and_match_hostname (connection.py)."""
+
+    @mock.patch("urllib3.connection.ssl_wrap_socket")
+    def test_caller_supplied_ssl_context_verify_mode_not_mutated(
+        self, mock_ssl_wrap: mock.MagicMock
+    ) -> None:
+        """A user-provided ssl_context must not have verify_mode overwritten.
+
+        Regression test for https://github.com/urllib3/urllib3/issues/4961:
+        passing cert_reqs='CERT_NONE' for the *target* connection must not
+        silently downgrade the proxy ssl_context's verification level.
+        """
+        # Arrange: build a context the caller configured for CERT_REQUIRED.
+        ctx = ssl_.create_urllib3_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_REQUIRED
+
+        mock_ssl_wrap.return_value = mock.MagicMock(spec=ssl.SSLSocket)
+        mock_ssl_wrap.return_value.getpeercert.return_value = None
+
+        sock = mock.MagicMock()
+
+        # Act: call with cert_reqs=CERT_NONE (the target's setting) but pass
+        # the user-supplied context that wants CERT_REQUIRED.
+        _ssl_wrap_socket_and_match_hostname(
+            sock=sock,
+            cert_reqs=ssl.CERT_NONE,
+            ssl_context=ctx,
+            server_hostname="proxy.example.com",
+            assert_hostname=False,
+            assert_fingerprint=None,
+            # Unused by the proxy path:
+            ssl_version=None,
+            ssl_minimum_version=None,
+            ssl_maximum_version=None,
+            ca_certs=None,
+            ca_cert_dir=None,
+            ca_cert_data=None,
+            cert_file=None,
+            key_file=None,
+            key_password=None,
+            tls_in_tls=False,
+        )
+
+        # Assert: the caller's context verify_mode is unchanged.
+        assert ctx.verify_mode == ssl.CERT_REQUIRED, (
+            f"proxy_ssl_context.verify_mode was mutated to {ctx.verify_mode!r}"
+        )

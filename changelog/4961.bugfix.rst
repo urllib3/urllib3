@@ -1,0 +1,4 @@
+Fixed ``_ssl_wrap_socket_and_match_hostname`` mutating a caller-supplied
+``proxy_ssl_context`` by unconditionally overwriting its ``verify_mode``.
+The proxy TLS handshake now leaves user-provided SSL contexts unmodified and
+no longer leaks the target connection's ``cert_reqs`` into the proxy path.

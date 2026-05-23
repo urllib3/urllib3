@@ -867,7 +867,11 @@ class HTTPSConnection(HTTPConnection):
         ssl_context = proxy_config.ssl_context
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
-            cert_reqs=self.cert_reqs,
+            # Do not forward self.cert_reqs (the *target's* cert_reqs) to the
+            # proxy TLS handshake.  When ssl_context is caller-supplied its
+            # verify_mode is already set correctly; when it is None a default
+            # context with CERT_REQUIRED is created automatically.
+            cert_reqs=None,
             ssl_version=self.ssl_version,
             ssl_minimum_version=self.ssl_minimum_version,
             ssl_maximum_version=self.ssl_maximum_version,
@@ -934,7 +938,11 @@ def _ssl_wrap_socket_and_match_hostname(
     else:
         context = ssl_context
 
-    context.verify_mode = resolve_cert_reqs(cert_reqs)
+    # Only override verify_mode when we created the context ourselves.
+    # A caller-supplied ssl_context must not be mutated — its verify_mode
+    # was deliberately configured by the caller.
+    if default_ssl_context:
+        context.verify_mode = resolve_cert_reqs(cert_reqs)
 
     # In some cases, we want to verify hostnames ourselves
     if (
