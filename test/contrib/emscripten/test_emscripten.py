@@ -1331,3 +1331,38 @@ def test_pool_no_port(selenium_coverage: typing.Any) -> None:
         pool = HTTPConnectionPool("example.com", maxsize=10, block=True)
 
         pool.request("GET", "/")
+
+
+@run_in_pyodide  # type: ignore[untyped-decorator]
+def test_pool_bytes_headers(selenium_coverage: typing.Any) -> None:
+    from unittest.mock import patch
+
+    from urllib3 import HTTPConnectionPool
+    from urllib3.contrib.emscripten.request import EmscriptenRequest
+    from urllib3.contrib.emscripten.response import EmscriptenResponse
+
+    def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
+        assert request.url == "http://example.com/"
+        assert request.headers == {
+            "X-test": "value",
+            "Another": "header",
+        }
+        return EmscriptenResponse(
+            status_code=200, headers={}, body=b"", request=request
+        )
+
+    with patch("urllib3.contrib.emscripten.connection.send_request", new=send_request):
+        pool = HTTPConnectionPool("example.com", maxsize=10, block=True)
+        headers = typing.cast(
+            typing.Mapping[str | bytes, str | bytes],
+            {
+                b"x-test": b"value",
+                "another": "header",
+            },
+        )
+
+        pool.request(
+            "GET",
+            "/",
+            headers=headers,
+        )
