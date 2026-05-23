@@ -1334,15 +1334,15 @@ def test_pool_no_port(selenium_coverage: typing.Any) -> None:
 
 
 @run_in_pyodide  # type: ignore[untyped-decorator]
-def test_pool_bytes_headers(selenium_coverage: typing.Any) -> None:
+def test_connection_bytes_headers(selenium_coverage: typing.Any) -> None:
     from unittest.mock import patch
 
-    from urllib3 import HTTPConnectionPool
+    from urllib3.contrib.emscripten.connection import EmscriptenHTTPConnection
     from urllib3.contrib.emscripten.request import EmscriptenRequest
     from urllib3.contrib.emscripten.response import EmscriptenResponse
 
     def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
-        assert request.url == "http://example.com/"
+        assert request.url == "http://example.com:0/"
         assert request.headers["X-test"] == "value"
         assert request.headers["Another"] == "header"
         return EmscriptenResponse(
@@ -1350,7 +1350,7 @@ def test_pool_bytes_headers(selenium_coverage: typing.Any) -> None:
         )
 
     with patch("urllib3.contrib.emscripten.connection.send_request", new=send_request):
-        pool = HTTPConnectionPool("example.com", maxsize=10, block=True)
+        conn = EmscriptenHTTPConnection("example.com")
         headers = typing.cast(
             typing.Mapping[str | bytes, str | bytes],
             {
@@ -1359,7 +1359,7 @@ def test_pool_bytes_headers(selenium_coverage: typing.Any) -> None:
             },
         )
 
-        pool.request(
+        conn.request(
             "GET",
             "/",
             headers=headers,
