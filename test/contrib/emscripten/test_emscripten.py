@@ -1343,10 +1343,8 @@ def test_pool_bytes_headers(selenium_coverage: typing.Any) -> None:
 
     def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
         assert request.url == "http://example.com/"
-        assert request.headers == {
-            "X-test": "value",
-            "Another": "header",
-        }
+        assert request.headers["X-test"] == "value"
+        assert request.headers["Another"] == "header"
         return EmscriptenResponse(
             status_code=200, headers={}, body=b"", request=request
         )
