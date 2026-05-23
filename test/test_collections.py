@@ -131,6 +131,13 @@ class TestLRUContainer:
         with pytest.raises(NotImplementedError):
             d.__iter__()
 
+    def test_keys(self) -> None:
+        d: Container[int, str] = Container()
+        d[1] = "one"
+        d[2] = "two"
+
+        assert d.keys() == {1, 2}
+
 
 class NonMappingHeaderContainer:
     def __init__(self, **kwargs: str) -> None:
