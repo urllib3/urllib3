@@ -1,0 +1,2 @@
+Normalized obsolete folded response header values before exposing them through
+``HTTPResponse.headers``.
