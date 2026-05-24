@@ -427,6 +427,51 @@ class TestUtil:
     def test_netloc(self, url: str, expected_netloc: str | None) -> None:
         assert parse_url(url).netloc == expected_netloc
 
+    url_auth_decoded_map: list[tuple[str, tuple[str | None, str | None]]] = [
+        # Basic username and password
+        ("http://foo:bar@example.com/", ("foo", "bar")),
+        ("http://foo@example.com/", ("foo", None)),
+        ("http://foo:@example.com/", ("foo", "")),
+        # Unreserved chars (not encoded): - . _ ~
+        ("http://user-name:pass_word@example.com/", ("user-name", "pass_word")),
+        ("http://user.name:pass~word@example.com/", ("user.name", "pass~word")),
+        # Sub-delims (not encoded): ! $ & ' ( ) * + , ; =
+        ("http://user!id:pass$word@example.com/", ("user!id", "pass$word")),
+        ("http://user&co:pass'word@example.com/", ("user&co", "pass'word")),
+        ("http://user(test):pass*word@example.com/", ("user(test)", "pass*word")),
+        ("http://user+id:pass,word@example.com/", ("user+id", "pass,word")),
+        ("http://user;id:pass=word@example.com/", ("user;id", "pass=word")),
+        # Encoded colon in username, unencoded colon in password
+        ("http://user%3Aname:pass:word@example.com/", ("user:name", "pass:word")),
+        # Percent-encoded credentials (unreserved chars: - . _ ~)
+        ("http://user%2Dname:pass%2Eword@example.com/", ("user-name", "pass.word")),
+        # Percent-encoded credentials (reserved/special chars)
+        ("http://user%40email:pass%2Fword@example.com/", ("user@email", "pass/word")),
+        ("http://user%20space:pass%3Acolon@example.com/", ("user space", "pass:colon")),
+        # Multiple @ signs (@ is percent-encoded in username part)
+        (
+            "http://user%40email.com:password@example.com/",
+            ("user@email.com", "password"),
+        ),
+        # Special characters already percent-encoded
+        ("http://user%22:quoted@example.com/", ('user"', "quoted")),
+        # No auth
+        ("http://example.com/", (None, None)),
+    ]
+
+    @pytest.mark.parametrize("url, expected_auth_decoded", url_auth_decoded_map)
+    def test_auth_decoded(
+        self, url: str, expected_auth_decoded: tuple[str | None, str | None]
+    ) -> None:
+        parsed_url = parse_url(url)
+        assert parsed_url.auth_decoded == expected_auth_decoded
+        if expected_auth_decoded == (None, None):
+            assert parsed_url.auth_decoded_joined is None
+        else:
+            assert parsed_url.auth_decoded_joined == ":".join(
+                [part for part in expected_auth_decoded if part is not None]
+            )
+
     url_vulnerabilities = [
         # urlparse doesn't follow RFC 3986 Section 3.2
         (

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import typing
+from urllib.parse import unquote
 
 from ..exceptions import LocationParseError
 from .util import to_str
@@ -97,6 +98,10 @@ class Url(
     Data structure for representing an HTTP URL. Used as a return value for
     :func:`parse_url`. Both the scheme and host are normalized as they are
     both case-insensitive according to RFC 3986.
+
+    :param auth: User information as defined in RFC 3986 3.2.1. This
+        component is kept percent-encoded. Use :attr:`auth_decoded` or
+        :attr:`auth_decoded_joined` to get the decoded form.
     """
 
     def __new__(  # type: ignore[no-untyped-def]
@@ -114,6 +119,41 @@ class Url(
         if scheme is not None:
             scheme = scheme.lower()
         return super().__new__(cls, scheme, auth, host, port, path, query, fragment)
+
+    @property
+    def auth_decoded(self) -> tuple[None, None] | tuple[str, str | None]:
+        """
+        User information with percent-encoding decoded, as a
+        ``(username, password)`` tuple.
+
+        Both values are ``None`` if ``auth`` is ``None``.
+        ``password`` is ``None`` if not present in the auth component.
+        """
+        if self.auth is None:
+            return None, None
+        username, sep, password = self.auth.partition(":")
+        return unquote(username), (unquote(password) if sep else None)
+
+    @property
+    def auth_decoded_joined(self) -> str | None:
+        """
+        User information with percent-encoding decoded, as a string
+        prepared for encoding into an 'authorization: basic ...' header.
+
+        This is a convenience property that joins the username and
+        password with a colon, if both are present.
+        If only the username is present, it returns just the username.
+        If ``auth`` is ``None``, this returns ``None``.
+
+        The method does not check if the username or password contains
+        a colon, so it may not be suitable for all use cases.
+        """
+        username, password = self.auth_decoded
+        if username is None:
+            return None
+        if password is None:
+            return username
+        return f"{username}:{password}"
 
     @property
     def hostname(self) -> str | None:
