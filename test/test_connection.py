@@ -35,6 +35,10 @@ from urllib3.util.ssl_match_hostname import (
 if typing.TYPE_CHECKING:
     from urllib3.util.ssl_ import _TYPE_PEER_CERT_RET_DICT
 
+    class _EmscriptenRequestLike(typing.Protocol):
+        url: str
+        headers: dict[str, str]
+
 
 class TestConnection:
     """
@@ -373,9 +377,9 @@ class TestConnection:
             "urllib3.contrib.emscripten.response"
         )
 
-        captured_requests: list[object] = []
+        captured_requests: list[_EmscriptenRequestLike] = []
 
-        def send_request(request: object) -> object:
+        def send_request(request: _EmscriptenRequestLike) -> object:
             captured_requests.append(request)
             return emscripten_response.EmscriptenResponse(
                 status_code=200,
