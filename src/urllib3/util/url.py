@@ -145,8 +145,8 @@ class Url(
         If only the username is present, it returns just the username.
         If ``auth`` is ``None``, this returns ``None``.
 
-        The method does not check if the username or password contains
-        a colon, so it may not be suitable for all use cases.
+        It is not checked if the username or password contains a colon,
+        so this property may not be suitable for all use cases.
         """
         username, password = self.auth_decoded
         if username is None:
