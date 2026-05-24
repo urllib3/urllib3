@@ -1,0 +1,3 @@
+Resolved the default connection pool queue class at pool creation time so
+monkey-patched ``queue.LifoQueue`` implementations can be used unless
+``QueueCls`` is explicitly overridden.
