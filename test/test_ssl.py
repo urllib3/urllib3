@@ -307,9 +307,9 @@ class TestSslWrapSocketAndMatchHostname:
         self._call(mock_ssl_wrap, ctx, cert_reqs=None)
 
         # Assert: the caller's context verify_mode is unchanged.
-        assert ctx.verify_mode == ssl.CERT_REQUIRED, (
-            f"proxy_ssl_context.verify_mode was mutated to {ctx.verify_mode!r}"
-        )
+        assert (
+            ctx.verify_mode == ssl.CERT_REQUIRED
+        ), f"proxy_ssl_context.verify_mode was mutated to {ctx.verify_mode!r}"
 
     @mock.patch("urllib3.connection.ssl_wrap_socket")
     def test_caller_supplied_ssl_context_verify_mode_updated_when_cert_reqs_explicit(
@@ -329,6 +329,6 @@ class TestSslWrapSocketAndMatchHostname:
         self._call(mock_ssl_wrap, ctx, cert_reqs=ssl.CERT_REQUIRED)
 
         # Assert: verify_mode was upgraded to match the explicit request.
-        assert ctx.verify_mode == ssl.CERT_REQUIRED, (
-            f"verify_mode should have been set to CERT_REQUIRED, got {ctx.verify_mode!r}"
-        )
+        assert (
+            ctx.verify_mode == ssl.CERT_REQUIRED
+        ), f"verify_mode should have been set to CERT_REQUIRED, got {ctx.verify_mode!r}"
