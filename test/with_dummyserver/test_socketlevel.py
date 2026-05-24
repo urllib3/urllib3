@@ -2210,6 +2210,22 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
             [b"Broken Header", b"Another: Header"], "Broken Header"
         )
 
+    def test_folded_header_value_is_normalized(self) -> None:
+        self.start_response_handler(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Length: 0\r\n"
+            b"Set-Cookie: ___utmvbtouVBFmB=gZg\r\n"
+            b"    XbNOjalT: Lte; path=/; Max-Age=900\r\n"
+            b"\r\n"
+        )
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            response = pool.request("GET", "/")
+
+        set_cookie = response.headers["Set-Cookie"]
+        assert "\r\n" not in set_cookie
+        assert set_cookie == "___utmvbtouVBFmB=gZg XbNOjalT: Lte; path=/; Max-Age=900"
+
 
 class TestHeaderParsingContentType(SocketDummyServerTestCase):
     def _test_okay_header_parsing(self, header: bytes) -> None:

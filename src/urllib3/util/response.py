@@ -1,9 +1,22 @@
 from __future__ import annotations
 
 import http.client as httplib
+import re
+import typing
 from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
 
 from ..exceptions import HeaderParsingError
+
+_OBS_FOLD_RE = re.compile(r"\r\n[ \t]+")
+
+
+def _normalize_header_items(
+    headers: typing.Iterable[tuple[str, str]],
+) -> typing.Iterator[tuple[str, str]]:
+    """Normalize obsolete folded header lines before exposing response headers."""
+
+    for key, value in headers:
+        yield key, _OBS_FOLD_RE.sub(" ", value)
 
 
 def is_fp_closed(obj: object) -> bool:
