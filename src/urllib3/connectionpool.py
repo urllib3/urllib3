@@ -761,9 +761,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # for future rewinds in the event of a redirect/retry.
         body_pos = set_file_position(body, body_pos)
 
+        # Validate per-request timeouts before acquiring a connection. If this
+        # raises, no connection has been taken from the pool and the cleanup
+        # block below must not try to return one.
+        timeout_obj = self._get_timeout(timeout)
+
         try:
             # Request a connection from the queue.
-            timeout_obj = self._get_timeout(timeout)
             conn = self._get_conn(timeout=pool_timeout)
 
             conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]

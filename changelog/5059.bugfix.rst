@@ -1,0 +1,2 @@
+Fixed ``HTTPConnectionPool.urlopen()`` masking invalid per-request timeout
+values with ``FullPoolError`` in blocking pools.

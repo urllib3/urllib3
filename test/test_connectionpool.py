@@ -427,6 +427,11 @@ class TestConnectionPool:
             assert pool.timeout._connect == SHORT_TIMEOUT
             assert pool.timeout.total is None
 
+    def test_urlopen_invalid_timeout(self) -> None:
+        with HTTPConnectionPool(host="localhost", block=True) as pool:
+            with pytest.raises(ValueError, match="Timeout value connect was 1"):
+                pool.urlopen("GET", "/", timeout="1")  # type: ignore[arg-type]
+
     def test_no_host(self) -> None:
         with pytest.raises(LocationValueError):
             HTTPConnectionPool(None)  # type: ignore[arg-type]
