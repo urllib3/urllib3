@@ -50,6 +50,9 @@ if typing.TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
+# Read in 64 KiB chunks
+_READ_CHUNK_SIZE = 2**16
+
 
 class ContentDecoder:
     def decompress(self, data: bytes, max_length: int = -1) -> bytes:
@@ -559,7 +562,7 @@ class BaseHTTPResponse(io.IOBase):
         self._retries = retries
 
     def stream(
-        self, amt: int | None = 2**16, decode_content: bool | None = None
+        self, amt: int | None = _READ_CHUNK_SIZE, decode_content: bool | None = None
     ) -> typing.Iterator[bytes]:
         raise NotImplementedError()
 
@@ -798,7 +801,8 @@ class HTTPResponse(BaseHTTPResponse):
         Unread data in the HTTPResponse connection blocks the connection from being released back to the pool.
         """
         try:
-            self._raw_read()
+            while self._raw_read(_READ_CHUNK_SIZE):
+                pass
         except (HTTPError, OSError, BaseSSLError, HTTPException):
             pass
         if self._has_decoded_content:
@@ -1236,7 +1240,7 @@ class HTTPResponse(BaseHTTPResponse):
         return self._decoded_buffer.get(amt)
 
     def stream(
-        self, amt: int | None = 2**16, decode_content: bool | None = None
+        self, amt: int | None = _READ_CHUNK_SIZE, decode_content: bool | None = None
     ) -> typing.Generator[bytes]:
         """
         A generator wrapper for the read() method. A call will block until

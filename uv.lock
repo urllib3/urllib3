@@ -2365,6 +2365,15 @@ wheels = [
 ]
 
 [[package]]
+name = "types-pysocks"
+version = "1.7.1.20251001"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/24/d7/421deaee04ffe69dc1449cbf57dc4d4d92e8f966f4a35b482ea3811b7980/types_pysocks-1.7.1.20251001.tar.gz", hash = "sha256:50a0e737d42527abbec09e891c64f76a9f66f302e673cd149bc112c15764869f", size = 8785, upload-time = "2025-10-01T03:04:13.85Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/36/07/6a8aafa0fa5fc0880a37c98b41348bf91bc28f76577bdac68f78bcf8a124/types_pysocks-1.7.1.20251001-py3-none-any.whl", hash = "sha256:dd9abcfc7747aeddf1bab270c8daab3a1309c3af9e07c8c2c52038ab8539f06c", size = 9620, upload-time = "2025-10-01T03:04:13.042Z" },
+]
+
+[[package]]
 name = "types-requests"
 version = "2.33.0.20260408"
 source = { registry = "https://pypi.org/simple" }
@@ -2498,6 +2507,7 @@ mypy = [
     { name = "idna", version = "3.13", source = { registry = "https://pypi.org/simple" } },
     { name = "mypy" },
     { name = "nox" },
+    { name = "pyopenssl", version = "26.1.0", source = { registry = "https://pypi.org/simple" } },
     { name = "pysocks" },
     { name = "pytest" },
     { name = "pytest-socket" },
@@ -2506,6 +2516,7 @@ mypy = [
     { name = "quart-trio" },
     { name = "trio" },
     { name = "trustme", version = "1.2.1", source = { registry = "https://pypi.org/simple" } },
+    { name = "types-pysocks" },
     { name = "types-requests" },
 ]
 test = [
@@ -2612,8 +2623,9 @@ mypy = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "hypercorn", git = "https://github.com/urllib3/hypercorn?rev=urllib3-changes" },
     { name = "idna", specifier = ">=3.10" },
-    { name = "mypy", specifier = ">=1.14.1" },
+    { name = "mypy", specifier = ">=1.18.2" },
     { name = "nox", specifier = ">=2024.10.9" },
+    { name = "pyopenssl", specifier = ">=25.3.0" },
     { name = "pysocks", specifier = ">=1.7.1" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "pytest-socket", specifier = ">=0.7.0" },
@@ -2622,6 +2634,7 @@ mypy = [
     { name = "quart-trio", specifier = ">=0.12.0" },
     { name = "trio", specifier = ">=0.27.0" },
     { name = "trustme", specifier = ">=1.2.1" },
+    { name = "types-pysocks", specifier = ">=1.7.1.20251001" },
     { name = "types-requests", specifier = ">=2.32.0.20241016" },
 ]
 test = [
