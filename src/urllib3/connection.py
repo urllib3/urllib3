@@ -20,6 +20,7 @@ if typing.TYPE_CHECKING:
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
 
+from ._base_connection import _TYPE_BODY, _TYPE_HEADERS
 from ._collections import HTTPHeaderDict
 from .http2 import probe as http2_probe
 from .util.response import assert_header_parsing
@@ -426,7 +427,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
         *,
         chunked: bool = False,
         preload_content: bool = True,
@@ -496,7 +497,7 @@ class HTTPConnection(_HTTPConnection):
         if "user-agent" not in header_keys:
             self.putheader("User-Agent", _get_default_user_agent())
         for header, value in headers.items():
-            self.putheader(header, value)
+            self.putheader(header, value)  # type: ignore[arg-type]
         self.endheaders()
 
         # If we're given a body we start sending that in chunks.
@@ -523,7 +524,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
     ) -> None:
         """
         Alternative to the common request method, which sends the

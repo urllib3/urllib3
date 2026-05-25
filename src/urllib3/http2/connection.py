@@ -10,7 +10,7 @@ import h2.config
 import h2.connection
 import h2.events
 
-from .._base_connection import _TYPE_BODY
+from .._base_connection import _TYPE_BODY, _TYPE_HEADERS
 from .._collections import HTTPHeaderDict
 from ..connection import HTTPSConnection, _get_default_user_agent
 from ..exceptions import ConnectionError
@@ -270,7 +270,7 @@ class HTTP2Connection(HTTPSConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
         *,
         preload_content: bool = True,
         decode_content: bool = True,
