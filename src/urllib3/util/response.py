@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import http.client as httplib
+import re
 from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
 
 from ..exceptions import HeaderParsingError
+
+_OBS_FOLD_RE = re.compile(r"\r\n[ \t]+")
 
 
 def is_fp_closed(obj: object) -> bool:
@@ -35,6 +38,11 @@ def is_fp_closed(obj: object) -> bool:
         pass
 
     raise ValueError("Unable to determine whether fp is closed.")
+
+
+def normalize_obs_fold(value: str) -> str:
+    """Replace obsolete folded HTTP header lines with a single space."""
+    return _OBS_FOLD_RE.sub(" ", value)
 
 
 def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
