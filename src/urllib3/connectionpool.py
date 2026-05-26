@@ -768,11 +768,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # for future rewinds in the event of a redirect/retry.
         body_pos = set_file_position(body, body_pos)
 
+        timeout_obj = self._get_timeout(timeout)
         try:
             # Request a connection from the queue.
-            timeout_obj = self._get_timeout(timeout)
             conn = self._get_conn(timeout=pool_timeout)
-
             conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
 
             # Is this a closed/new connection that requires CONNECT tunnelling?
