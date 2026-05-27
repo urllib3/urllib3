@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import typing
-from urllib.parse import unquote
+from urllib.parse import unquote as _unquote
 
 from ..exceptions import LocationParseError
 from .util import to_str
@@ -132,7 +132,7 @@ class Url(
         if self.auth is None:
             return None, None
         username, sep, password = self.auth.partition(":")
-        return unquote(username), (unquote(password) if sep else None)
+        return _unquote(username), (_unquote(password) if sep else None)
 
     @property
     def auth_decoded_joined(self) -> str | None:
