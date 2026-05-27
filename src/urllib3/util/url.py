@@ -123,7 +123,7 @@ class Url(
     @property
     def auth_decoded(self) -> tuple[None, None] | tuple[str, str | None]:
         """
-        User information with percent-encoding decoded, as a
+        User information with %-escapes decoded, as a
         ``(username, password)`` tuple.
 
         Both values are ``None`` if ``auth`` is ``None``.
@@ -137,8 +137,8 @@ class Url(
     @property
     def auth_decoded_joined(self) -> str | None:
         """
-        User information with percent-encoding decoded, as a string
-        prepared for encoding into an 'authorization: basic ...' header.
+        User information with %-escapes decoded, as a string prepared
+        for encoding into an 'authorization: basic ...' header.
 
         This is a convenience property that joins the username and
         password with a colon, if both are present.
