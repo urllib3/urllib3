@@ -45,6 +45,7 @@ from ._version import __version__
 from .exceptions import (
     ConnectTimeoutError,
     HeaderParsingError,
+    InvalidHeader,
     NameResolutionError,
     NewConnectionError,
     ProxyError,
@@ -580,7 +581,16 @@ class HTTPConnection(_HTTPConnection):
                 exc_info=True,
             )
 
-        headers = HTTPHeaderDict(httplib_response.msg.items())
+        raw_headers = list(httplib_response.msg.items())
+        for header, value in raw_headers:
+            if any(ch in header for ch in ("\r", "\n", "\0")) or any(
+                ch in value for ch in ("\r", "\n", "\0")
+            ):
+                raise InvalidHeader(
+                    f"Invalid header {header!r}: header names and values must not contain CR, LF, or NUL"
+                )
+
+        headers = HTTPHeaderDict(raw_headers)
 
         response = HTTPResponse(
             body=httplib_response,

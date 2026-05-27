@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import io
 import datetime
 import socket
 import typing
-from http.client import ResponseNotReady
+from http.client import ResponseNotReady, parse_headers
 from unittest import mock
 
 import pytest
 
+from urllib3._base_connection import _ResponseOptions
 from urllib3.connection import (  # type: ignore[attr-defined]
     RECENT_DATE,
     CertificateError,
@@ -17,7 +19,7 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     _url_from_connection,
     _wrap_proxy_error,
 )
-from urllib3.exceptions import HTTPError, ProxyError, SSLError
+from urllib3.exceptions import HTTPError, InvalidHeader, ProxyError, SSLError
 from urllib3.util import ssl_
 from urllib3.util.request import SKIP_HEADER
 from urllib3.util.ssl_match_hostname import (
@@ -326,3 +328,30 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    def test_getresponse_rejects_obs_fold_in_header_value(self) -> None:
+        headers = parse_headers(io.BytesIO(b"Set-Cookie: a=b\r\n\tX: y\r\n\r\n"))
+
+        class _DummyResponse:
+            def __init__(self) -> None:
+                self.msg = headers
+                self.status = 200
+                self.version = 11
+                self.reason = "OK"
+
+            def read(self, amt: int | None = None) -> bytes:
+                return b""
+
+        conn = HTTPConnection("example.com", port=80)
+        conn.sock = mock.MagicMock(settimeout=mock.Mock(), shutdown=mock.Mock())
+        conn._response_options = _ResponseOptions(
+            request_method="GET",
+            request_url="/",
+            preload_content=False,
+            decode_content=False,
+            enforce_content_length=True,
+        )
+
+        with mock.patch("http.client.HTTPConnection.getresponse", return_value=_DummyResponse()):
+            with pytest.raises(InvalidHeader):
+                conn.getresponse()
