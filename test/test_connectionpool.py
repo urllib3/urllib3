@@ -277,6 +277,14 @@ class TestConnectionPool:
 
             assert conn1 == pool._get_conn()
 
+    def test_urlopen_invalid_timeout_raises_value_error(self) -> None:
+        with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
+            with pytest.raises(
+                ValueError,
+                match="Timeout value connect was 1, but it must be an int, float or None",
+            ):
+                pool.urlopen("GET", "/", timeout="1")  # type: ignore[arg-type]
+
     def test_put_conn_closed_pool(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
             conn1 = pool._get_conn()
