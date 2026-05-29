@@ -4,6 +4,7 @@ import collections
 import io
 import json as _json
 import logging
+import re
 import socket
 import sys
 import typing
@@ -52,6 +53,13 @@ log = logging.getLogger(__name__)
 
 # Read in 64 KiB chunks
 _READ_CHUNK_SIZE = 2**16
+_OBS_FOLD_RE = re.compile(r"\r?\n[ \t]+")
+
+
+def _normalize_header_value(value: str | bytes) -> str:
+    if isinstance(value, bytes):
+        value = value.decode("latin-1")
+    return _OBS_FOLD_RE.sub(" ", value)
 
 
 class ContentDecoder:
@@ -478,10 +486,18 @@ class BaseHTTPResponse(io.IOBase):
         request_url: str | None,
         retries: Retry | None = None,
     ) -> None:
-        if isinstance(headers, HTTPHeaderDict):
-            self.headers = headers
+        if headers is None:
+            self.headers = HTTPHeaderDict()
+        elif isinstance(headers, HTTPHeaderDict):
+            self.headers = HTTPHeaderDict(
+                (key, _normalize_header_value(value))
+                for key, value in headers.iteritems()
+            )
         else:
-            self.headers = HTTPHeaderDict(headers)  # type: ignore[arg-type]
+            self.headers = HTTPHeaderDict(
+                (key, _normalize_header_value(value))
+                for key, value in headers.items()  # type: ignore[union-attr]
+            )
         self.status = status
         self.version = version
         self.version_string = version_string
