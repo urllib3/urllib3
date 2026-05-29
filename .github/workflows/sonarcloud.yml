@@ -14,18 +14,15 @@ permissions:
   pull-requests: read
 
 jobs:
-  sonarcloud:
-    name: SonarCloud Scan
+  Analysis:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Analyze with SonarCloud
-        uses: SonarSource/sonarqube-cloud-github-action@v5
+        uses: SonarSource/sonarcloud-github-action@v2.2.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
