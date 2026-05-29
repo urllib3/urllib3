@@ -1,32 +1,19 @@
-name: SonarCloud analysis
-
+name: Build
 on:
   push:
     branches:
       - main
   pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pull-requests: read
-
+    types: [opened, synchronize, reopened]
 jobs:
-  Analysis:
+  sonarqube:
+    name: SonarQube
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
-
-      - name: Analyze with SonarCloud
-        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=julbor2003_urllib3
-            -Dsonar.organization=julbor2003
-            -Dsonar.qualitygate.wait=true
