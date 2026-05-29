@@ -2098,6 +2098,28 @@ class TestHeaders(SocketDummyServerTestCase):
             ]
             assert expected_response_headers == actual_response_headers
 
+    def test_response_header_obs_fold_is_normalized(self) -> None:
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+
+            sock.send(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Length: 0\r\n"
+                b"Set-Cookie: session=abc\r\n"
+                b"    X-Injected: nope\r\n"
+                b"\r\n"
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/", retries=0)
+            assert r.headers["Set-Cookie"] == "session=abc X-Injected: nope"
+
     @pytest.mark.parametrize(
         "method_type, body_type",
         [
