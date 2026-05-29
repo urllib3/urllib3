@@ -77,6 +77,25 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+_OBS_FOLD_RE = re.compile(r"\r\n[ \t]+")
+
+
+def _is_legal_header_name(header: str | bytes) -> bool:
+    try:
+        if isinstance(header, bytes):
+            header = header.decode("ascii")
+        elif isinstance(header, str):
+            header.encode("ascii")
+        else:
+            return False
+    except UnicodeError:
+        return False
+
+    return bool(header) and not _CONTAINS_CONTROL_CHAR_RE.search(header)
+
+
+def _normalize_header_value(value: str) -> str:
+    return _OBS_FOLD_RE.sub(" ", value)
 
 
 class HTTPConnection(_HTTPConnection):
@@ -409,6 +428,9 @@ class HTTPConnection(_HTTPConnection):
 
     def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
+        if not _is_legal_header_name(header):
+            raise ValueError(f"Invalid header name {header!r}")
+
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
@@ -580,7 +602,10 @@ class HTTPConnection(_HTTPConnection):
                 exc_info=True,
             )
 
-        headers = HTTPHeaderDict(httplib_response.msg.items())
+        headers = HTTPHeaderDict(
+            (key, _normalize_header_value(value))
+            for key, value in httplib_response.msg.items()
+        )
 
         response = HTTPResponse(
             body=httplib_response,

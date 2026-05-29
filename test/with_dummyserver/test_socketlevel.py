@@ -88,6 +88,20 @@ class TestCookies(SocketDummyServerTestCase):
             assert r.headers == {"set-cookie": "foo=1, bar=1"}
             assert r.headers.getlist("set-cookie") == ["foo=1", "bar=1"]
 
+    def test_folded_setcookie_header_is_unfolded(self) -> None:
+        self.start_response_handler(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Length: 0\r\n"
+            b"Set-Cookie: foo=bar\r\n"
+            b"\tInjected: bad\r\n"
+            b"\r\n"
+        )
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/", retries=0)
+
+        assert r.headers["set-cookie"] == "foo=bar Injected: bad"
+
 
 class TestSNI(SocketDummyServerTestCase):
     def test_hostname_in_first_request_packet(self) -> None:

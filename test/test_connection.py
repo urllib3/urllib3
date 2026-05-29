@@ -326,3 +326,14 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    @pytest.mark.parametrize(
+        "header",
+        ["Bad Header", "Bad\tHeader", "Bad Header ", b"Bad Header"],
+    )
+    def test_reject_header_names_with_whitespace(self, header: str | bytes) -> None:
+        with mock.patch("urllib3.util.connection.create_connection"):
+            conn = HTTPConnection("")
+
+            with pytest.raises(ValueError, match="Invalid header name"):
+                conn.request("GET", "/headers", headers={header: "value"})
