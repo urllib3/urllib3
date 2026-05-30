@@ -14,7 +14,7 @@ from dummyserver.testcase import (
 )
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
+from urllib3.exceptions import InvalidHeader, MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
@@ -289,6 +289,38 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert "Proxy-Authorization" not in data
             assert "cookie" not in data
             assert "Cookie" not in data
+
+    def test_url_auth_sets_authorization_header(self) -> None:
+        with PoolManager() as http:
+            r = http.request(
+                "GET", f"http://user:password@{self.host}:{self.port}/headers"
+            )
+
+            assert r.status == 200
+            assert r.json()["Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
+
+    def test_url_auth_allows_matching_authorization_header(self) -> None:
+        headers = {"Authorization": "Basic dXNlcjpwYXNzd29yZA=="}
+
+        with PoolManager() as http:
+            r = http.request(
+                "GET",
+                f"http://user:password@{self.host}:{self.port}/headers",
+                headers=headers,
+            )
+
+            assert r.status == 200
+            assert r.json()["Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
+            assert headers == {"Authorization": "Basic dXNlcjpwYXNzd29yZA=="}
+
+    def test_url_auth_rejects_conflicting_authorization_header(self) -> None:
+        with PoolManager() as http:
+            with pytest.raises(InvalidHeader, match="authorization"):
+                http.request(
+                    "GET",
+                    f"http://user:password@{self.host}:{self.port}/headers",
+                    headers={"Authorization": "Basic ZGlmZmVyZW50"},
+                )
 
     def test_redirect_cross_host_no_remove_headers(self) -> None:
         with PoolManager() as http:
