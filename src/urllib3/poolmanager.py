@@ -583,9 +583,12 @@ class ProxyManager(PoolManager):
             use_forwarding_for_https
             and connection_pool_kw.get("ssl_context") is not None
         ):
-            raise ValueError(
-                "ssl_context is not applicable when use_forwarding_for_https=True. "
-                "Use proxy_ssl_context to configure the TLS connection to the proxy."
+            warnings.warn(
+                "Passing ssl_context when use_forwarding_for_https=True is deprecated "
+                "and will raise an error in urllib3 v3.0. "
+                "Use proxy_ssl_context to configure the TLS connection to the proxy.",
+                FutureWarning,
+                stacklevel=2,
             )
 
         if not proxy.port:

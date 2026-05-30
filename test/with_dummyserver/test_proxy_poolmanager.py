@@ -660,7 +660,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
         if use_forwarding_for_https:
             # ssl_context is not valid with use_forwarding_for_https=True;
             # proxy_ssl_context must be used instead.
-            with pytest.raises(ValueError, match="ssl_context is not applicable"):
+            with pytest.warns(FutureWarning, match="ssl_context"):
                 proxy_from_url(
                     proxy_url,
                     proxy_ssl_context=proxy_ctx,
