@@ -56,6 +56,7 @@ class ProxyApp:
             client_response = await client.request(
                 method=scope["method"],
                 url=scope["path"],
+                params=scope["query_string"].decode(),
                 headers=list(scope["headers"]),
                 content=await _read_body(receive),
             )

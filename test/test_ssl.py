@@ -23,6 +23,13 @@ class TestSSL:
             "127.0.0.1",
             "8.8.8.8",
             b"127.0.0.1",
+            # Non-standard IPv4 forms accepted by socket.connect
+            "2130706433",  # decimal integer
+            "0x7f000001",  # hex integer
+            "0177.0.0.01",  # dotted octal
+            "0x7f.0x0.0x0.0x1",  # dotted hex
+            "127.1",  # 2-part
+            "127.0.1",  # 3-part
             # IPv6 w/ Zone IDs
             "FE80::8939:7684:D84b:a5A4%251",
             b"FE80::8939:7684:D84b:a5A4%251",

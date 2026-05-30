@@ -702,8 +702,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
         """
-        parsed_url = parse_url(url)
-        destination_scheme = parsed_url.scheme
+        # Ensure that the URL we're connecting to is properly encoded
+        if url.startswith("/"):
+            # URLs starting with / are inherently schemeless.
+            url = to_str(_encode_target(url))
+            destination_scheme = None
+        else:
+            parsed_url = parse_url(url)
+            destination_scheme = parsed_url.scheme
+            url = to_str(parsed_url.url)
 
         if headers is None:
             headers = self.headers
@@ -717,12 +724,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Check host
         if assert_same_host and not self.is_same_host(url):
             raise HostChangedError(self, url, retries)
-
-        # Ensure that the URL we're connecting to is properly encoded
-        if url.startswith("/"):
-            url = to_str(_encode_target(url))
-        else:
-            url = to_str(parsed_url.url)
 
         conn = None
 
@@ -760,11 +761,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # for future rewinds in the event of a redirect/retry.
         body_pos = set_file_position(body, body_pos)
 
+        timeout_obj = self._get_timeout(timeout)
         try:
             # Request a connection from the queue.
-            timeout_obj = self._get_timeout(timeout)
             conn = self._get_conn(timeout=pool_timeout)
-
             conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
 
             # Is this a closed/new connection that requires CONNECT tunnelling?
@@ -895,6 +895,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # And lose the body not to transfer anything sensitive.
                 body = None
                 headers = HTTPHeaderDict(headers)._prepare_for_method_change()
+
+            # Strip headers marked as unsafe to forward to the redirected location.
+            # Check remove_headers_on_redirect to avoid a potential network call within
+            # self.is_same_host() which may use socket.gethostbyname() in the future.
+            if retries.remove_headers_on_redirect and not self.is_same_host(
+                redirect_location
+            ):
+                new_headers = headers.copy()  # type: ignore[union-attr]
+                for header in headers:
+                    if header.lower() in retries.remove_headers_on_redirect:
+                        new_headers.pop(header, None)
+                headers = new_headers
 
             try:
                 retries = retries.increment(method, url, response=response, _pool=self)

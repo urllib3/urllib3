@@ -277,6 +277,14 @@ class TestConnectionPool:
 
             assert conn1 == pool._get_conn()
 
+    def test_urlopen_invalid_timeout_raises_value_error(self) -> None:
+        with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
+            with pytest.raises(
+                ValueError,
+                match="Timeout value connect was 1, but it must be an int, float or None",
+            ):
+                pool.urlopen("GET", "/", timeout="1")  # type: ignore[arg-type]
+
     def test_put_conn_closed_pool(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
             conn1 = pool._get_conn()
@@ -592,3 +600,25 @@ class TestConnectionPool:
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout=timeout)
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "//v:h",
+            "//host:8080/path",
+            "//host/path",
+            "//v:h?key=val",
+            "/",
+        ],
+    )
+    def test_paths_arent_parsed_as_urls(self, path: str) -> None:
+        """See https://github.com/urllib3/urllib3/issues/3352."""
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool, "_make_request", return_value=HTTPResponse(status=200)
+            ) as mock_request:
+                pool.urlopen("GET", path)
+
+            # Verify the URL isn't mangled
+            actual_url = mock_request.call_args[0][2]
+            assert actual_url == path

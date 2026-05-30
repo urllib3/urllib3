@@ -1,0 +1,1 @@
+Decoded percent-encoded SOCKS proxy credentials before authenticating with the proxy server.

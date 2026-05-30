@@ -1,0 +1,1 @@
+Added a ``test`` dependency group containing the minimum dependencies needed to run the test suite, intended for downstream packagers. The ``dev-base`` and ``mypy`` groups now include this new group via ``include-group``, removing duplication.
