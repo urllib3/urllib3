@@ -592,6 +592,8 @@ class ProxyManager(PoolManager):
                 FutureWarning,
                 stacklevel=2,
             )
+            if proxy_ssl_context is None:
+                proxy_ssl_context = connection_pool_kw.get("ssl_context")
 
         if not proxy.port:
             port = port_by_scheme.get(proxy.scheme, 80)
