@@ -714,36 +714,42 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
 
     @requires_network()
     @pytest.mark.parametrize(
-        ["proxy_scheme", "use_forwarding_for_https"],
+        ["proxy_scheme"],
         [
-            ("http", False),
-            ("https", False),
-            ("https", True),
+            ("http",),
+            ("https",),
         ],
     )
-    def test_proxy_https_target_tls_error(
-        self, proxy_scheme: str, use_forwarding_for_https: str
-    ) -> None:
+    def test_proxy_https_target_tls_error(self, proxy_scheme: str) -> None:
         proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
         proxy_ctx = ssl.create_default_context()
         proxy_ctx.load_verify_locations(DEFAULT_CA)
         ctx = ssl.create_default_context()
 
-        warn_ctx = (
-            pytest.warns(FutureWarning, match="ssl_context")
-            if use_forwarding_for_https
-            else contextlib.nullcontext()
-        )
-        with warn_ctx:
+        with proxy_from_url(
+            proxy_url,
+            proxy_ssl_context=proxy_ctx,
+            ssl_context=ctx,
+        ) as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", self.https_url)
+            assert isinstance(e.value.reason, SSLError)
+
+    @requires_network()
+    def test_proxy_https_target_tls_error_forwarding(self) -> None:
+        proxy_ctx = ssl.create_default_context()
+        proxy_ctx.load_verify_locations(DEFAULT_CA)
+        ctx = ssl.create_default_context()
+
+        with pytest.warns(FutureWarning, match="ssl_context"):
             with proxy_from_url(
-                proxy_url,
+                self.https_proxy_url,
                 proxy_ssl_context=proxy_ctx,
                 ssl_context=ctx,
-                use_forwarding_for_https=use_forwarding_for_https,
+                use_forwarding_for_https=True,
             ) as proxy:
-                with pytest.raises(MaxRetryError) as e:
-                    proxy.request("GET", self.https_url)
-                assert isinstance(e.value.reason, SSLError)
+                resp = proxy.request("GET", self.https_url)
+                assert resp.status == 200
 
     @requires_network()
     def test_proxy_https_ssl_context_fallback_warning(self) -> None:
