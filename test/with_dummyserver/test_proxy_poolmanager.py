@@ -745,6 +745,24 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
                     proxy.request("GET", self.https_url)
                 assert isinstance(e.value.reason, SSLError)
 
+    @requires_network()
+    def test_proxy_https_ssl_context_fallback_warning(self) -> None:
+        # When ssl_context is passed without proxy_ssl_context and
+        # use_forwarding_for_https=True, a FutureWarning is emitted and
+        # ssl_context is used as the proxy TLS context (fallback).
+        ctx = ssl.create_default_context()
+
+        with pytest.warns(FutureWarning, match="ssl_context"):
+            with proxy_from_url(
+                self.https_proxy_url,
+                ssl_context=ctx,
+                use_forwarding_for_https=True,
+            ) as proxy:
+                with pytest.raises(MaxRetryError) as e:
+                    proxy.request("GET", self.https_url)
+                assert isinstance(e.value.reason, ProxyError)
+                assert isinstance(e.value.reason.original_error, SSLError)
+
     def test_scheme_host_case_insensitive(self) -> None:
         """Assert that upper-case schemes and hosts are normalized."""
         with proxy_from_url(self.proxy_url.upper(), ca_certs=DEFAULT_CA) as http:
