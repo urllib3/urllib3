@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 import http.client as httplib
-from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
+import re
+from email.errors import (
+    MessageDefect,
+    MultipartInvariantViolationDefect,
+    StartBoundaryNotFoundDefect,
+)
 
 from ..exceptions import HeaderParsingError
+
+_HEADER_FIELD_IN_FOLDED_VALUE_RE = re.compile(r"[\r\n]+[ \t]+[-!#$%&'*+.^_`|~0-9A-Za-z]+:")
 
 
 def is_fp_closed(obj: object) -> bool:
@@ -83,6 +90,15 @@ def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
             defect, (StartBoundaryNotFoundDefect, MultipartInvariantViolationDefect)
         )
     ]
+
+    for name, value in headers.items():
+        if _HEADER_FIELD_IN_FOLDED_VALUE_RE.search(value):
+            defects.append(
+                MessageDefect(
+                    f"Header {name!r} contains a folded line that looks like a "
+                    "new header field"
+                )
+            )
 
     if defects or unparsed_data:
         raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)

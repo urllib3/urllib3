@@ -2210,6 +2210,11 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
             [b"Broken Header", b"Another: Header"], "Broken Header"
         )
 
+    def test_header_with_folded_header_field_in_value(self) -> None:
+        self._test_broken_header_parsing(
+            [b"Set-Cookie: foo=bar", b"\tXbNOjalT: Lte; path=/"]
+        )
+
 
 class TestHeaderParsingContentType(SocketDummyServerTestCase):
     def _test_okay_header_parsing(self, header: bytes) -> None:
