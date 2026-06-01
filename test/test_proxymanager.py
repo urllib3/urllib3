@@ -49,6 +49,11 @@ class TestProxyManager:
             assert p.proxy is not None
             assert p.proxy.port == 443
 
+    def test_proxy_port_zero(self) -> None:
+        with ProxyManager("http://proxy:0") as p:
+            assert p.proxy is not None
+            assert p.proxy.port == 0
+
     def test_invalid_scheme(self) -> None:
         with pytest.raises(AssertionError):
             ProxyManager("invalid://host/p")

@@ -217,6 +217,14 @@ class TestConnectionPool:
         with HTTPUnixConnectionPool(a) as c:
             assert not c.is_same_host(b)
 
+    def test_same_host_port_zero(self) -> None:
+        with HTTPConnectionPool("example.com", port=0) as c:
+            assert c.is_same_host("http://example.com:0/")
+            assert not c.is_same_host("http://example.com/")
+            assert not c.is_same_host("https://example.com/")
+            assert not c.is_same_host("http://example.com:80/")
+            assert not c.is_same_host("https://example.com:443/")
+
     def test_max_connections(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
             pool._get_conn(timeout=SHORT_TIMEOUT)
