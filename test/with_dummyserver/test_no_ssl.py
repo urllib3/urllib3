@@ -10,10 +10,10 @@ import pytest
 
 import urllib3
 from dummyserver.testcase import (
-    HTTPSHypercornDummyServerTestCase,
+    HypercornDummyProxyTestCase,
     HypercornDummyServerTestCase,
 )
-from urllib3.exceptions import InsecureRequestWarning
+from urllib3.exceptions import InsecureProxyWarning, InsecureRequestWarning
 
 from ..test_no_ssl import TestWithoutSSL
 
@@ -25,13 +25,32 @@ class TestHTTPWithoutSSL(HypercornDummyServerTestCase, TestWithoutSSL):
             assert r.status == 200, r.data
 
 
-class TestHTTPSWithoutSSL(HTTPSHypercornDummyServerTestCase, TestWithoutSSL):
+class TestHTTPSWithoutSSL(HypercornDummyProxyTestCase, TestWithoutSSL):
     def test_simple(self) -> None:
         with urllib3.HTTPSConnectionPool(
-            self.host, self.port, cert_reqs="NONE"
+            self.https_host, self.https_port, cert_reqs="NONE"
         ) as pool:
             with pytest.warns(InsecureRequestWarning):
                 try:
                     pool.request("GET", "/")
                 except urllib3.exceptions.SSLError as e:
                     assert "SSL module is not available" in str(e)
+
+    def test_simple_proxy(self) -> None:
+        https_proxy_url = f"https://{self.proxy_host}:{int(self.https_proxy_port)}"
+        with urllib3.ProxyManager(https_proxy_url, cert_reqs="NONE") as pool:
+            with pytest.warns((InsecureProxyWarning, InsecureRequestWarning)) as record:
+                try:
+                    pool.request("GET", "https://urllib3.readthedocs.io")
+                except urllib3.exceptions.SSLError as e:
+                    assert "SSL module is not available" in str(e)
+            assert "localhost" in str(record[0].message)
+            assert "urllib3.readthedocs.io" in str(record[1].message)
+
+            with pytest.warns((InsecureProxyWarning, InsecureRequestWarning)) as record:
+                try:
+                    pool.request("GET", f"http://{self.http_host}:{self.http_port}")
+                except urllib3.exceptions.SSLError as e:
+                    assert "SSL module is not available" in str(e)
+            assert "localhost" in str(record[0].message)
+            assert self.http_host in str(record[1].message)
