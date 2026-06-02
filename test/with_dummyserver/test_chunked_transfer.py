@@ -12,6 +12,7 @@ from dummyserver.testcase import (
     consume_socket,
 )
 from urllib3 import HTTPConnectionPool
+from urllib3.exceptions import MaxRetryError
 from urllib3.util import SKIP_HEADER
 from urllib3.util.retry import Retry
 
@@ -269,7 +270,12 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self._start_server(socket_handler)
         with HTTPConnectionPool(self.host, self.port) as pool:
             retries = Retry(total=1)
-            pool.urlopen("GET", "/", chunked=True, retries=retries)
+            try:
+                pool.urlopen("GET", "/", chunked=True, retries=retries)
+            except MaxRetryError:
+                # error expected when retries are exhausted
+                pass
+
             for sock in self.socks:
                 sock.close()
         assert self.chunked_requests == 2
