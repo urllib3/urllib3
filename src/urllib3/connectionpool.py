@@ -6,6 +6,7 @@ import queue
 import sys
 import typing
 import warnings
+import socket
 import weakref
 from socket import timeout as SocketTimeout
 from types import TracebackType
@@ -216,9 +217,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if self.proxy:
             # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
-            # Defaulting `socket_options` to an empty list avoids it defaulting to
-            # ``HTTPConnection.default_socket_options``.
-            self.conn_kw.setdefault("socket_options", [])
+            # We start with the connection class's default_socket_options but remove
+            # TCP_NODELAY so that Nagle's algorithm is enabled for proxy connections.
+            # This ensures user-modified default_socket_options (e.g. SO_KEEPALIVE)
+            # are still honored while avoiding the proxy-specific packet fragmentation
+            # issue that originally motivated defaulting to an empty list.
+            default_opts = self.ConnectionCls.default_socket_options
+            proxy_opts = [
+                opt
+                for opt in default_opts
+                if opt != (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            ]
+            self.conn_kw.setdefault("socket_options", proxy_opts)
 
             self.conn_kw["proxy"] = self.proxy
             self.conn_kw["proxy_config"] = self.proxy_config
