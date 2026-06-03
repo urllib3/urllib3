@@ -89,9 +89,17 @@ def make_headers(
         Colon-separated username:password string for 'authorization: basic ...'
         auth header.
 
+        Must contain decoded credentials (not percent-encoded).
+        For URLs parsed with :func:`parse_url`, use :attr:`Url.auth_decoded_joined`
+        to get the properly formatted string.
+
     :param proxy_basic_auth:
         Colon-separated username:password string for 'proxy-authorization: basic ...'
         auth header.
+
+        Must contain decoded credentials (not percent-encoded).
+        For URLs parsed with :func:`parse_url`, use :attr:`Url.auth_decoded_joined`
+        to get the properly formatted string.
 
     :param disable_cache:
         If ``True``, adds 'cache-control: no-cache' header.
