@@ -194,6 +194,44 @@ class ChunksAndContentLength(typing.NamedTuple):
     content_length: int | None
 
 
+def _get_body_file_position_length(body: typing.Any) -> int | None:
+    body_tell = getattr(body, "tell", None)
+    body_seek = getattr(body, "seek", None)
+
+    if body_tell is None or body_seek is None or isinstance(body, io.TextIOBase):
+        return None
+
+    try:
+        current_position = body_tell()
+    except (OSError, ValueError):
+        return None
+
+    if not isinstance(current_position, int):
+        return None
+
+    restored_position = False
+    try:
+        body_seek(0, io.SEEK_END)
+        end_position = body_tell()
+    except (OSError, ValueError):
+        return None
+    finally:
+        try:
+            body_seek(current_position)
+        except (OSError, ValueError):
+            pass
+        else:
+            restored_position = True
+
+    if not restored_position:
+        return None
+
+    if not isinstance(end_position, int):
+        return None
+
+    return max(0, end_position - current_position)
+
+
 def body_to_chunks(
     body: typing.Any | None, method: str, blocksize: int
 ) -> ChunksAndContentLength:
@@ -224,7 +262,7 @@ def body_to_chunks(
         chunks = (to_bytes(body),)
         content_length = len(chunks[0])
 
-    # File-like object, TODO: use seek() and tell() for length?
+    # File-like object.
     elif hasattr(body, "read"):
 
         def chunk_readable() -> typing.Iterable[bytes]:
@@ -238,7 +276,7 @@ def body_to_chunks(
                 yield datablock
 
         chunks = chunk_readable()
-        content_length = None
+        content_length = _get_body_file_position_length(body)
 
     # Otherwise we need to start checking via duck-typing.
     else:

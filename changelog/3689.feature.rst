@@ -1,0 +1,1 @@
+Added ``Content-Length`` detection for seekable binary file-like request bodies.

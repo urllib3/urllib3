@@ -26,7 +26,7 @@ from urllib3.exceptions import (
 from urllib3.util import is_fp_closed
 from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
 from urllib3.util.proxy import connection_requires_http_tunnel
-from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
+from urllib3.util.request import _FAILEDTELL, body_to_chunks, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.ssl_ import (
     _is_has_never_check_common_name_reliable,
@@ -621,6 +621,115 @@ class TestUtil:
 
         with pytest.raises(UnrewindableBodyError):
             rewind_body(BadSeek(), body_pos=2)
+
+    def test_body_to_chunks_uses_seek_tell_for_binary_file_length(self) -> None:
+        body = io.BytesIO(b"test data")
+        assert body.read(5) == b"test "
+
+        chunks, content_length = body_to_chunks(body, method="POST", blocksize=2)
+
+        assert content_length == 4
+        assert body.tell() == 5
+        assert chunks is not None
+        assert b"".join(chunks) == b"data"
+
+    def test_body_to_chunks_keeps_unknown_length_for_text_file(self) -> None:
+        body = io.StringIO("é test")
+
+        chunks, content_length = body_to_chunks(body, method="POST", blocksize=4)
+
+        assert content_length is None
+        assert chunks is not None
+        assert b"".join(chunks) == "é test".encode()
+
+    def test_body_to_chunks_keeps_unknown_length_without_seek_tell(self) -> None:
+        class ReadOnlyBody:
+            def __init__(self) -> None:
+                self._body = io.BytesIO(b"test data")
+
+            def read(self, blocksize: int) -> bytes:
+                return self._body.read(blocksize)
+
+        chunks, content_length = body_to_chunks(
+            ReadOnlyBody(), method="POST", blocksize=4
+        )
+
+        assert content_length is None
+        assert chunks is not None
+        assert b"".join(chunks) == b"test data"
+
+    def test_body_to_chunks_keeps_unknown_length_when_end_seek_fails(self) -> None:
+        class NoEndSeek(io.BytesIO):
+            def seek(self, offset: int, whence: int = 0) -> int:
+                if whence == io.SEEK_END:
+                    raise OSError
+                return super().seek(offset, whence)
+
+        body = NoEndSeek(b"test data")
+        assert body.read(5) == b"test "
+
+        chunks, content_length = body_to_chunks(body, method="POST", blocksize=2)
+
+        assert content_length is None
+        assert body.tell() == 5
+        assert chunks is not None
+        assert b"".join(chunks) == b"data"
+
+    def test_body_to_chunks_keeps_unknown_length_for_non_integer_position(
+        self,
+    ) -> None:
+        class NonIntegerPosition(io.BytesIO):
+            def tell(self) -> str:  # type: ignore[override]
+                return "0"
+
+        chunks, content_length = body_to_chunks(
+            NonIntegerPosition(b"test data"), method="POST", blocksize=4
+        )
+
+        assert content_length is None
+        assert chunks is not None
+        assert b"".join(chunks) == b"test data"
+
+    def test_body_to_chunks_keeps_unknown_length_when_restore_seek_fails(
+        self,
+    ) -> None:
+        class NoRestoreSeek(io.BytesIO):
+            fail_restore = False
+
+            def seek(self, offset: int, whence: int = 0) -> int:
+                if self.fail_restore and whence == io.SEEK_SET:
+                    raise OSError
+                position = super().seek(offset, whence)
+                if whence == io.SEEK_END:
+                    self.fail_restore = True
+                return position
+
+        chunks, content_length = body_to_chunks(
+            NoRestoreSeek(b"test data"), method="POST", blocksize=4
+        )
+
+        assert content_length is None
+        assert chunks is not None
+
+    def test_body_to_chunks_keeps_unknown_length_for_non_integer_end_position(
+        self,
+    ) -> None:
+        class NonIntegerEndPosition(io.BytesIO):
+            tell_calls = 0
+
+            def tell(self) -> int | str:  # type: ignore[override]
+                self.tell_calls += 1
+                if self.tell_calls == 1:
+                    return super().tell()
+                return "end"
+
+        chunks, content_length = body_to_chunks(
+            NonIntegerEndPosition(b"test data"), method="POST", blocksize=4
+        )
+
+        assert content_length is None
+        assert chunks is not None
+        assert b"".join(chunks) == b"test data"
 
     def test_add_stderr_logger(self) -> None:
         handler = add_stderr_logger(level=logging.INFO)  # Don't actually print debug
