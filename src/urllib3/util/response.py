@@ -3,7 +3,7 @@ from __future__ import annotations
 import http.client as httplib
 from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
 
-from ..exceptions import HeaderParsingError
+from ..exceptions import HeaderParsingError, InvalidHeader
 
 
 def is_fp_closed(obj: object) -> bool:
@@ -86,6 +86,12 @@ def assert_header_parsing(headers: httplib.HTTPMessage) -> None:
 
     if defects or unparsed_data:
         raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)
+
+
+def assert_no_response_header_folding(headers: httplib.HTTPMessage) -> None:
+    for name, value in headers.items():
+        if "\r" in value or "\n" in value:
+            raise InvalidHeader(f"Invalid folded response header {name!r}: {value!r}")
 
 
 def is_response_to_head(response: httplib.HTTPResponse) -> bool:
