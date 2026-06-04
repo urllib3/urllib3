@@ -622,3 +622,60 @@ class TestConnectionPool:
             # Verify the URL isn't mangled
             actual_url = mock_request.call_args[0][2]
             assert actual_url == path
+
+    @pytest.mark.parametrize(
+        ("target_url", "expected_url"),
+        [
+            pytest.param(
+                "http://localhost/path#marker=value",
+                "http://localhost/path",
+                id="fragment-after-path",
+            ),
+            pytest.param(
+                "http://localhost/path?x=1#marker=value",
+                "http://localhost/path?x=1",
+                id="fragment-after-query",
+            ),
+            pytest.param(
+                "http://localhost/#marker=value",
+                "http://localhost/",
+                id="root-path-with-fragment",
+            ),
+            pytest.param(
+                "http://localhost/path?x=1#",
+                "http://localhost/path?x=1",
+                id="empty-fragment",
+            ),
+        ],
+    )
+    def test_absolute_url_request_target_strips_fragment(
+        self, target_url: str, expected_url: str
+    ) -> None:
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool, "_make_request", return_value=HTTPResponse(status=200)
+            ) as mock_request:
+                pool.urlopen("GET", target_url)
+
+            actual_url = mock_request.call_args[0][2]
+            assert actual_url == expected_url
+
+    def test_absolute_redirect_request_target_strips_fragment(self) -> None:
+        redirect_response = HTTPResponse(
+            status=302,
+            headers={"location": "http://localhost/next?x=1#marker=value"},
+        )
+        final_response = HTTPResponse(status=200)
+
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                side_effect=[redirect_response, final_response],
+            ) as mock_request:
+                response = pool.urlopen("GET", "/", retries=1)
+
+            requested_urls = [call.args[2] for call in mock_request.call_args_list]
+
+        assert response.status == 200
+        assert requested_urls == ["/", "http://localhost/next?x=1"]

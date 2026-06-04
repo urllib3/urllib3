@@ -1091,7 +1091,44 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
 
 class TestProxyManager(SocketDummyServerTestCase):
-    def test_simple(self) -> None:
+    @pytest.mark.parametrize(
+        ("target_url", "expected_request_line", "expected_host"),
+        [
+            pytest.param(
+                "http://google.com/",
+                b"GET http://google.com/ HTTP/1.1",
+                b"Host: google.com",
+                id="simple",
+            ),
+            pytest.param(
+                "http://example.com/path#marker=value",
+                b"GET http://example.com/path HTTP/1.1",
+                b"Host: example.com",
+                id="fragment-after-path",
+            ),
+            pytest.param(
+                "http://example.com/path?x=1#marker=value",
+                b"GET http://example.com/path?x=1 HTTP/1.1",
+                b"Host: example.com",
+                id="fragment-after-query",
+            ),
+            pytest.param(
+                "http://example.com/#marker=value",
+                b"GET http://example.com/ HTTP/1.1",
+                b"Host: example.com",
+                id="root-path-with-fragment",
+            ),
+            pytest.param(
+                "http://example.com/path?x=1#",
+                b"GET http://example.com/path?x=1 HTTP/1.1",
+                b"Host: example.com",
+                id="empty-fragment",
+            ),
+        ],
+    )
+    def test_simple(
+        self, target_url: str, expected_request_line: bytes, expected_host: bytes
+    ) -> None:
         def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
@@ -1113,7 +1150,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         self._start_server(echo_socket_handler)
         base_url = f"http://{self.host}:{self.port}"
         with proxy_from_url(base_url) as proxy:
-            r = proxy.request("GET", "http://google.com/")
+            r = proxy.request("GET", target_url)
 
             assert r.status == 200
             # FIXME: The order of the headers is not predictable right now. We
@@ -1121,8 +1158,8 @@ class TestProxyManager(SocketDummyServerTestCase):
             # OrderedDict/MultiDict).
             assert sorted(r.data.split(b"\r\n")) == sorted(
                 [
-                    b"GET http://google.com/ HTTP/1.1",
-                    b"Host: google.com",
+                    expected_request_line,
+                    expected_host,
                     b"Accept-Encoding: identity",
                     b"Accept: */*",
                     b"User-Agent: " + _get_default_user_agent().encode("utf-8"),
