@@ -62,6 +62,7 @@ _IPV6_RE = re.compile("^" + _IPV6_PAT + "$")
 _IPV6_ADDRZ_RE = re.compile("^" + _IPV6_ADDRZ_PAT + "$")
 _BRACELESS_IPV6_ADDRZ_RE = re.compile("^" + _IPV6_ADDRZ_PAT[2:-2] + "$")
 _ZONE_ID_RE = re.compile("(" + _ZONE_ID_PAT + r")\]$")
+_HOST_INVALID_CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 _HOST_PORT_PAT = ("^(%s|%s|%s)(?::0*?(|0|[1-9][0-9]{0,4}))?$") % (
     _REG_NAME_PAT,
@@ -302,6 +303,11 @@ def _normalize_host(host: str, scheme: str | None) -> str: ...
 
 def _normalize_host(host: str | None, scheme: str | None) -> str | None:
     if host:
+        if _HOST_INVALID_CONTROL_CHARS_RE.search(host):
+            raise LocationParseError(
+                f"Host {host!r} contains invalid control characters"
+            )
+
         if scheme in _NORMALIZABLE_SCHEMES:
             is_ipv6 = _IPV6_ADDRZ_RE.match(host)
             if is_ipv6:

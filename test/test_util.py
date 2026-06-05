@@ -166,6 +166,11 @@ class TestUtil:
             # Unicode surrogates
             "http://\ud800.com",
             "http://\udc00.com",
+            # Raw control characters in the host are not valid reg-name chars.
+            "http://exa\nmple.com",
+            "http://exa\rmple.com",
+            "http://exa\tmple.com",
+            "http://exa\x7fmple.com",
         ],
     )
     def test_invalid_url(self, url: str) -> None:
