@@ -35,6 +35,8 @@ __all__ = ["PoolManager", "ProxyManager", "proxy_from_url"]
 log = logging.getLogger(__name__)
 
 SSL_KEYWORDS = (
+    "assert_hostname",
+    "assert_fingerprint",
     "key_file",
     "cert_file",
     "cert_reqs",
