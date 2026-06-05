@@ -20,6 +20,7 @@ from urllib3.connection import ProxyConfig
 from urllib3.exceptions import (
     InsecureRequestWarning,
     LocationParseError,
+    InvalidHeader,
     TimeoutStateError,
     UnrewindableBodyError,
 )
@@ -851,6 +852,12 @@ class TestUtil:
         )
         header_msg.seek(0)
         assert_header_parsing(client.parse_headers(header_msg))
+
+    def test_http_header_dict_rejects_invalid_header_name(self) -> None:
+        from urllib3._collections import HTTPHeaderDict
+
+        with pytest.raises(InvalidHeader):
+            HTTPHeaderDict({"bad header": "value"})
 
     @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
     def test_create_connection_with_invalid_idna_labels(self, host: str) -> None:
