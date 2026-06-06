@@ -98,6 +98,7 @@ class TestPoolManager:
             "block": True,
             "source_address": "127.0.0.1",
             "blocksize": _DEFAULT_BLOCKSIZE + 1,
+            "assert_header_names": False,
         }
         p = PoolManager()
         conn_pools = [
@@ -131,6 +132,7 @@ class TestPoolManager:
             "ca_certs": "/root/path_to_pem",
             "ssl_version": "SSLv23_METHOD",
             "blocksize": _DEFAULT_BLOCKSIZE + 1,
+            "assert_header_names": False,
         }
         p = PoolManager()
         conn_pools = [
@@ -246,6 +248,14 @@ class TestPoolManager:
         assert isinstance(pool, HTTPSConnectionPool)
         assert pool.assert_hostname
         assert fingerprint == pool.assert_fingerprint
+
+    def test_assert_header_names_flag(self) -> None:
+        """Assert that pool manager can disable header name validation."""
+        p = PoolManager(assert_header_names=False)
+        pool = p.connection_from_url("http://example.com/")
+        conn = pool._new_conn()
+
+        assert conn.assert_header_names is False
 
     def test_http_connection_from_context_case_insensitive(self) -> None:
         """Assert scheme case is ignored when getting the https key class."""

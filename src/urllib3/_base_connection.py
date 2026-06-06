@@ -46,6 +46,7 @@ if typing.TYPE_CHECKING:
         blocksize: int
         source_address: tuple[str, int] | None
         socket_options: _TYPE_SOCKET_OPTIONS | None
+        assert_header_names: bool
 
         proxy: Url | None
         proxy_config: ProxyConfig | None
@@ -64,6 +65,7 @@ if typing.TYPE_CHECKING:
             socket_options: _TYPE_SOCKET_OPTIONS | None = ...,
             proxy: Url | None = None,
             proxy_config: ProxyConfig | None = None,
+            assert_header_names: bool = True,
         ) -> None: ...
 
         def set_tunnel(
@@ -150,6 +152,7 @@ if typing.TYPE_CHECKING:
             socket_options: _TYPE_SOCKET_OPTIONS | None = ...,
             proxy: Url | None = None,
             proxy_config: ProxyConfig | None = None,
+            assert_header_names: bool = True,
             cert_reqs: int | str | None = None,
             assert_hostname: None | str | typing.Literal[False] = None,
             assert_fingerprint: str | None = None,
