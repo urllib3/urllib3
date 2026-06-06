@@ -8,12 +8,14 @@ from unittest import mock
 
 import pytest
 
+from urllib3._base_connection import ProxyConfig
 from urllib3.connection import (  # type: ignore[attr-defined]
     RECENT_DATE,
     CertificateError,
     HTTPConnection,
     HTTPSConnection,
     _match_hostname,
+    _ssl_wrap_socket_and_match_hostname,
     _url_from_connection,
     _wrap_proxy_error,
 )
@@ -326,3 +328,77 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    @pytest.mark.skipif(ssl_ is None, reason="requires ssl")
+    def test_ssl_wrap_socket_does_not_mutate_user_context(self) -> None:
+        import ssl
+
+        context = ssl_.create_urllib3_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_REQUIRED
+
+        original_verify_mode = context.verify_mode
+        original_check_hostname = context.check_hostname
+
+        sock = mock.MagicMock(spec=socket.socket)
+        try:
+            _ssl_wrap_socket_and_match_hostname(
+                sock=sock,
+                cert_reqs=ssl.CERT_NONE,
+                ssl_version=None,
+                ssl_minimum_version=None,
+                ssl_maximum_version=None,
+                ca_certs=None,
+                ca_cert_dir=None,
+                ca_cert_data=None,
+                cert_file=None,
+                key_file=None,
+                key_password=None,
+                server_hostname="example.com",
+                ssl_context=context,
+                assert_hostname=None,
+                assert_fingerprint=None,
+            )
+        except Exception:
+            pass
+
+        assert context.verify_mode == original_verify_mode
+        assert context.check_hostname == original_check_hostname
+
+    @pytest.mark.skipif(ssl_ is None, reason="requires ssl")
+    def test_connect_tls_proxy_does_not_use_target_cert_reqs(self) -> None:
+        import ssl
+
+        proxy_ssl_context = ssl_.create_urllib3_context()
+        proxy_ssl_context.check_hostname = False
+        proxy_ssl_context.verify_mode = ssl.CERT_REQUIRED
+
+        proxy_config = ProxyConfig(
+            ssl_context=proxy_ssl_context,
+            use_forwarding_for_https=False,
+            assert_hostname=None,
+            assert_fingerprint=None,
+        )
+
+        conn = HTTPSConnection(
+            "target.example.com",
+            port=443,
+            cert_reqs="CERT_NONE",
+            proxy=mock.MagicMock(),
+            proxy_config=proxy_config,
+        )
+
+        sock = mock.MagicMock(spec=socket.socket)
+
+        with mock.patch(
+            "urllib3.connection._ssl_wrap_socket_and_match_hostname"
+        ) as mock_wrap:
+            mock_wrap.return_value = mock.MagicMock(
+                socket=mock.MagicMock(spec=ssl.SSLSocket),
+                is_verified=True,
+            )
+            conn._connect_tls_proxy("proxy.example.com", sock)
+
+        call_kwargs = mock_wrap.call_args
+        assert call_kwargs[1]["cert_reqs"] == ssl.CERT_REQUIRED
+        assert proxy_ssl_context.verify_mode == ssl.CERT_REQUIRED

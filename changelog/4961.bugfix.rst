@@ -1,0 +1,4 @@
+Fixed ``proxy_ssl_context`` being mutated when ``cert_reqs='CERT_NONE'`` was
+set for the target connection. The target's ``cert_reqs`` no longer leaks into
+the proxy TLS handshake, and user-provided ``ssl_context`` objects passed to
+``_ssl_wrap_socket_and_match_hostname()`` are no longer modified in place.
