@@ -1,0 +1,1 @@
+Fixed ``ProxyManager`` to honor custom ``HTTPConnection.default_socket_options`` and ``HTTPSConnection.default_socket_options`` values while keeping Nagle's algorithm enabled for proxy connections by default.

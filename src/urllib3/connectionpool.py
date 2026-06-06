@@ -3,6 +3,7 @@ from __future__ import annotations
 import errno
 import logging
 import queue
+import socket
 import sys
 import typing
 import warnings
@@ -40,7 +41,7 @@ from .exceptions import (
     TimeoutError,
 )
 from .response import BaseHTTPResponse
-from .util.connection import is_connection_dropped
+from .util.connection import _TYPE_SOCKET_OPTIONS, is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
 from .util.request import _TYPE_BODY_POSITION, set_file_position
 from .util.retry import Retry
@@ -61,6 +62,16 @@ if typing.TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 _TYPE_TIMEOUT = typing.Union[Timeout, float, _TYPE_DEFAULT, None]
+
+
+def _proxy_default_socket_options(
+    socket_options: _TYPE_SOCKET_OPTIONS,
+) -> _TYPE_SOCKET_OPTIONS:
+    return [
+        socket_option
+        for socket_option in socket_options
+        if socket_option[:2] != (socket.IPPROTO_TCP, socket.TCP_NODELAY)
+    ]
 
 
 # Pool objects
@@ -216,9 +227,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if self.proxy:
             # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
-            # Defaulting `socket_options` to an empty list avoids it defaulting to
-            # ``HTTPConnection.default_socket_options``.
-            self.conn_kw.setdefault("socket_options", [])
+            # Filtering ``TCP_NODELAY`` avoids it being inherited from the
+            # default options, while still respecting user-added options.
+            self.conn_kw.setdefault(
+                "socket_options",
+                _proxy_default_socket_options(
+                    self.ConnectionCls.default_socket_options
+                ),
+            )
 
             self.conn_kw["proxy"] = self.proxy
             self.conn_kw["proxy_config"] = self.proxy_config
