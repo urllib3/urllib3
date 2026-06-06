@@ -5,6 +5,7 @@ import logging
 import socket
 import ssl
 import sys
+import threading
 import typing
 import warnings
 from itertools import chain
@@ -24,7 +25,16 @@ from urllib3.exceptions import (
     UnrewindableBodyError,
 )
 from urllib3.util import is_fp_closed
-from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
+from urllib3.util.connection import (
+    _connect_to_resolved_addresses,
+    _happy_eyeballs_connect,
+    _has_ipv6,
+    _interleave_addrinfo_by_family,
+    _restore_socket_timeout,
+    _start_connect_attempt,
+    allowed_gai_family,
+    create_connection,
+)
 from urllib3.util.proxy import connection_requires_http_tunnel
 from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
@@ -922,6 +932,234 @@ class TestUtil:
         create_connection(("a::b%iface", 80))
         assert getaddrinfo.call_args[0][0] == "a::b%iface"
         fake_sock.connect.assert_called_once_with(fake_scoped_sa6)
+
+    @patch("socket.getaddrinfo")
+    def test_create_connection_uses_next_address_when_first_family_fails(
+        self, getaddrinfo: MagicMock
+    ) -> None:
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.settimeout(3)
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+        _, port = server.getsockname()
+        accepted = []
+
+        def accept_once() -> None:
+            conn, _ = server.accept()
+            accepted.append(True)
+            conn.close()
+
+        thread = threading.Thread(target=accept_once)
+        thread.start()
+        getaddrinfo.return_value = [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                0,
+                "",
+                ("::1", port, 0, 0),
+            ),
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                0,
+                "",
+                ("127.0.0.1", port),
+            ),
+        ]
+
+        try:
+            sock = create_connection(("example.test", port), timeout=2)
+            assert sock.family == socket.AF_INET
+            sock.close()
+        finally:
+            thread.join(3)
+            server.close()
+
+        assert accepted == [True]
+
+    @patch("socket.getaddrinfo")
+    def test_create_connection_preserves_source_address_and_socket_options(
+        self, getaddrinfo: MagicMock
+    ) -> None:
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.settimeout(3)
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+        _, port = server.getsockname()
+        accepted_peer = []
+
+        def accept_once() -> None:
+            conn, peer = server.accept()
+            accepted_peer.append(peer)
+            conn.close()
+
+        thread = threading.Thread(target=accept_once)
+        thread.start()
+
+        getaddrinfo.return_value = [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("2001:db8::1", port, 0, 0),
+            ),
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("127.0.0.1", port),
+            ),
+        ]
+
+        try:
+            sock = create_connection(
+                ("example.test", port),
+                timeout=2,
+                source_address=("127.0.0.1", 0),
+                socket_options=[(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)],
+            )
+            try:
+                assert sock.getsockname()[0] == "127.0.0.1"
+            finally:
+                sock.close()
+        finally:
+            thread.join(3)
+            server.close()
+
+        assert len(accepted_peer) == 1
+
+    def test_interleave_addrinfo_by_family(self) -> None:
+        addrinfo = [
+            (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("::1", 80, 0, 0)),
+            (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("::2", 80, 0, 0)),
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80)),
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.2", 80)),
+            (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("::3", 80, 0, 0)),
+        ]
+
+        assert _interleave_addrinfo_by_family(addrinfo) == [
+            (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("::1", 80, 0, 0)),
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80)),
+            (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("::2", 80, 0, 0)),
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.2", 80)),
+            (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("::3", 80, 0, 0)),
+        ]
+
+    def test_interleave_addrinfo_by_family_preserves_single_family_order(self) -> None:
+        addrinfo = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80)),
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.2", 80)),
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.3", 80)),
+        ]
+
+        assert _interleave_addrinfo_by_family(addrinfo) == addrinfo
+
+    def test_connect_to_resolved_addresses_with_empty_addrinfo(self) -> None:
+        with pytest.raises(OSError, match="getaddrinfo returns an empty list"):
+            _connect_to_resolved_addresses([], _DEFAULT_TIMEOUT, None, None)
+
+    @patch("urllib3.util.connection._start_connect_attempt")
+    def test_happy_eyeballs_connect_returns_immediate_connection(
+        self, start_connect_attempt: MagicMock
+    ) -> None:
+        addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80))]
+        start_connect_attempt.return_value = (sock := MagicMock(), True)
+
+        assert _happy_eyeballs_connect(addrinfo, 1, None, None) is sock
+        sock.settimeout.assert_called_once_with(1)
+
+    @patch("urllib3.util.connection.selectors.DefaultSelector")
+    @patch("urllib3.util.connection._start_connect_attempt")
+    def test_happy_eyeballs_connect_closes_on_selector_register_error(
+        self, start_connect_attempt: MagicMock, default_selector: MagicMock
+    ) -> None:
+        addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80))]
+        start_connect_attempt.return_value = (sock := MagicMock(), False)
+        selector = default_selector.return_value
+        selector.register.side_effect = RuntimeError("boom")
+
+        with pytest.raises(RuntimeError, match="boom"):
+            _happy_eyeballs_connect(addrinfo, 1, None, None)
+
+        sock.close.assert_called_once()
+        selector.close.assert_called_once()
+
+    @patch("urllib3.util.connection.selectors.DefaultSelector")
+    @patch("urllib3.util.connection._start_connect_attempt")
+    def test_happy_eyeballs_connect_times_out(
+        self, start_connect_attempt: MagicMock, default_selector: MagicMock
+    ) -> None:
+        addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80))]
+        start_connect_attempt.return_value = (sock := MagicMock(), False)
+        selector = default_selector.return_value
+        selector.select.return_value = []
+
+        with pytest.raises(TimeoutError, match="timed out"):
+            _happy_eyeballs_connect(addrinfo, 0, None, None)
+
+        sock.close.assert_called_once()
+
+    @patch("urllib3.util.connection._start_connect_attempt")
+    def test_happy_eyeballs_connect_raises_last_start_error(
+        self, start_connect_attempt: MagicMock
+    ) -> None:
+        addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80))]
+        start_connect_attempt.side_effect = OSError("refused")
+
+        with pytest.raises(OSError, match="refused"):
+            _happy_eyeballs_connect(addrinfo, 1, None, None)
+
+    @patch("socket.socket")
+    def test_start_connect_attempt_returns_connected_socket(
+        self, socket_: MagicMock
+    ) -> None:
+        socket_.return_value = sock = MagicMock()
+        sock.connect_ex.return_value = 0
+        addrinfo = (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80))
+
+        assert _start_connect_attempt(addrinfo, None, None) == (sock, True)
+
+    def test_restore_socket_timeout_uses_default_timeout(self) -> None:
+        sock = MagicMock()
+
+        _restore_socket_timeout(sock, _DEFAULT_TIMEOUT)
+
+        sock.settimeout.assert_called_once_with(socket.getdefaulttimeout())
+
+    @patch("urllib3.util.connection._happy_eyeballs_connect")
+    @patch("socket.getaddrinfo")
+    @patch("socket.socket")
+    def test_create_connection_uses_blocking_path_for_localhost(
+        self,
+        socket_: MagicMock,
+        getaddrinfo: MagicMock,
+        happy_eyeballs_connect: MagicMock,
+    ) -> None:
+        getaddrinfo.return_value = [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("::1", 80, 0, 0),
+            ),
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("127.0.0.1", 80),
+            ),
+        ]
+        socket_.return_value = fake_sock = MagicMock()
+
+        create_connection(("localhost", 80))
+
+        happy_eyeballs_connect.assert_not_called()
+        fake_sock.connect.assert_called_once_with(("::1", 80, 0, 0))
 
     @pytest.mark.parametrize(
         "input,params,expected",
