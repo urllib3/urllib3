@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import socket
+
 import pytest
 
+from urllib3.connection import HTTPConnection, HTTPSConnection
 from urllib3.exceptions import MaxRetryError, NewConnectionError, ProxyError
 from urllib3.poolmanager import ProxyManager
 from urllib3.response import HTTPResponse
@@ -49,6 +52,57 @@ class TestProxyManager:
         with ProxyManager("https://something") as p:
             assert p.proxy is not None
             assert p.proxy.port == 443
+
+    @pytest.mark.parametrize("url", ["http://example.com", "https://example.com"])
+    def test_socket_options_default_to_empty_list_for_proxies(self, url: str) -> None:
+        with ProxyManager("http://proxy:8080") as p:
+            pool = p.connection_from_url(url)
+
+        assert pool.conn_kw["socket_options"] == []
+
+    @pytest.mark.parametrize("url", ["http://example.com", "https://example.com"])
+    def test_socket_options_respect_custom_defaults_for_proxies(
+        self, monkeypatch: pytest.MonkeyPatch, url: str
+    ) -> None:
+        keepalive = (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        monkeypatch.setattr(
+            HTTPConnection,
+            "default_socket_options",
+            HTTPConnection.default_socket_options + [keepalive],
+        )
+
+        with ProxyManager("http://proxy:8080") as p:
+            pool = p.connection_from_url(url)
+
+        assert pool.conn_kw["socket_options"] == [keepalive]
+
+    def test_socket_options_respect_https_custom_defaults_for_proxies(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        keepalive = (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        monkeypatch.setattr(
+            HTTPSConnection,
+            "default_socket_options",
+            HTTPSConnection.default_socket_options + [keepalive],
+        )
+
+        with ProxyManager("http://proxy:8080") as p:
+            pool = p.connection_from_url("https://example.com")
+
+        assert pool.conn_kw["socket_options"] == [keepalive]
+
+    def test_socket_options_override_default_for_proxies(self) -> None:
+        proxy_socket_options = [
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
+            (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1),
+        ]
+
+        with ProxyManager(
+            "http://proxy:8080", socket_options=proxy_socket_options
+        ) as p:
+            pool = p.connection_from_url("http://example.com")
+
+        assert pool.conn_kw["socket_options"] == proxy_socket_options
 
     def test_invalid_scheme(self) -> None:
         with pytest.raises(AssertionError):
