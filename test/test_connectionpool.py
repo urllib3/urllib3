@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.client as httplib
+import queue
 import ssl
 import typing
 from http.client import HTTPException
@@ -600,6 +601,38 @@ class TestConnectionPool:
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout=timeout)
+
+    def test_default_queuecls_uses_current_lifoqueue(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        original_queue_cls = HTTPConnectionPool.QueueCls
+
+        class PatchedLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        monkeypatch.setattr(queue, "LifoQueue", PatchedLifoQueue)
+
+        assert HTTPConnectionPool.QueueCls is original_queue_cls
+
+        with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+            assert isinstance(pool.pool, PatchedLifoQueue)
+
+    def test_queuecls_override_is_preserved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class CustomLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        class PatchedLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        class CustomQueueConnectionPool(HTTPConnectionPool):
+            QueueCls = CustomLifoQueue
+
+        monkeypatch.setattr(queue, "LifoQueue", PatchedLifoQueue)
+
+        with CustomQueueConnectionPool(host="localhost", maxsize=1) as pool:
+            assert isinstance(pool.pool, CustomLifoQueue)
 
     @pytest.mark.parametrize(
         "path",
