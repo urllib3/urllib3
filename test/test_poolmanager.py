@@ -9,12 +9,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from urllib3 import connection_from_url
+from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import HTTPSConnectionPool
 from urllib3.exceptions import LocationValueError
 from urllib3.poolmanager import (
     _DEFAULT_BLOCKSIZE,
     PoolKey,
     PoolManager,
+    ProxyManager,
     key_fn_by_scheme,
 )
 from urllib3.util import retry, timeout
@@ -376,6 +378,18 @@ class TestPoolManager:
 
         assert default_pool.conn_kw["socket_options"] == []
         assert override_pool.conn_kw["socket_options"] == override_opts
+
+    def test_proxy_manager_uses_updated_default_socket_options(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        keepalive = (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        socket_options = HTTPConnection.default_socket_options + [keepalive]
+        monkeypatch.setattr(HTTPConnection, "default_socket_options", socket_options)
+
+        p = ProxyManager("http://proxy.example")
+        pool = p.connection_from_host("example.com", scheme="http")
+
+        assert pool.conn_kw["socket_options"] == [keepalive]
 
     def test_merge_pool_kwargs(self) -> None:
         """Assert _merge_pool_kwargs works in the happy case"""

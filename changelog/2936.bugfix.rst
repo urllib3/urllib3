@@ -1,0 +1,1 @@
+Fixed ``ProxyManager`` losing user-added ``HTTPConnection.default_socket_options`` such as TCP keepalive.
