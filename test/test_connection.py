@@ -213,6 +213,34 @@ class TestConnection:
         conn = HTTPSConnection("not.a.real.host", port=443)
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
+    def test_HTTPConnection_default_socket_options_updates_are_honored(self) -> None:
+        original_socket_options = HTTPConnection.default_socket_options
+        custom_socket_options = original_socket_options + [
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        ]
+        try:
+            HTTPConnection.default_socket_options = custom_socket_options
+            conn = HTTPConnection("not.a.real.host", port=80)
+            assert conn.socket_options == custom_socket_options
+        finally:
+            HTTPConnection.default_socket_options = original_socket_options
+
+    def test_HTTPSConnection_default_socket_options_updates_are_honored(self) -> None:
+        had_https_default = "default_socket_options" in HTTPSConnection.__dict__
+        original_socket_options = HTTPSConnection.default_socket_options
+        custom_socket_options = original_socket_options + [
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        ]
+        try:
+            HTTPSConnection.default_socket_options = custom_socket_options
+            conn = HTTPSConnection("not.a.real.host", port=443)
+            assert conn.socket_options == custom_socket_options
+        finally:
+            if had_https_default:
+                HTTPSConnection.default_socket_options = original_socket_options
+            else:
+                del HTTPSConnection.default_socket_options
+
     @pytest.mark.parametrize(
         "proxy_scheme, err_part",
         [

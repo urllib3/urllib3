@@ -1,0 +1,1 @@
+Fixed ``HTTPConnection.default_socket_options`` updates not being honored by new connections and proxied connection pools.

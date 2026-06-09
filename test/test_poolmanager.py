@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 import socket
+import typing
 from test import resolvesLocalhostFQDN
 from unittest import mock
 from unittest.mock import MagicMock, patch
@@ -9,12 +10,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from urllib3 import connection_from_url
-from urllib3.connectionpool import HTTPSConnectionPool
+from urllib3.connection import HTTPConnection
+from urllib3.connectionpool import HTTPSConnectionPool, _proxy_default_socket_options
 from urllib3.exceptions import LocationValueError
 from urllib3.poolmanager import (
     _DEFAULT_BLOCKSIZE,
     PoolKey,
     PoolManager,
+    ProxyManager,
     key_fn_by_scheme,
 )
 from urllib3.util import retry, timeout
@@ -376,6 +379,53 @@ class TestPoolManager:
 
         assert default_pool.conn_kw["socket_options"] == []
         assert override_pool.conn_kw["socket_options"] == override_opts
+
+    def test_proxy_pool_uses_proxy_default_socket_options(self) -> None:
+        p = ProxyManager("http://proxy.example:3128")
+        pool = p.connection_from_host("example.com", scheme="http")
+        assert pool.conn_kw["socket_options"] == []
+
+    def test_proxy_pool_preserves_custom_default_socket_options(self) -> None:
+        original_socket_options = HTTPConnection.default_socket_options
+        custom_socket_option = (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
+        try:
+            HTTPConnection.default_socket_options = original_socket_options + [
+                custom_socket_option
+            ]
+            p = ProxyManager("http://proxy.example:3128")
+            pool = p.connection_from_host("example.com", scheme="http")
+            assert pool.conn_kw["socket_options"] == [custom_socket_option]
+        finally:
+            HTTPConnection.default_socket_options = original_socket_options
+
+    def test_proxy_pool_socket_options_override_custom_defaults(self) -> None:
+        original_socket_options = HTTPConnection.default_socket_options
+        custom_socket_option = (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        override_socket_options = [(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)]
+
+        try:
+            HTTPConnection.default_socket_options = original_socket_options + [
+                custom_socket_option
+            ]
+            p = ProxyManager(
+                "http://proxy.example:3128", socket_options=override_socket_options
+            )
+            pool = p.connection_from_host("example.com", scheme="http")
+            assert pool.conn_kw["socket_options"] == override_socket_options
+        finally:
+            HTTPConnection.default_socket_options = original_socket_options
+
+    def test_proxy_default_socket_options_without_class_default(self) -> None:
+        class ConnectionWithoutDefaultSocketOptions:
+            pass
+
+        assert (
+            _proxy_default_socket_options(
+                typing.cast(type[typing.Any], ConnectionWithoutDefaultSocketOptions)
+            )
+            == []
+        )
 
     def test_merge_pool_kwargs(self) -> None:
         """Assert _merge_pool_kwargs works in the happy case"""
