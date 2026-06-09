@@ -15,6 +15,7 @@ from .._collections import HTTPHeaderDict
 from ..connection import HTTPSConnection, _get_default_user_agent
 from ..exceptions import ConnectionError
 from ..response import BaseHTTPResponse
+from ..util.url import parse_url
 
 orig_HTTPSConnection = HTTPSConnection
 
@@ -90,9 +91,6 @@ class HTTP2Connection(HTTPSConnection):
         self._h2_stream: int | None = None
         self._headers: list[tuple[bytes, bytes]] = []
 
-        if "proxy" in kwargs or "proxy_config" in kwargs:  # Defensive:
-            raise NotImplementedError("Proxies aren't supported with HTTP/2")
-
         super().__init__(host, port, **kwargs)
 
         if self._tunnel_host is not None:
@@ -127,15 +125,25 @@ class HTTP2Connection(HTTPSConnection):
         self._request_url = url or "/"
         self._validate_path(url)  # type: ignore[attr-defined]
 
-        if ":" in self.host:
+        scheme = "https"
+        request_target = url or "/"
+        parsed_url = parse_url(url)
+
+        if self.proxy_is_forwarding and parsed_url.scheme and parsed_url.host:
+            scheme = parsed_url.scheme
+            authority = parsed_url.netloc
+            request_target = parsed_url.request_uri
+        elif ":" in self.host:
             authority = f"[{self.host}]:{self.port or 443}"
         else:
             authority = f"{self.host}:{self.port or 443}"
 
-        self._headers.append((b":scheme", b"https"))
+        assert authority is not None
+
+        self._headers.append((b":scheme", scheme.encode()))
         self._headers.append((b":method", method.encode()))
         self._headers.append((b":authority", authority.encode()))
-        self._headers.append((b":path", url.encode()))
+        self._headers.append((b":path", request_target.encode()))
 
         with self._h2_conn as conn:
             self._h2_stream = conn.get_next_available_stream_id()
