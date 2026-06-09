@@ -1,0 +1,1 @@
+Fixed test warning setup to handle global warning filters with tuple categories.
