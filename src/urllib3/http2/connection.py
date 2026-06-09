@@ -8,6 +8,7 @@ import typing
 
 import h2.config
 import h2.connection
+import h2.errors
 import h2.events
 
 from .._base_connection import _TYPE_BODY
@@ -49,6 +50,44 @@ def _is_illegal_header_value(value: bytes) -> bool:
     0x20 or 0x09)." (https://httpwg.org/specs/rfc9113.html#n-field-validity)
     """
     return bool(RE_IS_ILLEGAL_HEADER_VALUE.search(value))
+
+
+def _format_http2_error_code(
+    error_code: h2.errors.ErrorCodes | int | None,
+) -> str:
+    if error_code is None:
+        return "unknown error code"
+    if isinstance(error_code, h2.errors.ErrorCodes):
+        return error_code.name
+    try:
+        return h2.errors.ErrorCodes(error_code).name
+    except ValueError:
+        return str(error_code)
+
+
+def _stream_reset_error(event: h2.events.StreamReset) -> ConnectionError:
+    error_code = _format_http2_error_code(event.error_code)
+    if event.remote_reset:
+        return ConnectionError(
+            f"HTTP/2 stream {event.stream_id} was reset: {error_code}"
+        )
+    return ConnectionError(
+        f"HTTP/2 stream {event.stream_id} was reset locally: {error_code}"
+    )
+
+
+def _connection_terminated_error(
+    event: h2.events.ConnectionTerminated,
+) -> ConnectionError:
+    message = (
+        "HTTP/2 connection was terminated: "
+        f"{_format_http2_error_code(event.error_code)}"
+    )
+    if event.last_stream_id is not None:
+        message += f" (last_stream_id={event.last_stream_id})"
+    if event.additional_data:
+        message += f" ({event.additional_data!r})"
+    return ConnectionError(message)
 
 
 class _LockedObject(typing.Generic[T]):
@@ -101,6 +140,24 @@ class HTTP2Connection(HTTPSConnection):
     def _new_h2_conn(self) -> _LockedObject[h2.connection.H2Connection]:
         config = h2.config.H2Configuration(client_side=True)
         return _LockedObject(h2.connection.H2Connection(config=config))
+
+    def _reset_h2_state(self) -> None:
+        self._h2_conn = self._new_h2_conn()
+        self._h2_stream = None
+        self._headers = []
+
+    def _close_http2_connection(self, *, send_goaway: bool) -> None:
+        if send_goaway:
+            with self._h2_conn as conn:
+                try:
+                    conn.close_connection()
+                    if data := conn.data_to_send():
+                        self.sock.sendall(data)
+                except Exception:
+                    pass
+
+        self._reset_h2_state()
+        super().close()
 
     def connect(self) -> None:
         super().connect()
@@ -227,35 +284,71 @@ class HTTP2Connection(HTTPSConnection):
         self,
     ) -> HTTP2Response:
         status = None
+        headers = HTTPHeaderDict()
         data = bytearray()
+        close_connection = False
+        error: ConnectionError | None = None
+        connection_terminated = None
         with self._h2_conn as conn:
             end_stream = False
             while not end_stream:
                 # TODO: Arbitrary read value.
-                if received_data := self.sock.recv(65535):
-                    events = conn.receive_data(received_data)
-                    for event in events:
-                        if isinstance(event, h2.events.ResponseReceived):
-                            headers = HTTPHeaderDict()
-                            for header, value in event.headers:
-                                if header == b":status":
-                                    status = int(value.decode())
-                                else:
-                                    headers.add(
-                                        header.decode("ascii"), value.decode("ascii")
-                                    )
+                received_data = self.sock.recv(65535)
+                if not received_data:
+                    close_connection = True
+                    if connection_terminated is not None:
+                        error = _connection_terminated_error(connection_terminated)
+                    else:
+                        error = ConnectionError("HTTP/2 connection closed unexpectedly")
+                    break
 
-                        elif isinstance(event, h2.events.DataReceived):
-                            data += event.data
-                            conn.acknowledge_received_data(
-                                event.flow_controlled_length, event.stream_id
-                            )
+                events = conn.receive_data(received_data)
+                for event in events:
+                    if isinstance(event, h2.events.ResponseReceived):
+                        headers = HTTPHeaderDict()
+                        for header, value in event.headers:
+                            if header == b":status":
+                                status = int(value.decode())
+                            else:
+                                headers.add(
+                                    header.decode("ascii"), value.decode("ascii")
+                                )
 
-                        elif isinstance(event, h2.events.StreamEnded):
-                            end_stream = True
+                    elif isinstance(event, h2.events.DataReceived):
+                        data += event.data
+                        conn.acknowledge_received_data(
+                            event.flow_controlled_length, event.stream_id
+                        )
+
+                    elif isinstance(event, h2.events.StreamEnded):
+                        end_stream = True
+
+                    elif isinstance(event, h2.events.StreamReset):
+                        error = _stream_reset_error(event)
+                        break
+
+                    elif isinstance(event, h2.events.ConnectionTerminated):
+                        connection_terminated = event
+                        close_connection = True
+                        if (
+                            self._h2_stream is not None
+                            and event.last_stream_id is not None
+                            and self._h2_stream > event.last_stream_id
+                        ):
+                            error = _connection_terminated_error(event)
+                            break
 
                 if data_to_send := conn.data_to_send():
                     self.sock.sendall(data_to_send)
+
+                if error is not None:
+                    break
+
+        if close_connection:
+            self._close_http2_connection(send_goaway=connection_terminated is None)
+
+        if error is not None:
+            raise error
 
         assert status is not None
         return HTTP2Response(
@@ -305,20 +398,7 @@ class HTTP2Connection(HTTPSConnection):
             self.endheaders()
 
     def close(self) -> None:
-        with self._h2_conn as conn:
-            try:
-                conn.close_connection()
-                if data := conn.data_to_send():
-                    self.sock.sendall(data)
-            except Exception:
-                pass
-
-        # Reset all our HTTP/2 connection state.
-        self._h2_conn = self._new_h2_conn()
-        self._h2_stream = None
-        self._headers = []
-
-        super().close()
+        self._close_http2_connection(send_goaway=True)
 
 
 class HTTP2Response(BaseHTTPResponse):
