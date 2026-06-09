@@ -9,6 +9,7 @@ from urllib.parse import urljoin
 
 from ._collections import HTTPHeaderDict, RecentlyUsedContainer
 from ._request_methods import RequestMethods
+from ._typing import _TYPE_HEADERS
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
@@ -23,6 +24,7 @@ from .util.proxy import connection_requires_http_tunnel
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
+from .util.util import to_str
 
 if typing.TYPE_CHECKING:
     import ssl
@@ -199,7 +201,7 @@ class PoolManager(RequestMethods):
     def __init__(
         self,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
         **connection_pool_kw: typing.Any,
     ) -> None:
         super().__init__(headers)
@@ -564,8 +566,8 @@ class ProxyManager(PoolManager):
         self,
         proxy_url: str,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
-        proxy_headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
+        proxy_headers: _TYPE_HEADERS | None = None,
         proxy_ssl_context: ssl.SSLContext | None = None,
         use_forwarding_for_https: bool = False,
         proxy_assert_hostname: None | str | typing.Literal[False] = None,
@@ -618,7 +620,7 @@ class ProxyManager(PoolManager):
         )
 
     def _set_proxy_headers(
-        self, url: str, headers: typing.Mapping[str, str] | None = None
+        self, url: str, headers: _TYPE_HEADERS | None = None
     ) -> typing.Mapping[str, str]:
         """
         Sets headers needed by proxies: specifically, the Accept and Host
@@ -631,7 +633,9 @@ class ProxyManager(PoolManager):
             headers_["Host"] = netloc
 
         if headers:
-            headers_.update(headers)
+            headers_.update(
+                (to_str(key), to_str(value)) for key, value in headers.items()
+            )
         return headers_
 
     def urlopen(  # type: ignore[override]
