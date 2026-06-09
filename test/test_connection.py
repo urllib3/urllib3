@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import datetime
+import importlib
 import socket
+import sys
+import types
 import typing
 from http.client import ResponseNotReady
 from unittest import mock
 
 import pytest
 
+from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import (  # type: ignore[attr-defined]
     RECENT_DATE,
     CertificateError,
@@ -30,6 +34,10 @@ from urllib3.util.ssl_match_hostname import (
 
 if typing.TYPE_CHECKING:
     from urllib3.util.ssl_ import _TYPE_PEER_CERT_RET_DICT
+
+    class _EmscriptenRequestLike(typing.Protocol):
+        url: str
+        headers: dict[str, str]
 
 
 class TestConnection:
@@ -287,12 +295,12 @@ class TestConnection:
     @pytest.mark.parametrize("chunked", [True, False])
     def test_skip_header(
         self,
-        accept_encoding: str | None,
-        host: str | None,
-        user_agent: str | None,
+        accept_encoding: str | bytes | None,
+        host: str | bytes | None,
+        user_agent: str | bytes | None,
         chunked: bool,
     ) -> None:
-        headers = {}
+        headers = HTTPHeaderDict()
         if accept_encoding is not None:
             headers[accept_encoding] = SKIP_HEADER
         if host is not None:
@@ -326,3 +334,70 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    def test_emscripten_connection_normalizes_bytes_headers(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        js = types.ModuleType("js")
+        js.window = object()  # type: ignore[attr-defined]
+        js.self = js.window  # type: ignore[attr-defined]
+
+        pyodide = types.ModuleType("pyodide")
+        ffi = types.ModuleType("pyodide.ffi")
+
+        class JsArray:
+            pass
+
+        class JsProxy:
+            pass
+
+        class JsException(Exception):
+            pass
+
+        def to_js(value: object, *, dict_converter: object | None = None) -> object:
+            return value
+
+        ffi.JsArray = JsArray  # type: ignore[attr-defined]
+        ffi.JsException = JsException  # type: ignore[attr-defined]
+        ffi.JsProxy = JsProxy  # type: ignore[attr-defined]
+        ffi.to_js = to_js  # type: ignore[attr-defined]
+        pyodide.ffi = ffi  # type: ignore[attr-defined]
+
+        monkeypatch.setitem(sys.modules, "js", js)
+        monkeypatch.setitem(sys.modules, "pyodide", pyodide)
+        monkeypatch.setitem(sys.modules, "pyodide.ffi", ffi)
+        for module_name in list(sys.modules):
+            if module_name.startswith("urllib3.contrib.emscripten"):
+                monkeypatch.delitem(sys.modules, module_name, raising=False)
+
+        emscripten_connection = importlib.import_module(
+            "urllib3.contrib.emscripten.connection"
+        )
+        emscripten_response = importlib.import_module(
+            "urllib3.contrib.emscripten.response"
+        )
+
+        captured_requests: list[_EmscriptenRequestLike] = []
+
+        def send_request(request: _EmscriptenRequestLike) -> object:
+            captured_requests.append(request)
+            return emscripten_response.EmscriptenResponse(
+                status_code=200,
+                headers={},
+                body=b"",
+                request=request,
+            )
+
+        monkeypatch.setattr(emscripten_connection, "send_request", send_request)
+
+        connection = emscripten_connection.EmscriptenHTTPConnection("example.com")
+        headers: dict[str | bytes, str | bytes] = {
+            b"x-test": b"value",
+            "another": "header",
+        }
+        connection.request("GET", "/", headers=headers)
+
+        assert len(captured_requests) == 1
+        request = captured_requests[0]
+        assert request.url == "http://example.com:0/"
+        assert request.headers == {"X-test": "value", "Another": "header"}
