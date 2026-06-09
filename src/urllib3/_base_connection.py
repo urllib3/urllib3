@@ -32,6 +32,7 @@ if typing.TYPE_CHECKING:
     import ssl
     from typing import Protocol
 
+    from ._collections import _TYPE_HEADER_MAPPING
     from .response import BaseHTTPResponse
 
     class BaseHTTPConnection(Protocol):
@@ -70,7 +71,7 @@ if typing.TYPE_CHECKING:
             self,
             host: str,
             port: int | None = None,
-            headers: typing.Mapping[str, str] | None = None,
+            headers: _TYPE_HEADER_MAPPING | None = None,
             scheme: str = "http",
         ) -> None: ...
 
@@ -81,7 +82,7 @@ if typing.TYPE_CHECKING:
             method: str,
             url: str,
             body: _TYPE_BODY | None = None,
-            headers: typing.Mapping[str, str] | None = None,
+            headers: _TYPE_HEADER_MAPPING | None = None,
             # We know *at least* botocore is depending on the order of the
             # first 3 parameters so to be safe we only mark the later ones
             # as keyword-only to ensure we have space to extend.

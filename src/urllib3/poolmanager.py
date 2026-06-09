@@ -7,7 +7,7 @@ import warnings
 from types import TracebackType
 from urllib.parse import urljoin
 
-from ._collections import HTTPHeaderDict, RecentlyUsedContainer
+from ._collections import _TYPE_HEADER_MAPPING, HTTPHeaderDict, RecentlyUsedContainer
 from ._request_methods import RequestMethods
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
@@ -23,6 +23,7 @@ from .util.proxy import connection_requires_http_tunnel
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
+from .util.util import to_str
 
 if typing.TYPE_CHECKING:
     import ssl
@@ -199,7 +200,7 @@ class PoolManager(RequestMethods):
     def __init__(
         self,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         **connection_pool_kw: typing.Any,
     ) -> None:
         super().__init__(headers)
@@ -482,7 +483,10 @@ class PoolManager(RequestMethods):
         ):
             new_headers = kw["headers"].copy()
             for header in kw["headers"]:
-                if header.lower() in retries.remove_headers_on_redirect:
+                if (
+                    to_str(header.lower(), "latin-1")
+                    in retries.remove_headers_on_redirect
+                ):
                     new_headers.pop(header, None)
             kw["headers"] = new_headers
 
@@ -564,8 +568,8 @@ class ProxyManager(PoolManager):
         self,
         proxy_url: str,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
-        proxy_headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
+        proxy_headers: _TYPE_HEADER_MAPPING | None = None,
         proxy_ssl_context: ssl.SSLContext | None = None,
         use_forwarding_for_https: bool = False,
         proxy_assert_hostname: None | str | typing.Literal[False] = None,
@@ -618,20 +622,21 @@ class ProxyManager(PoolManager):
         )
 
     def _set_proxy_headers(
-        self, url: str, headers: typing.Mapping[str, str] | None = None
-    ) -> typing.Mapping[str, str]:
+        self, url: str, headers: _TYPE_HEADER_MAPPING | None = None
+    ) -> _TYPE_HEADER_MAPPING:
         """
         Sets headers needed by proxies: specifically, the Accept and Host
         headers. Only sets headers not provided by the user.
         """
-        headers_ = {"Accept": "*/*"}
+        headers_: dict[str | bytes, str | bytes] = {"Accept": "*/*"}
 
         netloc = parse_url(url).netloc
         if netloc:
             headers_["Host"] = netloc
 
         if headers:
-            headers_.update(headers)
+            for key, value in headers.items():
+                headers_[key] = value
         return headers_
 
     def urlopen(  # type: ignore[override]
