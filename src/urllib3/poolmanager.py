@@ -583,6 +583,7 @@ class ProxyManager(PoolManager):
 
         if (
             use_forwarding_for_https
+            and proxy.scheme == "https"
             and connection_pool_kw.get("ssl_context") is not None
         ):
             warnings.warn(

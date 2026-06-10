@@ -841,6 +841,24 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
                 assert isinstance(conn.sock, ssl.SSLSocket)
                 assert conn.sock.context is ssl_context
 
+    @requires_network()
+    def test_forwarding_non_https_proxy_ssl_context_fallback(self) -> None:
+        """
+        Test that when only ``ssl_context`` is passed to a forwarding
+        non-HTTPS proxy, no warning or error is emitted.
+        """
+        ssl_context = ssl.create_default_context(cafile=DEFAULT_CA)
+        # No warning/error should be emitted even when ``ssl_context``
+        # is provided to a non-HTTPS proxy for some reason.
+        proxy = proxy_from_url(
+            self.proxy_url,
+            ssl_context=ssl_context,
+            use_forwarding_for_https=True,
+        )
+        with proxy:
+            resp = proxy.request("GET", self.https_url)
+            assert resp.status == 200
+
     def test_scheme_host_case_insensitive(self) -> None:
         """Assert that upper-case schemes and hosts are normalized."""
         with proxy_from_url(self.proxy_url.upper(), ca_certs=DEFAULT_CA) as http:
