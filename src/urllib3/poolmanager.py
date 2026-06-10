@@ -452,7 +452,7 @@ class PoolManager(RequestMethods):
             kw["headers"] = self.headers
 
         if self._proxy_requires_url_absolute_form(u):
-            response = conn.urlopen(method, url, **kw)
+            response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 
