@@ -1,4 +1,2 @@
-``proxy_ssl_context`` now works correctly when using ``ProxyManager`` with
-``use_forwarding_for_https=True``. Passing ``ssl_context`` in this configuration
-now emits a ``FutureWarning`` and will raise an error in v3.0; use
-``proxy_ssl_context`` instead.
+Fixed usage of ``proxy_ssl_context`` with ``ProxyManager`` when ``use_forwarding_for_https=True``.
+Passing ``ssl_context`` instead of ``proxy_ssl_context`` for HTTPS proxies in this configuration now emits a ``FutureWarning`` and will raise an error in v3.0.
