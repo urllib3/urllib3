@@ -55,6 +55,11 @@ _IPV6_ADDRZ_PAT = r"\[" + _IPV6_PAT + r"(?:" + _ZONE_ID_PAT + r")?\]"
 _REG_NAME_PAT = r"(?:[^\[\]%:/?#]|%[a-fA-F0-9]{2})*"
 _TARGET_RE = re.compile(r"^(/[^?#]*)(?:\?([^#]*))?(?:#.*)?$")
 
+# Control characters and space are not allowed anywhere in the host. This
+# mirrors http.client's own URL character check so urllib3's parser is at
+# least as strict as the stdlib transport it hands the host to.
+_CONTAINS_DISALLOWED_HOST_CHAR_RE = re.compile("[\x00-\x20\x7f]")
+
 _IPV4_RE = re.compile(
     r"^(?:0[xX][0-9a-fA-F]+|[0-9]+)(?:\.(?:0[xX][0-9a-fA-F]+|[0-9]+)){0,3}$"
 )
@@ -436,6 +441,9 @@ def parse_url(url: str) -> Url:
                 raise LocationParseError(url)
         else:
             port_int = None
+
+        if normalize_uri and host and _CONTAINS_DISALLOWED_HOST_CHAR_RE.search(host):
+            raise LocationParseError(source_url)
 
         host = _normalize_host(host, scheme)
 

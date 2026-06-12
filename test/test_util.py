@@ -232,6 +232,11 @@ class TestUtil:
             fragment="fragment" + percent_char,
         )
 
+    @pytest.mark.parametrize("char", [chr(i) for i in range(0x00, 0x21)] + ["\x7f"])
+    def test_control_characters_in_host_are_rejected(self, char: str) -> None:
+        with pytest.raises(LocationParseError):
+            parse_url(f"http://exam{char}ple.com/path")
+
     parse_url_host_map = [
         ("http://google.com/mail", Url("http", host="google.com", path="/mail")),
         ("http://google.com/mail/", Url("http", host="google.com", path="/mail/")),
