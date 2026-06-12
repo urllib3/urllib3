@@ -1598,6 +1598,15 @@ class TestResponse:
         resp = HTTPResponse(fp, headers=garbage, preload_content=False)
         assert resp.length_remaining is None
 
+    @pytest.mark.parametrize("value", ["1_000", "+5", "0x10", "0o10", "१२३"])
+    def test_length_w_non_rfc_header(self, value: str) -> None:
+        # int() accepts these forms but RFC 9112 section 6.3 only allows 1*DIGIT.
+        fp = BytesIO(b"12345")
+        resp = HTTPResponse(
+            fp, headers={"content-length": value}, preload_content=False
+        )
+        assert resp.length_remaining is None
+
     def test_length_when_chunked(self) -> None:
         # This is expressly forbidden in RFC 7230 sec 3.3.2
         # We fall back to chunked in this case and try to
@@ -1810,6 +1819,23 @@ class TestResponse:
         assert str(ctx.value) == msg
         assert isinstance(orig_ex, InvalidChunkLength)
         assert orig_ex.length == fp.BAD_LENGTH_LINE.encode()
+
+    def test_non_rfc_chunk_length(self) -> None:
+        stream = [b"foooo", b"bbbbaaaaar"]
+        fp = MockChunkedNonRfcChunkLength(stream)
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        with pytest.raises(ProtocolError) as ctx:
+            next(resp.read_chunked())
+
+        orig_ex = ctx.value.args[1]
+        assert isinstance(orig_ex, InvalidChunkLength)
+        assert orig_ex.length == b"0x5\r\n"
 
     def test_truncated_before_chunk(self) -> None:
         stream = [b"foooo", b"bbbbaaaaar"]
@@ -2097,6 +2123,13 @@ class MockChunkedInvalidChunkLength(MockChunkedEncodingResponse):
 
     def _encode_chunk(self, chunk: bytes) -> bytes:
         return f"{self.BAD_LENGTH_LINE}{chunk.decode()}\r\n".encode()
+
+
+class MockChunkedNonRfcChunkLength(MockChunkedEncodingResponse):
+    # "0x"-prefixed chunk-size, which int(line, 16) accepts but RFC 9112
+    # section 7.1 forbids (chunk-size = 1*HEXDIG).
+    def _encode_chunk(self, chunk: bytes) -> bytes:
+        return f"0x{len(chunk):X}\r\n{chunk.decode()}\r\n".encode()
 
 
 class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
