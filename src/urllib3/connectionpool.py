@@ -3,6 +3,7 @@ from __future__ import annotations
 import errno
 import logging
 import queue
+import socket
 import sys
 import typing
 import warnings
@@ -216,9 +217,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if self.proxy:
             # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
-            # Defaulting `socket_options` to an empty list avoids it defaulting to
-            # ``HTTPConnection.default_socket_options``.
-            self.conn_kw.setdefault("socket_options", [])
+            # Defaulting `socket_options` to the connection defaults without
+            # TCP_NODELAY avoids dropping user-added defaults like TCP keepalive.
+            self.conn_kw.setdefault(
+                "socket_options", self._proxy_default_socket_options()
+            )
 
             self.conn_kw["proxy"] = self.proxy
             self.conn_kw["proxy_config"] = self.proxy_config
@@ -252,6 +255,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             **self.conn_kw,
         )
         return conn
+
+    def _proxy_default_socket_options(
+        self,
+    ) -> list[tuple[int, int, int | bytes]]:
+        return [
+            option
+            for option in self.ConnectionCls.default_socket_options
+            if option[:2] != (socket.IPPROTO_TCP, socket.TCP_NODELAY)
+        ]
 
     def _get_conn(self, timeout: float | None = None) -> BaseHTTPConnection:
         """
