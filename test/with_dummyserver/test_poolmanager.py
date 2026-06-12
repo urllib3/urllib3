@@ -508,6 +508,26 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
 
+    def test_authorization_header_from_url_auth(self) -> None:
+        with PoolManager() as http:
+            r = http.request(
+                "GET",
+                f"http://user:password@{self.host}:{self.port}/headers",
+            )
+            returned_headers = r.json()
+            assert returned_headers.get("Authorization") == "Basic dXNlcjpwYXNzd29yZA=="
+            assert returned_headers.get("Host") == f"{self.host}:{self.port}"
+
+    def test_authorization_header_not_overridden_by_url_auth(self) -> None:
+        with PoolManager() as http:
+            r = http.request(
+                "GET",
+                f"http://user:password@{self.host}:{self.port}/headers",
+                headers={"Authorization": "Bearer explicit"},
+            )
+            returned_headers = r.json()
+            assert returned_headers.get("Authorization") == "Bearer explicit"
+
     def test_headers_http_header_dict(self) -> None:
         # Test uses a list of headers to assert the order
         # that headers are sent in the request too.
