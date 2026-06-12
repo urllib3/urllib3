@@ -1,0 +1,1 @@
+Unfolded obsolete folded response header values before exposing them through response headers.
