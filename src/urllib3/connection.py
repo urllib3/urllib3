@@ -79,6 +79,20 @@ RECENT_DATE = datetime.date(2025, 1, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
+def _validate_header_name(header: str | bytes) -> None:
+    header_name = to_str(header)
+    match = _CONTAINS_CONTROL_CHAR_RE.search(header_name)
+    if not header_name:
+        raise ValueError(
+            f"Header name cannot contain non-token characters {header_name!r}"
+        )
+    if match:
+        raise ValueError(
+            f"Header name cannot contain non-token characters {header_name!r} "
+            f"(found at least {match.group()!r})"
+        )
+
+
 class HTTPConnection(_HTTPConnection):
     """
     Based on :class:`http.client.HTTPConnection` but provides an extra constructor
@@ -235,6 +249,9 @@ class HTTPConnection(_HTTPConnection):
             raise ValueError(
                 f"Invalid proxy scheme for tunneling: {scheme!r}, must be either 'http' or 'https'"
             )
+        if headers is not None:
+            for header in headers:
+                _validate_header_name(header)
         super().set_tunnel(host, port=port, headers=headers)
         self._tunnel_scheme = scheme
 
@@ -409,6 +426,7 @@ class HTTPConnection(_HTTPConnection):
 
     def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
+        _validate_header_name(header)
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
