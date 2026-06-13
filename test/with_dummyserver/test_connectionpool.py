@@ -19,10 +19,12 @@ from dummyserver.testcase import HypercornDummyServerTestCase, SocketDummyServer
 from urllib3 import HTTPConnectionPool, encode_multipart_formdata
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent
+from urllib3.connectionpool import connection_from_url
 from urllib3.exceptions import (
     ConnectTimeoutError,
     DecodeError,
     EmptyPoolError,
+    InvalidHeader,
     MaxRetryError,
     NameResolutionError,
     NewConnectionError,
@@ -983,6 +985,23 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             r = pool.request("GET", "/headers")
             request_headers = r.json()
             assert request_headers.get("User-Agent") == custom_ua2
+
+    def test_connection_from_url_basic_auth(self) -> None:
+        with connection_from_url(
+            f"http://user:password@{self.host}:{self.port}/headers"
+        ) as pool:
+            r = pool.request("GET", "/headers")
+            request_headers = r.json()
+            assert request_headers.get("Authorization") == "Basic dXNlcjpwYXNzd29yZA=="
+
+    def test_connection_from_url_basic_auth_does_not_override_authorization(
+        self,
+    ) -> None:
+        with pytest.raises(InvalidHeader):
+            connection_from_url(
+                f"http://user:password@{self.host}:{self.port}/headers",
+                headers={"Authorization": "Basic other"},
+            )
 
     @pytest.mark.parametrize(
         "headers",
