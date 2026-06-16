@@ -76,7 +76,7 @@ class ConnectionPool:
     """
 
     scheme: str | None = None
-    QueueCls = queue.LifoQueue
+    QueueCls: type[queue.LifoQueue[typing.Any]] | None = None
 
     def __init__(self, host: str, port: int | None = None) -> None:
         if not host:
@@ -111,6 +111,12 @@ class ConnectionPool:
         """
         Close all pooled connections and disable the pool.
         """
+
+    def _make_queue(
+        self, *args: typing.Any, **kwargs: typing.Any
+    ) -> queue.LifoQueue[typing.Any]:
+        queue_cls = self.QueueCls or queue.LifoQueue
+        return queue_cls(*args, **kwargs)
 
 
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
@@ -198,7 +204,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.timeout = timeout
         self.retries = retries
 
-        self.pool: queue.LifoQueue[typing.Any] | None = self.QueueCls(maxsize)
+        self.pool: queue.LifoQueue[typing.Any] | None = self._make_queue(maxsize)
         self.block = block
 
         self.proxy = _proxy

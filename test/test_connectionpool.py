@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.client as httplib
+import queue
 import ssl
 import typing
 from http.client import HTTPException
@@ -90,6 +91,39 @@ class TestConnectionPool:
     def test_same_host(self, a: str, b: str) -> None:
         with connection_from_url(a) as c:
             assert c.is_same_host(b)
+
+    def test_default_queue_class_is_late_bound(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class LateBoundLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        monkeypatch.setattr(
+            "urllib3.connectionpool.queue.LifoQueue", LateBoundLifoQueue
+        )
+
+        with HTTPConnectionPool("localhost") as pool:
+            assert isinstance(pool.pool, LateBoundLifoQueue)
+
+    def test_custom_queue_class_is_respected(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class CustomLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        class LateBoundLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        class CustomQueueHTTPConnectionPool(HTTPConnectionPool):
+            QueueCls = CustomLifoQueue
+
+        monkeypatch.setattr(
+            "urllib3.connectionpool.queue.LifoQueue", LateBoundLifoQueue
+        )
+
+        with CustomQueueHTTPConnectionPool("localhost") as pool:
+            assert isinstance(pool.pool, CustomLifoQueue)
+            assert not isinstance(pool.pool, LateBoundLifoQueue)
 
     @pytest.mark.parametrize(
         "a, b",
