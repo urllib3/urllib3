@@ -1,0 +1,1 @@
+Fixed :attr:`~urllib3.util.Url.netloc` and :attr:`~urllib3.util.Url.authority` dropping an explicit port ``0``.
