@@ -388,6 +388,7 @@ class TestUtil:
         ("http://user:pass@localhost/path", "user:pass@localhost"),
         ("http://user:pass@localhost:80/path", "user:pass@localhost:80"),
         ("http://user@localhost:80/path", "user@localhost:80"),
+        ("http://user:pass@google.com:0/mail", "user:pass@google.com:0"),
     ]
 
     url_netloc_map = [
@@ -401,6 +402,7 @@ class TestUtil:
         ("http://localhost:80", "localhost:80"),
         ("google.com/foobar", "google.com"),
         ("google.com:12345", "google.com:12345"),
+        ("http://google.com:0/mail", "google.com:0"),
         ("/", None),
     ]
 

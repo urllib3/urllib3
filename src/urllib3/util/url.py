@@ -156,7 +156,7 @@ class Url(
         """
         if self.host is None:
             return None
-        if self.port:
+        if self.port is not None:
             return f"{self.host}:{self.port}"
         return self.host
 
