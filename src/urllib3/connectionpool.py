@@ -710,7 +710,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         else:
             parsed_url = parse_url(url)
             destination_scheme = parsed_url.scheme
-            url = to_str(parsed_url.url)
+            url = to_str(parsed_url._replace(fragment=None).url)
 
         if headers is None:
             headers = self.headers
