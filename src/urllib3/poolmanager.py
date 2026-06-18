@@ -309,7 +309,7 @@ class PoolManager(RequestMethods):
 
         request_context = self._merge_pool_kwargs(pool_kwargs)
         request_context["scheme"] = scheme or "http"
-        if not port:
+        if port is None:
             port = port_by_scheme.get(request_context["scheme"].lower(), 80)
         request_context["port"] = port
         request_context["host"] = host
@@ -596,7 +596,7 @@ class ProxyManager(PoolManager):
             if proxy_ssl_context is None:
                 proxy_ssl_context = connection_pool_kw.get("ssl_context")
 
-        if not proxy.port:
+        if proxy.port is None:
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
