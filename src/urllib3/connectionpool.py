@@ -582,9 +582,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             host = _normalize_host(host, scheme=scheme)
 
         # Use explicit default port for comparison when none is given
-        if self.port and not port:
+        if self.port is not None and port is None:
             port = port_by_scheme.get(scheme)
-        elif not self.port and port == port_by_scheme.get(scheme):
+        elif self.port is None and port == port_by_scheme.get(scheme):
             port = None
 
         return (scheme, host, port) == (self.scheme, self.host, self.port)
@@ -710,7 +710,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         else:
             parsed_url = parse_url(url)
             destination_scheme = parsed_url.scheme
-            url = to_str(parsed_url.url)
+            url = to_str(parsed_url._replace(fragment=None).url)
 
         if headers is None:
             headers = self.headers

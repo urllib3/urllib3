@@ -108,9 +108,13 @@ class HTTPConnection(_HTTPConnection):
 
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options: typing.ClassVar[connection._TYPE_SOCKET_OPTIONS] = [
-        (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    ]
+    #:
+    #: Use the ``socket_options`` parameter of :class:`~urllib3.PoolManager`,
+    #: :class:`~urllib3.ProxyManager`, or :class:`~urllib3.HTTPConnectionPool`
+    #: to change this behavior.
+    default_socket_options: typing.ClassVar[
+        typing.Final[connection._TYPE_SOCKET_OPTIONS]
+    ] = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
     #: Whether this connection verifies the host's certificate.
     is_verified: bool = False
@@ -793,6 +797,20 @@ class HTTPSConnection(HTTPConnection):
             # Remove trailing '.' from fqdn hostnames to allow certificate validation
             server_hostname_rm_dot = server_hostname.rstrip(".")
 
+            # Forwarding proxies should use proxy SSL context for
+            # wrapping since that's the connection being established,
+            # whereas tunneling proxies should use the connection's SSL
+            # context.
+            # However, for backwards compatibility reasons, if the proxy
+            # is forwarding but no proxy SSL context is provided, we
+            # fall back to using the connection's SSL context until
+            # urllib3 v3.0. Appropriate warning is emitted in
+            # ``ProxyManager.__init__``.
+            if self.proxy_is_forwarding and self.proxy_config is not None:
+                ssl_context = self.proxy_config.ssl_context
+            else:
+                ssl_context = self.ssl_context
+
             sock_and_verified = _ssl_wrap_socket_and_match_hostname(
                 sock=sock,
                 cert_reqs=self.cert_reqs,
@@ -806,7 +824,7 @@ class HTTPSConnection(HTTPConnection):
                 key_file=self.key_file,
                 key_password=self.key_password,
                 server_hostname=server_hostname_rm_dot,
-                ssl_context=self.ssl_context,
+                ssl_context=ssl_context,
                 tls_in_tls=tls_in_tls,
                 assert_hostname=self.assert_hostname,
                 assert_fingerprint=self.assert_fingerprint,
