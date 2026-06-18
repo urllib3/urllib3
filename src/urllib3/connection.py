@@ -885,7 +885,11 @@ class HTTPSConnection(HTTPConnection):
         ssl_context = proxy_config.ssl_context
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
-            cert_reqs=self.cert_reqs,
+            # Do not forward self.cert_reqs (the *target's* cert_reqs) to the
+            # proxy TLS handshake.  When ssl_context is caller-supplied its
+            # verify_mode is already set correctly; when it is None a default
+            # context with CERT_REQUIRED is created automatically.
+            cert_reqs=None,
             ssl_version=self.ssl_version,
             ssl_minimum_version=self.ssl_minimum_version,
             ssl_maximum_version=self.ssl_maximum_version,
@@ -952,7 +956,19 @@ def _ssl_wrap_socket_and_match_hostname(
     else:
         context = ssl_context
 
-    context.verify_mode = resolve_cert_reqs(cert_reqs)
+    # Override verify_mode when:
+    # - We created the context (always apply cert_reqs), OR
+    # - The caller explicitly passed a cert_reqs value (not None); we honour
+    #   their explicit choice even on a caller-supplied ssl_context.
+    # We do NOT override when cert_reqs is None and the context was supplied
+    # by the caller — that would silently mutate the caller's own context with
+    # whatever default resolve_cert_reqs(None) returns (CERT_REQUIRED), which
+    # could override deliberate settings such as CERT_OPTIONAL.
+    # The main protection against proxy-context mutation is in _connect_tls_proxy,
+    # which now passes cert_reqs=None (not the target's cert_reqs), ensuring
+    # the proxy context is never downgraded via this path.
+    if default_ssl_context or cert_reqs is not None:
+        context.verify_mode = resolve_cert_reqs(cert_reqs)
 
     # In some cases, we want to verify hostnames ourselves
     if (
