@@ -1,0 +1,1 @@
+Rejected HTTP request header names with leading or trailing whitespace, control characters, or colons.

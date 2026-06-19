@@ -77,6 +77,7 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+_CONTAINS_INVALID_HEADER_NAME_RE = re.compile(r"[:\x00-\x1f\x7f]")
 
 
 class HTTPConnection(_HTTPConnection):
@@ -411,8 +412,18 @@ class HTTPConnection(_HTTPConnection):
             method, url, skip_host=skip_host, skip_accept_encoding=skip_accept_encoding
         )
 
-    def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
+    def putheader(self, header: str | bytes, *values: str) -> None:  # type: ignore[override]
         """"""
+        header_str = to_str(header)
+        header_stripped = header_str.strip(" \t")
+        match = _CONTAINS_INVALID_HEADER_NAME_RE.search(header_stripped)
+        if match or header_str != header_stripped:
+            raise ValueError(
+                f"Header name cannot contain leading/trailing whitespace, "
+                f"control characters, or ':' {header!r} "
+                f"(found at least {(match.group() if match else ' ')!r})"
+            )
+
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
