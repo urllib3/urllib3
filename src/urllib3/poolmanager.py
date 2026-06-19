@@ -5,13 +5,14 @@ import logging
 import typing
 import warnings
 from types import TracebackType
-from urllib.parse import urljoin
+from urllib.parse import unquote, urljoin
 
 from ._collections import HTTPHeaderDict, RecentlyUsedContainer
 from ._request_methods import RequestMethods
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
+    InvalidHeader,
     LocationValueError,
     MaxRetryError,
     ProxySchemeUnknown,
@@ -20,6 +21,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -157,6 +159,42 @@ key_fn_by_scheme = {
 }
 
 pool_classes_by_scheme = {"http": HTTPConnectionPool, "https": HTTPSConnectionPool}
+
+
+def _basic_auth_str_from_url_auth(auth: str) -> str:
+    username, separator, password = auth.partition(":")
+    password = unquote(password) if separator else ""
+    return f"{unquote(username)}:{password}"
+
+
+def _authorization_header_from_url_auth(auth: str | None) -> str | None:
+    if auth is None:
+        return None
+    return make_headers(basic_auth=_basic_auth_str_from_url_auth(auth))["authorization"]
+
+
+def _proxy_authorization_header_from_url_auth(auth: str | None) -> str | None:
+    if auth is None:
+        return None
+    return make_headers(proxy_basic_auth=_basic_auth_str_from_url_auth(auth))[
+        "proxy-authorization"
+    ]
+
+
+def _headers_with_url_auth(
+    headers: typing.Mapping[str, str] | None, header_name: str, header_value: str
+) -> HTTPHeaderDict:
+    headers_ = HTTPHeaderDict(headers or {})
+
+    if header_name in headers_:
+        if headers_[header_name] != header_value:
+            raise InvalidHeader(
+                f"{header_name} header from URL conflicts with supplied header"
+            )
+        return headers_
+
+    headers_[header_name] = header_value
+    return headers_
 
 
 class PoolManager(RequestMethods):
@@ -451,8 +489,15 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        url_auth_header = _authorization_header_from_url_auth(u.auth)
+        if url_auth_header is not None:
+            kw["headers"] = _headers_with_url_auth(
+                kw["headers"], "authorization", url_auth_header
+            )
+
         if self._proxy_requires_url_absolute_form(u):
-            response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
+            url = u._replace(auth=None, fragment=None).url
+            response = conn.urlopen(method, url, **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 
@@ -599,6 +644,17 @@ class ProxyManager(PoolManager):
         if proxy.port is None:
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
+
+        proxy_auth_header = _proxy_authorization_header_from_url_auth(proxy.auth)
+        if proxy_auth_header is not None:
+            if headers is not None:
+                _headers_with_url_auth(
+                    headers, "proxy-authorization", proxy_auth_header
+                )
+            proxy_headers = _headers_with_url_auth(
+                proxy_headers, "proxy-authorization", proxy_auth_header
+            )
+            proxy = proxy._replace(auth=None)
 
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}

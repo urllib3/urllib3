@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from urllib3.exceptions import MaxRetryError, NewConnectionError, ProxyError
+from urllib3.exceptions import (
+    InvalidHeader,
+    MaxRetryError,
+    NewConnectionError,
+    ProxyError,
+)
 from urllib3.poolmanager import ProxyManager
 from urllib3.response import HTTPResponse
 from urllib3.util.retry import Retry
@@ -54,6 +59,46 @@ class TestProxyManager:
         with ProxyManager("http://proxy:0") as p:
             assert p.proxy is not None
             assert p.proxy.port == 0
+
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    def test_proxy_url_auth_sets_proxy_authorization_header(
+        self, proxy_scheme: str
+    ) -> None:
+        proxy_url = f"{proxy_scheme}://user:password@something:1234"
+
+        with ProxyManager(proxy_url) as p:
+            assert p.proxy is not None
+            assert p.proxy.auth is None
+            assert (
+                p.proxy_headers["Proxy-Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
+            )
+
+    def test_proxy_url_auth_allows_matching_proxy_authorization_header(self) -> None:
+        proxy_headers = {"Proxy-Authorization": "Basic dXNlcjpwYXNzd29yZA=="}
+
+        with ProxyManager(
+            "http://user:password@something:1234", proxy_headers=proxy_headers
+        ) as p:
+            assert (
+                p.proxy_headers["Proxy-Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
+            )
+            assert proxy_headers == {
+                "Proxy-Authorization": "Basic dXNlcjpwYXNzd29yZA=="
+            }
+
+    def test_proxy_url_auth_rejects_conflicting_proxy_header(self) -> None:
+        proxy_headers = {"Proxy-Authorization": "Basic ZGlmZmVyZW50"}
+
+        with pytest.raises(InvalidHeader, match="proxy-authorization"):
+            ProxyManager(
+                "http://user:password@something:1234", proxy_headers=proxy_headers
+            )
+
+    def test_proxy_url_auth_rejects_conflicting_default_header(self) -> None:
+        headers = {"Proxy-Authorization": "Basic ZGlmZmVyZW50"}
+
+        with pytest.raises(InvalidHeader, match="proxy-authorization"):
+            ProxyManager("http://user:password@something:1234", headers=headers)
 
     def test_invalid_scheme(self) -> None:
         with pytest.raises(AssertionError):
