@@ -7,7 +7,12 @@ import warnings
 from types import TracebackType
 from urllib.parse import urljoin
 
-from ._collections import HTTPHeaderDict, RecentlyUsedContainer
+from ._collections import (
+    _TYPE_HEADER_MAPPING,
+    HTTPHeaderDict,
+    RecentlyUsedContainer,
+    ValidHTTPHeaderSource,
+)
 from ._request_methods import RequestMethods
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
@@ -199,7 +204,7 @@ class PoolManager(RequestMethods):
     def __init__(
         self,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         **connection_pool_kw: typing.Any,
     ) -> None:
         super().__init__(headers)
@@ -468,7 +473,9 @@ class PoolManager(RequestMethods):
             method = "GET"
             # And lose the body not to transfer anything sensitive.
             kw["body"] = None
-            kw["headers"] = HTTPHeaderDict(kw["headers"])._prepare_for_method_change()
+            kw["headers"] = HTTPHeaderDict(
+                typing.cast(ValidHTTPHeaderSource, kw["headers"])
+            )._prepare_for_method_change()
 
         retries = kw.get("retries", response.retries)
         if not isinstance(retries, Retry):
@@ -564,8 +571,8 @@ class ProxyManager(PoolManager):
         self,
         proxy_url: str,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
-        proxy_headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
+        proxy_headers: _TYPE_HEADER_MAPPING | None = None,
         proxy_ssl_context: ssl.SSLContext | None = None,
         use_forwarding_for_https: bool = False,
         proxy_assert_hostname: None | str | typing.Literal[False] = None,
@@ -633,20 +640,22 @@ class ProxyManager(PoolManager):
         )
 
     def _set_proxy_headers(
-        self, url: str, headers: typing.Mapping[str, str] | None = None
-    ) -> typing.Mapping[str, str]:
+        self, url: str, headers: _TYPE_HEADER_MAPPING | None = None
+    ) -> _TYPE_HEADER_MAPPING:
         """
         Sets headers needed by proxies: specifically, the Accept and Host
         headers. Only sets headers not provided by the user.
         """
-        headers_ = {"Accept": "*/*"}
+        headers_: dict[str | bytes, str | bytes] = {"Accept": "*/*"}
 
         netloc = parse_url(url).netloc
         if netloc:
             headers_["Host"] = netloc
 
         if headers:
-            headers_.update(headers)
+            headers_.update(
+                typing.cast(typing.Mapping[str | bytes, str | bytes], headers)
+            )
         return headers_
 
     def urlopen(  # type: ignore[override]
