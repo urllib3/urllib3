@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import re
 import typing
 from collections import OrderedDict
 from enum import Enum, auto
 from threading import RLock
+
+from .exceptions import InvalidHeader
 
 if typing.TYPE_CHECKING:
     # We can only import Protocol if TYPE_CHECKING because it's a development
@@ -27,6 +30,8 @@ _KT = typing.TypeVar("_KT")
 _VT = typing.TypeVar("_VT")
 # Default type
 _DT = typing.TypeVar("_DT")
+
+_HEADER_NAME_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 ValidHTTPHeaderSource = typing.Union[
     "HTTPHeaderDict",
@@ -252,6 +257,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
+        if _HEADER_NAME_RE.search(key):
+            raise InvalidHeader(f"Invalid header name {key!r}")
         self._container[key.lower()] = [key, val]
 
     def __getitem__(self, key: str) -> str:
@@ -325,6 +332,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
+        if _HEADER_NAME_RE.search(key):
+            raise InvalidHeader(f"Invalid header name {key!r}")
         key_lower = key.lower()
         new_vals = [key, val]
         # Keep the common case aka no item present as fast as possible
