@@ -11,7 +11,7 @@ import h2.connection
 import h2.events
 
 from .._base_connection import _TYPE_BODY
-from .._collections import HTTPHeaderDict
+from .._collections import _TYPE_HTTP_HEADER_MAPPING, HTTPHeaderDict
 from ..connection import HTTPSConnection, _get_default_user_agent
 from ..exceptions import ConnectionError
 from ..response import BaseHTTPResponse
@@ -216,7 +216,7 @@ class HTTP2Connection(HTTPSConnection):
         self,
         host: str,
         port: int | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         scheme: str = "http",
     ) -> None:
         raise NotImplementedError(
@@ -270,7 +270,7 @@ class HTTP2Connection(HTTPSConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         *,
         preload_content: bool = True,
         decode_content: bool = True,
