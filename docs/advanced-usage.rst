@@ -228,6 +228,13 @@ an `absolute URI <https://datatracker.ietf.org/doc/html/rfc9112#name-absolute-fo
 **only use this option with trusted or corporate proxies** as the proxy will have
 full visibility of your requests.
 
+Proxy Response Headers
+~~~~~~~~~~~~~~~~~~~~~~
+
+If you need to access response headers from a proxy server,
+use ``ProxyHeaderManager`` from `python-proxy-headers <https://github.com/proxymesh/python-proxy-headers>`_.
+This extension works just like ``ProxyManager`` while adding any custom proxy response headers to the normal response headers.
+
 .. _https_proxy_error_http_proxy:
 
 Your proxy appears to only use HTTP and not HTTPS
