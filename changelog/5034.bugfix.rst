@@ -1,0 +1,1 @@
+Rejected HTTP responses containing folded header values.
