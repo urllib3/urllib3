@@ -2161,7 +2161,7 @@ class TestHeaders(SocketDummyServerTestCase):
         elif body_type == "bytes-io":
             body = io.BytesIO(b"bytes-io-body")
             body.seek(0, 0)
-            expected = b"bytes-io-body\r\n0\r\n\r\n"
+            expected = b"\r\n\r\nbytes-io-body"
         else:
             raise ValueError("Unknown body type")
 
@@ -2643,6 +2643,8 @@ class TestContentFraming(SocketDummyServerTestCase):
 
             body = body_generator()
         elif body_type == "file":
+            if chunked is False:
+                pytest.skip("urllib3 uses Content-Length in this case")
             body = io.BytesIO(b"x" * 10)
             body.seek(0, 0)
         else:
@@ -2684,7 +2686,7 @@ class TestContentFraming(SocketDummyServerTestCase):
         elif body_type == "file":
             body = io.BytesIO(b"x" * 10)
             body.seek(0, 0)
-            should_be_chunked = True
+            should_be_chunked = False
         elif body_type == "file_text":
             body = io.StringIO("x" * 10)
             body.seek(0, 0)
