@@ -472,7 +472,7 @@ class PoolManager(RequestMethods):
 
         retries = kw.get("retries", response.retries)
         if not isinstance(retries, Retry):
-            retries = Retry.from_int(retries, redirect=redirect)
+            retries = Retry.from_int(retries, redirect=redirect, default=conn.retries)
 
         # Strip headers marked as unsafe to forward to the redirected location.
         # Check remove_headers_on_redirect to avoid a potential network call within
