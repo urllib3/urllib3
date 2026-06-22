@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.resolver import Resolver
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -200,9 +201,12 @@ class PoolManager(RequestMethods):
         self,
         num_pools: int = 10,
         headers: typing.Mapping[str, str] | None = None,
+        resolver: Resolver | None = None,
         **connection_pool_kw: typing.Any,
     ) -> None:
         super().__init__(headers)
+        self.resolver = resolver
+
         # PoolManager handles redirects itself in PoolManager.urlopen().
         # It always passes redirect=False to the underlying connection pool to
         # suppress per-pool redirect handling. If the user supplied a non-Retry
@@ -276,7 +280,7 @@ class PoolManager(RequestMethods):
             for kw in SSL_KEYWORDS:
                 request_context.pop(kw, None)
 
-        return pool_cls(host, port, **request_context)
+        return pool_cls(host, port, resolver=self.resolver, **request_context)
 
     def clear(self) -> None:
         """
