@@ -888,9 +888,6 @@ class HTTPResponse(BaseHTTPResponse):
                 length = lengths.pop()
             except ValueError:
                 length = None
-            else:
-                if length < 0:
-                    length = None
 
         else:  # if content_length is None
             length = None
