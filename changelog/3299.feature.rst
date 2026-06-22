@@ -1,0 +1,1 @@
+Added HTTP/2 support for forwarding proxy requests.
