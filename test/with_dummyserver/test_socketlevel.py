@@ -65,6 +65,55 @@ else:
     StrOrBytesPath = object
 
 
+def _client_hello_alpn_protocols(data: bytes) -> list[bytes]:
+    if len(data) < 43 or data[0] != 0x16 or data[5] != 0x01:
+        return []
+
+    pos = 5 + 4 + 2 + 32
+    session_id_len = data[pos]
+    pos += 1 + session_id_len
+    if pos + 2 > len(data):
+        return []
+
+    cipher_suites_len = int.from_bytes(data[pos : pos + 2], "big")
+    pos += 2 + cipher_suites_len
+    if pos + 1 > len(data):
+        return []
+
+    compression_methods_len = data[pos]
+    pos += 1 + compression_methods_len
+    if pos + 2 > len(data):
+        return []
+
+    extensions_len = int.from_bytes(data[pos : pos + 2], "big")
+    pos += 2
+    extensions_end = min(pos + extensions_len, len(data))
+
+    while pos + 4 <= extensions_end:
+        extension_type = int.from_bytes(data[pos : pos + 2], "big")
+        extension_len = int.from_bytes(data[pos + 2 : pos + 4], "big")
+        pos += 4
+        extension_end = pos + extension_len
+        if extension_end > extensions_end:
+            return []
+
+        if extension_type == 0x0010:
+            protocols: list[bytes] = []
+            names_len = int.from_bytes(data[pos : pos + 2], "big")
+            name_pos = pos + 2
+            names_end = min(name_pos + names_len, extension_end)
+            while name_pos < names_end:
+                name_len = data[name_pos]
+                name_pos += 1
+                protocols.append(data[name_pos : name_pos + name_len])
+                name_pos += name_len
+            return protocols
+
+        pos = extension_end
+
+    return []
+
+
 class TestCookies(SocketDummyServerTestCase):
     def test_multi_setcookie(self) -> None:
         def multicookie_response_handler(listener: socket.socket) -> None:
@@ -1268,8 +1317,9 @@ class TestProxyManager(SocketDummyServerTestCase):
                 proxy.request("GET", "https://localhost/")
 
         done_receiving.wait()
-        assert b"http/1.1" in self.buf
-        assert b"h2" not in self.buf
+        alpn_protocols = _client_hello_alpn_protocols(self.buf)
+        assert b"http/1.1" in alpn_protocols
+        assert b"h2" not in alpn_protocols
 
     def test_connect_reconn(self) -> None:
         def proxy_ssl_one(listener: socket.socket) -> None:

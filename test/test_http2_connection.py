@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import socket
+import typing
 from unittest import mock
 
+import h2.events
 import pytest
 
 from urllib3.connection import _get_default_user_agent
@@ -17,6 +19,29 @@ from urllib3.http2.connection import (
 
 
 class TestHTTP2Connection:
+    def _streaming_response_conn(
+        self,
+        event_batches: list[list[h2.events.Event]],
+        *,
+        preload_content: bool = False,
+    ) -> HTTP2Connection:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(side_effect=[b"frame"] * len(event_batches)),
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._request_url = "/"
+        conn._h2_stream = 1
+        conn._preload_content = preload_content
+        conn._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[method-assign]
+            side_effect=event_batches
+        )
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        conn._h2_conn._obj.acknowledge_received_data = mock.Mock(  # type: ignore[method-assign]
+            return_value=None
+        )
+        return conn
+
     def test__is_legal_header_name(self) -> None:
         assert _is_legal_header_name(b"foo"), "foo"
         assert _is_legal_header_name(b"foo-bar"), "foo-bar"
@@ -80,10 +105,30 @@ class TestHTTP2Connection:
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
         assert conn.port == 443
 
+    def test_connect_sends_connection_preface(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(sendall=mock.Mock(return_value=None))
+        conn._h2_conn._obj.initiate_connection = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"preface")  # type: ignore[method-assign]
+
+        with mock.patch("urllib3.http2.connection.HTTPSConnection.connect"):
+            conn.connect()
+
+        conn._h2_conn._obj.initiate_connection.assert_called_once_with()
+        typing.cast(mock.Mock, conn.sock.sendall).assert_called_once_with(b"preface")
+
     def test_putheader(self) -> None:
         conn = HTTP2Connection("example.com")
         conn.putheader("foo", "bar")
         assert conn._headers == [(b"foo", b"bar")]
+
+    def test_putrequest_ipv6_authority(self) -> None:
+        conn = HTTP2Connection("[::1]")
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+
+        conn.putrequest("GET", "/")
+
+        assert (b":authority", b"[::1]:443") in conn._headers
 
     def test_request_putheader(self) -> None:
         conn = HTTP2Connection("example.com")
@@ -358,3 +403,443 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+    def test_getresponse_streaming_read(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200"), (b"content-length", b"9")],
+                    ),
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                ],
+                [
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"bar",
+                        flow_controlled_length=3,
+                    )
+                ],
+                [
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"baz",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+
+        assert response.status == 200
+        assert response.read(3) == b"foo"
+        assert typing.cast(mock.Mock, conn.sock.recv).call_count == 1
+        assert response.read(3) == b"bar"
+        assert response.read() == b"baz"
+        assert response.read() == b""
+        assert response.length_remaining == 0
+
+    def test_getresponse_without_request_errors(self) -> None:
+        conn = HTTP2Connection("example.com")
+
+        with pytest.raises(ConnectionError, match="Must call `putrequest` first"):
+            conn.getresponse()
+
+    def test_getresponse_empty_socket_before_headers_errors(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(return_value=b""),
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._h2_stream = 1
+
+        with pytest.raises(AssertionError):
+            conn.getresponse()
+
+    def test_getresponse_streaming_response_ends_with_initial_headers(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200"), (b"content-length", b"invalid")],
+                    ),
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"window")  # type: ignore[method-assign]
+
+        response = conn.getresponse()
+
+        assert response.length_remaining is None
+        assert response.read() == b"foo"
+        assert typing.cast(mock.Mock, conn.sock.recv).call_count == 1
+        typing.cast(mock.Mock, conn.sock.sendall).assert_called_with(b"window")
+
+    def test_getresponse_streaming_empty_socket_ends_body(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    )
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+        recv = typing.cast(mock.Mock, conn.sock.recv)
+        recv.side_effect = None
+        recv.return_value = b""
+
+        assert response.read() == b""
+
+    def test_getresponse_streaming_sends_flow_control_updates(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    )
+                ],
+                [
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"window")  # type: ignore[method-assign]
+
+        assert response.read(3) == b"foo"
+        typing.cast(mock.Mock, conn.sock.sendall).assert_called_with(b"window")
+
+    def test_getresponse_streaming_response_accessors(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+
+        assert response.url == "/"
+        response.url = "/changed"
+        assert response.url == "/changed"
+        response.get_redirect_location()
+        assert response.readable()
+        assert response.tell() == 0
+        response._read_next_event()
+
+    def test_getresponse_streaming_data_property_caches_body(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    )
+                ],
+                [
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    )
+                ],
+                [
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"bar",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+
+        assert response.data == b"foobar"
+        assert response.data == b"foobar"
+        assert typing.cast(mock.Mock, conn.sock.recv).call_count == 3
+
+    def test_getresponse_streaming_stream(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    ),
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                ],
+                [
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"bar",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+
+        assert list(response.stream(3)) == [b"foo", b"bar"]
+
+    def test_getresponse_preloads_body_by_default(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    ),
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                ],
+                [
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"bar",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ],
+            preload_content=True,
+        )
+
+        response = conn.getresponse()
+
+        assert response.data == b"foobar"
+        assert typing.cast(mock.Mock, conn.sock.recv).call_count == 2
+
+    def test_getresponse_streaming_read_variants(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    ),
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+
+        assert response.read(0) == b""
+        assert response._raw_read(0) == b""
+        assert response.read1(1) == b"f"
+        assert response.read(-1) == b"oo"
+        assert list(response.stream(0)) == []
+
+    def test_getresponse_streaming_read_decode_content_false(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    ),
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+
+        assert response.read(1, decode_content=False) == b"f"
+
+    def test_getresponse_streaming_read_chunked(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    ),
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+
+        assert list(response.read_chunked(2)) == [b"fo", b"o"]
+
+    def test_getresponse_streaming_drain_conn(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    )
+                ],
+                [
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+
+        response.drain_conn()
+        assert response.tell() == 3
+
+    def test_getresponse_streaming_close_connection_on_shutdown(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+        connection = mock.MagicMock()
+
+        response = conn.getresponse()
+        response._connection = connection
+        response.shutdown()
+
+        connection.close.assert_called_once_with()
+        assert response.connection is None
+
+    def test_getresponse_streaming_full_read_flushes_decoded_buffer(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    ),
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+        response._decoded_buffer.put(b"bar")
+
+        assert response.read() == b"barfoo"
+
+    def test_getresponse_streaming_decode_content_false_after_decoding_errors(
+        self,
+    ) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    ),
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+
+        response = conn.getresponse()
+        response._has_decoded_content = True
+
+        with pytest.raises(RuntimeError, match="decode_content=False"):
+            response.read(1, decode_content=False)
+
+    def test_getresponse_releases_connection_after_body_read(self) -> None:
+        conn = self._streaming_response_conn(
+            [
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1,
+                        headers=[(b":status", b"200")],
+                    )
+                ],
+                [
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"foo",
+                        flow_controlled_length=3,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+        pool = mock.MagicMock()
+
+        response = conn.getresponse()
+        response._pool = pool
+        response._connection = conn
+
+        assert response.read() == b"foo"
+        pool._put_conn.assert_called_once_with(conn)
+        assert response.connection is None
