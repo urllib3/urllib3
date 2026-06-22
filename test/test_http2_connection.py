@@ -1,19 +1,148 @@
 from __future__ import annotations
 
 import socket
+import threading
+import typing
 from unittest import mock
 
+import h2.config
+import h2.connection
 import pytest
 
+import urllib3
+import urllib3.http2
+from urllib3.connection import HTTPConnection as _HTTPConnection
 from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import ConnectionError
 from urllib3.http2.connection import (
+    HTTP2CleartextConnection,
     HTTP2Connection,
+    HTTP2UpgradeConnection,
     _is_illegal_header_value,
     _is_legal_header_name,
 )
 
 # [1] https://httpwg.org/specs/rfc9113.html#n-field-validity
+
+
+def start_h2c_server(
+    *,
+    upgrade: bool,
+    request_count: int = 1,
+) -> tuple[
+    socket.socket,
+    threading.Thread,
+    dict[str, typing.Any],
+    list[BaseException],
+    str,
+    int,
+]:
+    ready = threading.Event()
+    result: dict[str, typing.Any] = {"streams": []}
+    errors: list[BaseException] = []
+
+    def server(listener: socket.socket) -> None:
+        try:
+            ready.set()
+            conn, _ = listener.accept()
+            with conn:
+                h2_conn = h2.connection.H2Connection(
+                    config=h2.config.H2Configuration(client_side=False)
+                )
+
+                responses_sent = 0
+                pending_upgrade_response = False
+                if upgrade:
+                    request = b""
+                    while b"\r\n\r\n" not in request:
+                        request += conn.recv(4096)
+                    result["request"] = request
+
+                    settings = None
+                    for line in request.split(b"\r\n"):
+                        if line.lower().startswith(b"http2-settings:"):
+                            settings = line.split(b":", 1)[1].strip()
+                            break
+                    assert settings is not None
+
+                    conn.sendall(
+                        b"HTTP/1.1 101 Switching Protocols\r\n"
+                        b"Connection: Upgrade\r\n"
+                        b"Upgrade: h2c\r\n"
+                        b"\r\n"
+                    )
+
+                    h2_conn.initiate_upgrade_connection(settings)
+                    pending_upgrade_response = True
+                else:
+                    h2_conn.initiate_connection()
+                    conn.sendall(h2_conn.data_to_send())
+
+                while responses_sent < request_count:
+                    received_data = conn.recv(65535)
+                    if not received_data:
+                        break
+                    events = h2_conn.receive_data(received_data)
+                    if pending_upgrade_response:
+                        result["streams"].append(1)
+                        _send_h2_response(h2_conn, 1, responses_sent)
+                        responses_sent += 1
+                        pending_upgrade_response = False
+                    for event in events:
+                        if isinstance(event, h2.events.RequestReceived):
+                            result["streams"].append(event.stream_id)
+                            _send_h2_response(h2_conn, event.stream_id, responses_sent)
+                            responses_sent += 1
+                        elif isinstance(event, h2.events.DataReceived):
+                            h2_conn.acknowledge_received_data(
+                                event.flow_controlled_length, event.stream_id
+                            )
+                    if data_to_send := h2_conn.data_to_send():
+                        conn.sendall(data_to_send)
+
+                _drain_socket(conn)
+        except BaseException as e:
+            errors.append(e)
+
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    thread = threading.Thread(target=server, args=(listener,), daemon=True)
+    thread.start()
+    assert ready.wait(2)
+
+    host, port = listener.getsockname()
+    return listener, thread, result, errors, host, port
+
+
+def start_h2c_upgrade_server() -> tuple[
+    socket.socket,
+    threading.Thread,
+    dict[str, typing.Any],
+    list[BaseException],
+    str,
+    int,
+]:
+    return start_h2c_server(upgrade=True)
+
+
+def _send_h2_response(
+    h2_conn: h2.connection.H2Connection, stream_id: int, index: int
+) -> None:
+    body = f"ok{index}".encode()
+    h2_conn.send_headers(
+        stream_id,
+        [(":status", "200"), ("content-length", str(len(body)))],
+    )
+    h2_conn.send_data(stream_id, body, end_stream=True)
+
+
+def _drain_socket(conn: socket.socket) -> None:
+    conn.settimeout(0.5)
+    try:
+        conn.recv(65535)
+    except OSError:
+        pass
 
 
 class TestHTTP2Connection:
@@ -79,6 +208,26 @@ class TestHTTP2Connection:
         conn = HTTP2Connection("example.com")
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
         assert conn.port == 443
+
+    def test_cleartext_default_socket_options(self) -> None:
+        conn = HTTP2CleartextConnection("example.com")
+        assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
+        assert conn.port == 80
+
+    def test_cleartext_connect_uses_plain_http_connection(self) -> None:
+        conn = HTTP2CleartextConnection("example.com")
+        with (
+            mock.patch.object(
+                _HTTPConnection, "connect", autospec=True
+            ) as connect_mock,
+            mock.patch.object(
+                HTTP2CleartextConnection, "_start_http2_connection", autospec=True
+            ) as start_mock,
+        ):
+            conn.connect()
+
+        connect_mock.assert_called_once_with(conn)
+        start_mock.assert_called_once_with(conn)
 
     def test_putheader(self) -> None:
         conn = HTTP2Connection("example.com")
@@ -270,6 +419,282 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+    def test_cleartext_request_GET(self) -> None:
+        conn = HTTP2CleartextConnection("example.com")
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
+        sendall = conn.sock.sendall
+        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
+            return_value=None
+        )
+
+        conn.request("GET", "/")
+        conn.close()
+
+        data_to_send.assert_called_with()
+        sendall.assert_called_with(b"foo")
+        send_headers.assert_called_with(
+            stream_id=1,
+            headers=[
+                (b":scheme", b"http"),
+                (b":method", b"GET"),
+                (b":authority", b"example.com:80"),
+                (b":path", b"/"),
+                (b"user-agent", _get_default_user_agent().encode()),
+            ],
+            end_stream=True,
+        )
+
+        close_connection.assert_called_with()
+
+    def test_upgrade_request_GET(self) -> None:
+        conn = HTTP2UpgradeConnection("example.com")
+        conn.sock = mock.MagicMock(sendall=mock.Mock(return_value=None))
+        conn._h2_conn._obj.initiate_upgrade_connection = mock.Mock(  # type: ignore[method-assign]
+            return_value=b"settings"
+        )
+
+        conn.request("GET", "/", headers={"Foo": "bar"})
+
+        sent = b"".join(call.args[0] for call in conn.sock.sendall.call_args_list)
+        assert sent.startswith(b"GET / HTTP/1.1\r\n")
+        assert b"Host: example.com:80\r\n" in sent
+        assert b"Accept-Encoding: identity\r\n" in sent
+        assert b"User-Agent: python-urllib3/" in sent
+        assert b"Foo: bar\r\n" in sent
+        assert b"Connection: Upgrade, HTTP2-Settings\r\n" in sent
+        assert b"Upgrade: h2c\r\n" in sent
+        assert b"HTTP2-Settings: settings\r\n" in sent
+        assert conn._h2_stream == 1
+        assert conn._request_url == "/"
+
+    def test_upgrade_connect_uses_plain_http_connection(self) -> None:
+        conn = HTTP2UpgradeConnection("example.com")
+        with (
+            mock.patch.object(
+                _HTTPConnection, "connect", autospec=True
+            ) as connect_mock,
+            mock.patch.object(
+                HTTP2UpgradeConnection, "_start_http2_connection", autospec=True
+            ) as start_mock,
+        ):
+            conn.connect()
+
+        connect_mock.assert_called_once_with(conn)
+        start_mock.assert_not_called()
+
+    def test_upgrade_request_rejects_body(self) -> None:
+        conn = HTTP2UpgradeConnection("example.com")
+        with pytest.raises(NotImplementedError):
+            conn.request("POST", "/", body=b"body")
+
+    def test_upgrade_request_rejects_chunked_body(self) -> None:
+        conn = HTTP2UpgradeConnection("example.com")
+        with pytest.raises(NotImplementedError):
+            conn.request("POST", "/", chunked=True)
+
+    def test_upgrade_request_overrides_upgrade_headers_case_insensitively(
+        self,
+    ) -> None:
+        conn = HTTP2UpgradeConnection("example.com")
+        conn.sock = mock.MagicMock(sendall=mock.Mock(return_value=None))
+        conn._h2_conn._obj.initiate_upgrade_connection = mock.Mock(  # type: ignore[method-assign]
+            return_value=b"settings"
+        )
+
+        conn.request(
+            "GET",
+            "/",
+            headers={
+                "connection": "keep-alive",
+                "upgrade": "websocket",
+                "http2-settings": "old-settings",
+                "Host": "custom.example",
+                "Accept-Encoding": "gzip",
+                "User-Agent": "agent",
+            },
+        )
+
+        sent = b"".join(call.args[0] for call in conn.sock.sendall.call_args_list)
+        assert b"Connection: Upgrade, HTTP2-Settings\r\n" in sent
+        assert b"Upgrade: h2c\r\n" in sent
+        assert b"HTTP2-Settings: settings\r\n" in sent
+        assert b"connection: keep-alive\r\n" not in sent
+        assert b"upgrade: websocket\r\n" not in sent
+        assert b"http2-settings: old-settings\r\n" not in sent
+        assert b"Host: custom.example\r\n" in sent
+        assert b"Accept-Encoding: gzip\r\n" in sent
+        assert b"User-Agent: agent\r\n" in sent
+
+    def test_upgrade_getresponse_switches_to_http2(self) -> None:
+        conn = HTTP2UpgradeConnection("example.com")
+        conn.sock = mock.MagicMock()
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"preface")  # type: ignore[method-assign]
+        h1_response = mock.Mock(status=101)
+        h2_response = mock.Mock()
+
+        with (
+            mock.patch.object(
+                _HTTPConnection, "getresponse", autospec=True, return_value=h1_response
+            ) as h1_getresponse,
+            mock.patch.object(
+                HTTP2CleartextConnection,
+                "getresponse",
+                autospec=True,
+                return_value=h2_response,
+            ) as h2_getresponse,
+        ):
+            response = conn.getresponse()
+
+        assert response is h2_response
+        h1_getresponse.assert_called_once_with(conn)
+        h2_getresponse.assert_called_once_with(conn)
+        conn.sock.sendall.assert_called_once_with(b"preface")
+        assert conn._h2_upgrade_complete
+
+    def test_upgrade_getresponse_returns_http1_response_without_101(self) -> None:
+        conn = HTTP2UpgradeConnection("example.com")
+        conn.sock = mock.MagicMock()
+        h1_response = mock.Mock(status=200)
+        h2_conn = conn._h2_conn
+
+        with mock.patch.object(
+            _HTTPConnection, "getresponse", autospec=True, return_value=h1_response
+        ):
+            response = conn.getresponse()
+
+        assert response is h1_response
+        conn.sock.sendall.assert_not_called()
+        assert not conn._h2_upgrade_complete
+        assert conn._h2_stream is None
+        assert conn._headers == []
+        assert conn._h2_conn is not h2_conn
+
+    def test_upgrade_close_resets_upgrade_state(self) -> None:
+        conn = HTTP2UpgradeConnection("example.com")
+        conn._h2_upgrade_complete = True
+        conn.close()
+
+        assert not conn._h2_upgrade_complete
+
+    def test_upgrade_h2c_smoke(self) -> None:
+        listener, thread, result, errors, host, port = start_h2c_upgrade_server()
+        conn = HTTP2UpgradeConnection(host, port)
+        try:
+            conn.request("GET", "/")
+            response = conn.getresponse()
+        finally:
+            conn.close()
+            listener.close()
+            thread.join(2)
+
+        assert not thread.is_alive()
+        assert errors == []
+        assert response.status == 200
+        assert response.data == b"ok0"
+        assert result["request"].startswith(b"GET / HTTP/1.1\r\n")
+        assert b"Upgrade: h2c\r\n" in result["request"]
+        assert b"HTTP2-Settings:" in result["request"]
+
+    def test_upgrade_h2c_pool_smoke(self) -> None:
+        listener, thread, result, errors, host, port = start_h2c_upgrade_server()
+        try:
+            urllib3.http2.inject_into_urllib3(h2c="upgrade")
+            pool = urllib3.HTTPConnectionPool(
+                host,
+                port,
+                timeout=urllib3.Timeout(connect=2, read=2),
+                retries=False,
+            )
+            try:
+                response = pool.request("GET", "/")
+            finally:
+                pool.close()
+        finally:
+            urllib3.http2.extract_from_urllib3()
+            listener.close()
+            thread.join(2)
+
+        assert not thread.is_alive()
+        assert errors == []
+        assert response.status == 200
+        assert response.data == b"ok0"
+        assert result["request"].startswith(b"GET / HTTP/1.1\r\n")
+        assert b"Upgrade: h2c\r\n" in result["request"]
+        assert b"HTTP2-Settings:" in result["request"]
+
+    def test_cleartext_h2c_pool_reuses_connection(self) -> None:
+        listener, thread, result, errors, host, port = start_h2c_server(
+            upgrade=False, request_count=2
+        )
+        try:
+            urllib3.http2.inject_into_urllib3(h2c=True)
+            pool = urllib3.HTTPConnectionPool(
+                host,
+                port,
+                timeout=urllib3.Timeout(connect=2, read=2),
+                retries=False,
+            )
+            try:
+                first = pool.request("GET", "/")
+                second = pool.request("GET", "/again")
+                num_connections = pool.num_connections
+            finally:
+                pool.close()
+        finally:
+            urllib3.http2.extract_from_urllib3()
+            listener.close()
+            thread.join(2)
+
+        assert not thread.is_alive()
+        assert errors == []
+        assert first.status == 200
+        assert first.data == b"ok0"
+        assert second.status == 200
+        assert second.data == b"ok1"
+        assert num_connections == 1
+        assert result["streams"] == [1, 3]
+
+    def test_upgrade_h2c_pool_reuses_connection(self) -> None:
+        listener, thread, result, errors, host, port = start_h2c_server(
+            upgrade=True, request_count=2
+        )
+        try:
+            urllib3.http2.inject_into_urllib3(h2c="upgrade")
+            pool = urllib3.HTTPConnectionPool(
+                host,
+                port,
+                timeout=urllib3.Timeout(connect=2, read=2),
+                retries=False,
+            )
+            try:
+                first = pool.request("GET", "/")
+                second = pool.request("GET", "/again")
+                num_connections = pool.num_connections
+            finally:
+                pool.close()
+        finally:
+            urllib3.http2.extract_from_urllib3()
+            listener.close()
+            thread.join(2)
+
+        assert not thread.is_alive()
+        assert errors == []
+        assert first.status == 200
+        assert first.data == b"ok0"
+        assert second.status == 200
+        assert second.data == b"ok1"
+        assert num_connections == 1
+        assert result["streams"] == [1, 3]
+        assert result["request"].startswith(b"GET / HTTP/1.1\r\n")
+        assert b"Upgrade: h2c\r\n" in result["request"]
+        assert b"HTTP2-Settings:" in result["request"]
 
     def test_request_POST(self) -> None:
         conn = HTTP2Connection("example.com")
