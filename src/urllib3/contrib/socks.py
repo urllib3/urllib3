@@ -61,6 +61,7 @@ import typing
 from socket import timeout as SocketTimeout
 from urllib.parse import unquote
 
+from .._typing import _TYPE_HEADERS
 from ..connection import HTTPConnection, HTTPSConnection
 from ..connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from ..exceptions import ConnectTimeoutError, NewConnectionError
@@ -188,7 +189,7 @@ class SOCKSProxyManager(PoolManager):
         username: str | None = None,
         password: str | None = None,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
         **connection_pool_kw: typing.Any,
     ):
         parsed = parse_url(proxy_url)
