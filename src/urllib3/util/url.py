@@ -149,7 +149,7 @@ class Url(
         username, password = self.auth_decoded
         if username is None:
             return None
-        return f"{username}:{password or ""}"
+        return f"{username}:{password or ''}"
 
     @property
     def hostname(self) -> str | None:
