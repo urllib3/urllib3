@@ -467,12 +467,16 @@ class TestUtil:
     ) -> None:
         parsed_url = parse_url(url)
         assert parsed_url.auth_decoded == expected_auth_decoded
-        if expected_auth_decoded == (None, None):
+        username, password = expected_auth_decoded
+        if username is None and password is None:
             assert parsed_url.auth_decoded_joined is None
+        elif password is None:
+            # There is no distinction between an empty password and no
+            # password in the Basic authentication according to RFC 7617,
+            # so the colon is always included.
+            assert parsed_url.auth_decoded_joined == f"{username}:"
         else:
-            assert parsed_url.auth_decoded_joined == ":".join(
-                [part for part in expected_auth_decoded if part is not None]
-            )
+            assert parsed_url.auth_decoded_joined == f"{username}:{password}"
 
     url_vulnerabilities = [
         # urlparse doesn't follow RFC 3986 Section 3.2

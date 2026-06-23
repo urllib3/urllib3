@@ -142,18 +142,14 @@ class Url(
 
         This is a convenience property that joins the username and
         password with a colon, if both are present.
-        If only the username is present, it returns just the username.
+        If only the username is present, a trailing colon is still
+        appended.
         If ``auth`` is ``None``, this returns ``None``.
-
-        It is not checked if the username or password contains a colon,
-        so this property may not be suitable for all use cases.
         """
         username, password = self.auth_decoded
         if username is None:
             return None
-        if password is None:
-            return username
-        return f"{username}:{password}"
+        return f"{username}:{password or ""}"
 
     @property
     def hostname(self) -> str | None:
