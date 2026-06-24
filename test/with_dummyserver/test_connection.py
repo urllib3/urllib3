@@ -167,7 +167,7 @@ def test_invalid_tunnel_headers(
     conn = pool._get_conn()
     conn.set_tunnel("tunnel", headers={name: value})
     with pytest.raises(ValueError, match="Invalid header"):
-        conn._tunnel()
+        conn.connect()
     conn.close()
 
 
@@ -187,7 +187,7 @@ def test_invalid_tunnel_host(pool: HTTPConnectionPool, tunnel_host: str) -> None
     with pytest.raises(
         ValueError, match="Tunnel host can't contain control characters"
     ):
-        conn._tunnel()
+        conn.connect()
     conn.close()
 
 
