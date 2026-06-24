@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import sys
 import typing
 from http.client import ResponseNotReady
 from unittest import mock
@@ -10,6 +11,19 @@ import pytest
 from dummyserver.testcase import HypercornDummyServerTestCase as server
 from urllib3 import HTTPConnectionPool
 from urllib3.response import HTTPResponse
+
+# See https://github.com/python/cpython/issues/146211
+# Control character validation in tunnel is missing on:
+# - Python 3.11 (all versions)
+# - Python 3.12 before 3.12.14
+# - Python 3.13 before 3.13.14
+# - Python 3.14 before 3.14.5
+_MISSING_TUNNEL_CONTROL_CHAR_FIX = (
+    sys.version_info[:2] == (3, 11)
+    or (sys.version_info[:2] == (3, 12) and sys.version_info[2] < 14)
+    or (sys.version_info[:2] == (3, 13) and sys.version_info[2] < 14)
+    or (sys.version_info[:2] == (3, 14) and sys.version_info[2] < 5)
+)
 
 
 @pytest.fixture()
@@ -161,6 +175,10 @@ def test_invalid_tunnel_scheme(pool: HTTPConnectionPool) -> None:
         ("ValidName", "InvalidValue\n"),
     ],
 )
+@pytest.mark.xfail(
+    _MISSING_TUNNEL_CONTROL_CHAR_FIX,
+    reason="Control characters in tunnel headers not rejected in older Python versions",
+)
 def test_invalid_tunnel_headers(
     pool: HTTPConnectionPool, name: str, value: str
 ) -> None:
@@ -180,6 +198,10 @@ def test_invalid_tunnel_headers(
         "invalid.host\x00",
         "invalid host",
     ],
+)
+@pytest.mark.xfail(
+    _MISSING_TUNNEL_CONTROL_CHAR_FIX,
+    reason="Control characters in tunnel host not rejected in older Python versions",
 )
 def test_invalid_tunnel_host(pool: HTTPConnectionPool, tunnel_host: str) -> None:
     conn = pool._get_conn()
