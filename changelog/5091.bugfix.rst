@@ -1,0 +1,2 @@
+Added safeguards to the proxy tunneling code to prevent potential security issues when handling invalid characters in the proxy host and HTTP headers.
+This change affects users of Python 3.10; those on other versions should upgrade to the latest patch releases of supported Python versions to get the same security fixes (CPython 3.13.14+ and 3.14.5+ are patched; fixes for CPython 3.11 and 3.12 are pending).

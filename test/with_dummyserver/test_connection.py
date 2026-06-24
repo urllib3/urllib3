@@ -140,6 +140,57 @@ def test_invalid_tunnel_scheme(pool: HTTPConnectionPool) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "name,value",
+    [
+        ("Invalid\r\nName", "ValidValue"),
+        ("Invalid\rName", "ValidValue"),
+        ("Invalid\nName", "ValidValue"),
+        ("\r\nInvalidName", "ValidValue"),
+        ("\rInvalidName", "ValidValue"),
+        ("\nInvalidName", "ValidValue"),
+        (" InvalidName", "ValidValue"),
+        ("\tInvalidName", "ValidValue"),
+        ("Invalid:Name", "ValidValue"),
+        (":InvalidName", "ValidValue"),
+        ("ValidName", "Invalid\r\nValue"),
+        ("ValidName", "Invalid\rValue"),
+        ("ValidName", "Invalid\nValue"),
+        ("ValidName", "InvalidValue\r\n"),
+        ("ValidName", "InvalidValue\r"),
+        ("ValidName", "InvalidValue\n"),
+    ],
+)
+def test_invalid_tunnel_headers(
+    pool: HTTPConnectionPool, name: str, value: str
+) -> None:
+    conn = pool._get_conn()
+    conn.set_tunnel("tunnel", headers={name: value})
+    with pytest.raises(ValueError, match="Invalid header"):
+        conn._tunnel()
+    conn.close()
+
+
+@pytest.mark.parametrize(
+    "tunnel_host",
+    [
+        "invalid\r.host",
+        "\ninvalid.host",
+        "invalid.host\r\n",
+        "invalid.host\x00",
+        "invalid host",
+    ],
+)
+def test_invalid_tunnel_host(pool: HTTPConnectionPool, tunnel_host: str) -> None:
+    conn = pool._get_conn()
+    conn.set_tunnel(tunnel_host)
+    with pytest.raises(
+        ValueError, match="Tunnel host can't contain control characters"
+    ):
+        conn._tunnel()
+    conn.close()
+
+
 def test_response_after_drain_conn(pool: HTTPConnectionPool) -> None:
     """
     Test that a connection can be reused after calling `drain_conn` on
