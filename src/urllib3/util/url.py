@@ -143,6 +143,12 @@ class Url(
         User information with %-escapes decoded as UTF-8, as a string
         prepared for encoding into an 'authorization: basic ...' header.
 
+        This property does not choose the encoding used for an
+        'authorization: basic ...' header. Use the ``basic_auth_encoding`` or
+        ``proxy_basic_auth_encoding`` parameters of
+        :func:`urllib3.util.make_headers` when converting the returned string
+        into Basic authentication bytes.
+
         This is a convenience property that joins the username and
         password with a colon, if both are present.
         If only the username is present, a trailing colon is still
