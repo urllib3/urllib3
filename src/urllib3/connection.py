@@ -261,7 +261,7 @@ class HTTPConnection(_HTTPConnection):
             # `_tunnel` copied from 3.11.15 backporting
             # https://github.com/python/cpython/commit/0d4026432591d43185568dd31cef6a034c4b9261
             # and https://github.com/python/cpython/commit/6fbc61070fda2ffb8889e77e3b24bca4249ab4d1
-            # plus a fix from https://github.com/python/cpython/pull/148351
+            # plus a fix from https://github.com/python/cpython/commit/56b7100b04e44ea27989242b176beb8f016b2c53
             def _tunnel(self) -> None:
                 if self._contains_disallowed_url_pchar_re.search(self._tunnel_host):  # type: ignore[arg-type]
                     raise ValueError(

@@ -20,8 +20,12 @@ from urllib3.response import HTTPResponse
 # - Python < 3.11.9
 # - Python 3.12 < 3.12.3
 _MISSING_TUNNEL_CONTROL_CHAR_FIX = (
-    # 3.11.9+ missing fix (3.11.0-3.11.8 have the ported implementation)
-    (sys.version_info[:2] == (3, 11) and sys.version_info[2] >= 9)
+    # 3.11.9+ before 3.11.16 missing fix (3.11.0-3.11.8 have the ported implementation)
+    (
+        sys.version_info[:2] == (3, 11)
+        and sys.version_info[2] >= 9
+        and sys.version_info[2] < 16
+    )
     # 3.12.3+ before 3.12.14 missing fix (3.12.0-3.12.2 have the ported implementation)
     or (
         sys.version_info[:2] == (3, 12)
