@@ -13,27 +13,11 @@ from urllib3 import HTTPConnectionPool
 from urllib3.response import HTTPResponse
 
 # See https://github.com/python/cpython/issues/146211
-# Control character validation in tunnel is missing on Python versions where:
-# 1. The Python stdlib version itself lacks the fix
-# 2. urllib3 doesn't have a ported _tunnel implementation (see connection.py)
-# We have ported fixed implementations for:
-# - Python < 3.11.9
-# - Python 3.12 < 3.12.3
+# Xfail only on Python versions where neither the stdlib nor urllib3's
+# compatibility _tunnel implementation rejects invalid tunnel input.
 _MISSING_TUNNEL_CONTROL_CHAR_FIX = (
-    # 3.11.9+ before 3.11.16 missing fix (3.11.0-3.11.8 have the ported implementation)
-    (
-        sys.version_info[:2] == (3, 11)
-        and sys.version_info[2] >= 9
-        and sys.version_info[2] < 16
-    )
-    # 3.12.3+ before 3.12.14 missing fix (3.12.0-3.12.2 have the ported implementation)
-    or (
-        sys.version_info[:2] == (3, 12)
-        and sys.version_info[2] >= 3
-        and sys.version_info[2] < 14
-    )
     # 3.13 before 3.13.14 missing fix (no ported implementation for this version)
-    or (sys.version_info[:2] == (3, 13) and sys.version_info[2] < 14)
+    (sys.version_info[:2] == (3, 13) and sys.version_info[2] < 14)
     # 3.14 before 3.14.5 missing fix (no ported implementation for this version)
     or (sys.version_info[:2] == (3, 14) and sys.version_info[2] < 5)
 )

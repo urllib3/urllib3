@@ -242,9 +242,10 @@ class HTTPConnection(_HTTPConnection):
         super().set_tunnel(host, port=port, headers=headers)
         self._tunnel_scheme = scheme
 
-    if sys.version_info < (3, 11, 9) or ((3, 12) <= sys.version_info < (3, 12, 3)):
+    if sys.version_info < (3, 11, 16) or ((3, 12) <= sys.version_info < (3, 12, 14)):
         # Taken from python/cpython#100986 which was backported in 3.11.9 and 3.12.3.
         # When using connection_from_host, host will come without brackets.
+        # With a security patch from python/cpython#146211.
         def _wrap_ipv6(self, ip: bytes) -> bytes:
             if b":" in ip and ip[0] != b"["[0]:
                 return b"[" + ip + b"]"
@@ -257,7 +258,7 @@ class HTTPConnection(_HTTPConnection):
         )
         _contains_disallowed_url_pchar_re = re.compile("[\x00-\x20\x7f]")
 
-        if sys.version_info < (3, 11, 9):
+        if sys.version_info < (3, 11, 16):
             # `_tunnel` copied from 3.11.15 backporting
             # https://github.com/python/cpython/commit/0d4026432591d43185568dd31cef6a034c4b9261
             # and https://github.com/python/cpython/commit/6fbc61070fda2ffb8889e77e3b24bca4249ab4d1
@@ -313,7 +314,7 @@ class HTTPConnection(_HTTPConnection):
                 finally:
                     response.close()
 
-        elif (3, 12) <= sys.version_info < (3, 12, 3):
+        elif (3, 12) <= sys.version_info < (3, 12, 14):
             # `_tunnel` copied from 3.12.13 backporting
             # https://github.com/python/cpython/commit/23aef575c7629abcd4aaf028ebd226fb41a4b3c8
             # plus a fix from https://github.com/python/cpython/commit/c00c386faa579ad71196d33408644478488e43ec
