@@ -884,25 +884,32 @@ class HTTPSConnection(HTTPConnection):
         proxy_config = typing.cast(ProxyConfig, self.proxy_config)
         ssl_context = proxy_config.ssl_context
 
+        cert_reqs: int | str | None
         if ssl_context is not None:
             # Prefer the proxy's cert policy for the proxy connection
             cert_reqs = ssl_context.verify_mode
             ca_certs = None
             ca_cert_dir = None
             ca_cert_data = None
+            ssl_version = None
+            ssl_minimum_version = None
+            ssl_maximum_version = None
         else:
             # Otherwise we inherit the pool's cert policies
             cert_reqs = self.cert_reqs
             ca_certs = self.ca_certs
             ca_cert_dir = self.ca_cert_dir
             ca_cert_data = self.ca_cert_data
+            ssl_version = self.ssl_version
+            ssl_minimum_version = self.ssl_minimum_version
+            ssl_maximum_version = self.ssl_maximum_version
 
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
             cert_reqs=cert_reqs,
-            ssl_version=self.ssl_version,
-            ssl_minimum_version=self.ssl_minimum_version,
-            ssl_maximum_version=self.ssl_maximum_version,
+            ssl_version=ssl_version,
+            ssl_minimum_version=ssl_minimum_version,
+            ssl_maximum_version=ssl_maximum_version,
             ca_certs=ca_certs,
             ca_cert_dir=ca_cert_dir,
             ca_cert_data=ca_cert_data,
