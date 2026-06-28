@@ -921,10 +921,11 @@ class TestHTTPSProxyVerification:
         destination_url = f"https://{server.host}:{server.port}"
 
         proxy_ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
+        proxy_ctx.load_verify_locations(proxy.ca_certs)
         proxy_fingerprint = self._get_proxy_fingerprint_md5(proxy.ca_certs)
         with proxy_from_url(
             proxy_url,
-            ca_certs=proxy.ca_certs,
+            ca_certs=server.ca_certs,
             proxy_ssl_context=proxy_ctx,
             proxy_assert_fingerprint=proxy_fingerprint,
         ) as https:
@@ -938,13 +939,14 @@ class TestHTTPSProxyVerification:
         destination_url = f"https://{server.host}:{server.port}"
 
         proxy_ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
+        proxy_ctx.load_verify_locations(proxy.ca_certs)
         proxy_fingerprint = self._get_proxy_fingerprint_md5(proxy.ca_certs)
         new_char = "b" if proxy_fingerprint[5] == "a" else "a"
         proxy_fingerprint = proxy_fingerprint[:5] + new_char + proxy_fingerprint[6:]
 
         with proxy_from_url(
             proxy_url,
-            ca_certs=proxy.ca_certs,
+            ca_certs=server.ca_certs,
             proxy_ssl_context=proxy_ctx,
             proxy_assert_fingerprint=proxy_fingerprint,
         ) as https:
@@ -1064,6 +1066,7 @@ class TestHTTPSProxyVerification:
         destination_url = f"https://{server.host}:{server.port}"
 
         proxy_ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
+        proxy_ctx.load_verify_locations(proxy.ca_certs)
         try:
             proxy_ctx.hostname_checks_common_name = True
         # PyPy doesn't like us setting 'hostname_checks_common_name'
@@ -1074,6 +1077,6 @@ class TestHTTPSProxyVerification:
             pytest.skip("Test requires 'SSLContext.hostname_checks_common_name=True'")
 
         with proxy_from_url(
-            proxy_url, ca_certs=proxy.ca_certs, proxy_ssl_context=proxy_ctx
+            proxy_url, ca_certs=server.ca_certs, proxy_ssl_context=proxy_ctx
         ) as https:
             https.request("GET", destination_url)
