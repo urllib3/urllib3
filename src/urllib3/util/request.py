@@ -103,6 +103,10 @@ def make_headers(
         Defaults to "latin-1" for backward compatibility. Use "utf-8" only
         when the peer expects UTF-8 Basic authentication credentials.
 
+        Must contain decoded credentials (not percent-encoded).
+        For URLs parsed with :func:`parse_url`, use :attr:`Url.auth_decoded_joined`
+        to get the properly formatted string.
+
     :param proxy_basic_auth:
         Colon-separated username:password string for 'proxy-authorization: basic ...'
         auth header. Basic authentication transmits Base64-encoded bytes, not
@@ -118,6 +122,10 @@ def make_headers(
         encoding. Defaults to "latin-1" for backward compatibility. Use
         "utf-8" only when the proxy expects UTF-8 Basic authentication
         credentials.
+
+        Must contain decoded credentials (not percent-encoded).
+        For URLs parsed with :func:`parse_url`, use :attr:`Url.auth_decoded_joined`
+        to get the properly formatted string.
 
     :param disable_cache:
         If ``True``, adds 'cache-control: no-cache' header.
