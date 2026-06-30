@@ -1,0 +1,3 @@
+Made ``parse_url`` reject control characters and spaces in the URL host
+instead of returning them unchanged, matching how the other URL components
+already percent-encode these characters.
