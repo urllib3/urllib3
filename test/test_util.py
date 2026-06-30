@@ -623,9 +623,47 @@ class TestUtil:
             ({"user_agent": "banana"}, {"user-agent": "banana"}),
             ({"keep_alive": True}, {"connection": "keep-alive"}),
             ({"basic_auth": "foo:bar"}, {"authorization": "Basic Zm9vOmJhcg=="}),
+            ({"basic_auth": "user:passé"}, {"authorization": "Basic dXNlcjpwYXNz6Q=="}),
+            (
+                {"basic_auth": "user:passé", "basic_auth_encoding": "utf-8"},
+                {"authorization": "Basic dXNlcjpwYXNzw6k="},
+            ),
             (
                 {"proxy_basic_auth": "foo:bar"},
                 {"proxy-authorization": "Basic Zm9vOmJhcg=="},
+            ),
+            (
+                {"proxy_basic_auth": "proxy:passé"},
+                {"proxy-authorization": "Basic cHJveHk6cGFzc+k="},
+            ),
+            (
+                {
+                    "proxy_basic_auth": "proxy:passé",
+                    "proxy_basic_auth_encoding": "utf-8",
+                },
+                {"proxy-authorization": "Basic cHJveHk6cGFzc8Op"},
+            ),
+            (
+                {
+                    "basic_auth": "user:passé",
+                    "proxy_basic_auth": "proxy:passé",
+                    "basic_auth_encoding": "utf-8",
+                },
+                {
+                    "authorization": "Basic dXNlcjpwYXNzw6k=",
+                    "proxy-authorization": "Basic cHJveHk6cGFzc+k=",
+                },
+            ),
+            (
+                {
+                    "basic_auth": "user:passé",
+                    "proxy_basic_auth": "proxy:passé",
+                    "proxy_basic_auth_encoding": "utf-8",
+                },
+                {
+                    "authorization": "Basic dXNlcjpwYXNz6Q==",
+                    "proxy-authorization": "Basic cHJveHk6cGFzc8Op",
+                },
             ),
             ({"disable_cache": True}, {"cache-control": "no-cache"}),
         ],
@@ -634,6 +672,24 @@ class TestUtil:
         self, kwargs: dict[str, bool | str], expected: dict[str, str]
     ) -> None:
         assert make_headers(**kwargs) == expected  # type: ignore[arg-type]
+
+    def test_make_headers_basic_auth_encoding_error(self) -> None:
+        with pytest.raises(UnicodeEncodeError):
+            make_headers(basic_auth="ім'я:пароль")
+
+    def test_make_headers_basic_auth_utf8_allows_non_latin1(self) -> None:
+        assert make_headers(basic_auth="ім'я:пароль", basic_auth_encoding="utf-8") == {
+            "authorization": "Basic 0ZbQvCfRjzrQv9Cw0YDQvtC70Yw="
+        }
+
+    def test_make_headers_proxy_basic_auth_encoding_error(self) -> None:
+        with pytest.raises(UnicodeEncodeError):
+            make_headers(proxy_basic_auth="ім'я:пароль")
+
+    def test_make_headers_proxy_basic_auth_utf8_allows_non_latin1(self) -> None:
+        assert make_headers(
+            proxy_basic_auth="ім'я:пароль", proxy_basic_auth_encoding="utf-8"
+        ) == {"proxy-authorization": "Basic 0ZbQvCfRjzrQv9Cw0YDQvtC70Yw="}
 
     def test_rewind_body(self) -> None:
         body = io.BytesIO(b"test data")
