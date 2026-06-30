@@ -8,6 +8,7 @@ import sys
 import typing
 import warnings
 from binascii import unhexlify
+from weakref import WeakKeyDictionary
 
 from ..exceptions import ProxySchemeUnsupported, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
@@ -360,6 +361,45 @@ def ssl_wrap_socket(
 ) -> ssl.SSLSocket | SSLTransportType: ...
 
 
+_VerifyLocations = tuple[str | None, str | None, str | bytes | None]
+_context_verify_locations_cache: WeakKeyDictionary[
+    typing.Any, set[_VerifyLocations]
+] = WeakKeyDictionary()
+
+
+def _load_verify_locations_once(
+    context: ssl.SSLContext,
+    ca_certs: str | None,
+    ca_cert_dir: str | None,
+    ca_cert_data: str | bytes | None,
+) -> None:
+    verify_locations = (ca_certs, ca_cert_dir, ca_cert_data)
+
+    try:
+        loaded_verify_locations = _context_verify_locations_cache.setdefault(
+            context, set()
+        )
+    except TypeError:
+        # Fall back for custom SSLContext implementations that don't support
+        # weak references.
+        try:
+            context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
+        except OSError as e:
+            raise SSLError(e) from e
+
+        return
+
+    if verify_locations in loaded_verify_locations:
+        return
+
+    try:
+        context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
+    except OSError as e:
+        raise SSLError(e) from e
+
+    loaded_verify_locations.add(verify_locations)
+
+
 def ssl_wrap_socket(
     sock: socket.socket,
     keyfile: str | None = None,
@@ -407,11 +447,7 @@ def ssl_wrap_socket(
         context = create_urllib3_context(ssl_version, cert_reqs, ciphers=ciphers)
 
     if ca_certs or ca_cert_dir or ca_cert_data:
-        try:
-            context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
-        except OSError as e:
-            raise SSLError(e) from e
-
+        _load_verify_locations_once(context, ca_certs, ca_cert_dir, ca_cert_data)
     elif ssl_context is None and hasattr(context, "load_default_certs"):
         # try to load OS default certs; works well on Windows.
         context.load_default_certs()

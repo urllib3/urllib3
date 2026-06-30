@@ -1254,6 +1254,39 @@ class TestUtilSSL:
             "/path/to/pem", None, None
         )
 
+    def test_ssl_wrap_socket_loads_verify_locations_once_per_context(self) -> None:
+        socket = Mock()
+        loaded_verify_locations = []
+
+        class Context:
+            def load_verify_locations(self, *args: object) -> None:
+                loaded_verify_locations.append(args)
+
+            def set_alpn_protocols(self, protocols: object) -> None:
+                pass
+
+            def wrap_socket(self, *args: object, **kwargs: object) -> Mock:
+                return Mock()
+
+        context = Context()
+
+        ssl_wrap_socket(ssl_context=context, ca_certs="/path/to/pem", sock=socket)
+        ssl_wrap_socket(ssl_context=context, ca_certs="/path/to/pem", sock=socket)
+
+        assert loaded_verify_locations == [("/path/to/pem", None, None)]
+
+    def test_ssl_wrap_socket_loads_distinct_verify_locations(self) -> None:
+        socket = Mock()
+        mock_context = Mock()
+
+        ssl_wrap_socket(ssl_context=mock_context, ca_certs="/path/to/one", sock=socket)
+        ssl_wrap_socket(ssl_context=mock_context, ca_certs="/path/to/two", sock=socket)
+
+        assert mock_context.load_verify_locations.call_args_list == [
+            mock.call("/path/to/one", None, None),
+            mock.call("/path/to/two", None, None),
+        ]
+
     def test_ssl_wrap_socket_loads_certificate_directories(self) -> None:
         socket = Mock()
         mock_context = Mock()
