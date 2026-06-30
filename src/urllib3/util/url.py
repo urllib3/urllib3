@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import typing
 from functools import partial
+from urllib.parse import unquote as _unquote
 
 from ..exceptions import LocationParseError
 from .util import to_str
@@ -100,6 +101,10 @@ class Url(
     Data structure for representing an HTTP URL. Used as a return value for
     :func:`parse_url`. Both the scheme and host are normalized as they are
     both case-insensitive according to RFC 3986.
+
+    :param auth: User information as defined in RFC 3986 3.2.1. This
+        component is kept percent-encoded. Use :attr:`auth_decoded` or
+        :attr:`auth_decoded_joined` to get the decoded form.
     """
 
     def __new__(  # type: ignore[no-untyped-def]
@@ -117,6 +122,46 @@ class Url(
         if scheme is not None:
             scheme = scheme.lower()
         return super().__new__(cls, scheme, auth, host, port, path, query, fragment)
+
+    @property
+    def auth_decoded(self) -> tuple[None, None] | tuple[str, str | None]:
+        """
+        User information with %-escapes decoded as UTF-8, returned as a
+        ``(username, password)`` tuple.
+
+        Both values are ``None`` if ``auth`` is ``None``.
+        ``password`` is ``None`` if not present in the auth component.
+        """
+        if self.auth is None:
+            return None, None
+        username, sep, password = self.auth.partition(":")
+        return (
+            _unquote(username, encoding="utf-8"),
+            _unquote(password, encoding="utf-8") if sep else None,
+        )
+
+    @property
+    def auth_decoded_joined(self) -> str | None:
+        """
+        User information with %-escapes decoded as UTF-8, as a string
+        prepared for encoding into an 'authorization: basic ...' header.
+
+        This property does not choose the encoding used for an
+        'authorization: basic ...' header. Use the ``basic_auth_encoding`` or
+        ``proxy_basic_auth_encoding`` parameters of
+        :func:`urllib3.util.make_headers` when converting the returned string
+        into Basic authentication bytes.
+
+        This is a convenience property that joins the username and
+        password with a colon, if both are present.
+        If only the username is present, a trailing colon is still
+        appended.
+        If ``auth`` is ``None``, this returns ``None``.
+        """
+        username, password = self.auth_decoded
+        if username is None:
+            return None
+        return f"{username}:{password or ''}"
 
     @property
     def hostname(self) -> str | None:

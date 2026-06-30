@@ -560,6 +560,55 @@ class TestUtil:
     def test_netloc(self, url: str, expected_netloc: str | None) -> None:
         assert parse_url(url).netloc == expected_netloc
 
+    url_auth_decoded_map: list[tuple[str, tuple[str | None, str | None]]] = [
+        # Basic username and password
+        ("http://foo:bar@example.com/", ("foo", "bar")),
+        ("http://foo@example.com/", ("foo", None)),
+        ("http://foo:@example.com/", ("foo", "")),
+        # Unreserved chars (not encoded): - . _ ~
+        ("http://user-name:pass_word@example.com/", ("user-name", "pass_word")),
+        ("http://user.name:pass~word@example.com/", ("user.name", "pass~word")),
+        # Sub-delims (not encoded): ! $ & ' ( ) * + , ; =
+        ("http://user!id:pass$word@example.com/", ("user!id", "pass$word")),
+        ("http://user&co:pass'word@example.com/", ("user&co", "pass'word")),
+        ("http://user(test):pass*word@example.com/", ("user(test)", "pass*word")),
+        ("http://user+id:pass,word@example.com/", ("user+id", "pass,word")),
+        ("http://user;id:pass=word@example.com/", ("user;id", "pass=word")),
+        # Encoded colon in username, unencoded colon in password
+        ("http://user%3Aname:pass:word@example.com/", ("user:name", "pass:word")),
+        # Percent-encoded credentials (unreserved chars: - . _ ~)
+        ("http://user%2Dname:pass%2Eword@example.com/", ("user-name", "pass.word")),
+        # Percent-encoded credentials (reserved/special chars)
+        ("http://user%40email:pass%2Fword@example.com/", ("user@email", "pass/word")),
+        ("http://user%20space:pass%3Acolon@example.com/", ("user space", "pass:colon")),
+        # Multiple @ signs (@ is percent-encoded in username part)
+        (
+            "http://user%40email.com:password@example.com/",
+            ("user@email.com", "password"),
+        ),
+        # Special characters already percent-encoded
+        ("http://user%22:quoted@example.com/", ('user"', "quoted")),
+        # No auth
+        ("http://example.com/", (None, None)),
+    ]
+
+    @pytest.mark.parametrize("url, expected_auth_decoded", url_auth_decoded_map)
+    def test_auth_decoded(
+        self, url: str, expected_auth_decoded: tuple[str | None, str | None]
+    ) -> None:
+        parsed_url = parse_url(url)
+        assert parsed_url.auth_decoded == expected_auth_decoded
+        username, password = expected_auth_decoded
+        if username is None and password is None:
+            assert parsed_url.auth_decoded_joined is None
+        elif password is None:
+            # There is no distinction between an empty password and no
+            # password in the Basic authentication according to RFC 7617,
+            # so the colon is always included.
+            assert parsed_url.auth_decoded_joined == f"{username}:"
+        else:
+            assert parsed_url.auth_decoded_joined == f"{username}:{password}"
+
     url_vulnerabilities = [
         # urlparse doesn't follow RFC 3986 Section 3.2
         (
@@ -705,9 +754,47 @@ class TestUtil:
             ({"user_agent": "banana"}, {"user-agent": "banana"}),
             ({"keep_alive": True}, {"connection": "keep-alive"}),
             ({"basic_auth": "foo:bar"}, {"authorization": "Basic Zm9vOmJhcg=="}),
+            ({"basic_auth": "user:passé"}, {"authorization": "Basic dXNlcjpwYXNz6Q=="}),
+            (
+                {"basic_auth": "user:passé", "basic_auth_encoding": "utf-8"},
+                {"authorization": "Basic dXNlcjpwYXNzw6k="},
+            ),
             (
                 {"proxy_basic_auth": "foo:bar"},
                 {"proxy-authorization": "Basic Zm9vOmJhcg=="},
+            ),
+            (
+                {"proxy_basic_auth": "proxy:passé"},
+                {"proxy-authorization": "Basic cHJveHk6cGFzc+k="},
+            ),
+            (
+                {
+                    "proxy_basic_auth": "proxy:passé",
+                    "proxy_basic_auth_encoding": "utf-8",
+                },
+                {"proxy-authorization": "Basic cHJveHk6cGFzc8Op"},
+            ),
+            (
+                {
+                    "basic_auth": "user:passé",
+                    "proxy_basic_auth": "proxy:passé",
+                    "basic_auth_encoding": "utf-8",
+                },
+                {
+                    "authorization": "Basic dXNlcjpwYXNzw6k=",
+                    "proxy-authorization": "Basic cHJveHk6cGFzc+k=",
+                },
+            ),
+            (
+                {
+                    "basic_auth": "user:passé",
+                    "proxy_basic_auth": "proxy:passé",
+                    "proxy_basic_auth_encoding": "utf-8",
+                },
+                {
+                    "authorization": "Basic dXNlcjpwYXNz6Q==",
+                    "proxy-authorization": "Basic cHJveHk6cGFzc8Op",
+                },
             ),
             ({"disable_cache": True}, {"cache-control": "no-cache"}),
         ],
@@ -716,6 +803,24 @@ class TestUtil:
         self, kwargs: dict[str, bool | str], expected: dict[str, str]
     ) -> None:
         assert make_headers(**kwargs) == expected  # type: ignore[arg-type]
+
+    def test_make_headers_basic_auth_encoding_error(self) -> None:
+        with pytest.raises(UnicodeEncodeError):
+            make_headers(basic_auth="ім'я:пароль")
+
+    def test_make_headers_basic_auth_utf8_allows_non_latin1(self) -> None:
+        assert make_headers(basic_auth="ім'я:пароль", basic_auth_encoding="utf-8") == {
+            "authorization": "Basic 0ZbQvCfRjzrQv9Cw0YDQvtC70Yw="
+        }
+
+    def test_make_headers_proxy_basic_auth_encoding_error(self) -> None:
+        with pytest.raises(UnicodeEncodeError):
+            make_headers(proxy_basic_auth="ім'я:пароль")
+
+    def test_make_headers_proxy_basic_auth_utf8_allows_non_latin1(self) -> None:
+        assert make_headers(
+            proxy_basic_auth="ім'я:пароль", proxy_basic_auth_encoding="utf-8"
+        ) == {"proxy-authorization": "Basic 0ZbQvCfRjzrQv9Cw0YDQvtC70Yw="}
 
     def test_rewind_body(self) -> None:
         body = io.BytesIO(b"test data")
