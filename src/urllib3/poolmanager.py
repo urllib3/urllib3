@@ -88,6 +88,7 @@ class PoolKey(typing.NamedTuple):
     key__socks_options: frozenset[tuple[str, str]] | None
     key_assert_hostname: bool | str | None
     key_assert_fingerprint: str | None
+    key_assert_header_names: bool | None
     key_server_hostname: str | None
     key_blocksize: int | None
 
@@ -143,6 +144,8 @@ def _default_key_normalizer(
     # Default key_blocksize to _DEFAULT_BLOCKSIZE if missing from the context
     if context.get("key_blocksize") is None:
         context["key_blocksize"] = _DEFAULT_BLOCKSIZE
+    if context.get("key_assert_header_names") is None:
+        context["key_assert_header_names"] = True
 
     return key_class(**context)
 

@@ -33,6 +33,7 @@ class EmscriptenHTTPConnection:
     blocksize: int
     source_address: tuple[str, int] | None
     socket_options: _TYPE_SOCKET_OPTIONS | None
+    assert_header_names: bool
 
     proxy: Url | None
     proxy_config: ProxyConfig | None
@@ -54,6 +55,7 @@ class EmscriptenHTTPConnection:
         socket_options: _TYPE_SOCKET_OPTIONS | None = None,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
+        assert_header_names: bool = True,
     ) -> None:
         self.host = host
         self.port = port
@@ -68,6 +70,7 @@ class EmscriptenHTTPConnection:
         self.blocksize = blocksize
         self.source_address = None
         self.socket_options = None
+        self.assert_header_names = assert_header_names
         self.is_verified = False
 
     def set_tunnel(
@@ -192,6 +195,7 @@ class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
         ) = HTTPConnection.default_socket_options,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
+        assert_header_names: bool = True,
         cert_reqs: int | str | None = None,
         assert_hostname: None | str | typing.Literal[False] = None,
         assert_fingerprint: str | None = None,
@@ -216,6 +220,7 @@ class EmscriptenHTTPSConnection(EmscriptenHTTPConnection):
             socket_options=socket_options,
             proxy=proxy,
             proxy_config=proxy_config,
+            assert_header_names=assert_header_names,
         )
         self.scheme = "https"
 
