@@ -1,0 +1,2 @@
+Fixed ``HTTPSConnection`` overriding the ``proxy_config``'s cert policy with the target request's SSL context.
+Including a ``proxy_config`` will now properly inherit ``verify_mode`` for the proxy connection and values for ``ca_*`` ``ssl_*`` are ignored.
