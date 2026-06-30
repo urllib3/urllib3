@@ -7,7 +7,6 @@ import ssl
 import sys
 import typing
 import warnings
-from itertools import chain
 from test import ImportBlocker, ModuleStash, notBrotli, notZstd, onlyBrotli, onlyZstd
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
@@ -438,7 +437,7 @@ class TestUtil:
 
     @pytest.mark.parametrize(
         "url, expected_url",
-        chain(parse_url_host_map, non_round_tripping_parse_url_host_map),
+        [*parse_url_host_map, *non_round_tripping_parse_url_host_map],
     )
     def test_parse_url(self, url: str, expected_url: Url) -> None:
         returned_url = parse_url(url)
