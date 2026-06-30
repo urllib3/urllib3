@@ -307,7 +307,7 @@ class TestUtil:
 
     @pytest.mark.parametrize(
         "url, expected_url",
-        list(chain(parse_url_host_map, non_round_tripping_parse_url_host_map)),
+        [*parse_url_host_map, *non_round_tripping_parse_url_host_map],
     )
     def test_parse_url(self, url: str, expected_url: Url) -> None:
         returned_url = parse_url(url)
