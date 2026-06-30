@@ -26,6 +26,7 @@ from urllib3.exceptions import (
     EmptyPoolError,
     FullPoolError,
     HostChangedError,
+    LocationParseError,
     LocationValueError,
     MaxRetryError,
     ProtocolError,
@@ -153,6 +154,42 @@ class TestConnectionPool:
         # never initializes ConnectionPool objects with port=None.
         with HTTPSConnectionPool(a) as c:
             assert c.is_same_host(b)
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "127.0.0.1\n",
+            "127.0.0.1 ",
+            "::1\n",
+            "[::1]\n",
+        ],
+    )
+    def test_control_characters_in_host_raise(self, host: str) -> None:
+        with pytest.raises(LocationParseError):
+            HTTPConnectionPool(host)
+
+    @pytest.mark.parametrize("host", ["foo%.example", "foo%zz.example"])
+    def test_malformed_percent_escapes_in_host_raise(self, host: str) -> None:
+        with pytest.raises(LocationParseError):
+            HTTPConnectionPool(host)
+
+    @pytest.mark.parametrize(
+        "host, expected_host, expected_tunnel_host",
+        [
+            ("EXAMPLE%2Ecom%2E", "example.com.", "example.com."),
+            (
+                "[2607:f8b0:4005:805::200e%25eth0]",
+                "2607:f8b0:4005:805::200e%eth0",
+                "[2607:f8b0:4005:805::200e%eth0]",
+            ),
+        ],
+    )
+    def test_host_and_tunnel_host_are_normalized(
+        self, host: str, expected_host: str, expected_tunnel_host: str
+    ) -> None:
+        with HTTPSConnectionPool(host) as pool:
+            assert pool.host == expected_host
+            assert pool._tunnel_host == expected_tunnel_host
 
     @pytest.mark.parametrize(
         "a, b",
