@@ -180,15 +180,15 @@ class TestSSL:
         "kwargs",
         [
             {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
+                "ssl_version": ssl.PROTOCOL_TLSv1_2,
                 "ssl_minimum_version": ssl.TLSVersion.MINIMUM_SUPPORTED,
             },
             {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
+                "ssl_version": ssl.PROTOCOL_TLSv1_2,
                 "ssl_maximum_version": ssl.TLSVersion.TLSv1,
             },
             {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
+                "ssl_version": ssl.PROTOCOL_TLSv1_2,
                 "ssl_minimum_version": ssl.TLSVersion.MINIMUM_SUPPORTED,
                 "ssl_maximum_version": ssl.TLSVersion.MAXIMUM_SUPPORTED,
             },
@@ -229,10 +229,10 @@ class TestSSL:
     @pytest.mark.parametrize(
         "kwargs",
         [
-            {"ssl_version": ssl.PROTOCOL_TLSv1, "ssl_minimum_version": None},
-            {"ssl_version": ssl.PROTOCOL_TLSv1, "ssl_maximum_version": None},
+            {"ssl_version": ssl.PROTOCOL_TLSv1_2, "ssl_minimum_version": None},
+            {"ssl_version": ssl.PROTOCOL_TLSv1_2, "ssl_maximum_version": None},
             {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
+                "ssl_version": ssl.PROTOCOL_TLSv1_2,
                 "ssl_minimum_version": None,
                 "ssl_maximum_version": None,
             },
