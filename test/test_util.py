@@ -1216,15 +1216,21 @@ class TestUtilSSL:
     ) -> None:
         assert resolve_cert_reqs(candidate) == requirements
 
-    @pytest.mark.parametrize(
-        "candidate, version",
-        [
-            (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1),
-            ("PROTOCOL_TLSv1", ssl.PROTOCOL_TLSv1),
-            ("TLSv1", ssl.PROTOCOL_TLSv1),
-            (ssl.PROTOCOL_SSLv23, ssl.PROTOCOL_SSLv23),
-        ],
-    )
+    candidate_version = [
+        (ssl.PROTOCOL_SSLv23, ssl.PROTOCOL_SSLv23),
+        ("PROTOCOL_SSLv23", ssl.PROTOCOL_SSLv23),
+        ("SSLv23", ssl.PROTOCOL_SSLv23),
+    ]
+    if hasattr(ssl, "PROTOCOL_TLSv1"):
+        candidate_version.extend(
+            [
+                (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1),
+                ("PROTOCOL_TLSv1", ssl.PROTOCOL_TLSv1),
+                ("TLSv1", ssl.PROTOCOL_TLSv1),
+            ]
+        )
+
+    @pytest.mark.parametrize("candidate, version", candidate_version)
     def test_resolve_ssl_version(self, candidate: int | str, version: int) -> None:
         assert resolve_ssl_version(candidate) == version
 
