@@ -242,19 +242,33 @@ class HTTPConnection(_HTTPConnection):
         super().set_tunnel(host, port=port, headers=headers)
         self._tunnel_scheme = scheme
 
-    if sys.version_info < (3, 11, 9) or ((3, 12) <= sys.version_info < (3, 12, 3)):
+    if sys.version_info < (3, 11, 16) or ((3, 12) <= sys.version_info < (3, 12, 14)):
         # Taken from python/cpython#100986 which was backported in 3.11.9 and 3.12.3.
         # When using connection_from_host, host will come without brackets.
+        # With a security patch from python/cpython#146211.
         def _wrap_ipv6(self, ip: bytes) -> bytes:
             if b":" in ip and ip[0] != b"["[0]:
                 return b"[" + ip + b"]"
             return ip
 
-        if sys.version_info < (3, 11, 9):
-            # `_tunnel` copied from 3.11.13 backporting
+        # Copied from CPython 3.12.13 Lib/http/client.py
+        _is_legal_header_name = staticmethod(re.compile(rb"[^:\s][^:\r\n]*").fullmatch)
+        _is_illegal_header_value = staticmethod(
+            re.compile(rb"\n(?![ \t])|\r(?![ \t\n])").search
+        )
+        _contains_disallowed_url_pchar_re = re.compile("[\x00-\x20\x7f]")
+
+        if sys.version_info < (3, 11, 16):
+            # `_tunnel` copied from 3.11.15 backporting
             # https://github.com/python/cpython/commit/0d4026432591d43185568dd31cef6a034c4b9261
             # and https://github.com/python/cpython/commit/6fbc61070fda2ffb8889e77e3b24bca4249ab4d1
+            # plus a fix from https://github.com/python/cpython/commit/56b7100b04e44ea27989242b176beb8f016b2c53
             def _tunnel(self) -> None:
+                if self._contains_disallowed_url_pchar_re.search(self._tunnel_host):  # type: ignore[arg-type]
+                    raise ValueError(
+                        "Tunnel host can't contain control characters %r"
+                        % (self._tunnel_host,)
+                    )
                 _MAXLINE = http.client._MAXLINE  # type: ignore[attr-defined]
                 connect = b"CONNECT %s:%d HTTP/1.0\r\n" % (  # type: ignore[str-format]
                     self._wrap_ipv6(self._tunnel_host.encode("ascii")),  # type: ignore[union-attr]
@@ -262,7 +276,13 @@ class HTTPConnection(_HTTPConnection):
                 )
                 headers = [connect]
                 for header, value in self._tunnel_headers.items():  # type: ignore[attr-defined]
-                    headers.append(f"{header}: {value}\r\n".encode("latin-1"))
+                    header_bytes = header.encode("latin-1")
+                    value_bytes = value.encode("latin-1")
+                    if not self._is_legal_header_name(header_bytes):
+                        raise ValueError(f"Invalid header name {header_bytes!r}")
+                    if self._is_illegal_header_value(value_bytes):
+                        raise ValueError(f"Invalid header value {value_bytes!r}")
+                    headers.append(b"%s: %s\r\n" % (header_bytes, value_bytes))
                 headers.append(b"\r\n")
                 # Making a single send() call instead of one per line encourages
                 # the host OS to use a more optimal packet size instead of
@@ -294,17 +314,29 @@ class HTTPConnection(_HTTPConnection):
                 finally:
                     response.close()
 
-        elif (3, 12) <= sys.version_info < (3, 12, 3):
-            # `_tunnel` copied from 3.12.11 backporting
+        elif (3, 12) <= sys.version_info < (3, 12, 14):
+            # `_tunnel` copied from 3.12.13 backporting
             # https://github.com/python/cpython/commit/23aef575c7629abcd4aaf028ebd226fb41a4b3c8
+            # plus a fix from https://github.com/python/cpython/commit/c00c386faa579ad71196d33408644478488e43ec
             def _tunnel(self) -> None:  # noqa: F811
+                if self._contains_disallowed_url_pchar_re.search(self._tunnel_host):  # type: ignore[arg-type]
+                    raise ValueError(
+                        "Tunnel host can't contain control characters %r"
+                        % (self._tunnel_host,)
+                    )
                 connect = b"CONNECT %s:%d HTTP/1.1\r\n" % (  # type: ignore[str-format]
                     self._wrap_ipv6(self._tunnel_host.encode("idna")),  # type: ignore[union-attr]
                     self._tunnel_port,
                 )
                 headers = [connect]
                 for header, value in self._tunnel_headers.items():  # type: ignore[attr-defined]
-                    headers.append(f"{header}: {value}\r\n".encode("latin-1"))
+                    header_bytes = header.encode("latin-1")
+                    value_bytes = value.encode("latin-1")
+                    if not self._is_legal_header_name(header_bytes):
+                        raise ValueError(f"Invalid header name {header_bytes!r}")
+                    if self._is_illegal_header_value(value_bytes):
+                        raise ValueError(f"Invalid header value {value_bytes!r}")
+                    headers.append(b"%s: %s\r\n" % (header_bytes, value_bytes))
                 headers.append(b"\r\n")
                 # Making a single send() call instead of one per line encourages
                 # the host OS to use a more optimal packet size instead of
