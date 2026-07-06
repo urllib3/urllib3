@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import OpenSSL.SSL
 from cryptography import x509
+from cryptography.x509.oid import NameOID
 
 try:
     from cryptography.x509 import UnsupportedExtension  # type: ignore[attr-defined]
@@ -269,6 +270,15 @@ def get_subj_alt_name(peer_cert: X509) -> list[tuple[str, str]]:
     return names
 
 
+def _get_common_name(peer_cert: X509) -> str | None:
+    """
+    Given a pyOpenSSL certificate, return the subject's common name.
+    """
+    cert = peer_cert.to_cryptography()
+    names = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+    return typing.cast(str, names[0].value) if names else None
+
+
 class WrappedSocket:
     """API-compatibility wrapper for Python OpenSSL's Connection-class."""
 
@@ -401,7 +411,7 @@ class WrappedSocket:
             return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)
 
         return {
-            "subject": ((("commonName", x509.get_subject().CN),),),  # type: ignore[dict-item]
+            "subject": ((("commonName", _get_common_name(x509)),),),  # type: ignore[dict-item]
             "subjectAltName": get_subj_alt_name(x509),
         }
 

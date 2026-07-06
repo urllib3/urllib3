@@ -1,0 +1,1 @@
+Fixed ``urllib3.contrib.pyopenssl`` to use cryptography's X.509 APIs when reading a certificate subject, avoiding a ``DeprecationWarning`` with recent pyOpenSSL versions.
