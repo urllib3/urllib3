@@ -505,11 +505,18 @@ class PyOpenSSLContext:
             if password is not None:
                 if not isinstance(password, bytes):
                     password = password.encode("utf-8")
-                with open(keyfile or certfile, "rb") as key_file:
-                    private_key = load_pem_private_key(key_file.read(), password)
-                # cryptography's loader returns a wider private-key union
-                # than pyOpenSSL accepts, so we add `type: ignore` here.
-                self._ctx.use_privatekey(private_key)  # type: ignore[arg-type]
+                # pyOpenSSL added cryptography-key support in 24.3.0.
+                # Keep using the older password-callback path until 2026's
+                # versions because set_passwd_cb() became deprecated in 26.3.0.
+                if int(OpenSSL.__version__.split(".")[0]) >= 26:
+                    with open(keyfile or certfile, "rb") as key_file:
+                        private_key = load_pem_private_key(key_file.read(), password)
+                    # cryptography's loader returns a wider private-key union
+                    # than pyOpenSSL accepts, so we add `type: ignore` here.
+                    self._ctx.use_privatekey(private_key)  # type: ignore[arg-type]
+                else:
+                    self._ctx.set_passwd_cb(lambda *_: password)
+                    self._ctx.use_privatekey_file(keyfile or certfile)
             else:
                 self._ctx.use_privatekey_file(keyfile or certfile)
         except (OpenSSL.SSL.Error, TypeError, ValueError) as e:
