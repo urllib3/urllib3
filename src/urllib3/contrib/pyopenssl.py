@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import OpenSSL.SSL
 from cryptography import x509
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from cryptography.x509.oid import NameOID
 
 try:
@@ -497,16 +498,21 @@ class PyOpenSSLContext:
         self,
         certfile: str,
         keyfile: str | None = None,
-        password: str | None = None,
+        password: str | bytes | None = None,
     ) -> None:
         try:
             self._ctx.use_certificate_chain_file(certfile)
             if password is not None:
                 if not isinstance(password, bytes):
-                    password = password.encode("utf-8")  # type: ignore[assignment]
-                self._ctx.set_passwd_cb(lambda *_: password)  # type: ignore[arg-type]
-            self._ctx.use_privatekey_file(keyfile or certfile)
-        except OpenSSL.SSL.Error as e:
+                    password = password.encode("utf-8")
+                with open(keyfile or certfile, "rb") as key_file:
+                    private_key = load_pem_private_key(key_file.read(), password)
+                # cryptography's loader returns a wider private-key union
+                # than pyOpenSSL accepts, so we add `type: ignore` here.
+                self._ctx.use_privatekey(private_key)  # type: ignore[arg-type]
+            else:
+                self._ctx.use_privatekey_file(keyfile or certfile)
+        except (OpenSSL.SSL.Error, TypeError, ValueError) as e:
             raise ssl.SSLError(f"Unable to load certificate chain: {e!r}") from e
 
     def set_alpn_protocols(self, protocols: list[bytes | str]) -> None:
