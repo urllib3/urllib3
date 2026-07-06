@@ -262,6 +262,22 @@ class TestConnectionPool:
             assert not c.is_same_host("http://example.com:80/")
             assert not c.is_same_host("https://example.com:443/")
 
+    @pytest.mark.parametrize(
+        "url, expected_port",
+        [
+            ("http://example.com:0/", 0),
+            ("https://example.com:0/", 0),
+            ("http://example.com/", 80),
+            ("https://example.com/", 443),
+            ("http://example.com:8080/", 8080),
+        ],
+    )
+    def test_connection_from_url_preserves_port_zero(
+        self, url: str, expected_port: int
+    ) -> None:
+        with connection_from_url(url) as c:
+            assert c.port == expected_port
+
     def test_max_connections(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
             pool._get_conn(timeout=SHORT_TIMEOUT)
