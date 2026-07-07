@@ -18,6 +18,7 @@ from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.connection import ProxyConfig
 from urllib3.exceptions import (
     InsecureRequestWarning,
+    InvalidHeader,
     LocationParseError,
     TimeoutStateError,
     UnrewindableBodyError,
@@ -26,7 +27,10 @@ from urllib3.util import is_fp_closed
 from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
 from urllib3.util.proxy import connection_requires_http_tunnel
 from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
-from urllib3.util.response import assert_header_parsing
+from urllib3.util.response import (
+    assert_header_parsing,
+    assert_no_response_header_folding,
+)
 from urllib3.util.ssl_ import (
     _is_has_never_check_common_name_reliable,
     resolve_cert_reqs,
@@ -1088,6 +1092,21 @@ class TestUtil:
         )
         header_msg.seek(0)
         assert_header_parsing(client.parse_headers(header_msg))
+
+    def test_assert_no_response_header_folding_raises_on_folded_value(self) -> None:
+        from http import client
+
+        header_msg = io.BytesIO(b"Set-Cookie: a=b\r\n\tX-Foo: bar\r\n\r\n")
+
+        with pytest.raises(InvalidHeader, match="Invalid folded response header"):
+            assert_no_response_header_folding(client.parse_headers(header_msg))
+
+    def test_assert_no_response_header_folding_accepts_plain_values(self) -> None:
+        from http import client
+
+        header_msg = io.BytesIO(b"Set-Cookie: a=b\r\nX-Foo: bar\r\n\r\n")
+
+        assert_no_response_header_folding(client.parse_headers(header_msg))
 
     @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
     def test_create_connection_with_invalid_idna_labels(self, host: str) -> None:

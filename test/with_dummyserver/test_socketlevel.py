@@ -46,6 +46,7 @@ from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.connectionpool import _url_from_pool
 from urllib3.exceptions import (
     InsecureRequestWarning,
+    InvalidHeader,
     MaxRetryError,
     ProtocolError,
     ProxyError,
@@ -2246,6 +2247,20 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
         self._test_broken_header_parsing(
             [b"Broken Header", b"Another: Header"], "Broken Header"
         )
+
+    def test_folded_response_header_is_rejected(self) -> None:
+        self.start_response_handler(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Length: 0\r\n"
+            b"Content-type: text/plain\r\n"
+            b"Set-Cookie: a=b\r\n"
+            b"\tX-Foo: bar\r\n"
+            b"\r\n"
+        )
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            with pytest.raises(InvalidHeader, match="Invalid folded response header"):
+                pool.request("GET", "/")
 
 
 class TestHeaderParsingContentType(SocketDummyServerTestCase):
