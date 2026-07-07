@@ -45,6 +45,7 @@ from ._version import __version__
 from .exceptions import (
     ConnectTimeoutError,
     HeaderParsingError,
+    InvalidHeader,
     NameResolutionError,
     NewConnectionError,
     ProxyError,
@@ -79,6 +80,16 @@ RECENT_DATE = datetime.date(2025, 1, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
+def _validate_http1_header_name(header: str | bytes) -> None:
+    try:
+        header_name = to_str(header, "ascii")
+    except UnicodeDecodeError as e:
+        raise InvalidHeader(f"Invalid header name {header!r}") from e
+
+    if not header_name or _CONTAINS_CONTROL_CHAR_RE.search(header_name):
+        raise InvalidHeader(f"Invalid header name {header!r}")
+
+
 class HTTPConnection(_HTTPConnection):
     """
     Based on :class:`http.client.HTTPConnection` but provides an extra constructor
@@ -102,6 +113,8 @@ class HTTPConnection(_HTTPConnection):
          ]
 
       Or you may want to disable the defaults by passing an empty list (e.g., ``[]``).
+
+    - ``assert_header_names``: Set to ``False`` to allow invalid header names.
     """
 
     default_port: typing.ClassVar[int] = port_by_scheme["http"]  # type: ignore[misc]
@@ -126,6 +139,7 @@ class HTTPConnection(_HTTPConnection):
     blocksize: int
     source_address: tuple[str, int] | None
     socket_options: connection._TYPE_SOCKET_OPTIONS | None
+    assert_header_names: bool
 
     _has_connected_to_proxy: bool
     _response_options: _ResponseOptions | None
@@ -146,6 +160,7 @@ class HTTPConnection(_HTTPConnection):
         ) = default_socket_options,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
+        assert_header_names: bool = True,
     ) -> None:
         super().__init__(
             host=host,
@@ -157,6 +172,7 @@ class HTTPConnection(_HTTPConnection):
         self.socket_options = socket_options
         self.proxy = proxy
         self.proxy_config = proxy_config
+        self.assert_header_names = assert_header_names
 
         self._has_connected_to_proxy = False
         self._response_options = None
@@ -239,6 +255,9 @@ class HTTPConnection(_HTTPConnection):
             raise ValueError(
                 f"Invalid proxy scheme for tunneling: {scheme!r}, must be either 'http' or 'https'"
             )
+        if self.assert_header_names and headers:
+            for header in headers:
+                _validate_http1_header_name(header)
         super().set_tunnel(host, port=port, headers=headers)
         self._tunnel_scheme = scheme
 
@@ -446,6 +465,8 @@ class HTTPConnection(_HTTPConnection):
     def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
+            if self.assert_header_names:
+                _validate_http1_header_name(header)
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
             skippable_headers = "', '".join(
@@ -667,6 +688,7 @@ class HTTPSConnection(HTTPConnection):
         ) = HTTPConnection.default_socket_options,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
+        assert_header_names: bool = True,
         cert_reqs: int | str | None = None,
         assert_hostname: None | str | typing.Literal[False] = None,
         assert_fingerprint: str | None = None,
@@ -691,6 +713,7 @@ class HTTPSConnection(HTTPConnection):
             socket_options=socket_options,
             proxy=proxy,
             proxy_config=proxy_config,
+            assert_header_names=assert_header_names,
         )
 
         self.key_file = key_file
