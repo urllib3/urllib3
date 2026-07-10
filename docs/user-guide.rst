@@ -585,6 +585,27 @@ To disable redirects but keep the retrying logic, specify ``redirect=False``:
 For more granular control you can use a :class:`~util.retry.Retry` instance.
 This class allows you far greater control of how requests are retried.
 
+When enabling retries in production, configure a non-zero ``backoff_factor``
+to avoid retrying repeatedly without any delay. urllib3 will sleep between
+retry attempts using an exponential backoff. For example,
+``backoff_factor=0.1`` sleeps for ``0.0s``, ``0.2s``, ``0.4s``, ``0.8s``,
+and so on between retries. urllib3 also respects the ``Retry-After`` response
+header by default when present for supported retry responses.
+
+For example, to retry transient server errors with backoff:
+
+.. code-block:: python
+
+    urllib3.request(
+        "GET",
+        "https://httpbin.org/status/503",
+        retries=urllib3.Retry(
+            total=3,
+            status_forcelist={503},
+            backoff_factor=0.1,
+        )
+    )
+
 For example, to do a total of 3 retries, but limit to only 2 redirects:
 
 .. code-block:: python
