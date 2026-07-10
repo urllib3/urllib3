@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import http.client
 import io
 import json as _json
 import logging
@@ -1344,7 +1345,11 @@ class HTTPResponse(BaseHTTPResponse):
         # we'll try to read it from socket.
         if self.chunk_left is not None:
             return None
-        line = self._fp.fp.readline()  # type: ignore[union-attr]
+        _MAXLINE = http.client._MAXLINE  # type: ignore[attr-defined]
+        line = self._fp.fp.readline(_MAXLINE + 1)  # type: ignore[union-attr]
+        if len(line) > _MAXLINE:
+            self.close()
+            raise http.client.LineTooLong("chunk size")
         line = line.split(b";", 1)[0]
         try:
             self.chunk_left = int(line, 16)
@@ -1454,8 +1459,11 @@ class HTTPResponse(BaseHTTPResponse):
                     yield decoded
 
             # Chunk content ends with \r\n: discard it.
+            _MAXLINE = http.client._MAXLINE  # type: ignore[attr-defined]
             while self._fp is not None:
-                line = self._fp.fp.readline()
+                line = self._fp.fp.readline(_MAXLINE + 1)
+                if len(line) > _MAXLINE:
+                    raise http.client.LineTooLong("trailer line")
                 if not line:
                     # Some sites may not end with '\r\n'.
                     break
