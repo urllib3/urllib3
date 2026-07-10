@@ -1,0 +1,1 @@
+Decoded bytes values in :class:`~urllib3.HTTPHeaderDict`'s ``__setitem__`` and ``add`` methods to match the existing handling of bytes keys. Previously passing ``b"bar"`` as the value would store a bytes object in the container, leading to ``b"bar"`` in ``getlist()`` output and a ``TypeError`` when the underlying HTTP connection tried to write the header.
