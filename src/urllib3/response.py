@@ -50,6 +50,9 @@ if typing.TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
+# Read in 64 KiB chunks
+_READ_CHUNK_SIZE = 2**16
+
 
 class ContentDecoder:
     def decompress(self, data: bytes, max_length: int = -1) -> bytes:
@@ -559,7 +562,7 @@ class BaseHTTPResponse(io.IOBase):
         self._retries = retries
 
     def stream(
-        self, amt: int | None = 2**16, decode_content: bool | None = None
+        self, amt: int | None = _READ_CHUNK_SIZE, decode_content: bool | None = None
     ) -> typing.Iterator[bytes]:
         raise NotImplementedError()
 
@@ -755,6 +758,7 @@ class HTTPResponse(BaseHTTPResponse):
         self.auto_close = auto_close
 
         self._body = None
+        self._uncached_read_occurred = False
         self._fp: _HttplibHTTPResponse | None = None
         self._original_response = original_response
         self._fp_bytes_read = 0
@@ -797,13 +801,15 @@ class HTTPResponse(BaseHTTPResponse):
         Unread data in the HTTPResponse connection blocks the connection from being released back to the pool.
         """
         try:
-            self.read(
-                # Do not spend resources decoding the content unless
-                # decoding has already been initiated.
-                decode_content=self._has_decoded_content,
-            )
+            while self._raw_read(_READ_CHUNK_SIZE):
+                pass
         except (HTTPError, OSError, BaseSSLError, HTTPException):
             pass
+        if self._has_decoded_content:
+            # `_raw_read` skips decompression, so we should clean up the
+            # decoder to avoid keeping unnecessary data in memory.
+            self._decoded_buffer = BytesQueueBuffer()
+            self._decoder = None
 
     @property
     def data(self) -> bytes:
@@ -1090,7 +1096,11 @@ class HTTPResponse(BaseHTTPResponse):
         elif amt is not None:
             cache_content = False
 
-            if self._decoder and self._decoder.has_unconsumed_tail:
+            if (
+                self._decoder
+                and self._decoder.has_unconsumed_tail
+                and len(self._decoded_buffer) < amt
+            ):
                 decoded_data = self._decode(
                     b"",
                     decode_content,
@@ -1102,6 +1112,8 @@ class HTTPResponse(BaseHTTPResponse):
                 return self._decoded_buffer.get(amt)
 
         data = self._raw_read(amt)
+        if not cache_content:
+            self._uncached_read_occurred = True
 
         flush_decoder = amt is None or (amt != 0 and not data)
 
@@ -1114,7 +1126,13 @@ class HTTPResponse(BaseHTTPResponse):
 
         if amt is None:
             data = self._decode(data, decode_content, flush_decoder)
-            if cache_content:
+            # It's possible that there is buffered decoded data after a
+            # partial read.
+            if decode_content and len(self._decoded_buffer) > 0:
+                self._decoded_buffer.put(data)
+                data = self._decoded_buffer.get_all()
+
+            if cache_content and not self._uncached_read_occurred:
                 self._body = data
         else:
             # do not waste memory on buffer when not decoding
@@ -1202,6 +1220,7 @@ class HTTPResponse(BaseHTTPResponse):
 
         # FIXME, this method's type doesn't say returning None is possible
         data = self._raw_read(amt, read1=True)
+        self._uncached_read_occurred = True
         if not decode_content or data is None:
             return data
 
@@ -1221,7 +1240,7 @@ class HTTPResponse(BaseHTTPResponse):
         return self._decoded_buffer.get(amt)
 
     def stream(
-        self, amt: int | None = 2**16, decode_content: bool | None = None
+        self, amt: int | None = _READ_CHUNK_SIZE, decode_content: bool | None = None
     ) -> typing.Generator[bytes]:
         """
         A generator wrapper for the read() method. A call will block until
@@ -1400,7 +1419,9 @@ class HTTPResponse(BaseHTTPResponse):
             if self._fp.fp is None:  # type: ignore[union-attr]
                 return None
 
-            if amt and amt < 0:
+            if amt == 0:
+                return
+            elif amt and amt < 0:
                 # Negative numbers and `None` should be treated the same,
                 # but httplib handles only `None` correctly.
                 amt = None
@@ -1411,6 +1432,7 @@ class HTTPResponse(BaseHTTPResponse):
                     chunk = b""
                 else:
                     self._update_chunk_length()
+                    self._uncached_read_occurred = True
                     if self.chunk_left == 0:
                         break
                     chunk = self._handle_chunk(amt)

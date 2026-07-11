@@ -481,6 +481,11 @@ class TestPoolManager:
 
         assert ssl_wrap_socket.call_args[1]["server_hostname"] == "a::b"
 
+    def test_connection_from_host_port_zero(self) -> None:
+        p = PoolManager()
+        pool = p.connection_from_host("example.com", port=0, scheme="http")
+        assert pool.port == 0
+
     def test_thread_safty(self) -> None:
         pool_manager = PoolManager(num_pools=2)
 

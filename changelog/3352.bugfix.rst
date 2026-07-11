@@ -1,1 +1,0 @@
-Fixed LocationParseError when paths resembling schemeless URIs were passed to ``HTTPConnectionPool.urlopen()``.
