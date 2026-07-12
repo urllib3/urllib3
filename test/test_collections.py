@@ -248,6 +248,40 @@ class TestHTTPHeaderDict:
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
         assert d["bar"] == "foo, bar, asdf"
 
+    def test_setitem_with_bytes_value(self) -> None:
+        h = HTTPHeaderDict()
+        h["X-Foo"] = b"bar"  # type: ignore[index]
+        assert h["x-foo"] == "bar"
+        assert h.getlist("x-foo") == ["bar"]
+
+    def test_add_with_bytes_value(self) -> None:
+        h = HTTPHeaderDict()
+        h.add("X-Foo", b"first")  # type: ignore[arg-type]
+        h.add("X-Foo", b"second")  # type: ignore[arg-type]
+        assert h["x-foo"] == "first, second"
+        assert h.getlist("x-foo") == ["first", "second"]
+
+    def test_add_with_bytes_value_and_combine(self) -> None:
+        h = HTTPHeaderDict()
+        h.add("X-Foo", "first")
+        h.add("X-Foo", b"second", combine=True)  # type: ignore[arg-type]
+        # combine=True merges the new value into the last existing value,
+        # so getlist returns a single combined entry — same as for str values.
+        assert h["x-foo"] == "first, second"
+        assert h.getlist("x-foo") == ["first, second"]
+
+    def test_extend_from_dict_with_bytes_values(self) -> None:
+        h = HTTPHeaderDict()
+        h.extend({b"X-Foo": b"bar"})  # type: ignore[arg-type]
+        assert h["x-foo"] == "bar"
+        assert h.getlist("x-foo") == ["bar"]
+
+    def test_extend_from_list_with_bytes_values(self) -> None:
+        h = HTTPHeaderDict()
+        h.extend([(b"X-Foo", b"first"), (b"X-Foo", b"second")])  # type: ignore[list-item]
+        assert h["x-foo"] == "first, second"
+        assert h.getlist("x-foo") == ["first", "second"]
+
     def test_extend_from_list(self, d: HTTPHeaderDict) -> None:
         d.extend([("set-cookie", "100"), ("set-cookie", "200"), ("set-cookie", "300")])
         assert d["set-cookie"] == "100, 200, 300"
