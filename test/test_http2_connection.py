@@ -271,6 +271,32 @@ class TestHTTP2Connection:
 
         close_connection.assert_called_with()
 
+    def test_request_authority_port_zero(self) -> None:
+        conn = HTTP2Connection("example.com", port=0)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._h2_conn._obj.close_connection = mock.Mock(return_value=None)  # type: ignore[method-assign]
+
+        conn.request("GET", "/")
+        conn.close()
+
+        send_headers.assert_called_with(
+            stream_id=1,
+            headers=[
+                (b":scheme", b"https"),
+                (b":method", b"GET"),
+                (b":authority", b"example.com:0"),
+                (b":path", b"/"),
+                (b"user-agent", _get_default_user_agent().encode()),
+            ],
+            end_stream=True,
+        )
+
     def test_request_POST(self) -> None:
         conn = HTTP2Connection("example.com")
         conn.sock = mock.MagicMock(
