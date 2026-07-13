@@ -1480,6 +1480,9 @@ class HTTPResponse(BaseHTTPResponse):
         self._request_url = url
 
     def __iter__(self) -> typing.Iterator[bytes]:
+        if self.closed:
+            raise ValueError("I/O operation on closed file.")
+
         buffer: list[bytes] = []
         for chunk in self.stream(decode_content=True):
             if b"\n" in chunk:

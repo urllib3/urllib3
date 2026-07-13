@@ -1050,6 +1050,13 @@ class TestResponse:
         with pytest.raises(IOError):
             resp3.fileno()
 
+    def test_iter_closed_response(self) -> None:
+        response = HTTPResponse(BytesIO(b"foo"), preload_content=False)
+        response.close()
+
+        with pytest.raises(ValueError, match="I/O operation on closed file"):
+            list(response)
+
     def test_io_closed_consistently_by_read(self, sock: socket.socket) -> None:
         try:
             hlr = httplib.HTTPResponse(sock)

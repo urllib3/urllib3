@@ -1,0 +1,2 @@
+Fixed iteration over a closed ``HTTPResponse`` to raise ``ValueError`` instead
+of silently producing no data.
