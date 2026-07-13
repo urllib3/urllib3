@@ -91,6 +91,7 @@ class PoolKey(typing.NamedTuple):
     key_assert_fingerprint: str | None
     key_server_hostname: str | None
     key_blocksize: int | None
+    key_resolver: Resolver | None
 
 
 def _default_key_normalizer(
@@ -201,12 +202,9 @@ class PoolManager(RequestMethods):
         self,
         num_pools: int = 10,
         headers: typing.Mapping[str, str] | None = None,
-        resolver: Resolver | None = None,
         **connection_pool_kw: typing.Any,
     ) -> None:
         super().__init__(headers)
-        self.resolver = resolver
-
         # PoolManager handles redirects itself in PoolManager.urlopen().
         # It always passes redirect=False to the underlying connection pool to
         # suppress per-pool redirect handling. If the user supplied a non-Retry
@@ -280,7 +278,7 @@ class PoolManager(RequestMethods):
             for kw in SSL_KEYWORDS:
                 request_context.pop(kw, None)
 
-        return pool_cls(host, port, resolver=self.resolver, **request_context)
+        return pool_cls(host, port, **request_context)
 
     def clear(self) -> None:
         """
