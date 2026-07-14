@@ -7,6 +7,7 @@ from unittest import mock
 
 import pytest
 
+from urllib3.connection import _ssl_wrap_socket_and_match_hostname
 from urllib3.exceptions import ProxySchemeUnsupported, SSLError
 from urllib3.util import ssl_
 
@@ -253,3 +254,81 @@ class TestSSL:
             ssl_.assert_fingerprint(
                 cert=None, fingerprint="55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
             )
+
+
+class TestSslWrapSocketAndMatchHostname:
+    """Tests for _ssl_wrap_socket_and_match_hostname (connection.py)."""
+
+    def _call(
+        self,
+        mock_ssl_wrap: mock.MagicMock,
+        ctx: ssl.SSLContext,
+        cert_reqs: ssl.VerifyMode | str | int | None,
+    ) -> None:
+        """Helper: invoke _ssl_wrap_socket_and_match_hostname with a user-supplied context."""
+        mock_ssl_wrap.return_value = mock.MagicMock(spec=ssl.SSLSocket)
+        mock_ssl_wrap.return_value.getpeercert.return_value = None
+        sock = mock.MagicMock()
+        _ssl_wrap_socket_and_match_hostname(
+            sock=sock,
+            cert_reqs=cert_reqs,
+            ssl_context=ctx,
+            server_hostname="proxy.example.com",
+            assert_hostname=False,
+            assert_fingerprint=None,
+            ssl_version=None,
+            ssl_minimum_version=None,
+            ssl_maximum_version=None,
+            ca_certs=None,
+            ca_cert_dir=None,
+            ca_cert_data=None,
+            cert_file=None,
+            key_file=None,
+            key_password=None,
+            tls_in_tls=False,
+        )
+
+    @mock.patch("urllib3.connection.ssl_wrap_socket")
+    def test_caller_supplied_ssl_context_verify_mode_not_mutated_when_cert_reqs_none(
+        self, mock_ssl_wrap: mock.MagicMock
+    ) -> None:
+        """When cert_reqs=None, a user-supplied context's verify_mode must not be touched.
+
+        Regression test for https://github.com/urllib3/urllib3/issues/4961:
+        _connect_tls_proxy now passes cert_reqs=None (not the target's cert_reqs),
+        so the proxy ssl_context's verify_mode must be left intact.
+        """
+        # Arrange: caller configured their proxy context for CERT_REQUIRED.
+        ctx = ssl_.create_urllib3_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_REQUIRED
+
+        # Act: call with cert_reqs=None (the value _connect_tls_proxy now passes).
+        self._call(mock_ssl_wrap, ctx, cert_reqs=None)
+
+        # Assert: the caller's context verify_mode is unchanged.
+        assert (
+            ctx.verify_mode == ssl.CERT_REQUIRED
+        ), f"proxy_ssl_context.verify_mode was mutated to {ctx.verify_mode!r}"
+
+    @mock.patch("urllib3.connection.ssl_wrap_socket")
+    def test_caller_supplied_ssl_context_verify_mode_updated_when_cert_reqs_explicit(
+        self, mock_ssl_wrap: mock.MagicMock
+    ) -> None:
+        """When cert_reqs is explicitly provided, it is applied even to user-supplied contexts.
+
+        This is the behaviour relied on by callers who pass both ssl_context and cert_reqs
+        (e.g. TestClientCerts tests that supply a custom context with cert_reqs='REQUIRED').
+        """
+        # Arrange: start with CERT_NONE on a user-supplied context.
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        # Act: explicit cert_reqs=CERT_REQUIRED should upgrade verify_mode.
+        self._call(mock_ssl_wrap, ctx, cert_reqs=ssl.CERT_REQUIRED)
+
+        # Assert: verify_mode was upgraded to match the explicit request.
+        assert (
+            ctx.verify_mode == ssl.CERT_REQUIRED
+        ), f"verify_mode should have been set to CERT_REQUIRED, got {ctx.verify_mode!r}"
