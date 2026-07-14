@@ -5,13 +5,14 @@ from unittest import mock
 
 import pytest
 
-from urllib3.connection import _get_default_user_agent
+from urllib3.connection import ProxyConfig, _get_default_user_agent
 from urllib3.exceptions import ConnectionError
 from urllib3.http2.connection import (
     HTTP2Connection,
     _is_illegal_header_value,
     _is_legal_header_name,
 )
+from urllib3.util import parse_url
 
 # [1] https://httpwg.org/specs/rfc9113.html#n-field-validity
 
@@ -264,6 +265,63 @@ class TestHTTP2Connection:
                 (b":method", b"GET"),
                 (b":authority", b"example.com:443"),
                 (b":path", b"/"),
+                (b"user-agent", _get_default_user_agent().encode()),
+            ],
+            end_stream=True,
+        )
+
+        close_connection.assert_called_with()
+
+    @pytest.mark.parametrize(
+        "url, scheme, authority, path",
+        (
+            (
+                "https://target.example:9443/path?query=true",
+                b"https",
+                b"target.example:9443",
+                b"/path?query=true",
+            ),
+            (
+                "http://target.example/path?query=true",
+                b"http",
+                b"target.example",
+                b"/path?query=true",
+            ),
+        ),
+    )
+    def test_forwarding_proxy_request_GET(
+        self, url: str, scheme: bytes, authority: bytes, path: bytes
+    ) -> None:
+        conn = HTTP2Connection(
+            "proxy.example",
+            8443,
+            proxy=parse_url("https://proxy.example:8443"),
+            proxy_config=ProxyConfig(None, True, None, None),
+        )
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
+        sendall = conn.sock.sendall
+        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
+            return_value=None
+        )
+
+        conn.request("GET", url)
+        conn.close()
+
+        data_to_send.assert_called_with()
+        sendall.assert_called_with(b"foo")
+        send_headers.assert_called_with(
+            stream_id=1,
+            headers=[
+                (b":scheme", scheme),
+                (b":method", b"GET"),
+                (b":authority", authority),
+                (b":path", path),
                 (b"user-agent", _get_default_user_agent().encode()),
             ],
             end_stream=True,
