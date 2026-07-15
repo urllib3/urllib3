@@ -60,21 +60,29 @@ class Config(hypercorn.Config):
         port = 0  # Get a random port
         family = socket.AF_INET6 if ":" in host else socket.AF_UNSPEC
 
-        for res in socket.getaddrinfo(
-            host, port, family, socket.SOCK_STREAM, 0, socket.AI_PASSIVE
-        ):
-            af, socktype, proto, canonname, sockadddr = res
+        try:
+            for res in socket.getaddrinfo(
+                host, port, family, socket.SOCK_STREAM, 0, socket.AI_PASSIVE
+            ):
+                af, socktype, proto, canonname, sockadddr = res
 
-            sock = socket.socket(af, socket.SOCK_STREAM, proto)
+                sock = socket.socket(af, socket.SOCK_STREAM, proto)
+                try:
+                    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-            sock.setblocking(False)
-            sock.bind((host, port))
-            port = sock.getsockname()[1]
-            sock.set_inheritable(True)
-            sockets.append(sock)
+                    sock.setblocking(False)
+                    sock.bind((host, port))
+                    port = sock.getsockname()[1]
+                    sock.set_inheritable(True)
+                except BaseException:
+                    sock.close()
+                    raise
+                sockets.append(sock)
+        except BaseException:
+            for sock in sockets:
+                sock.close()
+            raise
 
         return sockets
 
