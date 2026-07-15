@@ -1,0 +1,1 @@
+Rejected carriage return, line feed, and NUL characters in ``multipart/form-data`` field header names and values so an untrusted value (such as a forwarded upload ``Content-Type``) can no longer inject extra part headers into the request body.

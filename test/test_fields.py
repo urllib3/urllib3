@@ -57,6 +57,36 @@ class TestRequestField:
             "\r\n"
         )
 
+    @pytest.mark.parametrize(
+        "content_type",
+        [
+            'image/png\r\nContent-Disposition: form-data; name="role"\r\n\r\nadmin',
+            "text/plain\nX-Injected: 1",
+            "text/plain\x00",
+        ],
+    )
+    def test_make_multipart_rejects_crlf_in_content_type(
+        self, content_type: str
+    ) -> None:
+        field = RequestField.from_tuples("file", ("a.png", b"data", content_type))
+        with pytest.raises(ValueError, match="Invalid multipart header value"):
+            field.render_headers()
+
+    @pytest.mark.parametrize(
+        "headers, match",
+        [
+            ({"X-A\r\nX-Injected": "1"}, "Invalid multipart header name"),
+            ({"X-A": "1\r\nX-Injected: 1"}, "Invalid multipart header value"),
+            ({"X-A": "1\x00"}, "Invalid multipart header value"),
+        ],
+    )
+    def test_render_headers_rejects_crlf(
+        self, headers: dict[str, str], match: str
+    ) -> None:
+        field = RequestField("somename", "data", headers=headers)
+        with pytest.raises(ValueError, match=match):
+            field.render_headers()
+
     def test_render_parts(self) -> None:
         field = RequestField("somename", "data")
         parts = field._render_parts({"name": "value", "filename": "value"})

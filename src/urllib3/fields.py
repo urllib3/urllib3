@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import email.utils
 import mimetypes
+import re
 import typing
 
 _TYPE_FIELD_VALUE = typing.Union[str, bytes]
+
+# CR, LF, and NUL break out of a multipart field header line and are never
+# valid inside a header name or value.
+_HEADER_INVALID_CHAR_RE = re.compile(r"[\r\n\x00]")
 _TYPE_FIELD_VALUE_TUPLE = typing.Union[
     _TYPE_FIELD_VALUE,
     tuple[str, _TYPE_FIELD_VALUE],
@@ -74,6 +79,22 @@ def format_header_param_rfc2231(name: str, value: _TYPE_FIELD_VALUE) -> str:
     value = f"{name}*={value}"
 
     return value
+
+
+def _check_header(name: str, value: str | None) -> None:
+    """Reject a multipart field header whose name or value contains a
+    character that would break out of the rendered part header block.
+
+    ``format_multipart_header_param`` already escapes the ``name`` and
+    ``filename`` parameters, but the header values set by
+    :meth:`RequestField.make_multipart` (e.g. ``Content-Type``) and any
+    caller-supplied headers are emitted verbatim, so an untrusted value
+    could otherwise inject extra part headers or whole parts.
+    """
+    if _HEADER_INVALID_CHAR_RE.search(name):
+        raise ValueError(f"Invalid multipart header name {name!r}")
+    if value is not None and _HEADER_INVALID_CHAR_RE.search(value):
+        raise ValueError(f"Invalid multipart header value {value!r}")
 
 
 def format_multipart_header_param(name: str, value: _TYPE_FIELD_VALUE) -> str:
@@ -297,11 +318,13 @@ class RequestField:
         sort_keys = ["Content-Disposition", "Content-Type", "Content-Location"]
         for sort_key in sort_keys:
             if self.headers.get(sort_key, False):
+                _check_header(sort_key, self.headers[sort_key])
                 lines.append(f"{sort_key}: {self.headers[sort_key]}")
 
         for header_name, header_value in self.headers.items():
             if header_name not in sort_keys:
                 if header_value:
+                    _check_header(header_name, header_value)
                     lines.append(f"{header_name}: {header_value}")
 
         lines.append("\r\n")
