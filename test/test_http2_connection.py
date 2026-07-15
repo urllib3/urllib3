@@ -11,6 +11,7 @@ from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import ConnectionError
 from urllib3.http2.connection import (
     HTTP2Connection,
+    _format_h2_error_code,
     _is_illegal_header_value,
     _is_legal_header_name,
 )
@@ -101,6 +102,19 @@ class TestHTTP2Connection:
         assert _is_illegal_header_value(b"\tfoo"), "\\tfoo"
         assert _is_illegal_header_value(b"foo\t"), "foo\\t"
         assert _is_illegal_header_value(b"foo\x09"), "foo\\x09"
+
+    @pytest.mark.parametrize(
+        ("error_code", "expected"),
+        [
+            (None, "unknown error code None"),
+            (99, "unknown error code 99"),
+            (h2.errors.ErrorCodes.REFUSED_STREAM, "REFUSED_STREAM (0x7)"),
+        ],
+    )
+    def test_format_h2_error_code(
+        self, error_code: h2.errors.ErrorCodes | int | None, expected: str
+    ) -> None:
+        assert _format_h2_error_code(error_code) == expected
 
     def test_default_socket_options(self) -> None:
         conn = HTTP2Connection("example.com")
