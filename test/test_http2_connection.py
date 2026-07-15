@@ -3,6 +3,8 @@ from __future__ import annotations
 import socket
 from unittest import mock
 
+import h2.errors
+import h2.events
 import pytest
 
 from urllib3.connection import _get_default_user_agent
@@ -17,6 +19,31 @@ from urllib3.http2.connection import (
 
 
 class TestHTTP2Connection:
+    @staticmethod
+    def _new_http2_event(event_type: type[object], **attributes: object) -> object:
+        """Create h2 events compatibly across its supported 4.x releases."""
+        event = object.__new__(event_type)
+        for name, value in attributes.items():
+            setattr(event, name, value)
+        return event
+
+    @staticmethod
+    def _connection_with_events(
+        *events: object,
+    ) -> tuple[HTTP2Connection, mock.Mock, mock.Mock]:
+        conn = HTTP2Connection("example.com")
+        conn._h2_stream = 1
+        recv = mock.Mock(return_value=b"server response")
+        conn.sock = mock.MagicMock(
+            recv=recv,
+            sendall=mock.Mock(return_value=None),
+        )
+        h2_conn = conn._h2_conn._obj
+        h2_conn.receive_data = mock.Mock(return_value=list(events))  # type: ignore[method-assign]
+        h2_conn.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        h2_conn.close_connection = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        return conn, h2_conn.close_connection, recv
+
     def test__is_legal_header_name(self) -> None:
         assert _is_legal_header_name(b"foo"), "foo"
         assert _is_legal_header_name(b"foo-bar"), "foo-bar"
@@ -358,3 +385,52 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+    def test_getresponse_StreamReset(self) -> None:
+        event = self._new_http2_event(
+            h2.events.StreamReset,
+            stream_id=1,
+            error_code=h2.errors.ErrorCodes.REFUSED_STREAM,
+            remote_reset=True,
+        )
+        conn, close_connection, _ = self._connection_with_events(event)
+
+        with pytest.raises(
+            ConnectionError,
+            match=r"HTTP/2 stream 1 was reset: REFUSED_STREAM \(0x7\)",
+        ):
+            conn.getresponse()
+
+        close_connection.assert_called_once_with()
+        assert conn.is_closed
+
+    def test_getresponse_ConnectionTerminated(self) -> None:
+        event = self._new_http2_event(
+            h2.events.ConnectionTerminated,
+            error_code=h2.errors.ErrorCodes.ENHANCE_YOUR_CALM,
+            last_stream_id=0,
+            additional_data=b"",
+        )
+        conn, close_connection, _ = self._connection_with_events(event)
+
+        with pytest.raises(
+            ConnectionError,
+            match=r"HTTP/2 connection was terminated: ENHANCE_YOUR_CALM \(0xb\)",
+        ):
+            conn.getresponse()
+
+        close_connection.assert_called_once_with()
+        assert conn.is_closed
+
+    def test_getresponse_EOF(self) -> None:
+        conn, close_connection, recv = self._connection_with_events()
+        recv.return_value = b""
+
+        with pytest.raises(
+            ConnectionError,
+            match="Connection closed before receiving an HTTP/2 response",
+        ):
+            conn.getresponse()
+
+        close_connection.assert_called_once_with()
+        assert conn.is_closed
