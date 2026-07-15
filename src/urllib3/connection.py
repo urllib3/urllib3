@@ -807,28 +807,30 @@ class HTTPSConnection(HTTPConnection):
             # urllib3 v3.0. Appropriate warning is emitted in
             # ``ProxyManager.__init__``.
             if self.proxy_is_forwarding and self.proxy_config is not None:
-                ssl_context = self.proxy_config.ssl_context
+                self.sock = sock = self._connect_tls_proxy(self.host, sock)
+                sock_and_verified = _WrappedAndVerifiedSocket(
+                    socket=sock,
+                    is_verified=self.proxy_is_verified is True,
+                )
             else:
-                ssl_context = self.ssl_context
-
-            sock_and_verified = _ssl_wrap_socket_and_match_hostname(
-                sock=sock,
-                cert_reqs=self.cert_reqs,
-                ssl_version=self.ssl_version,
-                ssl_minimum_version=self.ssl_minimum_version,
-                ssl_maximum_version=self.ssl_maximum_version,
-                ca_certs=self.ca_certs,
-                ca_cert_dir=self.ca_cert_dir,
-                ca_cert_data=self.ca_cert_data,
-                cert_file=self.cert_file,
-                key_file=self.key_file,
-                key_password=self.key_password,
-                server_hostname=server_hostname_rm_dot,
-                ssl_context=ssl_context,
-                tls_in_tls=tls_in_tls,
-                assert_hostname=self.assert_hostname,
-                assert_fingerprint=self.assert_fingerprint,
-            )
+                sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                    sock=sock,
+                    cert_reqs=self.cert_reqs,
+                    ssl_version=self.ssl_version,
+                    ssl_minimum_version=self.ssl_minimum_version,
+                    ssl_maximum_version=self.ssl_maximum_version,
+                    ca_certs=self.ca_certs,
+                    ca_cert_dir=self.ca_cert_dir,
+                    ca_cert_data=self.ca_cert_data,
+                    cert_file=self.cert_file,
+                    key_file=self.key_file,
+                    key_password=self.key_password,
+                    server_hostname=server_hostname_rm_dot,
+                    ssl_context=self.ssl_context,
+                    tls_in_tls=tls_in_tls,
+                    assert_hostname=self.assert_hostname,
+                    assert_fingerprint=self.assert_fingerprint,
+                )
             self.sock = sock_and_verified.socket
 
         # If an error occurs during connection/handshake we may need to release
@@ -878,16 +880,16 @@ class HTTPSConnection(HTTPConnection):
 
     def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> ssl.SSLSocket:
         """
-        Establish a TLS connection to the proxy using the provided SSL context.
+        Establish a TLS connection to the proxy using proxy-specific policy.
         """
-        # `_connect_tls_proxy` is called when self._tunnel_host is truthy.
         proxy_config = typing.cast(ProxyConfig, self.proxy_config)
-        ssl_context = proxy_config.ssl_context
+        proxy_ssl_context = proxy_config.ssl_context
 
         cert_reqs: int | str | None
-        if ssl_context is not None:
+        if proxy_ssl_context is not None:
             # Prefer the proxy's cert policy for the proxy connection
-            cert_reqs = ssl_context.verify_mode
+            ssl_context = proxy_ssl_context
+            cert_reqs = proxy_ssl_context.verify_mode
             ca_certs = None
             ca_cert_dir = None
             ca_cert_data = None
@@ -896,6 +898,7 @@ class HTTPSConnection(HTTPConnection):
             ssl_maximum_version = None
         else:
             # Otherwise we inherit the pool's cert policies
+            ssl_context = self.ssl_context if self.proxy_is_forwarding else None
             cert_reqs = self.cert_reqs
             ca_certs = self.ca_certs
             ca_cert_dir = self.ca_cert_dir
