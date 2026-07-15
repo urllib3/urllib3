@@ -433,7 +433,7 @@ class TestHTTP2Connection:
         ):
             conn.getresponse()
 
-        close_connection.assert_called_once_with()
+        close_connection.assert_not_called()
         assert conn.is_closed
 
     def test_getresponse_EOF(self) -> None:

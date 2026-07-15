@@ -281,7 +281,7 @@ class HTTP2Connection(HTTPSConnection):
                         )
 
                     elif isinstance(event, h2.events.ConnectionTerminated):
-                        self.close()
+                        self._close_http2_connection(send_goaway=False)
                         raise ConnectionError(
                             "HTTP/2 connection was terminated: "
                             f"{_format_h2_error_code(event.error_code)}"
@@ -337,14 +337,15 @@ class HTTP2Connection(HTTPSConnection):
         else:
             self.endheaders()
 
-    def close(self) -> None:
-        with self._h2_conn as conn:
-            try:
-                conn.close_connection()
-                if data := conn.data_to_send():
-                    self.sock.sendall(data)
-            except Exception:
-                pass
+    def _close_http2_connection(self, *, send_goaway: bool) -> None:
+        if send_goaway:
+            with self._h2_conn as conn:
+                try:
+                    conn.close_connection()
+                    if data := conn.data_to_send():
+                        self.sock.sendall(data)
+                except Exception:
+                    pass
 
         # Reset all our HTTP/2 connection state.
         self._h2_conn = self._new_h2_conn()
@@ -352,6 +353,9 @@ class HTTP2Connection(HTTPSConnection):
         self._headers = []
 
         super().close()
+
+    def close(self) -> None:
+        self._close_http2_connection(send_goaway=True)
 
 
 class HTTP2Response(BaseHTTPResponse):
