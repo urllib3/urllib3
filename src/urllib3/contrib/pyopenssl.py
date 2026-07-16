@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import OpenSSL.SSL
 from cryptography import x509
+from cryptography.x509.oid import NameOID
 
 try:
     from cryptography.x509 import UnsupportedExtension  # type: ignore[attr-defined]
