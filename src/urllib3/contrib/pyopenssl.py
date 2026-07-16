@@ -270,6 +270,24 @@ def get_subj_alt_name(peer_cert: X509) -> list[tuple[str, str]]:
     return names
 
 
+def _common_name(peer_cert: X509) -> str | None:
+    """
+    Given a PyOpenSSL certificate, returns its subject's commonName, or None
+    if it doesn't have one.
+
+    OpenSSL.crypto.X509.get_subject() (and the X509Name object it returns) is
+    deprecated as of pyOpenSSL 26.3.0, so this goes through cryptography's
+    X.509 API instead, same as get_subj_alt_name() does above for the same
+    certificate.
+    """
+    cert = peer_cert.to_cryptography()
+    common_names = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+    if not common_names:
+        return None
+    value = common_names[0].value
+    return value if isinstance(value, str) else value.decode("utf-8")
+
+
 class WrappedSocket:
     """API-compatibility wrapper for Python OpenSSL's Connection-class."""
 
