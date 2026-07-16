@@ -583,13 +583,8 @@ To disable redirects but keep the retrying logic, specify ``redirect=False``:
     # 302
 
 For more granular control you can use a :class:`~util.retry.Retry` instance.
-This class allows you far greater control of how requests are retried.
-
-When enabling retries against production services, consider configuring a
-non-zero ``backoff_factor`` so consecutive retry attempts do not happen
-back-to-back. This is especially important for status-code retries, where the
-remote service may already be rate limiting or overloaded. See
-:class:`~util.retry.Retry` for how backoff delays are calculated.
+This class allows you far greater control of how requests are retried,
+including status-code retries with backoff.
 
 For example, to retry rate-limit and transient server responses with backoff:
 
