@@ -47,6 +47,8 @@ SSL_KEYWORDS = (
     "ssl_context",
     "key_password",
     "server_hostname",
+    "assert_hostname",
+    "assert_fingerprint",
 )
 # Default value for `blocksize` - a new parameter introduced to
 # http.client.HTTPConnection & http.client.HTTPSConnection in Python 3.7
@@ -309,7 +311,7 @@ class PoolManager(RequestMethods):
 
         request_context = self._merge_pool_kwargs(pool_kwargs)
         request_context["scheme"] = scheme or "http"
-        if not port:
+        if port is None:
             port = port_by_scheme.get(request_context["scheme"].lower(), 80)
         request_context["port"] = port
         request_context["host"] = host
@@ -452,7 +454,7 @@ class PoolManager(RequestMethods):
             kw["headers"] = self.headers
 
         if self._proxy_requires_url_absolute_form(u):
-            response = conn.urlopen(method, url, **kw)
+            response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 
@@ -544,15 +546,17 @@ class ProxyManager(PoolManager):
 
         proxy = urllib3.ProxyManager("https://localhost:3128/")
 
-        resp1 = proxy.request("GET", "https://google.com/")
-        resp2 = proxy.request("GET", "https://httpbin.org/")
+        resp1 = proxy.request("GET", "http://google.com/")
+        resp2 = proxy.request("GET", "http://httpbin.org/")
 
+        # One pool was shared by both plain HTTP requests.
         print(len(proxy.pools))
         # 1
 
         resp3 = proxy.request("GET", "https://httpbin.org/")
         resp4 = proxy.request("GET", "https://twitter.com/")
 
+        # A separate pool was added for each HTTPS target.
         print(len(proxy.pools))
         # 3
 
@@ -579,7 +583,22 @@ class ProxyManager(PoolManager):
         if proxy.scheme not in ("http", "https"):
             raise ProxySchemeUnknown(proxy.scheme)
 
-        if not proxy.port:
+        if (
+            use_forwarding_for_https
+            and proxy.scheme == "https"
+            and connection_pool_kw.get("ssl_context") is not None
+        ):
+            warnings.warn(
+                "Passing ssl_context when use_forwarding_for_https=True is deprecated "
+                "and will raise an error in urllib3 v3.0. "
+                "Use proxy_ssl_context to configure the TLS connection to the proxy.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if proxy_ssl_context is None:
+                proxy_ssl_context = connection_pool_kw.get("ssl_context")
+
+        if proxy.port is None:
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 

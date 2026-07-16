@@ -18,12 +18,12 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       - name: "Setup Python"
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.x"
           cache: "pip"
@@ -58,10 +58,6 @@ jobs:
             experimental: false
             nox-session: test-3.12
           # pypy
-          - python-version: "pypy-3.10"
-            os: ubuntu-24.04
-            experimental: false
-            nox-session: test-pypy3.10
           - python-version: "pypy-3.11"
             os: ubuntu-24.04
             experimental: false
@@ -101,13 +97,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0 # Needed to fetch the version from git
           persist-credentials: false
 
       - name: "Setup Python ${{ matrix.python-version }}"
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         # pip will emit a warning about running as root if setup-python
         # is used in a container.
         if: ${{ matrix.container == '' }}
@@ -117,12 +113,12 @@ jobs:
           check-latest: true
 
       - name: "Install uv"
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
-          version: "0.9.5"
+          version: "0.11.7"
 
       - name: "Install Chrome"
-        uses: browser-actions/setup-chrome@b94431e051d1c52dcbe9a7092a4f10f827795416 # v2.1.0
+        uses: browser-actions/setup-chrome@4f8e94349a351df0f048634f25fec36c3c91eded # v2.1.1
         id: setup-chrome
         if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
         with:
@@ -139,15 +135,15 @@ jobs:
           google-chrome --version
         if: ${{ matrix.nox-session == 'emscripten(chrome)' }}
       - name: "Install Firefox"
-        uses: browser-actions/setup-firefox@5914774dda97099441f02628f8d46411fcfbd208 # v1.7.0
+        uses: browser-actions/setup-firefox@fcf821c621167805dd63a29662bd7cb5676c81a8 # v1.7.1
         if: ${{ matrix.nox-session == 'emscripten(firefox)' }}
       - name: "Install node.js"
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         if: ${{ matrix.nox-session == 'emscripten(node)' }}
         with:
           node-version: 22
       - name: Cache pyodide downloads in nox cache
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: ${{ startsWith(matrix.nox-session, 'emscripten') }}
         with:
           path: .nox/.cache
@@ -176,19 +172,19 @@ jobs:
     needs: test
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       - name: "Setup Python"
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.x"
 
       - name: "Install uv"
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
-          version: "0.7.12"
+          version: "0.11.7"
 
       - name: "Install coverage"
         # Install the same version of coverage as in the lock file.

@@ -17,6 +17,7 @@
 * [ ]  Ensure that all expected artifacts are added to the new GitHub release draft. Should
        be one `.whl` and one `.tar.gz`. Publish the GitHub
        release with the content of the release's changelog and any ongoing announcements.
+* [ ]  Publish any advisories mentioned in release.
 * [ ]  Announce on:
   * [ ]  Social media
   * [ ]  Discord

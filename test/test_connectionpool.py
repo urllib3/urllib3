@@ -26,6 +26,7 @@ from urllib3.exceptions import (
     EmptyPoolError,
     FullPoolError,
     HostChangedError,
+    LocationParseError,
     LocationValueError,
     MaxRetryError,
     ProtocolError,
@@ -155,6 +156,42 @@ class TestConnectionPool:
             assert c.is_same_host(b)
 
     @pytest.mark.parametrize(
+        "host",
+        [
+            "127.0.0.1\n",
+            "127.0.0.1 ",
+            "::1\n",
+            "[::1]\n",
+        ],
+    )
+    def test_control_characters_in_host_raise(self, host: str) -> None:
+        with pytest.raises(LocationParseError):
+            HTTPConnectionPool(host)
+
+    @pytest.mark.parametrize("host", ["foo%.example", "foo%zz.example"])
+    def test_malformed_percent_escapes_in_host_raise(self, host: str) -> None:
+        with pytest.raises(LocationParseError):
+            HTTPConnectionPool(host)
+
+    @pytest.mark.parametrize(
+        "host, expected_host, expected_tunnel_host",
+        [
+            ("EXAMPLE%2Ecom%2E", "example.com.", "example.com."),
+            (
+                "[2607:f8b0:4005:805::200e%25eth0]",
+                "2607:f8b0:4005:805::200e%eth0",
+                "[2607:f8b0:4005:805::200e%eth0]",
+            ),
+        ],
+    )
+    def test_host_and_tunnel_host_are_normalized(
+        self, host: str, expected_host: str, expected_tunnel_host: str
+    ) -> None:
+        with HTTPSConnectionPool(host) as pool:
+            assert pool.host == expected_host
+            assert pool._tunnel_host == expected_tunnel_host
+
+    @pytest.mark.parametrize(
         "a, b",
         [
             ("google.com", "https://google.com/"),
@@ -217,6 +254,14 @@ class TestConnectionPool:
         with HTTPUnixConnectionPool(a) as c:
             assert not c.is_same_host(b)
 
+    def test_same_host_port_zero(self) -> None:
+        with HTTPConnectionPool("example.com", port=0) as c:
+            assert c.is_same_host("http://example.com:0/")
+            assert not c.is_same_host("http://example.com/")
+            assert not c.is_same_host("https://example.com/")
+            assert not c.is_same_host("http://example.com:80/")
+            assert not c.is_same_host("https://example.com:443/")
+
     def test_max_connections(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
             pool._get_conn(timeout=SHORT_TIMEOUT)
@@ -276,6 +321,14 @@ class TestConnectionPool:
             assert conn2_close.called is True
 
             assert conn1 == pool._get_conn()
+
+    def test_urlopen_invalid_timeout_raises_value_error(self) -> None:
+        with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
+            with pytest.raises(
+                ValueError,
+                match="Timeout value connect was 1, but it must be an int, float or None",
+            ):
+                pool.urlopen("GET", "/", timeout="1")  # type: ignore[arg-type]
 
     def test_put_conn_closed_pool(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
@@ -592,3 +645,82 @@ class TestConnectionPool:
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout=timeout)
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "//v:h",
+            "//host:8080/path",
+            "//host/path",
+            "//v:h?key=val",
+            "/",
+        ],
+    )
+    def test_paths_arent_parsed_as_urls(self, path: str) -> None:
+        """See https://github.com/urllib3/urllib3/issues/3352."""
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool, "_make_request", return_value=HTTPResponse(status=200)
+            ) as mock_request:
+                pool.urlopen("GET", path)
+
+            # Verify the URL isn't mangled
+            actual_url = mock_request.call_args[0][2]
+            assert actual_url == path
+
+    @pytest.mark.parametrize(
+        ("target_url", "expected_url"),
+        [
+            pytest.param(
+                "http://localhost/path#marker=value",
+                "http://localhost/path",
+                id="fragment-after-path",
+            ),
+            pytest.param(
+                "http://localhost/path?x=1#marker=value",
+                "http://localhost/path?x=1",
+                id="fragment-after-query",
+            ),
+            pytest.param(
+                "http://localhost/#marker=value",
+                "http://localhost/",
+                id="root-path-with-fragment",
+            ),
+            pytest.param(
+                "http://localhost/path?x=1#",
+                "http://localhost/path?x=1",
+                id="empty-fragment",
+            ),
+        ],
+    )
+    def test_absolute_url_request_target_strips_fragment(
+        self, target_url: str, expected_url: str
+    ) -> None:
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool, "_make_request", return_value=HTTPResponse(status=200)
+            ) as mock_request:
+                pool.urlopen("GET", target_url)
+
+            actual_url = mock_request.call_args[0][2]
+            assert actual_url == expected_url
+
+    def test_absolute_redirect_request_target_strips_fragment(self) -> None:
+        redirect_response = HTTPResponse(
+            status=302,
+            headers={"location": "http://localhost/next?x=1#marker=value"},
+        )
+        final_response = HTTPResponse(status=200)
+
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                side_effect=[redirect_response, final_response],
+            ) as mock_request:
+                response = pool.urlopen("GET", "/", retries=1)
+
+            requested_urls = [call.args[2] for call in mock_request.call_args_list]
+
+        assert response.status == 200
+        assert requested_urls == ["/", "http://localhost/next?x=1"]

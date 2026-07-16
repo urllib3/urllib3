@@ -40,7 +40,7 @@ like this:
 
 from __future__ import annotations
 
-import OpenSSL.SSL  # type: ignore[import-not-found]
+import OpenSSL.SSL
 from cryptography import x509
 
 try:
@@ -54,13 +54,12 @@ except ImportError:
 import logging
 import ssl
 import typing
-from io import BytesIO
 from socket import socket as socket_cls
 
 from .. import util
 
 if typing.TYPE_CHECKING:
-    from OpenSSL.crypto import X509  # type: ignore[import-not-found]
+    from OpenSSL.crypto import X509
 
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
@@ -318,11 +317,11 @@ class WrappedSocket:
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError(f"read error: {e!r}") from e
         else:
-            return data  # type: ignore[no-any-return]
+            return data
 
     def recv_into(self, *args: typing.Any, **kwargs: typing.Any) -> int:
         try:
-            return self.connection.recv_into(*args, **kwargs)  # type: ignore[no-any-return]
+            return self.connection.recv_into(*args, **kwargs)
         except OpenSSL.SSL.SysCallError as e:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return 0
@@ -349,7 +348,7 @@ class WrappedSocket:
     def _send_until_done(self, data: bytes) -> int:
         while True:
             try:
-                return self.connection.send(data)  # type: ignore[no-any-return]
+                return self.connection.send(data)
             except OpenSSL.SSL.WantWriteError as e:
                 if not util.wait_for_write(self.socket, self.socket.gettimeout()):
                     raise TimeoutError() from e
@@ -382,16 +381,24 @@ class WrappedSocket:
         except OpenSSL.SSL.Error:
             return
 
+    @typing.overload
+    def getpeercert(
+        self, binary_form: typing.Literal[False] = False
+    ) -> dict[str, list[typing.Any]] | None: ...
+
+    @typing.overload
+    def getpeercert(self, binary_form: typing.Literal[True]) -> bytes | None: ...
+
     def getpeercert(
         self, binary_form: bool = False
-    ) -> dict[str, list[typing.Any]] | None:
+    ) -> dict[str, list[typing.Any]] | bytes | None:
         x509 = self.connection.get_peer_certificate()
 
-        if not x509:
-            return x509  # type: ignore[no-any-return]
+        if x509 is None:
+            return None
 
         if binary_form:
-            return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)  # type: ignore[no-any-return]
+            return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)
 
         return {
             "subject": ((("commonName", x509.get_subject().CN),),),  # type: ignore[dict-item]
@@ -399,7 +406,7 @@ class WrappedSocket:
         }
 
     def version(self) -> str:
-        return self.connection.get_protocol_version_name()  # type: ignore[no-any-return]
+        return self.connection.get_protocol_version_name()
 
     def selected_alpn_protocol(self) -> str | None:
         alpn_proto = self.connection.get_alpn_proto_negotiated()
@@ -441,7 +448,7 @@ class PyOpenSSLContext:
     @verify_flags.setter
     def verify_flags(self, value: int) -> None:
         self._verify_flags = value
-        self._ctx.get_cert_store().set_flags(self._verify_flags)
+        self._ctx.get_cert_store().set_flags(self._verify_flags)  # type: ignore[union-attr]
 
     @property
     def verify_mode(self) -> int:
@@ -472,7 +479,7 @@ class PyOpenSSLContext:
         try:
             self._ctx.load_verify_locations(cafile, capath)
             if cadata is not None:
-                self._ctx.load_verify_locations(BytesIO(cadata))
+                self._ctx.load_verify_locations(cadata)
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError(f"unable to load trusted certificates: {e!r}") from e
 
@@ -487,14 +494,14 @@ class PyOpenSSLContext:
             if password is not None:
                 if not isinstance(password, bytes):
                     password = password.encode("utf-8")  # type: ignore[assignment]
-                self._ctx.set_passwd_cb(lambda *_: password)
+                self._ctx.set_passwd_cb(lambda *_: password)  # type: ignore[arg-type]
             self._ctx.use_privatekey_file(keyfile or certfile)
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError(f"Unable to load certificate chain: {e!r}") from e
 
     def set_alpn_protocols(self, protocols: list[bytes | str]) -> None:
         protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
-        return self._ctx.set_alpn_protos(protocols)  # type: ignore[no-any-return]
+        return self._ctx.set_alpn_protos(protocols)  # type: ignore[arg-type]
 
     def wrap_socket(
         self,

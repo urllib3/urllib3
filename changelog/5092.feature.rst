@@ -1,0 +1,1 @@
+Added ``basic_auth_encoding`` and ``proxy_basic_auth_encoding`` parameters to ``urllib3.util.make_headers()``.
