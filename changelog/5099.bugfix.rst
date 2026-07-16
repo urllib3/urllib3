@@ -1,0 +1,6 @@
+Fixed the pyOpenSSL TLS backend (``urllib3.contrib.pyopenssl``) emitting a
+``DeprecationWarning`` from ``OpenSSL.crypto.X509.get_subject()`` on
+pyOpenSSL 26.3.0+ when reading a peer certificate's ``commonName`` in
+``getpeercert()``. The commonName is now read via ``cryptography``'s X.509
+API instead, matching the approach already used for subject alternative
+names.
