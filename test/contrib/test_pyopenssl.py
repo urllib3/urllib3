@@ -101,7 +101,17 @@ class TestPyOpenSSLHelpers:
         Builds a minimal, self-signed, in-memory certificate for exercising
         _common_name(), optionally with no commonName attribute at all.
         """
-        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        try:
+            # cryptography >= 3.1 makes `backend` optional.
+            key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        except TypeError:
+            # cryptography 2.3 (our documented minimum, pinned by the
+            # dev-min-pyopenssl dependency group) still requires it.
+            from cryptography.hazmat.backends import default_backend
+
+            key = rsa.generate_private_key(
+                public_exponent=65537, key_size=2048, backend=default_backend()
+            )
         name = x509.Name(
             [x509.NameAttribute(NameOID.COMMON_NAME, common_name)]
             if common_name is not None
