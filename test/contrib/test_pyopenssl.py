@@ -118,7 +118,7 @@ class TestPyOpenSSLHelpers:
             else []
         )
         now = datetime.datetime.now(datetime.timezone.utc)
-        cert = (
+        builder = (
             x509.CertificateBuilder()
             .subject_name(name)
             .issuer_name(name)
@@ -126,8 +126,16 @@ class TestPyOpenSSLHelpers:
             .serial_number(x509.random_serial_number())
             .not_valid_before(now - datetime.timedelta(days=1))
             .not_valid_after(now + datetime.timedelta(days=1))
-            .sign(key, hashes.SHA256())
         )
+        try:
+            # cryptography >= 3.1 makes `backend` optional.
+            cert = builder.sign(key, hashes.SHA256())
+        except TypeError:
+            # cryptography 2.3 (our documented minimum, pinned by the
+            # dev-min-pyopenssl dependency group) still requires it.
+            from cryptography.hazmat.backends import default_backend
+
+            cert = builder.sign(key, hashes.SHA256(), backend=default_backend())
         return load_certificate(FILETYPE_PEM, cert.public_bytes(Encoding.PEM))
 
     def test_common_name(self) -> None:
