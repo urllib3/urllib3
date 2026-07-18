@@ -1,3 +1,5 @@
-Resolved the default connection pool queue class at pool creation time so
-monkey-patched ``queue.LifoQueue`` implementations can be used unless
-``QueueCls`` is explicitly overridden.
+Changed behavior of the default ``ConnectionPool.pool`` initialization.
+``LifoQueue`` is now resolved from the ``queue`` module after the ``ConnectionPool``
+is instantiated instead of using default cached ``QueueCls`` class property.
+This is done because sometimes the ``queue.LifoQueue`` is monkey-patched
+late in the program, such as by gevent.
