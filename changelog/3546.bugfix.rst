@@ -1,1 +1,0 @@
-Clarified the documentation for ``Retry.RETRY_AFTER_STATUS_CODES`` to describe its ``Retry-After`` behavior accurately.
