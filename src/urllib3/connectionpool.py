@@ -116,7 +116,6 @@ class ConnectionPool:
     def _new_pool_queue(self, maxsize: int) -> queue.LifoQueue[typing.Any]:
         if self.QueueCls is _DEFAULT_QUEUE_CLASS:
             return queue.LifoQueue(maxsize)
-
         return self.QueueCls(maxsize)
 
 
