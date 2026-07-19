@@ -1168,6 +1168,74 @@ class TestProxyManager(SocketDummyServerTestCase):
                 ]
             )
 
+    @pytest.mark.parametrize(
+        ("redirect_target", "expected_host", "expected_authorization"),
+        [
+            pytest.param(
+                "http://example.com/second", b"example.com", False, id="cross-host"
+            ),
+            pytest.param(
+                "http://google.com/second", b"google.com", True, id="same-host"
+            ),
+            # A redirect to the proxy's own origin is still cross-host for the
+            # request target, so the credentials have to go.
+            pytest.param(None, None, False, id="proxy-origin"),
+        ],
+    )
+    def test_redirect_rewrites_host_and_strips_credentials(
+        self,
+        redirect_target: str | None,
+        expected_host: bytes | None,
+        expected_authorization: bool,
+    ) -> None:
+        if redirect_target is None:
+            redirect_target = f"http://{self.host}:{self.port}/second"
+            expected_host = f"{self.host}:{self.port}".encode()
+
+        requests: list[bytes] = []
+
+        def redirect_socket_handler(listener: socket.socket) -> None:
+            for first in (True, False):
+                sock = listener.accept()[0]
+
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += sock.recv(65536)
+                requests.append(buf)
+
+                if first:
+                    sock.send(
+                        b"HTTP/1.1 302 Found\r\n"
+                        b"Location: %s\r\n"
+                        b"Content-Length: 0\r\n"
+                        b"Connection: close\r\n"
+                        b"\r\n" % redirect_target.encode()
+                    )
+                else:
+                    sock.send(
+                        b"HTTP/1.1 200 OK\r\n"
+                        b"Content-Length: 0\r\n"
+                        b"Connection: close\r\n"
+                        b"\r\n"
+                    )
+                sock.close()
+
+        self._start_server(redirect_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+        with proxy_from_url(
+            base_url, headers={"Authorization": "Bearer secret"}
+        ) as proxy:
+            r = proxy.request("GET", "http://google.com/first")
+
+            assert r.status == 200
+
+        assert len(requests) == 2
+        assert requests[1].startswith(b"GET %s HTTP/1.1" % redirect_target.encode())
+        assert b"Host: %s\r\n" % expected_host in requests[1]
+        assert (
+            b"Authorization: Bearer secret\r\n" in requests[1]
+        ) is expected_authorization
+
     def test_headers(self) -> None:
         def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -2029,7 +2097,7 @@ class TestHeaders(SocketDummyServerTestCase):
             ]
 
             for header in self.received_headers:
-                (key, value) = header.split(b": ")
+                key, value = header.split(b": ")
                 self.parsed_headers[key.decode("ascii")] = value.decode("ascii")
 
             sock.send(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")
