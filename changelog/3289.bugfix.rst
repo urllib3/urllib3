@@ -1,0 +1,2 @@
+Used the monkey-patched ``queue.LifoQueue`` when creating default connection pools,
+improving compatibility with gevent while still respecting custom queue classes.
