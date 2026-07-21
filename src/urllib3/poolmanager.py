@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -159,6 +160,27 @@ key_fn_by_scheme = {
 }
 
 pool_classes_by_scheme = {"http": HTTPConnectionPool, "https": HTTPSConnectionPool}
+
+
+def _headers_with_url_auth(
+    headers: typing.Mapping[str, str] | None,
+    auth: str | None,
+    *,
+    proxy: bool = False,
+) -> typing.Mapping[str, str]:
+    if not auth:
+        return headers or {}
+
+    header_name = "Proxy-Authorization" if proxy else "Authorization"
+    headers_ = HTTPHeaderDict(headers)
+    if header_name not in headers_:
+        auth_header = make_headers(
+            basic_auth=None if proxy else auth,
+            proxy_basic_auth=auth if proxy else None,
+        )
+        headers_[header_name] = auth_header[header_name.lower()]
+
+    return headers_
 
 
 class PoolManager(RequestMethods):
@@ -453,6 +475,10 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        if u.auth:
+            kw["headers"] = _headers_with_url_auth(kw["headers"], u.auth)
+            url = u._replace(auth=None).url
+
         if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
         else:
@@ -603,7 +629,9 @@ class ProxyManager(PoolManager):
             proxy = proxy._replace(port=port)
 
         self.proxy = proxy
-        self.proxy_headers = proxy_headers or {}
+        self.proxy_headers = _headers_with_url_auth(
+            proxy_headers, proxy.auth, proxy=True
+        )
         self.proxy_ssl_context = proxy_ssl_context
         self.proxy_config = ProxyConfig(
             proxy_ssl_context,
