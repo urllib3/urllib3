@@ -271,6 +271,52 @@ class TestConnection:
         context.wrap_socket.return_value.close.assert_called_once_with()
 
     @pytest.mark.parametrize(
+        "headers, chunked",
+        [
+            ({"Content-Length": "5", "Transfer-Encoding": "chunked"}, False),
+            ({"content-length": "5", "transfer-encoding": "chunked"}, False),
+            ({b"Content-Length": "5", b"Transfer-Encoding": "chunked"}, False),
+            ({"Content-Length": "5"}, True),
+            ({b"Content-Length": "5"}, True),
+        ],
+    )
+    def test_request_rejects_ambiguous_framing(
+        self, headers: dict[typing.Any, str], chunked: bool
+    ) -> None:
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch("urllib3.connection._HTTPConnection.putheader") as putheader,
+        ):
+            conn = HTTPConnection("")
+            with pytest.raises(ValueError, match="can't both be set"):
+                conn.request(
+                    "POST", "/", body=b"hello", headers=headers, chunked=chunked
+                )
+
+        putheader.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "headers, chunked",
+        [
+            ({"Content-Length": "5"}, False),
+            ({"Transfer-Encoding": "chunked"}, False),
+            ({"Transfer-Encoding": "chunked"}, True),
+            ({}, True),
+        ],
+    )
+    def test_request_allows_unambiguous_framing(
+        self, headers: dict[str, str], chunked: bool
+    ) -> None:
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch("urllib3.connection._HTTPConnection.putheader"),
+            mock.patch("urllib3.connection._HTTPConnection.endheaders"),
+            mock.patch("urllib3.connection.HTTPConnection.send"),
+        ):
+            conn = HTTPConnection("")
+            conn.request("POST", "/", body=b"hello", headers=headers, chunked=chunked)
+
+    @pytest.mark.parametrize(
         "accept_encoding",
         [
             "Accept-Encoding",

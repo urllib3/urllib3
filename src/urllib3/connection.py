@@ -493,6 +493,14 @@ class HTTPConnection(_HTTPConnection):
         if headers is None:
             headers = {}
         header_keys = frozenset(to_str(k.lower()) for k in headers)
+        if "content-length" in header_keys and (
+            chunked or "transfer-encoding" in header_keys
+        ):
+            raise ValueError(
+                "Content-Length and Transfer-Encoding can't both be set, "
+                "the framing of the request would be ambiguous "
+                "(RFC 9112 Section 6.3)"
+            )
         skip_accept_encoding = "accept-encoding" in header_keys
         skip_host = "host" in header_keys
         self.putrequest(
