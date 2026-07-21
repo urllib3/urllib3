@@ -12,6 +12,26 @@ if typing.TYPE_CHECKING:
 
     from typing_extensions import Self
 
+
+def _validate_header_name(name: str | bytes) -> None:
+    """Validate that a header name does not contain whitespace.
+    
+    According to RFC 7230 Section 3.2.4, whitespace is not allowed
+    in header field names.
+    
+    :param name: The header name to validate
+    :raises ValueError: If the header name contains whitespace
+    """
+    if isinstance(name, bytes):
+        name = name.decode("latin-1")
+    
+    # Check for any whitespace characters (space, tab, newline, etc.)
+    if any(char.isspace() for char in name):
+        raise ValueError(
+            f"Header name cannot contain whitespace: {name!r}"
+        )
+
+
     class HasGettableStringKeys(Protocol):
         def keys(self) -> typing.Iterator[str]: ...
 
@@ -249,6 +269,9 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             self.extend(kwargs)
 
     def __setitem__(self, key: str, val: str) -> None:
+        # Validate header name has no whitespace
+        _validate_header_name(key)
+        
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
@@ -304,6 +327,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             pass
 
     def add(self, key: str, val: str, *, combine: bool = False) -> None:
+
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
@@ -322,6 +346,9 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         >>> list(headers.items())
         [('foo', 'bar, baz, quz')]
         """
+        # Validate header name has no whitespace
+        _validate_header_name(key)
+        	
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
