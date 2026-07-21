@@ -1,0 +1,11 @@
+Fixed ``HTTPSConnection.connect()`` overriding
+``ProxyConfig.ssl_context``'s certificate policy and proxy identity checks with
+the target connection's TLS settings when forwarding through an HTTPS proxy.
+``HTTPSConnection._connect_tls_proxy()`` now uses
+``ProxyConfig.ssl_context``, ``ProxyConfig.assert_hostname``, and
+``ProxyConfig.assert_fingerprint`` for the proxy handshake, while retaining the
+existing fallback to ``HTTPSConnection.ssl_context``, ``cert_reqs``, ``ca_*``,
+and ``ssl_*`` when ``ProxyConfig.ssl_context`` is ``None``.
+``HTTPSConnection`` no longer applies target SNI, assertions, or client
+credentials to forwarding proxy handshakes and continues to use its
+``ssl_context`` as a fallback when an HTTPS proxy forwards an HTTP target.
