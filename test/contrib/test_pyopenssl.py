@@ -85,6 +85,34 @@ class TestPyOpenSSLHelpers:
 
         assert _dnsname_to_stdlib(name) == expected_result
 
+    def test_reapplying_unchanged_options_after_use(self) -> None:
+        """Re-applying unchanged TLS settings must not fail after the context
+        has been used to create a connection (see GH-5107).
+
+        A connection pool re-applies the same ``ssl_context`` settings for every
+        new connection, but OpenSSL forbids mutating a context once it has been
+        used, so the no-op assignments must be skipped.
+        """
+        import ssl
+
+        import OpenSSL.SSL
+
+        from urllib3.contrib.pyopenssl import PyOpenSSLContext
+
+        ctx = PyOpenSSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        ctx.maximum_version = ssl.TLSVersion.TLSv1_3
+        ctx.options |= ssl.OP_NO_COMPRESSION
+
+        # Using the context to create a connection freezes it.
+        OpenSSL.SSL.Connection(ctx._ctx)
+
+        # Re-applying the current values (as a pool does per connection) is a
+        # no-op and must not raise.
+        ctx.minimum_version = ctx.minimum_version
+        ctx.maximum_version = ctx.maximum_version
+        ctx.options = ctx.options
+
     @mock.patch("urllib3.contrib.pyopenssl.log.warning")
     def test_get_subj_alt_name(self, mock_warning: mock.MagicMock) -> None:
         """

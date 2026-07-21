@@ -1,0 +1,1 @@
+Fixed ``ValueError`` (``Context has already been used to create a Connection``) when reusing a ``ssl_context`` across multiple connections with the ``pyopenssl`` contrib module. Re-applying unchanged ``options``, ``minimum_version`` and ``maximum_version`` on the wrapped context is now a no-op.

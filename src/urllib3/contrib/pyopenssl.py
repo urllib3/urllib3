@@ -449,6 +449,11 @@ class PyOpenSSLContext:
 
     @options.setter
     def options(self, value: int) -> None:
+        if value == self._options:
+            # Re-applying the same value would call ``set_options`` again, which
+            # raises once the context has been used to create a connection. See
+            # https://github.com/urllib3/urllib3/issues/5107.
+            return
         self._options = value
         self._set_ctx_options()
 
@@ -570,6 +575,8 @@ class PyOpenSSLContext:
 
     @minimum_version.setter
     def minimum_version(self, minimum_version: int) -> None:
+        if minimum_version == self._minimum_version:
+            return
         self._minimum_version = minimum_version
         self._set_ctx_options()
 
@@ -579,6 +586,8 @@ class PyOpenSSLContext:
 
     @maximum_version.setter
     def maximum_version(self, maximum_version: int) -> None:
+        if maximum_version == self._maximum_version:
+            return
         self._maximum_version = maximum_version
         self._set_ctx_options()
 
