@@ -326,3 +326,24 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    @pytest.mark.parametrize("header", ["Header ", " Header", "Header\t", "Header:"])
+    def test_rejects_invalid_header_names(self, header: str) -> None:
+        conn = HTTPConnection("example.com")
+
+        with pytest.raises(ValueError, match="Header name cannot contain"):
+            conn.putheader(header, "value")
+
+    def test_allows_internal_whitespace_in_header_names(self) -> None:
+        conn = HTTPConnection("example.com")
+
+        with mock.patch("urllib3.connection._HTTPConnection.putheader") as putheader:
+            conn.putheader("For The Proxy", "value")
+
+        putheader.assert_called_once_with("For The Proxy", "value")
+
+    def test_rejects_invalid_header_names_before_skip_header(self) -> None:
+        conn = HTTPConnection("example.com")
+
+        with pytest.raises(ValueError, match="Header name cannot contain"):
+            conn.putheader("Header ", SKIP_HEADER)
