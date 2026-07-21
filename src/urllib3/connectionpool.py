@@ -1139,7 +1139,8 @@ def connection_from_url(url: str, **kw: typing.Any) -> HTTPConnectionPool:
     """
     scheme, _, host, port, *_ = parse_url(url)
     scheme = scheme or "http"
-    port = port or port_by_scheme.get(scheme, 80)
+    if port is None:
+        port = port_by_scheme.get(scheme, 80)
     if scheme == "https":
         return HTTPSConnectionPool(host, port=port, **kw)  # type: ignore[arg-type]
     else:

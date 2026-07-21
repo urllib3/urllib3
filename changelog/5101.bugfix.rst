@@ -1,0 +1,2 @@
+Fixed ``connection_from_url()`` and HTTP/2 request authority to preserve an
+explicit ``:0`` port instead of substituting the default 80 or 443 port.
