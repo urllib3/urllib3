@@ -5,8 +5,10 @@ import sys
 import typing
 from base64 import b64encode
 from enum import Enum
+from urllib.parse import unquote
 
-from ..exceptions import UnrewindableBodyError
+from .._collections import HTTPHeaderDict
+from ..exceptions import InvalidHeader, UnrewindableBodyError
 from .util import to_bytes
 
 if typing.TYPE_CHECKING:
@@ -171,6 +173,49 @@ def make_headers(
         headers["cache-control"] = "no-cache"
 
     return headers
+
+
+def _basic_auth_header_from_url(
+    auth: str | None, *, proxy: bool = False
+) -> tuple[str, str] | None:
+    if auth is None or ":" not in auth:
+        return None
+
+    auth = unquote(auth)
+    if proxy:
+        return (
+            "proxy-authorization",
+            make_headers(proxy_basic_auth=auth)["proxy-authorization"],
+        )
+
+    return "authorization", make_headers(basic_auth=auth)["authorization"]
+
+
+def _ensure_url_auth_header_doesnt_conflict(
+    headers: typing.Mapping[str, str] | None,
+    header_name: str,
+    header_value: str,
+) -> None:
+    if headers is None:
+        return
+
+    headers_ = HTTPHeaderDict(headers)
+    if header_name in headers_ and headers_[header_name] != header_value:
+        raise InvalidHeader(
+            f"'{header_name}' header doesn't match the "
+            "basic authentication credentials from the URL"
+        )
+
+
+def _merge_url_auth_header(
+    headers: typing.Mapping[str, str] | None,
+    header_name: str,
+    header_value: str,
+) -> typing.Mapping[str, str]:
+    _ensure_url_auth_header_doesnt_conflict(headers, header_name, header_value)
+    headers_ = HTTPHeaderDict(headers)
+    headers_[header_name] = header_value
+    return headers_
 
 
 def set_file_position(
