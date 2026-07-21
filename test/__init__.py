@@ -97,7 +97,11 @@ RESOLVES_LOCALHOST_FQDN = _can_resolve("localhost.")
 def clear_warnings(cls: type[Warning] = HTTPWarning) -> None:
     new_filters = []
     for f in warnings.filters:
-        if issubclass(f[2], cls):
+        category = f[2]
+        if isinstance(category, tuple):
+            if any(issubclass(item, cls) for item in category):
+                continue
+        elif issubclass(category, cls):
             continue
         new_filters.append(f)
     warnings.filters[:] = new_filters  # type: ignore[index]

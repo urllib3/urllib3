@@ -877,6 +877,21 @@ class TestUtil:
             warnings.warn("This is a test.", InsecureRequestWarning)
             assert len(w) == 1
 
+    def test_clear_warnings_with_tuple_category_filter(self) -> None:
+        filters = typing.cast(
+            list[tuple[str, object, type[Warning], object, int]], warnings.filters
+        )
+        original_filters = filters[:]
+        category = typing.cast(type[Warning], (SyntaxWarning, DeprecationWarning))
+        try:
+            filters.insert(0, ("ignore", None, category, None, 0))
+
+            clear_warnings()
+
+            assert filters[0][2] is category
+        finally:
+            filters[:] = original_filters
+
     def _make_time_pass(
         self, seconds: int, timeout: Timeout, time_mock: Mock
     ) -> Timeout:
