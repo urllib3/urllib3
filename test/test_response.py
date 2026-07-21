@@ -1811,6 +1811,32 @@ class TestResponse:
         assert isinstance(orig_ex, InvalidChunkLength)
         assert orig_ex.length == fp.BAD_LENGTH_LINE.encode()
 
+    def _read_chunked_with_fp(self, payload: bytes) -> list[bytes]:
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = MockRawChunkedFp(payload)  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        return list(resp.read_chunked())
+
+    def test_oversized_chunk_size_line(self) -> None:
+        # A chunk-size line longer than http.client._MAXLINE must be rejected
+        # instead of being buffered unbounded.
+        payload = b"1" * (httplib._MAXLINE + 1) + b"\r\nx\r\n0\r\n\r\n"
+        with pytest.raises(ProtocolError) as ctx:
+            self._read_chunked_with_fp(payload)
+        assert isinstance(ctx.value.args[1], httplib.LineTooLong)
+
+    def test_oversized_chunk_trailer_line(self) -> None:
+        payload = (
+            b"1\r\nx\r\n0\r\nTrailer: " + b"A" * (httplib._MAXLINE + 1) + b"\r\n\r\n"
+        )
+        with pytest.raises(ProtocolError) as ctx:
+            self._read_chunked_with_fp(payload)
+        assert isinstance(ctx.value.args[1], httplib.LineTooLong)
+
     def test_truncated_before_chunk(self) -> None:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedNoChunks(stream)
@@ -2071,7 +2097,13 @@ class MockChunkedEncodingResponse:
             return chunk_part
 
     def readline(self, amt: int = -1) -> bytes:
-        return self.pop_current_chunk(amt, till_crlf=amt < 0)
+        # Emulate a real file object's readline: return bytes up to and
+        # including the next b"\n", or at most `amt` bytes when `amt` >= 0.
+        line = self.pop_current_chunk(till_crlf=True)
+        if amt >= 0 and len(line) > amt:
+            self.cur_chunk = line[amt:] + self.cur_chunk
+            line = line[:amt]
+        return line
 
     def read(self, amt: int = -1) -> bytes:
         return self.pop_current_chunk(amt)
@@ -2116,6 +2148,27 @@ class MockChunkedEncodingWithExtensions(MockChunkedEncodingResponse):
 class MockChunkedNoChunks(MockChunkedEncodingResponse):
     def _encode_chunk(self, chunk: bytes) -> bytes:
         return b""
+
+
+class MockRawChunkedFp:
+    """Minimal ``http.client`` fp stand-in whose ``readline`` honors the size
+    argument, matching a real socket file object. Lets tests feed raw
+    chunked bytes (including malformed framing) verbatim."""
+
+    def __init__(self, payload: bytes) -> None:
+        self._buf = BytesIO(payload)
+
+    def readline(self, amt: int = -1) -> bytes:
+        return self._buf.readline() if amt < 0 else self._buf.readline(amt)
+
+    def read(self, amt: int = -1) -> bytes:
+        return self._buf.read() if amt < 0 else self._buf.read(amt)
+
+    def flush(self) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
 
 
 class MockSock:
