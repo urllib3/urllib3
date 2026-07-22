@@ -109,6 +109,12 @@ class HTTP2Connection(HTTPSConnection):
             if data_to_send := conn.data_to_send():
                 self.sock.sendall(data_to_send)
 
+    @property
+    def is_connected(self) -> bool:
+        # Readable HTTP/2 sockets may only have control frames waiting, so the
+        # HTTP/1.1 dropped-connection probe is not reliable for HTTP/2.
+        return self.sock is not None
+
     def putrequest(  # type: ignore[override]
         self,
         method: str,
