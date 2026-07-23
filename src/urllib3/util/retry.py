@@ -12,6 +12,7 @@ from types import TracebackType
 from ..exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
+    MaxRetryAfterWaitError,
     MaxRetryError,
     ProtocolError,
     ProxyError,
@@ -191,6 +192,11 @@ class Retry:
         Retry-After headers. Defaults to :attr:`Retry.DEFAULT_RETRY_AFTER_MAX`.
         Any Retry-After headers larger than this value will be limited to this
         value.
+
+    :param bool retry_after_max_strict:
+        If ``True`` and a ``Retry-After`` header exceeds ``retry_after_max``,
+        raise :exc:`~urllib3.exceptions.MaxRetryAfterWaitError` instead of
+        silently capping the value. Defaults to ``False``.
     """
 
     #: Default methods to be used for ``allowed_methods``
@@ -237,6 +243,7 @@ class Retry:
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
         backoff_jitter: float = 0.0,
         retry_after_max: int = DEFAULT_RETRY_AFTER_MAX,
+        retry_after_max_strict: bool = False,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -262,6 +269,7 @@ class Retry:
             h.lower() for h in remove_headers_on_redirect
         )
         self.backoff_jitter = backoff_jitter
+        self.retry_after_max_strict = retry_after_max_strict
 
     def new(self, **kw: typing.Any) -> Self:
         params = dict(
@@ -276,6 +284,7 @@ class Retry:
             backoff_factor=self.backoff_factor,
             backoff_max=self.backoff_max,
             retry_after_max=self.retry_after_max,
+            retry_after_max_strict=self.retry_after_max_strict,
             raise_on_redirect=self.raise_on_redirect,
             raise_on_status=self.raise_on_status,
             history=self.history,
@@ -342,6 +351,8 @@ class Retry:
 
         # Check the seconds do not exceed the specified maximum
         if seconds > self.retry_after_max:
+            if self.retry_after_max_strict:
+                raise MaxRetryAfterWaitError(seconds, self.retry_after_max)
             seconds = self.retry_after_max
 
         return seconds
