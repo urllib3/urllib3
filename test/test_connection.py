@@ -326,3 +326,28 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    def test_request_normalizes_mixed_bytes_headers(self) -> None:
+        headers: dict[str | bytes, str | bytes] = {
+            b"X-Bytes": b"value",
+            "X-Other": b"other",
+        }
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch(
+                "urllib3.connection._HTTPConnection.putheader"
+            ) as http_client_putheader,
+        ):
+            conn = HTTPConnection("")
+            conn.request(
+                "GET",
+                "/headers",
+                headers=headers,
+            )
+
+        assert ("X-Bytes", "value") in [
+            call.args for call in http_client_putheader.call_args_list
+        ]
+        assert ("X-Other", "other") in [
+            call.args for call in http_client_putheader.call_args_list
+        ]
