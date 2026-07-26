@@ -133,6 +133,9 @@ class Retry:
 
         Set to a ``None`` value to retry on any verb.
 
+        An empty container retries on no verb at all, which is the opposite of
+        ``None``.
+
     :param Collection status_forcelist:
         A set of integer HTTP status codes that we should force a retry on.
         A retry is initiated if the request method is in ``allowed_methods``
@@ -404,7 +407,9 @@ class Retry:
         """Checks if a given HTTP method should be retried upon, depending if
         it is included in the allowed_methods
         """
-        if self.allowed_methods and method.upper() not in self.allowed_methods:
+        if self.allowed_methods is None:
+            return True
+        if method.upper() not in self.allowed_methods:
             return False
         return True
 

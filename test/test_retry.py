@@ -263,7 +263,7 @@ class TestRetry:
         assert not retry.is_retry("GET", status_code=418)
 
     def test_allowed_methods_with_status_forcelist(self) -> None:
-        # Falsey allowed_methods means to retry on any method.
+        # ``None`` allowed_methods means to retry on any method.
         retry = Retry(status_forcelist=[500], allowed_methods=None)
         assert retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
@@ -272,6 +272,18 @@ class TestRetry:
         retry = Retry(status_forcelist=[500], allowed_methods=["POST"])
         assert not retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
+
+    def test_empty_allowed_methods(self) -> None:
+        # An explicitly empty container allows no method at all. It is falsey,
+        # but it is not ``None``, so it must not be read as "retry anything".
+        retry = Retry(status_forcelist=[500], allowed_methods=set())
+        assert not retry.is_retry("GET", status_code=500)
+        assert not retry.is_retry("POST", status_code=500)
+
+        # Same for the other empty containers a caller might pass.
+        for empty in ([], frozenset(), ()):
+            retry = Retry(status_forcelist=[500], allowed_methods=empty)
+            assert not retry.is_retry("GET", status_code=500)
 
     def test_exhausted(self) -> None:
         assert not Retry(0).is_exhausted()

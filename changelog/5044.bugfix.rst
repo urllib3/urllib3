@@ -1,0 +1,2 @@
+Fixed ``Retry`` treating an explicitly empty ``allowed_methods`` container as
+``None``, which retried on every method instead of on none of them.
