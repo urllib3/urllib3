@@ -1,0 +1,2 @@
+Resolved the default-timeout sentinel before assigning it to a connection in
+``HTTPConnectionPool.urlopen()``, matching what ``_new_conn()`` already does.
