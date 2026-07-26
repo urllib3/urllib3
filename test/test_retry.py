@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+from collections.abc import Collection
 from test import DUMMY_POOL
 from unittest import mock
 
@@ -281,7 +282,8 @@ class TestRetry:
         assert not retry.is_retry("POST", status_code=500)
 
         # Same for the other empty containers a caller might pass.
-        for empty in ([], frozenset(), ()):
+        empties: list[Collection[str]] = [[], frozenset(), ()]
+        for empty in empties:
             retry = Retry(status_forcelist=[500], allowed_methods=empty)
             assert not retry.is_retry("GET", status_code=500)
 
