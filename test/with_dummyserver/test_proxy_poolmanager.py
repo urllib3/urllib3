@@ -114,6 +114,13 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert r.status == 200
             assert_is_verified(https, proxy=True, target=False)
 
+    def test_is_verified_https_proxy_to_http_target_without_proxy_config(self) -> None:
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            https.connection_pool_kw["_proxy_config"] = None
+            r = https.request("GET", f"{self.http_url}/")
+            assert r.status == 200
+            assert_is_verified(https, proxy=True, target=False)
+
     def test_is_verified_https_proxy_to_https_target(self) -> None:
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", f"{self.https_url}/")
