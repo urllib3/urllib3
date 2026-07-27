@@ -838,14 +838,12 @@ class HTTPSConnection(HTTPConnection):
             # fall back to using the connection's SSL context until
             # urllib3 v3.0. Appropriate warning is emitted in
             # ``ProxyManager.__init__``.
+            wrapped_socket: ssl.SSLSocket | SSLTransport
             if self.proxy_is_forwarding and self.proxy_config is not None:
-                self.sock = sock = self._connect_tls_proxy(self.host, sock)
-                sock_and_verified = _WrappedAndVerifiedSocket(
-                    socket=sock,
-                    is_verified=self.proxy_is_verified is True,
-                )
+                wrapped_socket = self._connect_tls_proxy(self.host, sock)
+                is_verified = self.proxy_is_verified is True
             else:
-                sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                wrapped_socket, is_verified = _ssl_wrap_socket_and_match_hostname(
                     sock=sock,
                     cert_reqs=self.cert_reqs,
                     ssl_version=self.ssl_version,
@@ -863,7 +861,7 @@ class HTTPSConnection(HTTPConnection):
                     assert_hostname=self.assert_hostname,
                     assert_fingerprint=self.assert_fingerprint,
                 )
-            self.sock = sock_and_verified.socket
+            self.sock = wrapped_socket
 
         # If an error occurs during connection/handshake we may need to release
         # our lock so another connection can probe the origin.
@@ -884,7 +882,7 @@ class HTTPSConnection(HTTPConnection):
         # If this connection doesn't know if the origin supports HTTP/2
         # we report back to the HTTP/2 probe our result.
         if target_supports_http2 is None:
-            supports_http2 = sock_and_verified.socket.selected_alpn_protocol() == "h2"
+            supports_http2 = wrapped_socket.selected_alpn_protocol() == "h2"
             http2_probe.set_and_release(
                 host=probe_http2_host,
                 port=probe_http2_port,
@@ -898,7 +896,7 @@ class HTTPSConnection(HTTPConnection):
         if self.proxy_is_forwarding:
             self.is_verified = False
         else:
-            self.is_verified = sock_and_verified.is_verified
+            self.is_verified = is_verified
 
         # If there's a proxy to be connected to we are fully connected.
         # This is set twice (once above and here) due to forwarding proxies
@@ -908,7 +906,7 @@ class HTTPSConnection(HTTPConnection):
         # Set `self.proxy_is_verified` unless it's already set while
         # establishing a tunnel.
         if self._has_connected_to_proxy and self.proxy_is_verified is None:
-            self.proxy_is_verified = sock_and_verified.is_verified
+            self.proxy_is_verified = is_verified
 
     def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> ssl.SSLSocket:
         """
