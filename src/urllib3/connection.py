@@ -838,30 +838,30 @@ class HTTPSConnection(HTTPConnection):
             # fall back to using the connection's SSL context until
             # urllib3 v3.0. Appropriate warning is emitted in
             # ``ProxyManager.__init__``.
+            wrapped_socket: ssl.SSLSocket | SSLTransport
             if self.proxy_is_forwarding and self.proxy_config is not None:
-                ssl_context = self.proxy_config.ssl_context
+                wrapped_socket = self._connect_tls_proxy(self.host, sock)
+                is_verified = self.proxy_is_verified is True
             else:
-                ssl_context = self.ssl_context
-
-            sock_and_verified = _ssl_wrap_socket_and_match_hostname(
-                sock=sock,
-                cert_reqs=self.cert_reqs,
-                ssl_version=self.ssl_version,
-                ssl_minimum_version=self.ssl_minimum_version,
-                ssl_maximum_version=self.ssl_maximum_version,
-                ca_certs=self.ca_certs,
-                ca_cert_dir=self.ca_cert_dir,
-                ca_cert_data=self.ca_cert_data,
-                cert_file=self.cert_file,
-                key_file=self.key_file,
-                key_password=self.key_password,
-                server_hostname=server_hostname_rm_dot,
-                ssl_context=ssl_context,
-                tls_in_tls=tls_in_tls,
-                assert_hostname=self.assert_hostname,
-                assert_fingerprint=self.assert_fingerprint,
-            )
-            self.sock = sock_and_verified.socket
+                wrapped_socket, is_verified = _ssl_wrap_socket_and_match_hostname(
+                    sock=sock,
+                    cert_reqs=self.cert_reqs,
+                    ssl_version=self.ssl_version,
+                    ssl_minimum_version=self.ssl_minimum_version,
+                    ssl_maximum_version=self.ssl_maximum_version,
+                    ca_certs=self.ca_certs,
+                    ca_cert_dir=self.ca_cert_dir,
+                    ca_cert_data=self.ca_cert_data,
+                    cert_file=self.cert_file,
+                    key_file=self.key_file,
+                    key_password=self.key_password,
+                    server_hostname=server_hostname_rm_dot,
+                    ssl_context=self.ssl_context,
+                    tls_in_tls=tls_in_tls,
+                    assert_hostname=self.assert_hostname,
+                    assert_fingerprint=self.assert_fingerprint,
+                )
+            self.sock = wrapped_socket
 
         # If an error occurs during connection/handshake we may need to release
         # our lock so another connection can probe the origin.
@@ -882,7 +882,7 @@ class HTTPSConnection(HTTPConnection):
         # If this connection doesn't know if the origin supports HTTP/2
         # we report back to the HTTP/2 probe our result.
         if target_supports_http2 is None:
-            supports_http2 = sock_and_verified.socket.selected_alpn_protocol() == "h2"
+            supports_http2 = wrapped_socket.selected_alpn_protocol() == "h2"
             http2_probe.set_and_release(
                 host=probe_http2_host,
                 port=probe_http2_port,
@@ -896,7 +896,7 @@ class HTTPSConnection(HTTPConnection):
         if self.proxy_is_forwarding:
             self.is_verified = False
         else:
-            self.is_verified = sock_and_verified.is_verified
+            self.is_verified = is_verified
 
         # If there's a proxy to be connected to we are fully connected.
         # This is set twice (once above and here) due to forwarding proxies
@@ -906,24 +906,47 @@ class HTTPSConnection(HTTPConnection):
         # Set `self.proxy_is_verified` unless it's already set while
         # establishing a tunnel.
         if self._has_connected_to_proxy and self.proxy_is_verified is None:
-            self.proxy_is_verified = sock_and_verified.is_verified
+            self.proxy_is_verified = is_verified
 
     def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> ssl.SSLSocket:
         """
-        Establish a TLS connection to the proxy using the provided SSL context.
+        Establish a TLS connection to the proxy using proxy-specific policy.
         """
-        # `_connect_tls_proxy` is called when self._tunnel_host is truthy.
         proxy_config = typing.cast(ProxyConfig, self.proxy_config)
-        ssl_context = proxy_config.ssl_context
+        proxy_ssl_context = proxy_config.ssl_context
+
+        ssl_context: ssl.SSLContext | None
+        cert_reqs: int | str | None
+        if proxy_ssl_context is not None:
+            # Prefer the proxy's cert policy for the proxy connection
+            ssl_context = proxy_ssl_context
+            cert_reqs = proxy_ssl_context.verify_mode
+            ca_certs = None
+            ca_cert_dir = None
+            ca_cert_data = None
+            ssl_version = None
+            ssl_minimum_version = None
+            ssl_maximum_version = None
+        else:
+            # Otherwise we inherit the pool's cert policies
+            ssl_context = self.ssl_context if self.proxy_is_forwarding else None
+            cert_reqs = self.cert_reqs
+            ca_certs = self.ca_certs
+            ca_cert_dir = self.ca_cert_dir
+            ca_cert_data = self.ca_cert_data
+            ssl_version = self.ssl_version
+            ssl_minimum_version = self.ssl_minimum_version
+            ssl_maximum_version = self.ssl_maximum_version
+
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
-            cert_reqs=self.cert_reqs,
-            ssl_version=self.ssl_version,
-            ssl_minimum_version=self.ssl_minimum_version,
-            ssl_maximum_version=self.ssl_maximum_version,
-            ca_certs=self.ca_certs,
-            ca_cert_dir=self.ca_cert_dir,
-            ca_cert_data=self.ca_cert_data,
+            cert_reqs=cert_reqs,
+            ssl_version=ssl_version,
+            ssl_minimum_version=ssl_minimum_version,
+            ssl_maximum_version=ssl_maximum_version,
+            ca_certs=ca_certs,
+            ca_cert_dir=ca_cert_dir,
+            ca_cert_data=ca_cert_data,
             server_hostname=hostname,
             ssl_context=ssl_context,
             assert_hostname=proxy_config.assert_hostname,
