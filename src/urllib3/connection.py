@@ -1007,7 +1007,9 @@ def _ssl_wrap_socket_and_match_hostname(
     else:
         context = ssl_context
 
-    context.verify_mode = resolve_cert_reqs(cert_reqs)
+    verify_mode = resolve_cert_reqs(cert_reqs)
+    if context.verify_mode != verify_mode:
+        context.verify_mode = verify_mode
 
     # In some cases, we want to verify hostnames ourselves
     if (

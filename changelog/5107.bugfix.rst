@@ -1,0 +1,2 @@
+Fixed ``urllib3.contrib.pyopenssl`` failing to reuse an SSL context for
+multiple connections with pyOpenSSL 26.2.0+.

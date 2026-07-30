@@ -442,6 +442,7 @@ class PyOpenSSLContext:
         self._minimum_version: int = ssl.TLSVersion.MINIMUM_SUPPORTED
         self._maximum_version: int = ssl.TLSVersion.MAXIMUM_SUPPORTED
         self._verify_flags: int = ssl.VERIFY_X509_TRUSTED_FIRST
+        self._alpn_protocols: list[bytes] | None = None
 
     @property
     def options(self) -> int:
@@ -523,8 +524,11 @@ class PyOpenSSLContext:
             raise ssl.SSLError(f"Unable to load certificate chain: {e!r}") from e
 
     def set_alpn_protocols(self, protocols: list[bytes | str]) -> None:
-        protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
-        return self._ctx.set_alpn_protos(protocols)  # type: ignore[arg-type]
+        protocols_bytes = [util.util.to_bytes(p, "ascii") for p in protocols]
+        if protocols_bytes == self._alpn_protocols:
+            return
+        self._ctx.set_alpn_protos(protocols_bytes)
+        self._alpn_protocols = protocols_bytes
 
     def wrap_socket(
         self,

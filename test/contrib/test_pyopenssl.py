@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import os
+import ssl
+from test.conftest import ServerConfig
 from unittest import mock
 
 import pytest
+
+from urllib3 import HTTPSConnectionPool
+from urllib3.util import ssl_
 
 try:
     from cryptography import x509
@@ -99,3 +104,29 @@ class TestPyOpenSSLHelpers:
 
         assert mock_warning.call_count == 1
         assert isinstance(mock_warning.call_args[0][1], x509.DuplicateExtension)
+
+
+def test_reuse_ssl_context_for_multiple_connections(san_server: ServerConfig) -> None:
+    """
+    Ensure one PyOpenSSL context can establish multiple simultaneous
+    connections.
+    """
+    context = ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
+    context.load_verify_locations(san_server.ca_certs)
+    pool = HTTPSConnectionPool(
+        san_server.host,
+        san_server.port,
+        cert_reqs="CERT_REQUIRED",
+        ssl_context=context,
+        maxsize=1,
+    )
+    first_response = pool.request("GET", "/", preload_content=False, release_conn=False)
+    assert first_response.status == 200
+    try:
+        second_response = pool.request("GET", "/")
+        second_response.release_conn()
+    finally:
+        first_response.release_conn()
+        pool.close()
+    assert second_response.status == 200
+    assert pool.num_connections == 2
