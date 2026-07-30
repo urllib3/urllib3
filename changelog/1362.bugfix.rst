@@ -1,1 +1,3 @@
-Unfolded obsolete folded response header values before exposing them through response headers.
+Fixed response header handling to replace obsolete folded header lines
+(`obs-fold`) with spaces in accordance with RFC 9112, preventing raw
+CRLF sequences from appearing in header values such as ``Set-Cookie``.
