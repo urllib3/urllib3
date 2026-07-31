@@ -241,6 +241,48 @@ class TestConnection:
         with pytest.raises(ResponseNotReady):
             conn.getresponse()
 
+    @pytest.mark.parametrize(
+        "header_name",
+        [
+            "",
+            "Header ",
+            "Header\t",
+            b"Header ",
+        ],
+    )
+    def test_putheader_rejects_invalid_header_names(
+        self, header_name: str | bytes
+    ) -> None:
+        conn = HTTPConnection("google.com", port=80)
+        conn.putrequest("GET", "/")
+
+        with pytest.raises(
+            ValueError, match="Header name cannot contain non-token characters"
+        ):
+            conn.putheader(header_name, "value")  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize(
+        "header_name",
+        [
+            "",
+            "Header ",
+            "Header\t",
+            b"Header ",
+        ],
+    )
+    def test_set_tunnel_rejects_invalid_header_names(
+        self, header_name: str | bytes
+    ) -> None:
+        conn = HTTPConnection("google.com", port=80)
+
+        with pytest.raises(
+            ValueError, match="Header name cannot contain non-token characters"
+        ):
+            conn.set_tunnel(
+                "example.com",
+                headers={header_name: "value"},  # type: ignore[dict-item]
+            )
+
     def test_assert_fingerprint_closes_socket(self) -> None:
         context = mock.create_autospec(ssl_.SSLContext)
         context.wrap_socket.return_value.getpeercert.return_value = b"fake cert"
