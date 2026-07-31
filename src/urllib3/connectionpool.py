@@ -865,8 +865,20 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if not conn:
             # Try again
+            # Construct full URL with host for better debugging
+            default_port = 443 if self.scheme == "https" else 80
+            if self.port and self.port != default_port:
+                # Include non-standard port
+                full_url = f"{self.scheme}://{self.host}:{self.port}{url}"
+            else:
+                # Standard port, omit it
+                full_url = f"{self.scheme}://{self.host}{url}"
+
             log.warning(
-                "Retrying (%r) after connection broken by '%r': %s", retries, err, url
+                "Retrying (%r) after connection broken by '%r': %s",
+                retries,
+                err,
+                full_url,
             )
             return self.urlopen(
                 method,
