@@ -46,6 +46,7 @@ from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.connectionpool import _url_from_pool
 from urllib3.exceptions import (
     InsecureRequestWarning,
+    InvalidHeader,
     MaxRetryError,
     ProtocolError,
     ProxyError,
@@ -87,6 +88,27 @@ class TestCookies(SocketDummyServerTestCase):
             r = pool.request("GET", "/", retries=0)
             assert r.headers == {"set-cookie": "foo=1, bar=1"}
             assert r.headers.getlist("set-cookie") == ["foo=1", "bar=1"]
+
+    def test_invalid_header_name_raises(self) -> None:
+        def invalid_header_response_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+
+            sock.send(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Bad Header: value\r\n"
+                b"Content-Length: 0\r\n"
+                b"\r\n"
+            )
+            sock.close()
+
+        self._start_server(invalid_header_response_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            with pytest.raises(InvalidHeader, match="Invalid header name"):
+                pool.request("GET", "/", retries=0)
 
 
 class TestSNI(SocketDummyServerTestCase):
