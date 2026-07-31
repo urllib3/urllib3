@@ -1,0 +1,2 @@
+Fixed ``urllib3.contrib.pyopenssl`` to allow reusing an SSL context across
+multiple connections with pyOpenSSL 26.2.0+.

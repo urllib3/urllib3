@@ -1177,6 +1177,91 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 == str(cm.value.reason)
             )
 
+    # pyOpenSSL 25.1.0 through 26.1.x warn when a Context is mutated after
+    # creating a Connection. pytest otherwise treats this warning as an error.
+    @pytest.mark.filterwarnings(
+        "ignore:Attempting to mutate a Context after a Connection was created"
+        ":DeprecationWarning"
+    )
+    def test_reusable_context_with_client_intermediate(self) -> None:
+        # 19.1.0 raised pyOpenSSL's minimum cryptography version to 2.8. The
+        # supported 19.0.0/cryptography 2.3 pair cannot complete this fixture's
+        # client-certificate handshake.
+        if util.IS_PYOPENSSL:
+            from urllib3.contrib.pyopenssl import _PYOPENSSL_VERSION
+
+            if _PYOPENSSL_VERSION < (19, 1):
+                pytest.skip("requires pyOpenSSL 19.1.0+")
+
+        context = util.ssl_.create_urllib3_context(
+            ssl_minimum_version=self.tls_version()
+        )
+        context.load_verify_locations(cafile=DEFAULT_CA)
+        pool = HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ssl_context=context,
+            key_file=os.path.join(self.certs_dir, CLIENT_INTERMEDIATE_KEY),
+            cert_file=os.path.join(self.certs_dir, CLIENT_INTERMEDIATE_PEM),
+        )
+        with pool:
+            first_response = second_response = None
+            try:
+                first_response = pool.request(
+                    "GET",
+                    "/certificate",
+                    preload_content=False,
+                    release_conn=False,
+                )
+                second_response = pool.request("GET", "/certificate")
+                second_status = second_response.status
+                subject = second_response.json()
+                num_connections = pool.num_connections
+            finally:
+                if first_response is not None:
+                    first_response.close()
+                if second_response is not None:
+                    second_response.close()
+
+        assert second_status == 200
+        assert subject["organizationalUnitName"].startswith("Testing cert")
+        assert num_connections == 2
+
+    # pyOpenSSL 25.1.0 through 26.1.x warn when a Context is mutated after
+    # creating a Connection. pytest otherwise treats this warning as an error.
+    @pytest.mark.filterwarnings(
+        "ignore:Attempting to mutate a Context after a Connection was created"
+        ":DeprecationWarning"
+    )
+    def test_reusable_context_combines_with_ca_certs(self) -> None:
+        context = util.ssl_.create_urllib3_context(
+            cert_reqs=ssl.CERT_REQUIRED,
+            ssl_minimum_version=self.tls_version(),
+        )
+        pool = HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ca_certs=DEFAULT_CA,
+            ssl_context=context,
+        )
+        with pool:
+            first_response = second_response = None
+            try:
+                first_response = pool.request(
+                    "GET", "/", preload_content=False, release_conn=False
+                )
+                second_response = pool.request("GET", "/")
+                second_status = second_response.status
+                num_connections = pool.num_connections
+            finally:
+                if first_response is not None:
+                    first_response.close()
+                if second_response is not None:
+                    second_response.close()
+
+        assert second_status == 200
+        assert num_connections == 2
+
 
 @pytest.mark.usefixtures("requires_tlsv1")
 class TestHTTPS_TLSv1(BaseTestHTTPS):

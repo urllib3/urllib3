@@ -324,6 +324,78 @@ def create_urllib3_context(
     return context
 
 
+class _SSLContextConfig(typing.NamedTuple):
+    """
+    TLS context mutations urllib3 applies before wrapping a socket.
+
+    Keeping these inputs in a comparable value lets immutable TLS backends skip
+    repeated setup for the same configuration and reject incompatible reuse.
+    """
+
+    cert_reqs: int | None
+    ca_certs: str | None
+    ca_cert_dir: str | None
+    ca_cert_data: None | str | bytes
+    certfile: str | None
+    keyfile: str | None
+    key_password: str | None
+    load_default_certs: bool
+    alpn_protocols: tuple[str, ...]
+
+
+def _configure_context(
+    context: ssl.SSLContext, configuration: _SSLContextConfig
+) -> None:
+    """
+    Apply urllib3's connection-level TLS configuration to a context.
+
+    This is shared by the normal wrapping path and backends which must perform
+    all context mutations atomically before creating their first connection.
+    """
+
+    if configuration.cert_reqs is not None:
+        context.verify_mode = typing.cast("ssl.VerifyMode", configuration.cert_reqs)
+
+    if (
+        configuration.ca_certs
+        or configuration.ca_cert_dir
+        or configuration.ca_cert_data
+    ):
+        try:
+            context.load_verify_locations(
+                configuration.ca_certs,
+                configuration.ca_cert_dir,
+                configuration.ca_cert_data,
+            )
+        except OSError as e:
+            raise SSLError(e) from e
+    elif configuration.load_default_certs and hasattr(context, "load_default_certs"):
+        # try to load OS default certs; works well on Windows.
+        context.load_default_certs()
+
+    # Attempt to detect if we get the goofy behavior of the
+    # keyfile being encrypted and OpenSSL asking for the
+    # passphrase via the terminal and instead error out.
+    if (
+        configuration.keyfile
+        and configuration.key_password is None
+        and _is_key_file_encrypted(configuration.keyfile)
+    ):
+        raise SSLError("Client private key is encrypted, password is required")
+
+    if configuration.certfile:
+        if configuration.key_password is None:
+            context.load_cert_chain(configuration.certfile, configuration.keyfile)
+        else:
+            context.load_cert_chain(
+                configuration.certfile,
+                configuration.keyfile,
+                configuration.key_password,
+            )
+
+    context.set_alpn_protocols(list(configuration.alpn_protocols))
+
+
 @typing.overload
 def ssl_wrap_socket(
     sock: socket.socket,
@@ -406,29 +478,36 @@ def ssl_wrap_socket(
         # We should consider deprecating and removing this code.
         context = create_urllib3_context(ssl_version, cert_reqs, ciphers=ciphers)
 
-    if ca_certs or ca_cert_dir or ca_cert_data:
-        try:
-            context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
-        except OSError as e:
-            raise SSLError(e) from e
+    configuration = _SSLContextConfig(
+        cert_reqs=cert_reqs,
+        ca_certs=ca_certs,
+        ca_cert_dir=ca_cert_dir,
+        ca_cert_data=ca_cert_data,
+        certfile=certfile,
+        keyfile=keyfile,
+        key_password=key_password,
+        load_default_certs=ssl_context is None,
+        alpn_protocols=tuple(ALPN_PROTOCOLS),
+    )
 
-    elif ssl_context is None and hasattr(context, "load_default_certs"):
-        # try to load OS default certs; works well on Windows.
-        context.load_default_certs()
+    # pyOpenSSL 26.2.0+ freezes a context when its first Connection is created.
+    # Let that backend keep setup and Connection creation in one atomic operation.
+    urllib3_wrap_socket = getattr(context, "_urllib3_wrap_socket", None)
+    if (
+        getattr(context, "_urllib3_context_is_immutable", False) is True
+        and urllib3_wrap_socket is not None
+        and not tls_in_tls
+    ):
+        return typing.cast(
+            "ssl.SSLSocket | SSLTransportType",
+            urllib3_wrap_socket(
+                sock,
+                server_hostname=server_hostname,
+                configuration=configuration,
+            ),
+        )
 
-    # Attempt to detect if we get the goofy behavior of the
-    # keyfile being encrypted and OpenSSL asking for the
-    # passphrase via the terminal and instead error out.
-    if keyfile and key_password is None and _is_key_file_encrypted(keyfile):
-        raise SSLError("Client private key is encrypted, password is required")
-
-    if certfile:
-        if key_password is None:
-            context.load_cert_chain(certfile, keyfile)
-        else:
-            context.load_cert_chain(certfile, keyfile, key_password)
-
-    context.set_alpn_protocols(ALPN_PROTOCOLS)
+    _configure_context(context, configuration)
 
     ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
     return ssl_sock
