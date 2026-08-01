@@ -1,0 +1,5 @@
+Fixed HTTP/2 requests encoding header names and values as UTF-8 while HTTP/1.1
+requests encode them as latin-1, which could put different bytes on the wire for
+the same request depending on the negotiated protocol version. Header values that
+cannot be encoded with latin-1 now raise ``UnicodeEncodeError`` over HTTP/2, as
+they already did over HTTP/1.1.
