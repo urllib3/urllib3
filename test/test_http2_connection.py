@@ -85,6 +85,20 @@ class TestHTTP2Connection:
         conn.putheader("foo", "bar")
         assert conn._headers == [(b"foo", b"bar")]
 
+    def test_putheader_str_values_use_latin1_like_http1(self) -> None:
+        # http.client encodes HTTP/1.1 header names and values with latin-1, so
+        # the same str must not reach the wire as UTF-8 over HTTP/2.
+        conn = HTTP2Connection("example.com")
+        conn.putheader("x-test", "Sch\u00f6nefeld/1.18.0")
+        assert conn._headers == [(b"x-test", b"Sch\xf6nefeld/1.18.0")]
+
+    def test_putheader_str_values_reject_what_http1_rejects(self) -> None:
+        # http.client raises UnicodeEncodeError for values outside latin-1;
+        # HTTP/2 used to silently send them as UTF-8 instead.
+        conn = HTTP2Connection("example.com")
+        with pytest.raises(UnicodeEncodeError):
+            conn.putheader("x-test", "\u2192")
+
     def test_request_putheader(self) -> None:
         conn = HTTP2Connection("example.com")
         conn.sock = mock.MagicMock(
