@@ -133,22 +133,22 @@ class HTTP2Connection(HTTPSConnection):
             authority = f"{self.host}:{self.port or 443}"
 
         self._headers.append((b":scheme", b"https"))
-        self._headers.append((b":method", method.encode()))
-        self._headers.append((b":authority", authority.encode()))
-        self._headers.append((b":path", url.encode()))
+        self._headers.append((b":method", method.encode("ascii")))
+        self._headers.append((b":authority", authority.encode("ascii")))
+        self._headers.append((b":path", url.encode("ascii")))
 
         with self._h2_conn as conn:
             self._h2_stream = conn.get_next_available_stream_id()
 
     def putheader(self, header: str | bytes, *values: str | bytes) -> None:  # type: ignore[override]
         # TODO SKIPPABLE_HEADERS from urllib3 are ignored.
-        header = header.encode() if isinstance(header, str) else header
+        header = header.encode("latin-1") if isinstance(header, str) else header
         header = header.lower()  # A lot of upstream code uses capitalized headers.
         if not _is_legal_header_name(header):
             raise ValueError(f"Illegal header name {str(header)}")
 
         for value in values:
-            value = value.encode() if isinstance(value, str) else value
+            value = value.encode("latin-1") if isinstance(value, str) else value
             if _is_illegal_header_value(value):
                 raise ValueError(f"Illegal header value {str(value)}")
             self._headers.append((header, value))
@@ -185,7 +185,7 @@ class HTTP2Connection(HTTPSConnection):
                     if not chunk:
                         break
                     if isinstance(chunk, str):
-                        chunk = chunk.encode()
+                        chunk = chunk.encode("utf-8")
                     conn.send_data(self._h2_stream, chunk, end_stream=False)
                     if data_to_send := conn.data_to_send():
                         self.sock.sendall(data_to_send)
@@ -193,7 +193,7 @@ class HTTP2Connection(HTTPSConnection):
                 return
 
             if isinstance(data, str):  # str -> bytes
-                data = data.encode()
+                data = data.encode("utf-8")
 
             try:
                 if isinstance(data, bytes):
