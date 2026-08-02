@@ -77,6 +77,37 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+# Starting the optional OWS match at the beginning of a whitespace run avoids
+# quadratic backtracking for long header values.
+_OBSOLETE_FOLD_RE = re.compile(r"(?:(?<![ \t])[ \t]+)?\r\n[ \t]+")
+
+
+def _normalize_header_value(value: str) -> str:
+    if "\r\n" not in value:
+        return value
+    return _OBSOLETE_FOLD_RE.sub(" ", value)
+
+
+def _normalize_header_values(
+    message: http.client.HTTPMessage,
+) -> list[tuple[str, str]]:
+    header_items = message.items()
+    headers_changed = False
+    for index, (name, value) in enumerate(header_items):
+        normalized_value = _normalize_header_value(value)
+        if normalized_value != value:
+            header_items[index] = (name, normalized_value)
+            headers_changed = True
+
+    if headers_changed:
+        # Keep the original message in sync for downstream consumers such as
+        # cookie jars while preserving its identity and header ordering.
+        for name, _ in header_items:
+            del message[name]
+        for name, value in header_items:
+            message[name] = value
+
+    return header_items
 
 
 class HTTPConnection(_HTTPConnection):
@@ -616,7 +647,8 @@ class HTTPConnection(_HTTPConnection):
                 exc_info=True,
             )
 
-        headers = HTTPHeaderDict(httplib_response.msg.items())
+        header_items = _normalize_header_values(httplib_response.msg)
+        headers = HTTPHeaderDict(header_items)
 
         response = HTTPResponse(
             body=httplib_response,
