@@ -142,13 +142,13 @@ class HTTP2Connection(HTTPSConnection):
 
     def putheader(self, header: str | bytes, *values: str | bytes) -> None:  # type: ignore[override]
         # TODO SKIPPABLE_HEADERS from urllib3 are ignored.
-        header = header.encode("latin-1") if isinstance(header, str) else header
+        header = header.encode() if isinstance(header, str) else header
         header = header.lower()  # A lot of upstream code uses capitalized headers.
         if not _is_legal_header_name(header):
             raise ValueError(f"Illegal header name {str(header)}")
 
         for value in values:
-            value = value.encode("latin-1") if isinstance(value, str) else value
+            value = value.encode() if isinstance(value, str) else value
             if _is_illegal_header_value(value):
                 raise ValueError(f"Illegal header value {str(value)}")
             self._headers.append((header, value))
