@@ -252,6 +252,17 @@ class TestUtil:
             parse_url(url_template.format(char))
 
     @pytest.mark.parametrize(
+        "url_template",
+        ["http://victim.example{}Injected/path", "victim.example{}Injected"],
+    )
+    @pytest.mark.parametrize("char", ['"', "<", ">", "\\", "^", "`", "{", "|", "}"])
+    def test_non_rfc3986_ascii_characters_in_host_raise(
+        self, url_template: str, char: str
+    ) -> None:
+        with pytest.raises(LocationParseError, match="is not a valid host or port"):
+            parse_url(url_template.format(char))
+
+    @pytest.mark.parametrize(
         "url, expected_host",
         [
             ("http://Königsgäßchen.de/path", "xn--knigsgchen-b4a3dun.de"),
@@ -665,14 +676,7 @@ class TestUtil:
         # See https://bugs.xdavidhu.me/google/2020/03/08/the-unexpected-google-wide-domain-check-bypass/
         (
             "https://user:pass@xdavidhu.me\\test.corp.google.com:8080/path/to/something?param=value#hash",
-            Url(
-                scheme="https",
-                auth="user:pass",
-                host="xdavidhu.me",
-                path="/%5Ctest.corp.google.com:8080/path/to/something",
-                query="param=value",
-                fragment="hash",
-            ),
+            False,
         ),
         # Tons of '@' causing backtracking
         pytest.param(
