@@ -159,9 +159,7 @@ key_fn_by_scheme = {
 #: A scheme may map to any callable returning an :class:`HTTPConnectionPool`,
 #: not just a pool class, so that e.g. a ``functools.partial`` can be used to
 #: customize pool creation.
-_TYPE_POOL_CLASSES_BY_SCHEME = typing.Dict[
-    str, typing.Callable[..., HTTPConnectionPool]
-]
+_TYPE_POOL_CLASSES_BY_SCHEME = dict[str, typing.Callable[..., HTTPConnectionPool]]
 
 pool_classes_by_scheme: _TYPE_POOL_CLASSES_BY_SCHEME = {
     "http": HTTPConnectionPool,
