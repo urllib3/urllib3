@@ -234,6 +234,16 @@ class TestUtil:
             fragment="fragment" + percent_char,
         )
 
+    def test_backslash_in_userinfo_is_percent_encoded(self) -> None:
+        parsed_url = parse_url("http://domain\\user:password@proxy.example:8080")
+        assert parsed_url == Url(
+            scheme="http",
+            auth="domain%5Cuser:password",
+            host="proxy.example",
+            port=8080,
+        )
+        assert parsed_url.auth_decoded == ("domain\\user", "password")
+
     @pytest.mark.parametrize(
         "url_template",
         [
