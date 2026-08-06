@@ -8,13 +8,16 @@ import typing
 
 import h2.config
 import h2.connection
+import h2.errors
 import h2.events
+import h2.exceptions
 
 from .._base_connection import _TYPE_BODY
 from .._collections import HTTPHeaderDict
 from ..connection import HTTPSConnection, _get_default_user_agent
 from ..exceptions import ConnectionError
 from ..response import BaseHTTPResponse
+from ..util.wait import wait_for_read
 
 orig_HTTPSConnection = HTTPSConnection
 
@@ -49,6 +52,62 @@ def _is_illegal_header_value(value: bytes) -> bool:
     0x20 or 0x09)." (https://httpwg.org/specs/rfc9113.html#n-field-validity)
     """
     return bool(RE_IS_ILLEGAL_HEADER_VALUE.search(value))
+
+
+def _h2_error_code_name(error_code: object) -> str:
+    """Return a human-readable HTTP/2 error code name for exception messages."""
+    if error_code is None:
+        return "NO_ERROR"
+    try:
+        return h2.errors.ErrorCodes(error_code).name  # type: ignore[arg-type]
+    except ValueError:
+        try:
+            return f"0x{int(error_code):x}"  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return repr(error_code)
+
+
+def _raise_for_h2_error_event(event: h2.events.Event) -> typing.NoReturn:
+    """
+    Translate HTTP/2 error events into urllib3 ``ConnectionError``.
+
+    ``StreamReset`` ends only the affected stream. ``ConnectionTerminated``
+    (GOAWAY) means the connection must not be used again. Both surface as
+    ``ConnectionError`` (alias of ``ProtocolError``) so connection pools discard
+    the connection and may retry on a fresh one.
+    """
+    if isinstance(event, h2.events.StreamReset):
+        code = _h2_error_code_name(event.error_code)
+        if event.remote_reset:
+            message = (
+                f"HTTP/2 stream {event.stream_id} was reset by the peer "
+                f"with error code {code}"
+            )
+        else:
+            message = (
+                f"HTTP/2 stream {event.stream_id} was reset with error code {code}"
+            )
+        raise ConnectionError(message)
+
+    if isinstance(event, h2.events.ConnectionTerminated):
+        code = _h2_error_code_name(event.error_code)
+        message = f"HTTP/2 connection terminated by the peer with error code {code}"
+        if event.last_stream_id is not None:
+            message += f" (last stream id {event.last_stream_id})"
+        if event.additional_data:
+            # Cap debug data so oversized GOAWAY payloads cannot inflate
+            # exception strings unboundedly.
+            debug = event.additional_data[:64]
+            message += f" additional_data={debug!r}"
+        raise ConnectionError(message)
+
+    raise TypeError(f"Expected StreamReset or ConnectionTerminated, got {event!r}")
+
+
+def _is_our_stream_event(event: h2.events.Event, stream_id: int | None) -> bool:
+    """Return True when a stream-scoped event belongs to ``stream_id``."""
+    event_stream_id = getattr(event, "stream_id", None)
+    return stream_id is not None and event_stream_id == stream_id
 
 
 class _LockedObject(typing.Generic[T]):
@@ -228,43 +287,112 @@ class HTTP2Connection(HTTPSConnection):
         self,
     ) -> HTTP2Response:
         status = None
+        headers = HTTPHeaderDict()
         data = bytearray()
-        with self._h2_conn as conn:
-            end_stream = False
-            while not end_stream:
-                # TODO: Arbitrary read value.
-                if received_data := self.sock.recv(65535):
-                    events = conn.receive_data(received_data)
-                    for event in events:
-                        if isinstance(event, h2.events.ResponseReceived):
-                            headers = HTTPHeaderDict()
-                            for header, value in event.headers:
-                                if header == b":status":
-                                    status = int(value.decode())
+        close_connection = False
+        try:
+            with self._h2_conn as conn:
+                end_stream = False
+                while not end_stream:
+                    # TODO: Arbitrary read value.
+                    received_data = self.sock.recv(65535)
+                    if not received_data:
+                        raise ConnectionError(
+                            "Connection closed while reading HTTP/2 response"
+                        )
+
+                    try:
+                        events = conn.receive_data(received_data)
+                        for event in events:
+                            if isinstance(event, h2.events.ConnectionTerminated):
+                                # Graceful GOAWAY after our stream has already
+                                # ended is not a request failure, but the
+                                # connection must not be reused. Abort only when
+                                # the active response is incomplete.
+                                if end_stream:
+                                    close_connection = True
                                 else:
-                                    headers.add(
-                                        header.decode("ascii"), value.decode("ascii")
-                                    )
+                                    _raise_for_h2_error_event(event)
 
-                        elif isinstance(event, h2.events.DataReceived):
-                            data += event.data
-                            conn.acknowledge_received_data(
-                                event.flow_controlled_length, event.stream_id
-                            )
+                            elif isinstance(event, h2.events.StreamReset):
+                                if not end_stream and _is_our_stream_event(
+                                    event, self._h2_stream
+                                ):
+                                    _raise_for_h2_error_event(event)
 
-                        elif isinstance(event, h2.events.StreamEnded):
-                            end_stream = True
+                            elif isinstance(event, h2.events.ResponseReceived):
+                                if not _is_our_stream_event(event, self._h2_stream):
+                                    continue
+                                headers = HTTPHeaderDict()
+                                for header, value in event.headers:
+                                    if header == b":status":
+                                        status = int(value.decode())
+                                    else:
+                                        headers.add(
+                                            header.decode("ascii"),
+                                            value.decode("ascii"),
+                                        )
 
-                if data_to_send := conn.data_to_send():
-                    self.sock.sendall(data_to_send)
+                            elif isinstance(event, h2.events.DataReceived):
+                                if not _is_our_stream_event(event, self._h2_stream):
+                                    continue
+                                data += event.data
+                                conn.acknowledge_received_data(
+                                    event.flow_controlled_length, event.stream_id
+                                )
 
-        assert status is not None
-        return HTTP2Response(
-            status=status,
-            headers=headers,
-            request_url=self._request_url,
-            data=bytes(data),
-        )
+                            elif isinstance(event, h2.events.StreamEnded):
+                                if _is_our_stream_event(event, self._h2_stream):
+                                    end_stream = True
+
+                        if data_to_send := conn.data_to_send():
+                            self.sock.sendall(data_to_send)
+                    except h2.exceptions.H2Error as e:
+                        raise ConnectionError(f"HTTP/2 protocol error: {e}") from e
+
+                # GOAWAY may arrive in a later TCP segment than StreamEnded.
+                # Drain immediately-available frames so we close the connection
+                # instead of returning it to the pool with a pending GOAWAY.
+                while self.sock is not None and wait_for_read(self.sock, timeout=0.0):
+                    received_data = self.sock.recv(65535)
+                    if not received_data:
+                        break
+                    try:
+                        events = conn.receive_data(received_data)
+                        for event in events:
+                            if isinstance(event, h2.events.ConnectionTerminated):
+                                close_connection = True
+                            elif isinstance(event, h2.events.StreamReset):
+                                # Active stream already ended; ignore late resets.
+                                continue
+                        if data_to_send := conn.data_to_send():
+                            self.sock.sendall(data_to_send)
+                    except h2.exceptions.H2Error as e:
+                        raise ConnectionError(f"HTTP/2 protocol error: {e}") from e
+
+            if status is None:
+                raise ConnectionError(
+                    "HTTP/2 response ended without receiving a status"
+                )
+
+            response = HTTP2Response(
+                status=status,
+                headers=headers,
+                request_url=self._request_url,
+                data=bytes(data),
+            )
+            if close_connection:
+                # Peer sent GOAWAY after a complete response; discard this connection.
+                self.close()
+            return response
+        except ConnectionError:
+            # Ensure direct HTTP2Connection users discard a dirty connection the
+            # same way HTTPSConnectionPool does on ProtocolError.
+            try:
+                self.close()
+            except Exception:
+                pass
+            raise
 
     def request(  # type: ignore[override]
         self,

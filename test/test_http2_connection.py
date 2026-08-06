@@ -1,19 +1,371 @@
 from __future__ import annotations
 
 import socket
+import typing
 from unittest import mock
 
+import h2.config
+import h2.connection
+import h2.errors
+import h2.events
+import h2.exceptions
 import pytest
 
 from urllib3.connection import _get_default_user_agent
-from urllib3.exceptions import ConnectionError
+from urllib3.exceptions import ConnectionError, ProtocolError
 from urllib3.http2.connection import (
     HTTP2Connection,
+    _h2_error_code_name,
     _is_illegal_header_value,
     _is_legal_header_name,
+    _raise_for_h2_error_event,
 )
+from urllib3.util.wait import wait_for_read
 
 # [1] https://httpwg.org/specs/rfc9113.html#n-field-validity
+
+
+class _H2PeerSocket:
+    """
+    Selectable socket-like peer that speaks HTTP/2 via an ``h2`` server.
+
+    Uses an OS ``socketpair`` so ``wait_for_read`` works the same as on a real
+    TCP socket. ``on_request`` decides how to answer each ``RequestReceived``
+    event (response, RST_STREAM, GOAWAY, etc.).
+    """
+
+    def __init__(
+        self,
+        on_request: typing.Callable[
+            [h2.connection.H2Connection, h2.events.RequestReceived], None
+        ],
+    ) -> None:
+        self._client, self._peer = socket.socketpair()
+        self._server = h2.connection.H2Connection(
+            config=h2.config.H2Configuration(client_side=False, header_encoding=None)
+        )
+        self._server.initiate_connection()
+        preface = self._server.data_to_send()
+        if preface:
+            self._peer.sendall(preface)
+        self._on_request = on_request
+
+    def fileno(self) -> int:
+        return self._client.fileno()
+
+    def settimeout(self, timeout: float | None) -> None:
+        self._client.settimeout(timeout)
+
+    def sendall(self, data: bytes) -> None:
+        try:
+            events = self._server.receive_data(data)
+        except h2.exceptions.H2Error:
+            # Client may send GOAWAY/close frames after the peer already
+            # terminated the connection; ignore further inbound frames.
+            return
+        for event in events:
+            if isinstance(event, h2.events.RequestReceived):
+                self._on_request(self._server, event)
+        outbound = self._server.data_to_send()
+        if outbound:
+            self._peer.sendall(outbound)
+
+    def recv(self, amt: int) -> bytes:
+        return self._client.recv(amt)
+
+    def inject_frames(self, data: bytes) -> None:
+        """Queue additional frames for a later ``recv`` (e.g. deferred GOAWAY)."""
+        if data:
+            self._peer.sendall(data)
+
+    def close_writes(self) -> None:
+        """Signal EOF to the client side (peer closed the connection)."""
+        try:
+            self._peer.shutdown(socket.SHUT_WR)
+        except OSError:
+            pass
+
+    def close(self) -> None:
+        for sock in (self._client, self._peer):
+            try:
+                sock.close()
+            except OSError:
+                pass
+
+    def __enter__(self) -> "_H2PeerSocket":
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: typing.Any,
+    ) -> None:
+        self.close()
+
+
+def _connect_http2(conn: HTTP2Connection, sock: _H2PeerSocket) -> None:
+    """Perform the HTTP/2 connection preface exchange without a real TCP/TLS socket."""
+    conn.sock = sock  # type: ignore[assignment]
+    with conn._h2_conn as h2_conn:
+        h2_conn.initiate_connection()
+        if data := h2_conn.data_to_send():
+            sock.sendall(data)
+
+
+class TestHTTP2ErrorEvents:
+    def test_error_code_name_mapping(self) -> None:
+        assert _h2_error_code_name(h2.errors.ErrorCodes.CANCEL) == "CANCEL"
+        assert _h2_error_code_name(None) == "NO_ERROR"
+        assert _h2_error_code_name(0xFF) == "0xff"
+
+    def test_stream_reset_raises_protocol_error(self) -> None:
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.reset_stream(
+                event.stream_id, error_code=h2.errors.ErrorCodes.REFUSED_STREAM
+            )
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+            with pytest.raises(ProtocolError, match="REFUSED_STREAM"):
+                conn.getresponse()
+
+    def test_stream_reset_after_partial_body_raises(self) -> None:
+        """RST_STREAM after headers+data must not return a truncated body."""
+
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.send_headers(
+                event.stream_id,
+                [(b":status", b"200"), (b"content-type", b"text/plain")],
+                end_stream=False,
+            )
+            server.send_data(event.stream_id, b"partial", end_stream=False)
+            server.reset_stream(event.stream_id, error_code=h2.errors.ErrorCodes.CANCEL)
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+            with pytest.raises(ConnectionError, match="CANCEL"):
+                conn.getresponse()
+
+    def test_connection_terminated_before_response_raises(self) -> None:
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.close_connection(
+                error_code=h2.errors.ErrorCodes.ENHANCE_YOUR_CALM,
+                additional_data=b"slow-down",
+            )
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+            with pytest.raises(
+                ConnectionError,
+                match=(
+                    "connection terminated by the peer with error code ENHANCE_YOUR_CALM"
+                    r".*last stream id 1.*additional_data=b'slow-down'"
+                ),
+            ):
+                conn.getresponse()
+
+    def test_connection_terminated_after_partial_body_raises(self) -> None:
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.send_headers(
+                event.stream_id, [(b":status", b"200")], end_stream=False
+            )
+            server.send_data(event.stream_id, b"partial", end_stream=False)
+            server.close_connection(error_code=h2.errors.ErrorCodes.INTERNAL_ERROR)
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+            with pytest.raises(ConnectionError, match="INTERNAL_ERROR"):
+                conn.getresponse()
+
+    def test_graceful_goaway_after_complete_response_returns_body(self) -> None:
+        """GOAWAY in the same flight as StreamEnded must not fail the request."""
+
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.send_headers(
+                event.stream_id, [(b":status", b"200")], end_stream=False
+            )
+            server.send_data(event.stream_id, b"done", end_stream=True)
+            server.close_connection(error_code=h2.errors.ErrorCodes.NO_ERROR)
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+            response = conn.getresponse()
+            assert response.status == 200
+            assert response.data == b"done"
+            # Connection must not be reused after peer GOAWAY.
+            assert conn.sock is None
+
+    def test_deferred_goaway_after_complete_response_closes_connection(self) -> None:
+        """GOAWAY in a later recv than StreamEnded must still close the connection."""
+
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.send_headers(
+                event.stream_id, [(b":status", b"200")], end_stream=False
+            )
+            server.send_data(event.stream_id, b"done", end_stream=True)
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+
+            # Produce GOAWAY bytes, but only inject them after the response is read.
+            sock._server.close_connection(error_code=h2.errors.ErrorCodes.NO_ERROR)
+            deferred_goaway = sock._server.data_to_send()
+            assert deferred_goaway
+
+            original_recv = sock.recv
+            injected = False
+
+            def recv_then_queue_goaway(amt: int) -> bytes:
+                nonlocal injected
+                chunk = original_recv(amt)
+                if chunk and not injected:
+                    sock.inject_frames(deferred_goaway)
+                    injected = True
+                return chunk
+
+            sock.recv = recv_then_queue_goaway  # type: ignore[method-assign]
+
+            response = conn.getresponse()
+            assert response.status == 200
+            assert response.data == b"done"
+            assert conn.sock is None
+
+    def test_unrelated_stream_reset_is_ignored(self) -> None:
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.send_headers(
+                event.stream_id, [(b":status", b"200")], end_stream=False
+            )
+            server.send_data(event.stream_id, b"ok", end_stream=True)
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+
+            with conn._h2_conn as h2_conn:
+                original_receive = h2_conn.receive_data
+
+                def receive_with_foreign_reset(data: bytes) -> list[h2.events.Event]:
+                    events = list(original_receive(data))
+                    events.insert(
+                        0,
+                        h2.events.StreamReset(
+                            stream_id=99,
+                            error_code=h2.errors.ErrorCodes.CANCEL,
+                            remote_reset=True,
+                        ),
+                    )
+                    return events
+
+                h2_conn.receive_data = receive_with_foreign_reset  # type: ignore[method-assign]
+
+            response = conn.getresponse()
+            assert response.status == 200
+            assert response.data == b"ok"
+
+    def test_connection_closed_without_goaway_raises(self) -> None:
+        """TCP close with an empty recv must raise, not spin forever."""
+
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            return None
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+            # Discard any pending control frames, then EOF the client side.
+            while wait_for_read(sock, timeout=0.0):
+                if not sock.recv(65535):
+                    break
+            sock.close_writes()
+            with pytest.raises(
+                ConnectionError,
+                match="Connection closed while reading HTTP/2 response",
+            ):
+                conn.getresponse()
+
+    def test_successful_response_unaffected(self) -> None:
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.send_headers(
+                event.stream_id,
+                [(b":status", b"200"), (b"content-type", b"text/plain")],
+                end_stream=False,
+            )
+            server.send_data(event.stream_id, b"hello", end_stream=True)
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+            response = conn.getresponse()
+            assert response.status == 200
+            assert response.data == b"hello"
+            assert response.headers["content-type"] == "text/plain"
+
+    def test_local_stream_reset_message(self) -> None:
+        event = h2.events.StreamReset(
+            stream_id=5,
+            error_code=h2.errors.ErrorCodes.PROTOCOL_ERROR,
+            remote_reset=False,
+        )
+        with pytest.raises(
+            ConnectionError, match="stream 5 was reset with error code PROTOCOL_ERROR"
+        ):
+            _raise_for_h2_error_event(event)
+
+    def test_wraps_h2_error_from_receive_data(self) -> None:
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.send_headers(
+                event.stream_id, [(b":status", b"200")], end_stream=True
+            )
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+
+            with conn._h2_conn as h2_conn:
+                h2_conn.receive_data = mock.Mock(  # type: ignore[method-assign]
+                    side_effect=h2.exceptions.ProtocolError("bad frame")
+                )
+
+            with pytest.raises(
+                ConnectionError, match="HTTP/2 protocol error: bad frame"
+            ):
+                conn.getresponse()
 
 
 class TestHTTP2Connection:
