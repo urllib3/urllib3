@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import http.client as httplib
+import queue
 import ssl
+import subprocess
+import sys
 import typing
 from http.client import HTTPException
 from queue import Empty
@@ -16,6 +19,7 @@ from dummyserver.socketserver import DEFAULT_CA
 from urllib3 import Retry
 from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import (
+    ConnectionPool,
     HTTPConnectionPool,
     HTTPSConnectionPool,
     _url_from_pool,
@@ -740,3 +744,155 @@ class TestConnectionPool:
 
         assert response.status == 200
         assert requested_urls == ["/", "http://localhost/next?x=1"]
+
+    def test_default_pool_uses_stdlib_lifoqueue_without_monkeypatch(self) -> None:
+        assert ConnectionPool.QueueCls is None
+
+        with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+            assert pool.pool is not None
+            assert type(pool.pool) is queue.LifoQueue
+            assert type(pool.pool).__module__ == "queue"
+
+        with HTTPSConnectionPool(host="localhost", maxsize=1) as https_pool:
+            assert https_pool.pool is not None
+            assert type(https_pool.pool) is queue.LifoQueue
+            assert type(https_pool.pool).__module__ == "queue"
+
+    def test_default_queue_resolves_lifoqueue_at_pool_creation(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Default pools must pick up a LifoQueue replaced after urllib3 import."""
+
+        class PatchedLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        assert ConnectionPool.QueueCls is None
+        monkeypatch.setattr(queue, "LifoQueue", PatchedLifoQueue)
+
+        with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+            assert pool.pool is not None
+            assert type(pool.pool) is PatchedLifoQueue
+            # Pool was pre-filled with None sentinels and remains usable.
+            assert pool.pool.qsize() == 1
+            assert pool.pool.get(block=False) is None
+            pool.pool.put(None)
+
+        with HTTPSConnectionPool(host="localhost", maxsize=2) as https_pool:
+            assert https_pool.pool is not None
+            assert type(https_pool.pool) is PatchedLifoQueue
+            assert https_pool.pool.qsize() == 2
+
+    def test_late_bound_default_queue_receives_maxsize(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        created: list[tuple[tuple[typing.Any, ...], dict[str, typing.Any]]] = []
+
+        class RecordingQueue(queue.LifoQueue[typing.Any]):
+            def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+                created.append((args, kwargs))
+                super().__init__(*args, **kwargs)
+
+        monkeypatch.setattr(queue, "LifoQueue", RecordingQueue)
+
+        with HTTPConnectionPool(host="localhost", maxsize=3) as pool:
+            assert pool.pool is not None
+            assert type(pool.pool) is RecordingQueue
+
+        assert created == [((3,), {})]
+
+    def test_custom_queue_class_override_is_respected(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class CustomLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        class PatchedLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        class CustomQueueHTTPConnectionPool(HTTPConnectionPool):
+            QueueCls = CustomLifoQueue
+
+        monkeypatch.setattr(queue, "LifoQueue", PatchedLifoQueue)
+
+        with CustomQueueHTTPConnectionPool(host="localhost", maxsize=1) as pool:
+            assert pool.pool is not None
+            assert type(pool.pool) is CustomLifoQueue
+
+    def test_runtime_queuecls_assignment_and_reset(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class RuntimeCustomQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        class PatchedLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        original_queue_cls = HTTPConnectionPool.QueueCls
+        try:
+            HTTPConnectionPool.QueueCls = RuntimeCustomQueue
+            with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+                assert pool.pool is not None
+                assert type(pool.pool) is RuntimeCustomQueue
+
+            # Resetting to None restores late binding to queue.LifoQueue.
+            HTTPConnectionPool.QueueCls = None
+            monkeypatch.setattr(queue, "LifoQueue", PatchedLifoQueue)
+            with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+                assert pool.pool is not None
+                assert type(pool.pool) is PatchedLifoQueue
+        finally:
+            if original_queue_cls is None:
+                if "QueueCls" in HTTPConnectionPool.__dict__:
+                    delattr(HTTPConnectionPool, "QueueCls")
+            else:
+                HTTPConnectionPool.QueueCls = original_queue_cls
+
+    def test_gevent_patch_after_import_uses_gevent_lifoqueue(self) -> None:
+        """Exact #3289 scenario: import urllib3, then gevent patches queue.
+
+        Runs in a subprocess so gevent monkey-patching cannot contaminate the
+        rest of the suite. Skips when gevent is not installed.
+        """
+        pytest.importorskip("gevent")
+
+        script = """
+import queue
+import urllib3.connectionpool  # noqa: F401  -- import before patching
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+
+stdlib_lifo_queue = queue.LifoQueue
+
+from gevent import monkey
+
+monkey.patch_queue()
+
+assert "gevent" in queue.LifoQueue.__module__, queue.LifoQueue
+
+class StaleQueuePool(HTTPConnectionPool):
+    # Pre-fix behavior: import-time capture misses the gevent queue.
+    QueueCls = stdlib_lifo_queue
+
+with StaleQueuePool(host="localhost", maxsize=1) as stale_pool:
+    assert stale_pool.pool is not None
+    assert type(stale_pool.pool) is stdlib_lifo_queue
+    assert "gevent" not in type(stale_pool.pool).__module__
+
+with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+    assert pool.pool is not None
+    assert type(pool.pool) is queue.LifoQueue
+    assert "gevent" in type(pool.pool).__module__
+    assert pool.pool.qsize() == 1
+    assert pool.pool.get(block=False) is None
+    pool.pool.put(None)
+
+with HTTPSConnectionPool(host="localhost", maxsize=1) as https_pool:
+    assert https_pool.pool is not None
+    assert "gevent" in type(https_pool.pool).__module__
+"""
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr

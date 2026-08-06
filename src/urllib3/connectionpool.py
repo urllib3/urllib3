@@ -76,7 +76,13 @@ class ConnectionPool:
     """
 
     scheme: str | None = None
-    QueueCls = queue.LifoQueue
+    #: Queue class used for the connection pool. The default ``None`` means
+    #: resolve ``queue.LifoQueue`` at pool creation time so monkey-patching of
+    #: the ``queue`` module (for example by gevent) is honored. This is a
+    #: deliberate API change from earlier versions that cached
+    #: ``queue.LifoQueue`` on the class at import time. Override with a concrete
+    #: class to force a specific queue implementation.
+    QueueCls: type[queue.LifoQueue[typing.Any]] | None = None
 
     def __init__(self, host: str, port: int | None = None) -> None:
         if not host:
@@ -111,6 +117,18 @@ class ConnectionPool:
         """
         Close all pooled connections and disable the pool.
         """
+
+    def _make_queue(
+        self, *args: typing.Any, **kwargs: typing.Any
+    ) -> queue.LifoQueue[typing.Any]:
+        """Create the pool queue, late-binding the default class.
+
+        When :attr:`QueueCls` is ``None``, look up ``queue.LifoQueue`` at call
+        time so a monkey-patched queue module is used. Explicit ``QueueCls``
+        overrides are always respected.
+        """
+        queue_cls = self.QueueCls if self.QueueCls is not None else queue.LifoQueue
+        return queue_cls(*args, **kwargs)
 
 
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
@@ -198,7 +216,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.timeout = timeout
         self.retries = retries
 
-        self.pool: queue.LifoQueue[typing.Any] | None = self.QueueCls(maxsize)
+        self.pool: queue.LifoQueue[typing.Any] | None = self._make_queue(maxsize)
         self.block = block
 
         self.proxy = _proxy

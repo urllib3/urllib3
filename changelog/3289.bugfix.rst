@@ -1,0 +1,8 @@
+Fixed default connection pools to resolve ``queue.LifoQueue`` at pool creation
+time instead of caching the class at import time.
+
+``ConnectionPool.QueueCls`` now defaults to ``None``, which means "use the current
+``queue.LifoQueue`` when the pool is created". Set ``QueueCls`` to a concrete
+class to force a specific queue implementation. This allows post-import
+monkey-patching of the ``queue`` module (for example by gevent) to take effect
+for default pools.
