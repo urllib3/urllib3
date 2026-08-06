@@ -15,6 +15,7 @@ from .._collections import HTTPHeaderDict
 from ..connection import HTTPSConnection, _get_default_user_agent
 from ..exceptions import ConnectionError
 from ..response import BaseHTTPResponse
+from ..util.url import parse_url
 
 orig_HTTPSConnection = HTTPSConnection
 
@@ -90,11 +91,10 @@ class HTTP2Connection(HTTPSConnection):
         self._h2_stream: int | None = None
         self._headers: list[tuple[bytes, bytes]] = []
 
-        if "proxy" in kwargs or "proxy_config" in kwargs:  # Defensive:
-            raise NotImplementedError("Proxies aren't supported with HTTP/2")
-
         super().__init__(host, port, **kwargs)
 
+        # Tunneling via CONNECT remains unsupported for HTTP/2; see #3298.
+        # Forwarding proxies are supported when proxy_is_forwarding is true.
         if self._tunnel_host is not None:
             raise NotImplementedError("Tunneling isn't supported with HTTP/2")
 
@@ -127,16 +127,33 @@ class HTTP2Connection(HTTPSConnection):
         self._request_url = url or "/"
         self._validate_path(url)  # type: ignore[attr-defined]
 
-        port = self.port if self.port is not None else 443
-        if ":" in self.host:
-            authority = f"[{self.host}]:{port}"
-        else:
-            authority = f"{self.host}:{port}"
+        scheme = "https"
+        request_target = url or "/"
+        parsed_url = parse_url(url)
 
-        self._headers.append((b":scheme", b"https"))
+        if self.proxy_is_forwarding:
+            # Forwarding proxies receive an absolute URL and must advertise the
+            # destination in HTTP/2 pseudo-headers, not the proxy endpoint.
+            if not (parsed_url.scheme and parsed_url.host and parsed_url.netloc):
+                raise ValueError(
+                    "HTTP/2 forwarding proxies require an absolute URL with a "
+                    f"scheme and host, got {url!r}"
+                )
+            scheme = parsed_url.scheme
+            # Use netloc (host[:port]), never userinfo, for :authority.
+            authority = parsed_url.netloc
+            request_target = parsed_url.request_uri
+        else:
+            port = self.port if self.port is not None else 443
+            if ":" in self.host:
+                authority = f"[{self.host}]:{port}"
+            else:
+                authority = f"{self.host}:{port}"
+
+        self._headers.append((b":scheme", scheme.encode()))
         self._headers.append((b":method", method.encode()))
         self._headers.append((b":authority", authority.encode()))
-        self._headers.append((b":path", url.encode()))
+        self._headers.append((b":path", request_target.encode()))
 
         with self._h2_conn as conn:
             self._h2_stream = conn.get_next_available_stream_id()
@@ -145,6 +162,9 @@ class HTTP2Connection(HTTPSConnection):
         # TODO SKIPPABLE_HEADERS from urllib3 are ignored.
         header = header.encode() if isinstance(header, str) else header
         header = header.lower()  # A lot of upstream code uses capitalized headers.
+        # RFC 9113 §8.3.1: clients SHOULD send only :authority, not Host.
+        if header == b"host":
+            return
         if not _is_legal_header_name(header):
             raise ValueError(f"Illegal header name {str(header)}")
 

@@ -1,17 +1,25 @@
 from __future__ import annotations
 
 import socket
+import ssl
+import threading
 from unittest import mock
 
+import h2.config
+import h2.connection
+import h2.events
 import pytest
 
-from urllib3.connection import _get_default_user_agent
+from dummyserver.socketserver import DEFAULT_CA, DEFAULT_CERTS
+from urllib3.connection import ProxyConfig, _get_default_user_agent
 from urllib3.exceptions import ConnectionError
 from urllib3.http2.connection import (
     HTTP2Connection,
     _is_illegal_header_value,
     _is_legal_header_name,
 )
+from urllib3.util import parse_url
+from urllib3.util import ssl_ as urllib3_ssl
 
 # [1] https://httpwg.org/specs/rfc9113.html#n-field-validity
 
@@ -271,6 +279,139 @@ class TestHTTP2Connection:
 
         close_connection.assert_called_with()
 
+    def _mock_h2_send(self, conn: HTTP2Connection) -> mock.Mock:
+        conn.sock = mock.MagicMock(sendall=mock.Mock(return_value=None))
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._h2_conn._obj.close_connection = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        return send_headers
+
+    def test_forwarding_proxy_construction_is_allowed(self) -> None:
+        conn = HTTP2Connection(
+            "proxy.example",
+            8443,
+            proxy=parse_url("https://proxy.example:8443"),
+            proxy_config=ProxyConfig(None, True, None, None),
+        )
+        assert conn.proxy_is_forwarding is True
+        assert conn.proxy_is_tunneling is False
+
+    @pytest.mark.parametrize(
+        "url, scheme, authority, path",
+        (
+            (
+                "https://target.example:9443/path?query=true",
+                b"https",
+                b"target.example:9443",
+                b"/path?query=true",
+            ),
+            (
+                "http://target.example/path?query=true",
+                b"http",
+                b"target.example",
+                b"/path?query=true",
+            ),
+            (
+                "https://[2001:db8::1]:8443/resource",
+                b"https",
+                b"[2001:db8::1]:8443",
+                b"/resource",
+            ),
+            (
+                # userinfo must not appear in :authority
+                "https://user:pass@target.example/secret",
+                b"https",
+                b"target.example",
+                b"/secret",
+            ),
+        ),
+    )
+    def test_forwarding_proxy_request_uses_destination_pseudo_headers(
+        self, url: str, scheme: bytes, authority: bytes, path: bytes
+    ) -> None:
+        conn = HTTP2Connection(
+            "proxy.example",
+            8443,
+            proxy=parse_url("https://proxy.example:8443"),
+            proxy_config=ProxyConfig(None, True, None, None),
+        )
+        send_headers = self._mock_h2_send(conn)
+
+        conn.request("GET", url)
+        conn.close()
+
+        send_headers.assert_called_with(
+            stream_id=1,
+            headers=[
+                (b":scheme", scheme),
+                (b":method", b"GET"),
+                (b":authority", authority),
+                (b":path", path),
+                (b"user-agent", _get_default_user_agent().encode()),
+            ],
+            end_stream=True,
+        )
+
+    def test_forwarding_proxy_rejects_relative_url(self) -> None:
+        conn = HTTP2Connection(
+            "proxy.example",
+            8443,
+            proxy=parse_url("https://proxy.example:8443"),
+            proxy_config=ProxyConfig(None, True, None, None),
+        )
+        self._mock_h2_send(conn)
+
+        with pytest.raises(ValueError, match="absolute URL"):
+            conn.request("GET", "/relative")
+
+    def test_forwarding_proxy_does_not_use_proxy_as_authority(self) -> None:
+        """Without the fix, :authority would be the proxy host:port."""
+        conn = HTTP2Connection(
+            "proxy.example",
+            8443,
+            proxy=parse_url("https://proxy.example:8443"),
+            proxy_config=ProxyConfig(None, True, None, None),
+        )
+        send_headers = self._mock_h2_send(conn)
+
+        conn.request("GET", "https://target.example/path")
+        headers = dict(send_headers.call_args.kwargs["headers"])
+        assert headers[b":authority"] == b"target.example"
+        assert headers[b":authority"] != b"proxy.example:8443"
+        assert headers[b":scheme"] == b"https"
+        assert headers[b":path"] == b"/path"
+
+    def test_http2_omits_host_header_in_favor_of_authority(self) -> None:
+        conn = HTTP2Connection(
+            "proxy.example",
+            8443,
+            proxy=parse_url("https://proxy.example:8443"),
+            proxy_config=ProxyConfig(None, True, None, None),
+        )
+        send_headers = self._mock_h2_send(conn)
+
+        conn.request(
+            "GET",
+            "https://target.example/path",
+            headers={"Host": "target.example", "Accept": "*/*"},
+        )
+        header_names = [name for name, _ in send_headers.call_args.kwargs["headers"]]
+        assert b"host" not in header_names
+        assert b":authority" in header_names
+        assert b"accept" in header_names
+
+    def test_http2_tunneling_via_set_tunnel_remains_unsupported(self) -> None:
+        conn = HTTP2Connection(
+            "proxy.example",
+            8443,
+            proxy=parse_url("https://proxy.example:8443"),
+            proxy_config=ProxyConfig(None, False, None, None),
+        )
+        with pytest.raises(NotImplementedError, match="tunnel"):
+            conn.set_tunnel("target.example", 443)
+
     def test_request_authority_port_zero(self) -> None:
         conn = HTTP2Connection("example.com", port=0)
         conn.sock = mock.MagicMock(
@@ -384,3 +525,128 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+
+class TestHTTP2ForwardingWire:
+    """Socket-level proof that forwarding pseudo-headers hit the wire."""
+
+    @pytest.mark.parametrize(
+        "url, expected",
+        (
+            (
+                "https://target.example:9443/path?q=1",
+                {
+                    b":scheme": b"https",
+                    b":authority": b"target.example:9443",
+                    b":path": b"/path?q=1",
+                },
+            ),
+            (
+                "http://target.example/path?q=1",
+                {
+                    b":scheme": b"http",
+                    b":authority": b"target.example",
+                    b":path": b"/path?q=1",
+                },
+            ),
+            (
+                "https://[2001:db8::1]:8443/resource",
+                {
+                    b":scheme": b"https",
+                    b":authority": b"[2001:db8::1]:8443",
+                    b":path": b"/resource",
+                },
+            ),
+        ),
+    )
+    def test_forwarding_pseudo_headers_on_wire(
+        self, url: str, expected: dict[bytes, bytes]
+    ) -> None:
+        received: dict[str, list[tuple[bytes, bytes]]] = {}
+        ready = threading.Event()
+        done = threading.Event()
+
+        def server() -> None:
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            ctx.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])
+            ctx.set_alpn_protocols(["h2", "http/1.1"])
+            sock = socket.socket()
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind(("localhost", 0))
+            sock.listen(5)
+            ready.port = sock.getsockname()[1]  # type: ignore[attr-defined]
+            ready.set()
+
+            raw, _ = sock.accept()
+            tls = ctx.wrap_socket(raw, server_side=True)
+            assert tls.selected_alpn_protocol() == "h2"
+
+            config = h2.config.H2Configuration(client_side=False)
+            h2_conn = h2.connection.H2Connection(config=config)
+            h2_conn.initiate_connection()
+            tls.sendall(h2_conn.data_to_send())
+            tls.settimeout(5)
+
+            while not done.is_set():
+                try:
+                    data = tls.recv(65535)
+                except TimeoutError:
+                    break
+                if not data:
+                    break
+                for event in h2_conn.receive_data(data):
+                    if isinstance(event, h2.events.RequestReceived):
+                        received["headers"] = [
+                            (
+                                name if isinstance(name, bytes) else name.encode(),
+                                (value if isinstance(value, bytes) else value.encode()),
+                            )
+                            for name, value in event.headers
+                        ]
+                        h2_conn.send_headers(
+                            event.stream_id,
+                            [(b":status", b"200"), (b"content-length", b"0")],
+                            end_stream=True,
+                        )
+                        tls.sendall(h2_conn.data_to_send())
+                        done.set()
+                        break
+                if data_to_send := h2_conn.data_to_send():
+                    tls.sendall(data_to_send)
+
+            tls.close()
+            sock.close()
+
+        thread = threading.Thread(target=server, daemon=True)
+        thread.start()
+        assert ready.wait(5)
+        port = ready.port  # type: ignore[attr-defined]
+
+        # HTTP2Connection always speaks h2; offer h2 via ALPN like inject_into_urllib3.
+        original_alpn = list(urllib3_ssl.ALPN_PROTOCOLS)
+        urllib3_ssl.ALPN_PROTOCOLS = ["h2"]
+        conn = HTTP2Connection(
+            "localhost",
+            port,
+            proxy=parse_url(f"https://localhost:{port}"),
+            proxy_config=ProxyConfig(None, True, None, None),
+            ca_certs=DEFAULT_CA,
+        )
+        try:
+            conn.connect()
+            assert conn.sock is not None
+            assert conn.sock.selected_alpn_protocol() == "h2"
+            conn.request("GET", url, headers={"Host": "should-be-omitted"})
+            response = conn.getresponse()
+            assert response.status == 200
+        finally:
+            conn.close()
+            urllib3_ssl.ALPN_PROTOCOLS = original_alpn
+            done.wait(5)
+            thread.join(5)
+
+        headers = dict(received["headers"])
+        for name, value in expected.items():
+            assert headers[name] == value
+        assert b"host" not in headers
+        assert headers[b":authority"] != f"localhost:{port}".encode()

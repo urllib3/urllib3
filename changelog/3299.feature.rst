@@ -1,0 +1,4 @@
+Added HTTP/2 support for forwarding proxies. ``HTTP2Connection`` now accepts
+proxy configuration and builds ``:scheme``, ``:authority``, and ``:path``
+pseudo-headers from the absolute destination URL. HTTP CONNECT tunneling
+remains unsupported.

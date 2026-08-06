@@ -18,6 +18,8 @@ import pytest
 import trustme
 
 import urllib3.exceptions
+import urllib3.http2
+import urllib3.http2.probe as http2_probe
 from dummyserver.socketserver import DEFAULT_CA, HAS_IPV6, get_unreachable_address
 from dummyserver.testcase import (
     HypercornDummyProxyTestCase,
@@ -37,6 +39,7 @@ from urllib3.exceptions import (
     ReadTimeoutError,
     SSLError,
 )
+from urllib3.http2.connection import HTTP2Connection
 from urllib3.poolmanager import ProxyManager, proxy_from_url
 from urllib3.util.retry import RequestHistory
 from urllib3.util.ssl_ import create_urllib3_context
@@ -185,6 +188,52 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
 
             r = https.request("GET", f"{self.https_url}/")
             assert r.status == 200
+
+    def test_https_proxy_forwarding_for_https_with_http2(self) -> None:
+        """HTTP/2 over a forwarding HTTPS proxy reaches an HTTPS destination.
+
+        End-to-end proof for #3299: with HTTP/2 injected, ProxyManager using
+        ``use_forwarding_for_https=True`` speaks HTTP/2 to the proxy while
+        advertising the target via pseudo-headers. HTTPS targets are used here
+        because Hypercorn's ASGI ``scope["scheme"]`` is the proxy connection
+        scheme, which matches ``:scheme`` for HTTPS destinations.
+        """
+        http2_probe._reset()
+        urllib3.http2.inject_into_urllib3()
+        try:
+            with proxy_from_url(
+                self.https_proxy_url,
+                ca_certs=DEFAULT_CA,
+                use_forwarding_for_https=True,
+            ) as https:
+                r = https.request("GET", f"{self.https_url}/")
+                assert r.status == 200
+
+                pool = list(https.pools._container.values())[-1]
+                conn = pool._get_conn()
+                try:
+                    assert isinstance(conn, HTTP2Connection)
+                    assert conn.proxy_is_forwarding is True
+                finally:
+                    pool._put_conn(conn)
+        finally:
+            urllib3.http2.extract_from_urllib3()
+            http2_probe._reset()
+
+    def test_https_proxy_tunneling_with_http2_remains_unsupported(self) -> None:
+        """CONNECT tunneling must stay unavailable under HTTP/2 (#3298)."""
+        http2_probe._reset()
+        urllib3.http2.inject_into_urllib3()
+        try:
+            with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+                with pytest.raises((NotImplementedError, MaxRetryError)) as e:
+                    https.request("GET", f"{self.https_url}/", retries=False)
+                err = e.value.reason if isinstance(e.value, MaxRetryError) else e.value
+                assert isinstance(err, NotImplementedError)
+                assert "tunnel" in str(err).lower()
+        finally:
+            urllib3.http2.extract_from_urllib3()
+            http2_probe._reset()
 
     @requires_network()
     @pytest.mark.parametrize(
