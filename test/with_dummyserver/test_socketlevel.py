@@ -146,6 +146,41 @@ class TestCookies(SocketDummyServerTestCase):
             assert r._original_response.msg["fold-mixed-repeated"] == "one two three"
 
 
+class TestBytesHeaderValues(SocketDummyServerTestCase):
+    def test_bytes_header_value_is_sent_byte_for_byte(self) -> None:
+        # This guards the decode-to-str then latin-1-re-encode round trip
+        # introduced by normalizing bytes at ingestion: the octets on the
+        # HTTP/1.1 wire must be identical to what a raw bytes value produced
+        # before. Echo the raw request bytes in the response body so the
+        # assertion sees the exact octets urllib3 put on the wire, without
+        # any header decoding by http.client on the response side.
+        def echo_request_handler(listener: socket.socket) -> None:
+            with listener.accept()[0] as sock:
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += sock.recv(65536)
+
+                sock.sendall(
+                    b"HTTP/1.1 200 OK\r\n"
+                    b"Content-Length: " + str(len(buf)).encode() + b"\r\n"
+                    b"\r\n" + buf
+                )
+
+        self._start_server(echo_request_handler)
+
+        utf8_value = "Schönefeld/1.18.0".encode()
+        obs_text_value = b"\x80\xfe\xff"
+        headers = HTTPHeaderDict()
+        headers[b"x-utf8"] = utf8_value
+        headers["x-raw"] = obs_text_value
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/", headers=headers, retries=False)
+
+        assert b"x-utf8: " + utf8_value + b"\r\n" in r.data
+        assert b"x-raw: " + obs_text_value + b"\r\n" in r.data
+
+
 class TestSNI(SocketDummyServerTestCase):
     def test_hostname_in_first_request_packet(self) -> None:
         done_receiving = Event()

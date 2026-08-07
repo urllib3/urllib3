@@ -212,9 +212,8 @@ class TestHTTPHeaderDict:
 
     def test_setitem(self, d: HTTPHeaderDict) -> None:
         d["Cookie"] = "foo"
-        # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
-        d[b"Cookie"] = "bar"  # type: ignore[index]
+        # Bytes keys and values are decoded as latin-1.
+        d[b"Cookie"] = "bar"
         assert d["cookie"] == "bar"
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
@@ -231,7 +230,7 @@ class TestHTTPHeaderDict:
         assert "COOKIE" not in d
 
     def test_delitem_with_bytes_key(self, d: HTTPHeaderDict) -> None:
-        del d[b"cookie"]  # type: ignore[arg-type]
+        del d[b"cookie"]
         assert "cookie" not in d
 
     def test_add_well_known_multiheader(self, d: HTTPHeaderDict) -> None:
@@ -241,9 +240,8 @@ class TestHTTPHeaderDict:
 
     def test_add_comma_separated_multiheader(self, d: HTTPHeaderDict) -> None:
         d.add("bar", "foo")
-        # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
-        d.add(b"BAR", "bar")  # type: ignore[arg-type]
+        # Bytes keys and values are decoded as latin-1.
+        d.add(b"BAR", "bar")
         d.add("Bar", "asdf")
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
         assert d["bar"] == "foo, bar, asdf"
@@ -323,18 +321,133 @@ class TestHTTPHeaderDict:
         assert d.getlist("b") == ["asdf"]
 
     def test_getlist_with_bytes_key(self, d: HTTPHeaderDict) -> None:
-        assert d.getlist(b"cookie") == ["foo", "bar"]  # type: ignore[call-overload]
+        assert d.getlist(b"cookie") == ["foo", "bar"]
 
     def test_getitem_with_bytes(self, d: HTTPHeaderDict) -> None:
         d["Content-Type"] = "application/json"
         d.add("Content-Type", "charset=utf-8")
-        result = d[b"Content-Type"]  # type: ignore[index]
+        result = d[b"Content-Type"]
         assert result == "application/json, charset=utf-8"
 
     def test_contains_with_bytes(self, d: HTTPHeaderDict) -> None:
         d["Content-Type"] = "application/json"
         assert b"Content-Type" in d  # type: ignore[comparison-overlap]
         assert b"X-Not-There" not in d  # type: ignore[comparison-overlap]
+
+    def test_setitem_with_bytes_value(self, d: HTTPHeaderDict) -> None:
+        # The exact scenario from issue #3072.
+        encoded_data = "Schönefeld/1.18.0".encode("latin-1")
+        d["user-agent"] = encoded_data
+        assert d["user-agent"] == "Schönefeld/1.18.0"
+
+    def test_bytes_value_round_trips_every_field_octet(self, d: HTTPHeaderDict) -> None:
+        # latin-1 maps every byte to the code point of the same number, so
+        # any value a server or user can produce survives byte-for-byte.
+        raw = b"\t" + bytes(range(0x20, 0x7F)) + bytes(range(0x80, 0x100))
+        d[b"x-raw"] = raw
+        assert d["x-raw"].encode("latin-1") == raw
+
+    def test_utf8_bytes_are_preserved_verbatim(self, d: HTTPHeaderDict) -> None:
+        # UTF-8 encoded bytes are stored as their latin-1 decoding: the str
+        # form looks like mojibake but encodes back to the identical octets
+        # that http.client puts on the wire.
+        utf8_value = "Schönefeld".encode()
+        d["x-name"] = utf8_value
+        assert d["x-name"] == "SchÃ¶nefeld"
+        assert d["x-name"].encode("latin-1") == utf8_value
+
+    def test_bytes_field_name_uses_latin1(self, d: HTTPHeaderDict) -> None:
+        # Field names given as bytes decode as latin-1, like values. latin-1
+        # never raises (unlike utf-8 on a lone high byte) and folds case the
+        # latin-1 way, so a high-byte name round-trips across every method.
+        high_byte_item = (b"x-caf\xe9", b"two")
+        d[b"x-caf\xe9"] = "one"
+        assert d["x-caf\xe9"] == "one"
+        assert d[b"X-CAF\xc9"] == "one"
+        assert b"x-caf\xe9" in d  # type: ignore[comparison-overlap]
+        d.add(b"X-Caf\xe9", b"two")
+        assert d.getlist(b"x-caf\xe9") == ["one", "two"]
+        assert high_byte_item in d.items()  # type: ignore[comparison-overlap]
+        del d[b"x-caf\xe9"]
+        assert "x-caf\xe9" not in d
+
+    def test_add_with_bytes_values(self, d: HTTPHeaderDict) -> None:
+        d.add(b"x-token", b"one")
+        d.add("X-Token", b"two")
+        d.add(b"X-TOKEN", "three", combine=True)
+        assert d["x-token"] == "one, two, three"
+        assert d.getlist("x-token") == ["one", "two, three"]
+
+    def test_setdefault_with_bytes(self, d: HTTPHeaderDict) -> None:
+        # The str form of the default must be returned, not the raw bytes.
+        default = d.setdefault(b"x-default", b"v\xe9")
+        assert default == "v\xe9"
+        assert isinstance(default, str)
+        assert d["x-default"] == "v\xe9"
+        # An existing value wins over the default, whatever the key type.
+        assert d.setdefault(b"cookie", b"nope") == "foo, bar"
+
+    def test_create_from_bytes_sources(self) -> None:
+        from_mapping = HTTPHeaderDict({b"key": b"value"})
+        from_iterable = HTTPHeaderDict([(b"key", b"value")])
+        from_kwargs = HTTPHeaderDict(key=b"value")
+        assert (
+            from_mapping["key"] == from_iterable["key"] == from_kwargs["key"] == "value"
+        )
+
+    def test_extend_with_bytes_sources(self, d: HTTPHeaderDict) -> None:
+        d.extend({b"a": b"1"})
+        d.extend([(b"b", b"2")])
+        d.extend(c=b"3")
+        assert (d["a"], d["b"], d["c"]) == ("1", "2", "3")
+
+    def test_extend_kwargs_appends_to_existing(self) -> None:
+        # extend() adds rather than overwrites, including for kwargs.
+        d = HTTPHeaderDict()
+        d.add("a", "1")
+        d.extend(a="2")
+        assert d.getlist("a") == ["1", "2"]
+
+    def test_or_operators_with_bytes_mapping(self, d: HTTPHeaderDict) -> None:
+        merged = d | {b"x-new": b"value"}
+        assert merged["x-new"] == "value"
+        # Reflected __or__: a plain dict on the left dispatches to __ror__.
+        reflected = {b"x-new": b"value"} | d
+        assert reflected["x-new"] == "value"
+        d |= {b"x-new": b"value"}
+        assert d["x-new"] == "value"
+
+    def test_equality_between_bytes_and_str_constructions(self) -> None:
+        assert HTTPHeaderDict({b"key": b"v\xe9"}) == HTTPHeaderDict({"key": "v\xe9"})
+        assert HTTPHeaderDict({"key": "value"}) == {b"key": b"value"}
+        assert HTTPHeaderDict({"key": "value"}) != {b"key": b"other"}
+
+    def test_items_containment_with_bytes(self, d: HTTPHeaderDict) -> None:
+        d.add("x-name", "v\xe9")
+        items = d.items()
+        bytes_key_and_value = (b"cookie", b"foo")
+        bytes_key = (b"cookie", "foo")
+        bytes_value = ("cookie", b"foo")
+        non_ascii_value = (b"x-name", b"v\xe9")
+        missing = (b"cookie", b"nope")
+        assert bytes_key_and_value in items  # type: ignore[comparison-overlap]
+        assert bytes_key in items  # type: ignore[comparison-overlap]
+        assert bytes_value in items  # type: ignore[comparison-overlap]
+        assert non_ascii_value in items  # type: ignore[comparison-overlap]
+        assert missing not in items  # type: ignore[comparison-overlap]
+
+    def test_getlist_with_mixed_bytes_and_str_additions(self) -> None:
+        d = HTTPHeaderDict()
+        d.add("set-cookie", b"a=1")
+        d.add(b"Set-Cookie", "b=2")
+        assert d.getlist(b"SET-COOKIE") == ["a=1", "b=2"]
+
+    def test_copy_preserves_bytes_derived_values(self) -> None:
+        d = HTTPHeaderDict()
+        d[b"x-raw"] = b"\x80\xff"
+        copied = d.copy()
+        assert copied["x-raw"] == d["x-raw"]
+        assert copied["x-raw"].encode("latin-1") == b"\x80\xff"
 
     def test_getlist_after_copy(self, d: HTTPHeaderDict) -> None:
         assert d.getlist("cookie") == HTTPHeaderDict(d).getlist("cookie")

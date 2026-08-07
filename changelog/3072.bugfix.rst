@@ -1,0 +1,5 @@
+Fixed ``HTTPHeaderDict`` raising ``TypeError`` when reading a header whose
+value was set as ``bytes``. Field names and values given as ``bytes`` are now
+decoded as latin-1 across all ``HTTPHeaderDict`` methods and stored as ``str``,
+so a ``bytes`` value compares equal to the equivalent ``str`` and is sent
+byte-for-byte over HTTP/1.1.
