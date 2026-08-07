@@ -18,6 +18,7 @@ from urllib3.exceptions import (
     HTTPError,
     LocationParseError,
     MaxRetryError,
+    MaxRetryWaitError,
     NameResolutionError,
     NewConnectionError,
     ReadTimeoutError,
@@ -25,6 +26,15 @@ from urllib3.exceptions import (
 
 
 class TestPickle:
+    def test_max_retry_wait_error_preserves_wait_information(self) -> None:
+        error = MaxRetryWaitError(3600, 60)
+
+        result = pickle.loads(pickle.dumps(error))
+
+        assert result.retry_after == 3600
+        assert result.max_retry_wait_length == 60
+        assert str(result) == str(error)
+
     @pytest.mark.parametrize(
         "exception",
         [
@@ -36,6 +46,7 @@ class TestPickle:
             HTTPError("foo"),
             HTTPError("foo", IOError("foo")),
             MaxRetryError(HTTPConnectionPool("localhost"), "/", None),
+            MaxRetryWaitError(3600, 60),
             LocationParseError("fake location"),
             ClosedPoolError(HTTPConnectionPool("localhost"), ""),
             EmptyPoolError(HTTPConnectionPool("localhost"), ""),

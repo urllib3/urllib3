@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import email
 import logging
+import math
 import random
 import re
 import time
@@ -13,6 +14,7 @@ from ..exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
     MaxRetryError,
+    MaxRetryWaitError,
     ProtocolError,
     ProxyError,
     ReadTimeoutError,
@@ -191,6 +193,13 @@ class Retry:
         Retry-After headers. Defaults to :attr:`Retry.DEFAULT_RETRY_AFTER_MAX`.
         Any Retry-After headers larger than this value will be limited to this
         value.
+
+    :param float max_retry_wait_length:
+        If set, raise :class:`~urllib3.exceptions.MaxRetryWaitError` when a
+        Retry-After header requests a longer delay. The exception exposes the
+        server-requested delay so callers can choose how and when to retry.
+        This limit is checked against the original parsed value before
+        ``retry_after_max`` can cap that value.
     """
 
     #: Default methods to be used for ``allowed_methods``
@@ -238,6 +247,7 @@ class Retry:
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
         backoff_jitter: float = 0.0,
         retry_after_max: int = DEFAULT_RETRY_AFTER_MAX,
+        max_retry_wait_length: float | None = None,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -255,6 +265,13 @@ class Retry:
         self.backoff_factor = backoff_factor
         self.backoff_max = backoff_max
         self.retry_after_max = retry_after_max
+        if max_retry_wait_length is not None and (
+            not math.isfinite(max_retry_wait_length) or max_retry_wait_length < 0
+        ):
+            raise ValueError(
+                "max_retry_wait_length must be a finite number greater than or equal to 0"
+            )
+        self.max_retry_wait_length = max_retry_wait_length
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
         self.history = history or ()
@@ -277,6 +294,7 @@ class Retry:
             backoff_factor=self.backoff_factor,
             backoff_max=self.backoff_max,
             retry_after_max=self.retry_after_max,
+            max_retry_wait_length=self.max_retry_wait_length,
             raise_on_redirect=self.raise_on_redirect,
             raise_on_status=self.raise_on_status,
             history=self.history,
@@ -340,6 +358,12 @@ class Retry:
             seconds = retry_date - time.time()
 
         seconds = max(seconds, 0)
+
+        if (
+            self.max_retry_wait_length is not None
+            and seconds > self.max_retry_wait_length
+        ):
+            raise MaxRetryWaitError(seconds, self.max_retry_wait_length)
 
         # Check the seconds do not exceed the specified maximum
         if seconds > self.retry_after_max:

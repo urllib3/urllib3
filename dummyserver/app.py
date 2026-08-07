@@ -265,11 +265,14 @@ async def redirect_after() -> ResponseReturnValue:
 async def retry_after() -> ResponseReturnValue:
     global LAST_RETRY_AFTER_REQ
     params = request.args
-    if datetime.datetime.now() - LAST_RETRY_AFTER_REQ < datetime.timedelta(seconds=1):
+    if params.get("always") == "true" or (
+        datetime.datetime.now() - LAST_RETRY_AFTER_REQ < datetime.timedelta(seconds=1)
+    ):
         status = params.get("status", "429 Too Many Requests")
         status_code = status.split(" ")[0]
+        retry_after = params.get("retry_after", "1")
 
-        return await make_response("", status_code, [("Retry-After", "1")])
+        return await make_response("", status_code, [("Retry-After", retry_after)])
 
     LAST_RETRY_AFTER_REQ = datetime.datetime.now()
     return await make_response("", 200)

@@ -24,6 +24,7 @@ from urllib3.exceptions import (
     DecodeError,
     EmptyPoolError,
     MaxRetryError,
+    MaxRetryWaitError,
     NameResolutionError,
     NewConnectionError,
     ReadTimeoutError,
@@ -1300,6 +1301,44 @@ class TestRetry(HypercornDummyServerTestCase):
 
 
 class TestRetryAfter(HypercornDummyServerTestCase):
+    def test_excessive_retry_after_raises_without_retrying(self) -> None:
+        fields = {
+            "status": "503 Service Unavailable",
+            "retry_after": "3600",
+            "always": "true",
+        }
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            with (
+                mock.patch("time.sleep") as sleep_mock,
+                pytest.raises(MaxRetryWaitError) as exc_info,
+            ):
+                pool.request(
+                    "GET",
+                    "/retry_after",
+                    fields=fields,
+                    retries=Retry(total=1, max_retry_wait_length=60),
+                )
+
+            assert exc_info.value.retry_after == 3600
+            assert exc_info.value.max_retry_wait_length == 60
+            sleep_mock.assert_not_called()
+
+    def test_excessive_retry_after_on_non_retry_status_is_returned(self) -> None:
+        fields = {
+            "status": "418 I'm a teapot",
+            "retry_after": "3600",
+            "always": "true",
+        }
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request(
+                "GET",
+                "/retry_after",
+                fields=fields,
+                retries=Retry(total=1, max_retry_wait_length=60),
+            )
+
+        assert response.status == 418
+
     def test_retry_after(self) -> None:
         # Request twice in a second to get a 429 response.
         with HTTPConnectionPool(self.host, self.port) as pool:

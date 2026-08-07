@@ -106,6 +106,26 @@ class MaxRetryError(RequestError):
         return self.__class__, (None, self.url, self.reason)
 
 
+class MaxRetryWaitError(HTTPError):
+    """The server requested a retry delay longer than the configured maximum.
+
+    :param retry_after: The delay requested by the server, in seconds.
+    :param max_retry_wait_length: The configured maximum acceptable delay, in
+        seconds.
+    """
+
+    def __init__(self, retry_after: float, max_retry_wait_length: float) -> None:
+        self.retry_after = retry_after
+        self.max_retry_wait_length = max_retry_wait_length
+        super().__init__(
+            f"Retry-After value of {retry_after} seconds exceeds the configured "
+            f"maximum of {max_retry_wait_length} seconds"
+        )
+
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        return self.__class__, (self.retry_after, self.max_retry_wait_length)
+
+
 class HostChangedError(RequestError):
     """Raised when an existing pool gets a request for a foreign host."""
 

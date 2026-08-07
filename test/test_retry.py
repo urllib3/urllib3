@@ -10,6 +10,7 @@ from urllib3.exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
     MaxRetryError,
+    MaxRetryWaitError,
     ReadTimeoutError,
     ResponseError,
     SSLError,
@@ -192,6 +193,98 @@ class TestRetry:
         retry = Retry(retry_after_max=1)
         assert retry.parse_retry_after(str(1)) == 1
         assert retry.parse_retry_after(str(2)) == 1
+
+    def test_excessive_retry_after_raises_with_wait_information(self) -> None:
+        retry = Retry(max_retry_wait_length=60)
+        response = HTTPResponse(headers={"Retry-After": "3600"})
+
+        with pytest.raises(MaxRetryWaitError) as exc_info:
+            retry.get_retry_after(response)
+
+        assert exc_info.value.retry_after == 3600
+        assert exc_info.value.max_retry_wait_length == 60
+
+    def test_excessive_retry_after_is_ignored_when_configured(self) -> None:
+        retry = Retry(
+            respect_retry_after_header=False,
+            max_retry_wait_length=60,
+        )
+        response = HTTPResponse(status=503, headers={"Retry-After": "3600"})
+
+        with mock.patch("time.sleep") as sleep_mock:
+            retry.sleep(response)
+
+        sleep_mock.assert_not_called()
+
+    def test_excessive_retry_after_is_checked_before_default_cap(self) -> None:
+        retry = Retry(max_retry_wait_length=60)
+
+        with pytest.raises(MaxRetryWaitError) as exc_info:
+            retry.parse_retry_after(str(Retry.DEFAULT_RETRY_AFTER_MAX + 1))
+
+        assert exc_info.value.retry_after == Retry.DEFAULT_RETRY_AFTER_MAX + 1
+
+    def test_maximum_retry_wait_and_silent_cap_are_applied_in_order(self) -> None:
+        retry = Retry(retry_after_max=10, max_retry_wait_length=60)
+
+        assert retry.parse_retry_after("30") == 10
+        with pytest.raises(MaxRetryWaitError) as exc_info:
+            retry.parse_retry_after("61")
+
+        assert exc_info.value.retry_after == 61
+
+    def test_default_retry_after_cap_is_unchanged(self) -> None:
+        retry = Retry()
+
+        assert (
+            retry.parse_retry_after(str(Retry.DEFAULT_RETRY_AFTER_MAX + 1))
+            == Retry.DEFAULT_RETRY_AFTER_MAX
+        )
+
+    def test_retry_after_equal_to_maximum_wait_is_accepted(self) -> None:
+        retry = Retry(max_retry_wait_length=60)
+
+        assert retry.parse_retry_after("60") == 60
+
+    def test_zero_maximum_retry_wait_rejects_positive_delay(self) -> None:
+        retry = Retry(max_retry_wait_length=0)
+
+        with pytest.raises(MaxRetryWaitError):
+            retry.parse_retry_after("1")
+
+        assert retry.parse_retry_after("0") == 0
+
+    @pytest.mark.parametrize("value", [-1, float("nan"), float("inf")])
+    def test_invalid_maximum_retry_wait_is_rejected(self, value: float) -> None:
+        with pytest.raises(
+            ValueError,
+            match="max_retry_wait_length must be a finite number greater than or equal to 0",
+        ):
+            Retry(max_retry_wait_length=value)
+
+    def test_maximum_retry_wait_is_propagated_to_new_retry(self) -> None:
+        retry = Retry(max_retry_wait_length=60).increment(method="GET")
+
+        assert retry.max_retry_wait_length == 60
+        with pytest.raises(MaxRetryWaitError):
+            retry.parse_retry_after("61")
+
+    def test_http_date_exceeding_maximum_retry_wait_raises(self) -> None:
+        retry = Retry(max_retry_wait_length=60)
+        retry_date = "Mon, 3 Jun 2019 12:00:00 UTC"
+
+        with (
+            mock.patch(
+                "time.time",
+                return_value=datetime.datetime(
+                    2019, 6, 3, 11, tzinfo=datetime.timezone.utc
+                ).timestamp(),
+            ),
+            pytest.raises(MaxRetryWaitError) as exc_info,
+        ):
+            retry.parse_retry_after(retry_date)
+
+        assert exc_info.value.retry_after == 3600
 
     def test_backoff_jitter(self) -> None:
         """Backoff with jitter is computed correctly"""

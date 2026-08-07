@@ -629,6 +629,20 @@ specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
 You still override this pool-level retry policy by specifying ``retries`` to
 :meth:`~urllib3.PoolManager.request`.
 
+Servers can use ``Retry-After`` to request a delay before the next attempt.
+``retry_after_max`` silently caps that delay (to six hours by default). To
+fail fast instead, set ``max_retry_wait_length`` and catch
+:class:`~urllib3.exceptions.MaxRetryWaitError`. The exception preserves the
+uncapped server-requested delay:
+
+.. code-block:: python
+
+    retry = urllib3.Retry(max_retry_wait_length=60)
+    try:
+        urllib3.request("GET", "https://example.com", retries=retry)
+    except urllib3.exceptions.MaxRetryWaitError as error:
+        print(f"Server requested a {error.retry_after}-second delay")
+
 Errors & Exceptions
 -------------------
 

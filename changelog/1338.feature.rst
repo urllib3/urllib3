@@ -1,0 +1,4 @@
+Added ``max_retry_wait_length`` to :class:`urllib3.util.Retry` to raise
+``MaxRetryWaitError`` when a server requests a longer ``Retry-After`` delay.
+The raising limit is evaluated before ``retry_after_max`` silently caps the
+server-provided value.
