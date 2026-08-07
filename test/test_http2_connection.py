@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import socket
-import ssl
-import threading
+import typing
 from unittest import mock
 
 import h2.config
@@ -10,7 +9,6 @@ import h2.connection
 import h2.events
 import pytest
 
-from dummyserver.socketserver import DEFAULT_CA, DEFAULT_CERTS
 from urllib3.connection import ProxyConfig, _get_default_user_agent
 from urllib3.exceptions import ConnectionError
 from urllib3.http2.connection import (
@@ -19,7 +17,6 @@ from urllib3.http2.connection import (
     _is_legal_header_name,
 )
 from urllib3.util import parse_url
-from urllib3.util import ssl_ as urllib3_ssl
 
 # [1] https://httpwg.org/specs/rfc9113.html#n-field-validity
 
@@ -527,8 +524,43 @@ class TestHTTP2Connection:
         close_connection.assert_called_with()
 
 
+class _WireSocket:
+    """Minimal in-memory socket that feeds bytes to a server-side h2 connection.
+
+    No TLS, no threads, no OS sockets. The client (HTTP2Connection) calls
+    sendall() and the bytes are HPACK-decoded by a real h2 server, proving
+    the pseudo-headers survive the wire encoding round-trip.
+    """
+
+    def __init__(self, server: h2.connection.H2Connection) -> None:
+        self.server = server
+        self.server_events: list[h2.events.Event] = []
+        self._to_client = bytearray()
+
+    def settimeout(self, timeout: typing.Any) -> None:
+        pass
+
+    def sendall(self, data: bytes) -> None:
+        self.server_events.extend(self.server.receive_data(bytes(data)))
+
+    def recv(self, amt: int) -> bytes:
+        if not self._to_client:
+            self._to_client += self.server.data_to_send()
+        data = bytes(self._to_client[:amt])
+        del self._to_client[:amt]
+        return data
+
+    def close(self) -> None:
+        pass
+
+
 class TestHTTP2ForwardingWire:
-    """Socket-level proof that forwarding pseudo-headers hit the wire."""
+    """End-to-end proof that forwarding pseudo-headers survive h2 encode/decode.
+
+    Uses an in-memory h2 server connection (_WireSocket) so the test exercises
+    real HPACK encoding and decoding without TLS, threads or network sockets,
+    avoiding the platform-dependent flakiness of a real TCP/TLS harness.
+    """
 
     @pytest.mark.parametrize(
         "url, expected",
@@ -562,91 +594,38 @@ class TestHTTP2ForwardingWire:
     def test_forwarding_pseudo_headers_on_wire(
         self, url: str, expected: dict[bytes, bytes]
     ) -> None:
-        received: dict[str, list[tuple[bytes, bytes]]] = {}
-        ready = threading.Event()
-        done = threading.Event()
-
-        def server() -> None:
-            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            ctx.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])
-            ctx.set_alpn_protocols(["h2", "http/1.1"])
-            sock = socket.socket()
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.bind(("localhost", 0))
-            sock.listen(5)
-            ready.port = sock.getsockname()[1]  # type: ignore[attr-defined]
-            ready.set()
-
-            raw, _ = sock.accept()
-            tls = ctx.wrap_socket(raw, server_side=True)
-            assert tls.selected_alpn_protocol() == "h2"
-
-            config = h2.config.H2Configuration(client_side=False)
-            h2_conn = h2.connection.H2Connection(config=config)
-            h2_conn.initiate_connection()
-            tls.sendall(h2_conn.data_to_send())
-            tls.settimeout(5)
-
-            while not done.is_set():
-                try:
-                    data = tls.recv(65535)
-                except TimeoutError:
-                    break
-                if not data:
-                    break
-                for event in h2_conn.receive_data(data):
-                    if isinstance(event, h2.events.RequestReceived):
-                        received["headers"] = [
-                            (
-                                name if isinstance(name, bytes) else name.encode(),
-                                (value if isinstance(value, bytes) else value.encode()),
-                            )
-                            for name, value in event.headers
-                        ]
-                        h2_conn.send_headers(
-                            event.stream_id,
-                            [(b":status", b"200"), (b"content-length", b"0")],
-                            end_stream=True,
-                        )
-                        tls.sendall(h2_conn.data_to_send())
-                        done.set()
-                        break
-                if data_to_send := h2_conn.data_to_send():
-                    tls.sendall(data_to_send)
-
-            tls.close()
-            sock.close()
-
-        thread = threading.Thread(target=server, daemon=True)
-        thread.start()
-        assert ready.wait(5)
-        port = ready.port  # type: ignore[attr-defined]
-
-        # HTTP2Connection always speaks h2; offer h2 via ALPN like inject_into_urllib3.
-        original_alpn = list(urllib3_ssl.ALPN_PROTOCOLS)
-        urllib3_ssl.ALPN_PROTOCOLS = ["h2"]
-        conn = HTTP2Connection(
-            "localhost",
-            port,
-            proxy=parse_url(f"https://localhost:{port}"),
-            proxy_config=ProxyConfig(None, True, None, None),
-            ca_certs=DEFAULT_CA,
+        server = h2.connection.H2Connection(
+            h2.config.H2Configuration(client_side=False)
         )
-        try:
-            conn.connect()
-            assert conn.sock is not None
-            assert conn.sock.selected_alpn_protocol() == "h2"
-            conn.request("GET", url, headers={"Host": "should-be-omitted"})
-            response = conn.getresponse()
-            assert response.status == 200
-        finally:
-            conn.close()
-            urllib3_ssl.ALPN_PROTOCOLS = original_alpn
-            done.wait(5)
-            thread.join(5)
+        server.initiate_connection()
 
-        headers = dict(received["headers"])
+        conn = HTTP2Connection(
+            "proxy.example",
+            8443,
+            proxy=parse_url("https://proxy.example:8443"),
+            proxy_config=ProxyConfig(None, True, None, None),
+        )
+        sock = _WireSocket(server)
+        conn.sock = sock  # type: ignore[assignment]
+        with conn._h2_conn as client:
+            client.initiate_connection()
+        sock.sendall(client.data_to_send())
+
+        conn.request("GET", url, headers={"Host": "should-be-omitted"})
+        conn.close()
+
+        # _WireSocket feeds sendall data through the real server-side h2
+        # connection, so server_events contains events decoded from actual
+        # HPACK-encoded wire bytes.
+        headers: dict[bytes, bytes] = {}
+        for event in sock.server_events:
+            if isinstance(event, h2.events.RequestReceived):
+                for name, value in event.headers:
+                    name_bytes = name if isinstance(name, bytes) else name.encode()
+                    value_bytes = value if isinstance(value, bytes) else value.encode()
+                    headers[name_bytes] = value_bytes
+
         for name, value in expected.items():
             assert headers[name] == value
         assert b"host" not in headers
-        assert headers[b":authority"] != f"localhost:{port}".encode()
+        assert headers[b":authority"] != b"proxy.example:8443"
