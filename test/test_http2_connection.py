@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import gzip
 import socket
+import ssl
 import sys
 import threading
 import time
 import typing
 import zlib
 from http.client import ResponseNotReady
-from test import onlyBrotli, onlyZstd
+from test import notWindows, onlyBrotli, onlyZstd
 from unittest import mock
 
 import h2.config
@@ -935,6 +936,103 @@ class TestHTTP2ResponseBody:
         with pytest.raises(ProtocolError, match=":status"):
             conn.getresponse()
 
+    def test_read_cache_content_stores_body(self) -> None:
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(stream_id, [(b":status", b"200")])
+        server.send_data(stream_id, b"cached body", end_stream=True)
+
+        response = conn.getresponse()
+        assert response.read(cache_content=True) == b"cached body"
+        # The cached body keeps serving after the stream is consumed.
+        assert response.data == b"cached body"
+
+    def test_read_amt_decode_content_false_after_true_raises(self) -> None:
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(
+            stream_id, [(b":status", b"200"), (b"content-encoding", b"gzip")]
+        )
+        server.send_data(stream_id, gzip.compress(b"hello, world!"), end_stream=True)
+
+        response = conn.getresponse()
+        assert response.read(4) == b"hell"
+        with pytest.raises(RuntimeError, match="not supported"):
+            response.read(4, decode_content=False)
+
+    def test_read1_negative_amt_reads_all(self) -> None:
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(stream_id, [(b":status", b"200")])
+        server.send_data(stream_id, b"everything", end_stream=True)
+
+        response = conn.getresponse()
+        assert response.read1(-3) == b"everything"
+
+    def test_read1_decode_content_false_after_true_raises(self) -> None:
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(
+            stream_id, [(b":status", b"200"), (b"content-encoding", b"gzip")]
+        )
+        server.send_data(stream_id, gzip.compress(b"hello, world!"), end_stream=True)
+
+        response = conn.getresponse()
+        assert response.read1(1) == b"h"
+        with pytest.raises(RuntimeError, match="not supported"):
+            response.read1(1, decode_content=False)
+
+    def test_read1_serves_decoder_tail_before_reading_network(self) -> None:
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(
+            stream_id, [(b":status", b"200"), (b"content-encoding", b"gzip")]
+        )
+        server.send_data(stream_id, gzip.compress(b"hello, world!"), end_stream=True)
+
+        response = conn.getresponse()
+        # The whole compressed frame is consumed by the first read1; the
+        # remaining decoded bytes must come from the decoder's unconsumed
+        # tail without touching the network again.
+        assert response.read1(1) == b"h"
+        assert response.read1(1) == b"e"
+        assert response.read1() == b"llo, world!"
+
+    def test_read1_zero_amt_returns_empty(self) -> None:
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(stream_id, [(b":status", b"200")])
+        server.send_data(stream_id, b"data", end_stream=True)
+
+        response = conn.getresponse()
+        assert response.read1(0) == b""
+
+    def test_read1_decode_content_false_returns_raw_bytes(self) -> None:
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(stream_id, [(b":status", b"200")])
+        server.send_data(stream_id, b"raw bytes", end_stream=True)
+
+        response = conn.getresponse()
+        assert response.read1(decode_content=False) == b"raw bytes"
+
+    def test_stream_zero_amt_yields_nothing(self) -> None:
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(stream_id, [(b":status", b"200")])
+        server.send_data(stream_id, b"data", end_stream=True)
+
+        response = conn.getresponse()
+        assert list(response.stream(0)) == []
+
 
 class TestHTTP2ResponseLifecycle:
     """Error handling, timeouts and connection lifecycle."""
@@ -1385,6 +1483,82 @@ class TestHTTP2ResponseLifecycle:
         with pytest.raises(ProtocolError):
             response.read(2)
 
+    def test_ssl_error_during_read_raises_urllib3_ssl_error(self) -> None:
+        from urllib3.exceptions import SSLError
+
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(stream_id, [(b":status", b"200")])
+        response = conn.getresponse()
+
+        def raise_ssl_error(amt: int) -> bytes:
+            raise ssl.SSLError("decryption failed or bad record mac")
+
+        sock.recv = raise_ssl_error  # type: ignore[method-assign]
+        with pytest.raises(SSLError, match="bad record mac"):
+            response.read()
+
+    def test_goaway_send_failure_after_protocol_error_is_ignored(self) -> None:
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(stream_id, [(b":status", b"200")])
+        response = conn.getresponse()
+
+        # Deliver garbage so h2 raises and queues a GOAWAY for the peer.
+        # Sending that GOAWAY fails: the original error must still win.
+        sock._to_client += b"\x00" * 24
+        sock.fail_sendall = True
+        with pytest.raises(ProtocolError, match="Invalid HTTP/2 data"):
+            response.read()
+
+    def test_unparseable_content_length_reports_none(self) -> None:
+        from urllib3._collections import HTTPHeaderDict
+        from urllib3.http2.connection import HTTP2Response, HTTP2Stream
+
+        conn, server, sock = _connected_http2_pair()
+
+        def response_with_content_length(value: str) -> HTTP2Response:
+            return HTTP2Response(
+                status=200,
+                headers=HTTPHeaderDict([("content-length", value)]),
+                request_url="/",
+                stream=HTTP2Stream(sock, conn._h2_conn, 1),  # type: ignore[arg-type]
+                preload_content=False,
+            )
+
+        assert response_with_content_length("abc").length_remaining is None
+        assert response_with_content_length("-5").length_remaining is None
+
+    def test_drain_conn_swallows_read_errors(self) -> None:
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(stream_id, [(b":status", b"200")])
+        response = conn.getresponse()
+
+        sock.raise_timeout = True
+        # drain_conn is used on a best-effort basis by Retry: read errors
+        # while discarding the body must not propagate.
+        response.drain_conn()
+
+    def test_drain_conn_resets_decoder_state(self) -> None:
+        conn, server, sock = _connected_http2_pair()
+        stream_id = _request_stream_id(conn, sock, preload_content=False)
+
+        server.send_headers(
+            stream_id, [(b":status", b"200"), (b"content-encoding", b"gzip")]
+        )
+        server.send_data(stream_id, gzip.compress(b"hello, world!"), end_stream=True)
+
+        response = conn.getresponse()
+        assert response.read1(1) == b"h"
+
+        response.drain_conn()
+        assert response._decoder is None
+        assert len(response._decoded_buffer) == 0
+
     def _blocked_reader_setup(
         self,
     ) -> tuple[
@@ -1437,14 +1611,17 @@ class TestHTTP2ResponseLifecycle:
         time.sleep(0.2)  # Let the reader block in recv().
         return conn, response, client_sock, server_sock, errors, reader
 
+    @notWindows()
     @pytest.mark.timeout(10)
     def test_shutdown_unblocks_concurrent_read(self) -> None:
+        # On POSIX, shutdown(SHUT_RD) makes a recv() blocked in another
+        # thread return b"" immediately. Windows does not interrupt an
+        # in-progress recv() for SD_RECEIVE, so this test is POSIX-only,
+        # matching the documented HTTPResponse.shutdown() semantics.
         conn, response, client_sock, server_sock, errors, reader = (
             self._blocked_reader_setup()
         )
         try:
-            # shutdown() is the cross-platform way to interrupt a thread
-            # blocked in recv(): SHUT_RD makes the pending recv return b"".
             response.shutdown()
             reader.join(timeout=5)
 
