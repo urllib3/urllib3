@@ -1,0 +1,1 @@
+Fixed HTTP/2 connections being discarded instead of reused when control frames arrive while idle.

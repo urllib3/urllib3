@@ -151,6 +151,36 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             assert r.headers["server"] == f"hypercorn-{http_version}"
             assert r.data == b"Dummy server!"
 
+    def test_http2_connection_is_reused(self, http_version: str) -> None:
+        if http_version != "h2":
+            pytest.skip("HTTP/2 connection reuse test")
+
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ca_certs=DEFAULT_CA,
+            ssl_minimum_version=self.tls_version(),
+            maxsize=1,
+        ) as pool:
+            first_response = pool.request("GET", "/")
+            assert first_response.status == 200
+
+            assert pool.pool is not None
+            conn = pool.pool.get(block=False)
+            first_socket = conn.sock
+            assert first_socket is not None
+            pool._put_conn(conn)
+
+            second_response = pool.request("GET", "/")
+            assert second_response.status == 200
+
+            reused = pool.pool.get(block=False)
+            try:
+                assert reused is conn
+                assert reused.sock is first_socket
+            finally:
+                pool._put_conn(reused)
+
     def test_default_port(self) -> None:
         conn = HTTPSConnection(self.host, port=None)
         assert conn.port == 443

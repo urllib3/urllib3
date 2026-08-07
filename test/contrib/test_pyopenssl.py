@@ -9,7 +9,11 @@ try:
     from cryptography import x509
     from OpenSSL.crypto import FILETYPE_PEM, load_certificate
 
-    from urllib3.contrib.pyopenssl import _dnsname_to_stdlib, get_subj_alt_name
+    from urllib3.contrib.pyopenssl import (
+        WrappedSocket,
+        _dnsname_to_stdlib,
+        get_subj_alt_name,
+    )
 except ImportError:
     pass
 
@@ -56,6 +60,14 @@ class TestPyOpenSSLHelpers:
     """
     Tests for PyOpenSSL helper functions.
     """
+
+    def test_wrapped_socket_gettimeout(self) -> None:
+        socket = mock.Mock()
+        socket.gettimeout.return_value = 12.5
+        wrapped_socket = WrappedSocket(mock.Mock(), socket)
+
+        assert wrapped_socket.gettimeout() == 12.5
+        socket.gettimeout.assert_called_once_with()
 
     def test_dnsname_to_stdlib_simple(self) -> None:
         """

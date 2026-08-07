@@ -355,8 +355,11 @@ class WrappedSocket:
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError(f"read error: {e!r}") from e
 
-    def settimeout(self, timeout: float) -> None:
+    def settimeout(self, timeout: float | None) -> None:
         return self.socket.settimeout(timeout)
+
+    def gettimeout(self) -> float | None:
+        return self.socket.gettimeout()
 
     def _send_until_done(self, data: bytes) -> int:
         while True:

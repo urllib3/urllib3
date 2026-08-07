@@ -2,18 +2,21 @@ from __future__ import annotations
 
 import logging
 import re
+import ssl
 import threading
 import types
 import typing
+from http.client import CannotSendRequest
 
 import h2.config
 import h2.connection
 import h2.events
+import h2.exceptions
 
 from .._base_connection import _TYPE_BODY
 from .._collections import HTTPHeaderDict
 from ..connection import HTTPSConnection, _get_default_user_agent
-from ..exceptions import ConnectionError
+from ..exceptions import ProtocolError
 from ..response import BaseHTTPResponse
 
 orig_HTTPSConnection = HTTPSConnection
@@ -21,6 +24,9 @@ orig_HTTPSConnection = HTTPSConnection
 T = typing.TypeVar("T")
 
 log = logging.getLogger(__name__)
+
+_IDLE_READ_SIZE = 65535
+_MAX_IDLE_READS = 16
 
 RE_IS_LEGAL_HEADER_NAME = re.compile(rb"^[!#$%&'*+\-.^_`|~0-9a-z]+$")
 RE_IS_ILLEGAL_HEADER_VALUE = re.compile(rb"[\0\x00\x0a\x0d\r\n]|^[ \r\n\t]|[ \r\n\t]$")
@@ -88,7 +94,10 @@ class HTTP2Connection(HTTPSConnection):
     ) -> None:
         self._h2_conn = self._new_h2_conn()
         self._h2_stream: int | None = None
+        self._stream_owner: object | None = None
         self._headers: list[tuple[bytes, bytes]] = []
+        self._connection_terminated = False
+        self._has_completed_response = False
 
         if "proxy" in kwargs or "proxy_config" in kwargs:  # Defensive:
             raise NotImplementedError("Proxies aren't supported with HTTP/2")
@@ -104,10 +113,129 @@ class HTTP2Connection(HTTPSConnection):
 
     def connect(self) -> None:
         super().connect()
+        self._connection_terminated = False
         with self._h2_conn as conn:
             conn.initiate_connection()
             if data_to_send := conn.data_to_send():
                 self.sock.sendall(data_to_send)
+
+    def _assert_stream_owner(self, stream_owner: object | None) -> None:
+        if self._stream_owner is not stream_owner:
+            raise RuntimeError("HTTP/2 stream events have a different owner")
+
+    def _transfer_stream_owner(self, current_owner: object, new_owner: object) -> None:
+        """Transfer the right to receive events for the active stream."""
+        if self._stream_owner is not current_owner:
+            raise RuntimeError("HTTP/2 stream events have a different owner")
+        self._stream_owner = new_owner
+
+    def _release_stream_owner(self, stream_owner: object) -> None:
+        """Release an active stream after its response has completed."""
+        self._assert_stream_owner(stream_owner)
+        self._stream_owner = None
+        self._h2_stream = None
+
+    def _process_received_data(
+        self, received_data: bytes, *, stream_owner: object | None
+    ) -> list[h2.events.Event]:
+        """Process HTTP/2 bytes and flush protocol-generated output."""
+        self._assert_stream_owner(stream_owner)
+        with self._h2_conn as conn:
+            events = conn.receive_data(received_data)
+            for event in events:
+                if isinstance(event, h2.events.DataReceived):
+                    conn.acknowledge_received_data(
+                        event.flow_controlled_length, event.stream_id
+                    )
+                elif isinstance(event, h2.events.ConnectionTerminated):
+                    self._connection_terminated = True
+
+            if data_to_send := conn.data_to_send():
+                self.sock.sendall(data_to_send)
+
+        return events
+
+    def _receive_events(
+        self, *, stream_owner: object | None
+    ) -> list[h2.events.Event] | None:
+        """Receive and process one batch of HTTP/2 events.
+
+        ``None`` means the peer reached EOF. Flow-controlled data is always
+        acknowledged and protocol-generated output (for example PING and
+        SETTINGS acknowledgements) is flushed before returning.
+        """
+        self._assert_stream_owner(stream_owner)
+        assert self.sock is not None
+        received_data = self.sock.recv(65535)
+        if not received_data:
+            self._connection_terminated = True
+            return None
+        return self._process_received_data(received_data, stream_owner=stream_owner)
+
+    def _probe_idle_connection(self) -> bool:
+        """Process pending control frames and determine idle connection health."""
+        sock = self.sock
+        if sock is None or self._connection_terminated:
+            return False
+
+        # Never consume response events behind the response reader's back.
+        if self._stream_owner is not None:
+            return True
+
+        try:
+            previous_timeout = sock.gettimeout()
+        except OSError:
+            self._connection_terminated = True
+            return False
+
+        for _ in range(_MAX_IDLE_READS):
+            received_data: bytes | None = None
+            receive_failed = False
+            try:
+                sock.settimeout(0.0)
+                try:
+                    received_data = sock.recv(_IDLE_READ_SIZE)
+                except (BlockingIOError, TimeoutError, ssl.SSLWantReadError):
+                    pass
+                except OSError:
+                    receive_failed = True
+            except OSError:
+                receive_failed = True
+            finally:
+                # Only recv() is non-blocking. Restore the caller's timeout
+                # before parsing because hyper-h2 can generate output which
+                # must be delivered with sendall().
+                if self.sock is sock:
+                    try:
+                        sock.settimeout(previous_timeout)
+                    except OSError:
+                        receive_failed = True
+
+            if receive_failed or received_data == b"":
+                self._connection_terminated = True
+                return False
+            if received_data is None:
+                return True
+
+            try:
+                self._process_received_data(received_data, stream_owner=None)
+            except (OSError, h2.exceptions.ProtocolError):
+                # If generated protocol output can't be sent then this
+                # connection is no longer safe to reuse. The pool will close
+                # it instead of losing bytes and continuing the session.
+                self._connection_terminated = True
+                return False
+            if self._connection_terminated:
+                return False
+
+        # A peer that can keep the socket continuously readable can otherwise
+        # starve the pool indefinitely. Conservatively discard the connection.
+        self._connection_terminated = True
+        return False
+
+    @property
+    def is_connected(self) -> bool:
+        return self._probe_idle_connection()
 
     def putrequest(  # type: ignore[override]
         self,
@@ -124,6 +252,19 @@ class HTTP2Connection(HTTPSConnection):
         if "skip_accept_encoding" in kwargs:
             raise NotImplementedError("`skip_accept_encoding` isn't supported")
 
+        if self._stream_owner is not None:
+            raise CannotSendRequest(
+                "Cannot send a new HTTP/2 request while a response stream is active"
+            )
+
+        if self._has_completed_response and not self._probe_idle_connection():
+            raise ProtocolError("HTTP/2 connection is no longer reusable")
+
+        with self._h2_conn as conn:
+            if conn.remote_settings.max_concurrent_streams == 0:
+                raise ProtocolError("HTTP/2 peer does not currently allow new streams")
+            stream_id = conn.get_next_available_stream_id()
+
         self._request_url = url or "/"
         self._validate_path(url)  # type: ignore[attr-defined]
 
@@ -138,8 +279,8 @@ class HTTP2Connection(HTTPSConnection):
         self._headers.append((b":authority", authority.encode()))
         self._headers.append((b":path", url.encode()))
 
-        with self._h2_conn as conn:
-            self._h2_stream = conn.get_next_available_stream_id()
+        self._h2_stream = stream_id
+        self._stream_owner = self
 
     def putheader(self, header: str | bytes, *values: str | bytes) -> None:  # type: ignore[override]
         # TODO SKIPPABLE_HEADERS from urllib3 are ignored.
@@ -156,14 +297,21 @@ class HTTP2Connection(HTTPSConnection):
 
     def endheaders(self, message_body: typing.Any = None) -> None:  # type: ignore[override]
         if self._h2_stream is None:
-            raise ConnectionError("Must call `putrequest` first.")
+            raise ProtocolError("Must call `putrequest` first.")
 
         with self._h2_conn as conn:
-            conn.send_headers(
-                stream_id=self._h2_stream,
-                headers=self._headers,
-                end_stream=(message_body is None),
-            )
+            try:
+                conn.send_headers(
+                    stream_id=self._h2_stream,
+                    headers=self._headers,
+                    end_stream=(message_body is None),
+                )
+            except h2.exceptions.TooManyStreamsError as e:
+                self._headers = []
+                self._release_stream_owner(self)
+                raise ProtocolError(
+                    "HTTP/2 peer does not currently allow new streams"
+                ) from e
             if data_to_send := conn.data_to_send():
                 self.sock.sendall(data_to_send)
         self._headers = []  # Reset headers for the next request.
@@ -174,7 +322,7 @@ class HTTP2Connection(HTTPSConnection):
         that support a .read() method.
         """
         if self._h2_stream is None:
-            raise ConnectionError("Must call `putrequest` first.")
+            raise ProtocolError("Must call `putrequest` first.")
 
         with self._h2_conn as conn:
             if data_to_send := conn.data_to_send():
@@ -228,37 +376,60 @@ class HTTP2Connection(HTTPSConnection):
         self,
     ) -> HTTP2Response:
         status = None
+        headers = HTTPHeaderDict()
         data = bytearray()
-        with self._h2_conn as conn:
-            end_stream = False
-            while not end_stream:
-                # TODO: Arbitrary read value.
-                if received_data := self.sock.recv(65535):
-                    events = conn.receive_data(received_data)
-                    for event in events:
-                        if isinstance(event, h2.events.ResponseReceived):
-                            headers = HTTPHeaderDict()
-                            for header, value in event.headers:
-                                if header == b":status":
-                                    status = int(value.decode())
-                                else:
-                                    headers.add(
-                                        header.decode("ascii"), value.decode("ascii")
-                                    )
+        stream_id = self._h2_stream
+        end_stream = False
+        while not end_stream:
+            events = self._receive_events(stream_owner=self)
+            if events is None:
+                raise ProtocolError(
+                    "HTTP/2 connection closed before the response completed"
+                )
 
-                        elif isinstance(event, h2.events.DataReceived):
-                            data += event.data
-                            conn.acknowledge_received_data(
-                                event.flow_controlled_length, event.stream_id
-                            )
+            for event in events:
+                if (
+                    isinstance(event, h2.events.ResponseReceived)
+                    and event.stream_id == stream_id
+                ):
+                    headers = HTTPHeaderDict()
+                    for header, value in event.headers:
+                        if header == b":status":
+                            status = int(value.decode())
+                        else:
+                            headers.add(header.decode("ascii"), value.decode("ascii"))
 
-                        elif isinstance(event, h2.events.StreamEnded):
-                            end_stream = True
+                elif (
+                    isinstance(event, h2.events.DataReceived)
+                    and event.stream_id == stream_id
+                ):
+                    data += event.data
 
-                if data_to_send := conn.data_to_send():
-                    self.sock.sendall(data_to_send)
+                elif (
+                    isinstance(event, h2.events.StreamEnded)
+                    and event.stream_id == stream_id
+                ):
+                    end_stream = True
+
+                elif (
+                    isinstance(event, h2.events.StreamReset)
+                    and event.stream_id == stream_id
+                ):
+                    raise ProtocolError(
+                        "HTTP/2 stream was reset by the peer "
+                        f"(error code {event.error_code})"
+                    )
+
+                elif isinstance(event, h2.events.ConnectionTerminated):
+                    if not end_stream:
+                        raise ProtocolError(
+                            "HTTP/2 connection was terminated by the peer "
+                            f"(error code {event.error_code})"
+                        )
 
         assert status is not None
+        self._release_stream_owner(self)
+        self._has_completed_response = True
         return HTTP2Response(
             status=status,
             headers=headers,
@@ -317,7 +488,10 @@ class HTTP2Connection(HTTPSConnection):
         # Reset all our HTTP/2 connection state.
         self._h2_conn = self._new_h2_conn()
         self._h2_stream = None
+        self._stream_owner = None
         self._headers = []
+        self._connection_terminated = False
+        self._has_completed_response = False
 
         super().close()
 
@@ -349,6 +523,14 @@ class HTTP2Response(BaseHTTPResponse):
     @property
     def data(self) -> bytes:
         return self._data
+
+    @property
+    def url(self) -> str | None:
+        return self._request_url
+
+    @url.setter
+    def url(self, url: str | None) -> None:
+        self._request_url = url
 
     def get_redirect_location(self) -> None:
         return None
