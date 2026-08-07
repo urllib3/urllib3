@@ -765,7 +765,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             # Request a connection from the queue.
             conn = self._get_conn(timeout=pool_timeout)
-            conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
+            conn.timeout = Timeout.resolve_default_timeout(timeout_obj.connect_timeout)
 
             # Is this a closed/new connection that requires CONNECT tunnelling?
             if self.proxy is not None and http_tunnel_required and conn.is_closed:

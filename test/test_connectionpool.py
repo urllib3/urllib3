@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.client as httplib
+import socket
 import ssl
 import typing
 from http.client import HTTPException
@@ -661,6 +662,34 @@ class TestConnectionPool:
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout=timeout)
+
+    @pytest.mark.parametrize("default_timeout", [None, 30.0])
+    def test_urlopen_resolves_default_connect_timeout(
+        self, default_timeout: float | None
+    ) -> None:
+        """``conn.timeout`` must never be handed the _DEFAULT_TIMEOUT sentinel.
+
+        ``Timeout().connect_timeout`` *is* the sentinel, and ``socket.settimeout``
+        rejects it with ``TypeError``. Resolve it the way ``_new_conn`` does.
+        """
+        old = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(default_timeout)
+        try:
+            with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+                conn = Mock(spec=HTTPConnection)
+                conn.is_closed = False
+                conn.proxy = None
+                with (
+                    patch.object(pool, "_get_conn", return_value=conn),
+                    patch.object(
+                        pool, "_make_request", return_value=HTTPResponse(status=200)
+                    ),
+                ):
+                    pool.urlopen("GET", "/", retries=False)
+                assert conn.timeout == default_timeout
+                assert conn.timeout is not _DEFAULT_TIMEOUT
+        finally:
+            socket.setdefaulttimeout(old)
 
     @pytest.mark.parametrize(
         "path",
