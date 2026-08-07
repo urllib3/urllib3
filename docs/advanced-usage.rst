@@ -635,3 +635,32 @@ flag that isn't set by default, and then makes a HTTPS request:
 Note that this is different from passing an ``options`` argument to
 :func:`~urllib3.util.create_urllib3_context` because we don't overwrite
 the default options: we only add a new one.
+
+Cleartext HTTP/2
+----------------
+
+.. warning::
+
+    HTTP/2 support is experimental. Enabling it replaces urllib3's connection
+    implementations process-wide until ``urllib3.http2.extract_from_urllib3()``
+    is called.
+
+HTTP/2 without TLS (h2c) is opt-in and requires the ``h2`` extra. Prior
+knowledge is appropriate when the server is known to support cleartext HTTP/2:
+
+.. code-block:: python
+
+    import urllib3
+    import urllib3.http2
+
+    urllib3.http2.inject_into_urllib3(h2c="prior_knowledge")
+    try:
+        response = urllib3.request("GET", "http://h2c.example/")
+    finally:
+        urllib3.http2.extract_from_urllib3()
+
+For servers that implement the HTTP/1.1 h2c upgrade defined by RFC 7540, pass
+``h2c="upgrade"`` instead. A server that declines the upgrade continues over
+HTTP/1.1. The upgrade mechanism is deprecated by RFC 9113 and is therefore only
+enabled explicitly. Connections through HTTP proxies continue to use HTTP/1.1;
+h2c configuration applies only to direct origin connections.
