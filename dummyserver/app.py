@@ -132,6 +132,13 @@ async def keepalive() -> ResponseReturnValue:
     return await make_response("Keeping alive", 200, headers)
 
 
+@hypercorn_app.route("/large_response")
+async def large_response() -> ResponseReturnValue:
+    "Return a body larger than the default HTTP/2 flow control window"
+    size = int(request.args.get("size", "131072"))
+    return await make_response(b"x" * size, 200)
+
+
 @hypercorn_app.route("/echo", methods=["GET", "POST", "PUT"])
 async def echo() -> ResponseReturnValue:
     "Echo back the params"
@@ -315,6 +322,7 @@ def apply_caching(response: Response) -> ResponseReturnValue:
     return response
 
 
+@hypercorn_app.route("/slow")
 @pyodide_testing_app.route("/slow")
 async def slow() -> ResponseReturnValue:
     await trio.sleep(10)

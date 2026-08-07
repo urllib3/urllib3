@@ -1,0 +1,7 @@
+Moved HTTP/2 response body handling into ``HTTP2Response``, which now reads
+from the connection on demand instead of buffering the whole body eagerly.
+HTTP/2 responses support ``preload_content=False``, ``read()``, ``read1()``
+and ``stream()``, and decode compressed bodies based on the
+``content-encoding`` header. Read timeouts are now respected during body
+reads, and the connection is released back to the pool once the body is
+fully consumed.
