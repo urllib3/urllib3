@@ -8,6 +8,7 @@ from unittest import mock
 import h2.config
 import h2.connection
 import h2.events
+import h2.exceptions
 import h2.settings
 import pytest
 
@@ -800,6 +801,106 @@ class TestHTTP2Connection:
                 1, b"foo\r\nbar\r\n", end_stream=False
             )
             conn._h2_conn._obj.end_stream.assert_called_with(1)
+
+    def test_transfer_stream_owner_with_wrong_current_owner(self) -> None:
+        conn = HTTP2Connection("example.com")
+        owner_a = object()
+        owner_b = object()
+        conn._stream_owner = owner_a
+        with pytest.raises(RuntimeError, match="different owner"):
+            conn._transfer_stream_owner(owner_b, object())
+        assert conn._stream_owner is owner_a
+
+    def test_getresponse_eof_raises_protocol_error(self) -> None:
+        conn, server_sock, server_h2 = self._connected_h2_pair()
+        try:
+            conn.request("GET", "/")
+            server_h2.receive_data(server_sock.recv(65535))
+
+            # Replace socket with one that returns EOF immediately.
+            original_sock = conn.sock
+            conn.sock = mock.MagicMock(recv=mock.Mock(return_value=b""))
+            assert original_sock is not None
+            original_sock.close()
+
+            with pytest.raises(ConnectionError, match="closed before the response"):
+                conn.getresponse()
+            assert conn._connection_terminated
+        finally:
+            conn.close()
+            server_sock.close()
+
+    def test_idle_probe_set_nonblocking_oserror_is_not_reusable(self) -> None:
+        conn, server_sock, server_h2 = self._connected_h2_pair()
+
+        class SetNonblockingFailingSocket:
+            def __init__(self, wrapped: socket.socket) -> None:
+                self.wrapped = wrapped
+
+            def __getattr__(self, name: str) -> object:
+                return getattr(self.wrapped, name)
+
+            def settimeout(self, timeout: float | None) -> None:
+                if timeout == 0.0:
+                    raise OSError("cannot set non-blocking")
+                self.wrapped.settimeout(timeout)
+
+        try:
+            self._send_response(conn, server_sock, server_h2, "/", b"complete")
+            assert conn.sock is not None
+            failing_sock = SetNonblockingFailingSocket(conn.sock)
+            failing_sock.wrapped.settimeout(5.0)
+            conn.sock = failing_sock
+            assert not conn.is_connected
+        finally:
+            conn.close()
+            server_sock.close()
+
+    def test_idle_probe_restore_timeout_oserror_is_not_reusable(self) -> None:
+        conn, server_sock, server_h2 = self._connected_h2_pair()
+
+        class RestoreTimeoutFailingSocket:
+            def __init__(self, wrapped: socket.socket) -> None:
+                self.wrapped = wrapped
+                self._settimeout_count = 0
+
+            def __getattr__(self, name: str) -> object:
+                return getattr(self.wrapped, name)
+
+            def settimeout(self, timeout: float | None) -> None:
+                self._settimeout_count += 1
+                if self._settimeout_count >= 2:
+                    raise OSError("cannot restore timeout")
+                self.wrapped.settimeout(timeout)
+
+        try:
+            self._send_response(conn, server_sock, server_h2, "/", b"complete")
+            assert conn.sock is not None
+            failing_sock = RestoreTimeoutFailingSocket(conn.sock)
+            failing_sock.wrapped.settimeout(5.0)
+            conn.sock = failing_sock
+            assert not conn.is_connected
+        finally:
+            conn.close()
+            server_sock.close()
+
+    def test_endheaders_too_many_streams_cleans_up(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(sendall=mock.Mock(return_value=None))
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._h2_conn._obj.send_headers = mock.Mock(  # type: ignore[method-assign]
+            side_effect=h2.exceptions.TooManyStreamsError
+        )
+
+        conn.putrequest("GET", "/")
+        assert conn._stream_owner is conn
+        with pytest.raises(ConnectionError, match="does not currently allow"):
+            conn.endheaders()
+
+        assert conn._headers == []
+        assert conn._stream_owner is None
+        assert conn._h2_stream is None
 
     def test_send_invalid_type(self) -> None:
         conn = HTTP2Connection("example.com")
