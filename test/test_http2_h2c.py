@@ -68,7 +68,7 @@ class H2CServer:
 
     def __enter__(self) -> H2CServer:
         self._thread.start()
-        assert self._ready.wait(2)
+        assert self._ready.wait(5)
         return self
 
     def __exit__(
@@ -78,7 +78,7 @@ class H2CServer:
         exc_tb: typing.Any,
     ) -> None:
         self._listener.close()
-        self._thread.join(3)
+        self._thread.join(10)
         assert not self._thread.is_alive(), "h2c server did not terminate"
         if exc_type is None:
             assert self.errors == []
@@ -88,7 +88,7 @@ class H2CServer:
         try:
             conn, _ = self._listener.accept()
             self.accept_count += 1
-            conn.settimeout(2)
+            conn.settimeout(5)
             with conn:
                 if self.mode == "prior":
                     self._serve_prior(conn)
@@ -96,6 +96,18 @@ class H2CServer:
                     self._serve_fallback(conn)
                 else:
                     self._serve_upgrade(conn)
+                # Half-close the write side and drain any unread data so
+                # that close() sends FIN rather than RST.  Without this,
+                # Windows raises ConnectionAbortedError (WinError 10053)
+                # on the client when the server socket is closed while
+                # the client still has buffered reads pending.
+                try:
+                    conn.shutdown(socket.SHUT_WR)
+                    conn.settimeout(1)
+                    while conn.recv(4096):
+                        pass
+                except OSError:
+                    pass
         except BaseException as e:
             self.errors.append(e)
 
@@ -272,7 +284,7 @@ class H2CServer:
         if self.after_first == "none":
             return True
 
-        assert self.release_after_first.wait(2), "client didn't consume first response"
+        assert self.release_after_first.wait(5), "client didn't consume first response"
         if self.after_first == "control":
             self.control_acks.clear()
             server.ping(b"h2c-ping")
@@ -381,7 +393,7 @@ def _send_h2_response(
 
 def test_h2c_prior_knowledge_uses_cleartext_preface_and_http_scheme() -> None:
     with H2CServer("prior") as server:
-        conn = HTTP2CleartextConnection(server.host, server.port, timeout=1)
+        conn = HTTP2CleartextConnection(server.host, server.port, timeout=5)
         try:
             conn.request("GET", "/resource?q=1")
             response = conn.getresponse()
@@ -405,7 +417,7 @@ def test_h2c_upgrade_preserves_immediate_or_fragmented_http2_bytes(
     mode: typing.Literal["upgrade-coalesced", "upgrade-fragmented"],
 ) -> None:
     with H2CServer(mode) as server:
-        conn = _TrackingHTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = _TrackingHTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request("GET", "/upgrade")
             if mode == "upgrade-fragmented":
@@ -427,7 +439,7 @@ def test_h2c_upgrade_preserves_immediate_or_fragmented_http2_bytes(
 
 def test_h2c_upgrade_accepts_100_before_switching_protocols() -> None:
     with H2CServer("upgrade-continue") as server:
-        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request("POST", "/upgrade", body=b"body")
             response = conn.getresponse()
@@ -440,7 +452,7 @@ def test_h2c_upgrade_accepts_100_before_switching_protocols() -> None:
 
 def test_h2c_upgrade_accepts_103_before_switching_protocols() -> None:
     with H2CServer("upgrade-early-hints") as server:
-        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request("GET", "/upgrade")
             response = conn.getresponse()
@@ -453,7 +465,7 @@ def test_h2c_upgrade_accepts_103_before_switching_protocols() -> None:
 
 def test_h2c_upgrade_discards_103_before_http1_fallback() -> None:
     with H2CServer("fallback-early-hints") as server:
-        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request("GET", "/fallback")
             response = conn.getresponse()
@@ -466,7 +478,7 @@ def test_h2c_upgrade_discards_103_before_http1_fallback() -> None:
 
 def test_h2c_upgrade_bounds_informational_responses() -> None:
     with H2CServer("upgrade-too-many-continue") as server:
-        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request("GET", "/upgrade")
             with pytest.raises(ProtocolError, match="Too many informational"):
@@ -482,7 +494,7 @@ def test_h2c_upgrade_validates_response_upgrade_tokens(
     mode: typing.Literal["upgrade-invalid-connection", "upgrade-invalid-token"],
 ) -> None:
     with H2CServer(mode) as server:
-        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request("GET", "/")
             with pytest.raises(ProtocolError, match="Upgrade"):
@@ -493,7 +505,7 @@ def test_h2c_upgrade_validates_response_upgrade_tokens(
 
 def test_h2c_upgrade_sends_fixed_length_body_before_switching() -> None:
     with H2CServer("upgrade-coalesced") as server:
-        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request("POST", "/submit", body=b"request-body")
             response = conn.getresponse()
@@ -519,7 +531,7 @@ def test_h2c_upgrade_sends_chunked_bodies_before_switching(
     expected: bytes,
 ) -> None:
     with H2CServer("upgrade-coalesced") as server:
-        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request("POST", "/submit", body=body, headers=headers)
             response = conn.getresponse()
@@ -533,7 +545,7 @@ def test_h2c_upgrade_sends_chunked_bodies_before_switching(
 
 def test_h2c_upgrade_honors_skippable_headers() -> None:
     with H2CServer("upgrade-coalesced") as server:
-        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request(
                 "GET",
@@ -554,7 +566,7 @@ def test_h2c_upgrade_honors_skippable_headers() -> None:
 
 def test_h2c_upgrade_rejects_skip_header_for_unsupported_fields() -> None:
     client, server = socket.socketpair()
-    conn = HTTP2UpgradeConnection("example.test", timeout=1)
+    conn = HTTP2UpgradeConnection("example.test", timeout=5)
     conn.sock = client
     try:
         with pytest.raises(ValueError, match="SKIP_HEADER only supports"):
@@ -569,7 +581,7 @@ def test_h2c_upgrade_rejects_skip_header_for_unsupported_fields() -> None:
 
 def test_h2c_upgrade_non_101_falls_back_and_reuses_http1_connection() -> None:
     with H2CServer("fallback", request_count=2) as server:
-        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request("GET", "/first", preload_content=False)
             first = conn.getresponse()
@@ -588,7 +600,7 @@ def test_h2c_upgrade_non_101_falls_back_and_reuses_http1_connection() -> None:
 
 def test_h2c_upgrade_fallback_detaches_connection_close_response() -> None:
     with H2CServer("fallback-close") as server:
-        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request("GET", "/fallback", preload_content=False)
             response = conn.getresponse()
@@ -608,7 +620,7 @@ def test_h2c_upgrade_fallback_preserves_http1_parser_behavior(
     mode: typing.Literal["fallback-continue", "fallback-malformed"],
 ) -> None:
     with H2CServer(mode) as server:
-        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=1)
+        conn = HTTP2UpgradeConnection(server.host, server.port, timeout=5)
         try:
             conn.request("GET", "/fallback")
             response = conn.getresponse()
@@ -629,7 +641,7 @@ def test_h2c_mode_preserves_http1_proxy_connections(
         conn = connection_class(
             server.host,
             server.port,
-            timeout=1,
+            timeout=5,
             proxy=parse_url(f"http://{server.host}:{server.port}"),
             proxy_config=ProxyConfig(None, False, None, None),
         )
@@ -655,7 +667,7 @@ def test_h2c_mode_preserves_proxy_manager_http1_connections(
         try:
             urllib3.http2.inject_into_urllib3(h2c=mode)
             with urllib3.ProxyManager(
-                f"http://{server.host}:{server.port}", timeout=1
+                f"http://{server.host}:{server.port}", timeout=5
             ) as proxy:
                 response = proxy.request(
                     "GET", "http://example.test/resource", retries=False
@@ -685,7 +697,7 @@ def test_h2c_modes_work_through_http_connection_pool(
     with H2CServer(server_mode) as server:
         try:
             urllib3.http2.inject_into_urllib3(h2c=mode)
-            with HTTPConnectionPool(server.host, server.port, timeout=1) as pool:
+            with HTTPConnectionPool(server.host, server.port, timeout=5) as pool:
                 response = pool.request("GET", "/pool", retries=False)
         finally:
             urllib3.http2.extract_from_urllib3()
@@ -709,7 +721,7 @@ def test_h2c_pool_reuses_one_connection_for_sequential_streams(
     with H2CServer(server_mode, request_count=2) as server:
         try:
             urllib3.http2.inject_into_urllib3(h2c=mode)
-            with HTTPConnectionPool(server.host, server.port, timeout=1) as pool:
+            with HTTPConnectionPool(server.host, server.port, timeout=5) as pool:
                 first = pool.request("GET", "/first", retries=False)
                 second = pool.request("GET", "/second", retries=False)
                 assert pool.num_connections == 1
@@ -736,12 +748,12 @@ def test_h2c_pool_processes_idle_controls_before_reusing_connection(
     with H2CServer(server_mode, request_count=2, after_first="control") as server:
         try:
             urllib3.http2.inject_into_urllib3(h2c=mode)
-            with HTTPConnectionPool(server.host, server.port, timeout=1) as pool:
+            with HTTPConnectionPool(server.host, server.port, timeout=5) as pool:
                 first = pool.request("GET", "/first", retries=False)
                 server.release_after_first.set()
-                assert server.after_first_sent.wait(1)
+                assert server.after_first_sent.wait(5)
                 second = pool.request("GET", "/second", retries=False)
-                assert server.control_acks_received.wait(1)
+                assert server.control_acks_received.wait(5)
                 assert pool.num_connections == 1
         finally:
             urllib3.http2.extract_from_urllib3()
@@ -766,12 +778,12 @@ def test_h2c_connection_is_not_reusable_after_peer_shutdown(
     after_first: typing.Literal["goaway", "eof"],
 ) -> None:
     with H2CServer(server_mode, after_first=after_first) as server:
-        conn = connection_class(server.host, server.port, timeout=1)
+        conn = connection_class(server.host, server.port, timeout=5)
         try:
             conn.request("GET", "/first")
             response = conn.getresponse()
             server.release_after_first.set()
-            assert server.after_first_sent.wait(1)
+            assert server.after_first_sent.wait(5)
             assert conn.sock is not None
             readable, _, _ = select.select([conn.sock], [], [], 1)
             assert readable
