@@ -606,7 +606,7 @@ class TestHTTP2ForwardingWire:
             proxy_config=ProxyConfig(None, True, None, None),
         )
         sock = _WireSocket(server)
-        conn.sock = sock  # type: ignore[assignment]
+        conn.sock = sock  # type: ignore[assignment,unused-ignore]
         with conn._h2_conn as client:
             client.initiate_connection()
         sock.sendall(client.data_to_send())
