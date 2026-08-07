@@ -92,7 +92,7 @@ class _H2PeerSocket:
             except OSError:
                 pass
 
-    def __enter__(self) -> "_H2PeerSocket":
+    def __enter__(self) -> _H2PeerSocket:
         return self
 
     def __exit__(
@@ -106,7 +106,7 @@ class _H2PeerSocket:
 
 def _connect_http2(conn: HTTP2Connection, sock: _H2PeerSocket) -> None:
     """Perform the HTTP/2 connection preface exchange without a real TCP/TLS socket."""
-    conn.sock = sock  # type: ignore[assignment]
+    conn.sock = sock  # type: ignore[assignment,unused-ignore]
     with conn._h2_conn as h2_conn:
         h2_conn.initiate_connection()
         if data := h2_conn.data_to_send():
@@ -118,6 +118,13 @@ class TestHTTP2ErrorEvents:
         assert _h2_error_code_name(h2.errors.ErrorCodes.CANCEL) == "CANCEL"
         assert _h2_error_code_name(None) == "NO_ERROR"
         assert _h2_error_code_name(0xFF) == "0xff"
+        assert _h2_error_code_name("bogus") == "'bogus'"
+
+    def test_raise_for_h2_error_event_rejects_other_events(self) -> None:
+        with pytest.raises(
+            TypeError, match="Expected StreamReset or ConnectionTerminated"
+        ):
+            _raise_for_h2_error_event(h2.events.StreamEnded(stream_id=1))
 
     def test_stream_reset_raises_protocol_error(self) -> None:
         def on_request(
@@ -232,23 +239,28 @@ class TestHTTP2ErrorEvents:
             _connect_http2(conn, sock)
             conn.request("GET", "/")
 
-            # Produce GOAWAY bytes, but only inject them after the response is read.
+            # Produce GOAWAY bytes, but only inject them once StreamEnded has
+            # been parsed, so they can only surface in the drain loop's recv.
             sock._server.close_connection(error_code=h2.errors.ErrorCodes.NO_ERROR)
             deferred_goaway = sock._server.data_to_send()
             assert deferred_goaway
 
-            original_recv = sock.recv
-            injected = False
+            with conn._h2_conn as h2_conn:
+                original_receive = h2_conn.receive_data
 
-            def recv_then_queue_goaway(amt: int) -> bytes:
-                nonlocal injected
-                chunk = original_recv(amt)
-                if chunk and not injected:
-                    sock.inject_frames(deferred_goaway)
-                    injected = True
-                return chunk
+                def receive_then_inject(data: bytes) -> list[h2.events.Event]:
+                    events = list(original_receive(data))
+                    if any(isinstance(e, h2.events.StreamEnded) for e in events):
+                        sock.inject_frames(deferred_goaway)
+                        # Sending on a socketpair is not synchronous on
+                        # Windows: block until the injected bytes are
+                        # visible to the drain loop's zero-timeout poll.
+                        assert wait_for_read(
+                            typing.cast(socket.socket, sock), timeout=5.0
+                        )
+                    return events
 
-            sock.recv = recv_then_queue_goaway  # type: ignore[method-assign]
+                h2_conn.receive_data = receive_then_inject  # type: ignore[method-assign]
 
             response = conn.getresponse()
             assert response.status == 200
@@ -303,7 +315,7 @@ class TestHTTP2ErrorEvents:
             _connect_http2(conn, sock)
             conn.request("GET", "/")
             # Discard any pending control frames, then EOF the client side.
-            while wait_for_read(sock, timeout=0.0):
+            while wait_for_read(typing.cast(socket.socket, sock), timeout=0.0):
                 if not sock.recv(65535):
                     break
             sock.close_writes()
@@ -366,6 +378,237 @@ class TestHTTP2ErrorEvents:
                 ConnectionError, match="HTTP/2 protocol error: bad frame"
             ):
                 conn.getresponse()
+
+    def test_unrelated_response_and_data_are_ignored(self) -> None:
+        """Headers and body frames for a foreign stream must not leak into ours."""
+
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.send_headers(
+                event.stream_id, [(b":status", b"200")], end_stream=False
+            )
+            server.send_data(event.stream_id, b"ok", end_stream=True)
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+
+            with conn._h2_conn as h2_conn:
+                original_receive = h2_conn.receive_data
+
+                def receive_with_foreign_events(data: bytes) -> list[h2.events.Event]:
+                    events = list(original_receive(data))
+                    # Appended after the real events: without the stream id
+                    # guards this response would overwrite the real status
+                    # and headers, so the assertions below prove the guards.
+                    events.append(
+                        h2.events.ResponseReceived(
+                            stream_id=99,
+                            headers=[(b":status", b"500"), (b"x-foreign", b"1")],
+                        )
+                    )
+                    events.append(
+                        h2.events.DataReceived(
+                            stream_id=99, data=b"junk", flow_controlled_length=4
+                        )
+                    )
+                    return events
+
+                h2_conn.receive_data = receive_with_foreign_events  # type: ignore[method-assign]
+
+            response = conn.getresponse()
+            assert response.status == 200
+            assert response.data == b"ok"
+            assert "x-foreign" not in response.headers
+
+    def test_connection_close_during_drain_is_tolerated(self) -> None:
+        """EOF while draining post-response frames must not fail the request."""
+
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.send_headers(
+                event.stream_id, [(b":status", b"200")], end_stream=False
+            )
+            server.send_data(event.stream_id, b"done", end_stream=True)
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+
+            with conn._h2_conn as h2_conn:
+                original_receive = h2_conn.receive_data
+
+                def receive_then_eof(data: bytes) -> list[h2.events.Event]:
+                    events = list(original_receive(data))
+                    if any(isinstance(e, h2.events.StreamEnded) for e in events):
+                        # Peer closes right after the response: the drain
+                        # loop sees a readable socket whose recv returns
+                        # b"". Block until the EOF is actually visible to
+                        # its zero-timeout poll (asynchronous on Windows).
+                        sock.close_writes()
+                        assert wait_for_read(
+                            typing.cast(socket.socket, sock), timeout=5.0
+                        )
+                    return events
+
+                h2_conn.receive_data = receive_then_eof  # type: ignore[method-assign]
+
+            response = conn.getresponse()
+            assert response.status == 200
+            assert response.data == b"done"
+
+    def test_late_stream_reset_during_drain_is_ignored(self) -> None:
+        """RST_STREAM arriving after StreamEnded must not fail the request."""
+
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.send_headers(
+                event.stream_id, [(b":status", b"200")], end_stream=False
+            )
+            server.send_data(event.stream_id, b"done", end_stream=True)
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+
+            # PING bytes make the drain loop find a readable socket; the client
+            # queues a PING ACK so the drain loop also sends data.
+            sock._server.ping(b"01234567")
+            ping_bytes = sock._server.data_to_send()
+            assert ping_bytes
+
+            with conn._h2_conn as h2_conn:
+                original_receive = h2_conn.receive_data
+                stream_ended = False
+
+                def receive_with_late_reset(data: bytes) -> list[h2.events.Event]:
+                    nonlocal stream_ended
+                    events = list(original_receive(data))
+                    if any(isinstance(e, h2.events.StreamEnded) for e in events):
+                        stream_ended = True
+                        # Inject only after StreamEnded was parsed, so the
+                        # PING can only surface in the drain loop's recv,
+                        # and block until it is visible to the drain loop's
+                        # zero-timeout poll (asynchronous on Windows).
+                        sock.inject_frames(ping_bytes)
+                        assert wait_for_read(
+                            typing.cast(socket.socket, sock), timeout=5.0
+                        )
+                    elif stream_ended:
+                        # This call is the drain loop's: surface a late reset
+                        # of the already-ended stream.
+                        events.insert(
+                            0,
+                            h2.events.StreamReset(
+                                stream_id=1,
+                                error_code=h2.errors.ErrorCodes.CANCEL,
+                                remote_reset=True,
+                            ),
+                        )
+                    return events
+
+                h2_conn.receive_data = receive_with_late_reset  # type: ignore[method-assign]
+
+            response = conn.getresponse()
+            assert response.status == 200
+            assert response.data == b"done"
+            # A late reset of a finished stream is not a connection error.
+            assert conn.sock is not None
+
+    def test_h2_error_during_drain_raises(self) -> None:
+        """A malformed frame while draining must surface as ConnectionError."""
+
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.send_headers(
+                event.stream_id, [(b":status", b"200")], end_stream=False
+            )
+            server.send_data(event.stream_id, b"done", end_stream=True)
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+
+            sock._server.ping(b"01234567")
+            ping_bytes = sock._server.data_to_send()
+
+            with conn._h2_conn as h2_conn:
+                original_receive = h2_conn.receive_data
+                stream_ended = False
+
+                def receive_then_fail(data: bytes) -> list[h2.events.Event]:
+                    nonlocal stream_ended
+                    if stream_ended:
+                        raise h2.exceptions.ProtocolError("late frame")
+                    events = list(original_receive(data))
+                    if any(isinstance(e, h2.events.StreamEnded) for e in events):
+                        stream_ended = True
+                        # Inject only after StreamEnded was parsed and block
+                        # until readable, so the drain loop is guaranteed to
+                        # pick the PING up and hit the failure path.
+                        sock.inject_frames(ping_bytes)
+                        assert wait_for_read(
+                            typing.cast(socket.socket, sock), timeout=5.0
+                        )
+                    return events
+
+                h2_conn.receive_data = receive_then_fail  # type: ignore[method-assign]
+
+            with pytest.raises(
+                ConnectionError, match="HTTP/2 protocol error: late frame"
+            ):
+                conn.getresponse()
+
+    def test_stream_ended_without_status_raises(self) -> None:
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            # Send something so the client has bytes to read; the patched
+            # receive_data below turns them into a bare StreamEnded.
+            server.ping(b"01234567")
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+
+            with conn._h2_conn as h2_conn:
+                h2_conn.receive_data = (  # type: ignore[method-assign]
+                    lambda data: [h2.events.StreamEnded(stream_id=1)]
+                )
+
+            with pytest.raises(
+                ConnectionError, match="ended without receiving a status"
+            ):
+                conn.getresponse()
+
+    def test_close_failure_during_error_cleanup_is_swallowed(self) -> None:
+        """A failing close() must not mask the original ConnectionError."""
+
+        def on_request(
+            server: h2.connection.H2Connection, event: h2.events.RequestReceived
+        ) -> None:
+            server.reset_stream(
+                event.stream_id, error_code=h2.errors.ErrorCodes.REFUSED_STREAM
+            )
+
+        conn = HTTP2Connection("example.com")
+        with _H2PeerSocket(on_request) as sock:
+            _connect_http2(conn, sock)
+            conn.request("GET", "/")
+            close_mock = mock.Mock(side_effect=RuntimeError("boom"))
+            conn.close = close_mock  # type: ignore[method-assign]
+            with pytest.raises(ProtocolError, match="REFUSED_STREAM"):
+                conn.getresponse()
+            assert close_mock.call_count == 1
 
 
 class TestHTTP2Connection:

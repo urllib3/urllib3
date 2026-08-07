@@ -63,7 +63,9 @@ h2 = [
 # build-time test requirements (see issue #3594).
 test = [
     "anyio[trio]>=4.8.0",
-    "h2>=4.1.0",
+    # The HTTP/2 tests construct h2 events directly, which requires the
+    # keyword __init__ signatures introduced in h2 4.3.0.
+    "h2>=4.3.0,<5",
     "httpx>=0.28.1",
     "hypercorn>=0.15.0",
     "pysocks>=1.7.1",

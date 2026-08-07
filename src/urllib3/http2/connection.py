@@ -61,10 +61,9 @@ def _h2_error_code_name(error_code: object) -> str:
     try:
         return h2.errors.ErrorCodes(error_code).name  # type: ignore[arg-type]
     except ValueError:
-        try:
-            return f"0x{int(error_code):x}"  # type: ignore[arg-type]
-        except (TypeError, ValueError):
-            return repr(error_code)
+        if isinstance(error_code, int):
+            return f"0x{error_code:x}"
+        return repr(error_code)
 
 
 def _raise_for_h2_error_event(event: h2.events.Event) -> typing.NoReturn:
