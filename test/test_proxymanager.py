@@ -47,6 +47,22 @@ class TestProxyManager:
 
             assert headers == expected_headers
 
+    def test_proxy_headers_do_not_duplicate_bytes_defaults(self) -> None:
+        provided_headers = {
+            b"Accept": b"application/example",
+            b"Host": b"example.invalid",
+            b"X-Opaque": b"\xff",
+        }
+        original_headers = provided_headers.copy()
+
+        with ProxyManager("http://something:1234") as proxy:
+            headers = proxy._set_proxy_headers(
+                "http://pypi.org/project/urllib3/", provided_headers
+            )
+
+        assert headers == provided_headers
+        assert provided_headers == original_headers
+
     def test_default_port(self) -> None:
         with ProxyManager("http://something") as p:
             assert p.proxy is not None

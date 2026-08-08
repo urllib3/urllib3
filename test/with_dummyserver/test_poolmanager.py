@@ -290,6 +290,61 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert "cookie" not in data
             assert "Cookie" not in data
 
+    def test_redirect_cross_host_removes_bytes_header_names(self) -> None:
+        headers: typing.Mapping[bytes, bytes] = {
+            b"Authorization": b"foo",
+            b"Proxy-Authorization": b"bar",
+            b"Cookie": b"foo=bar",
+        }
+        original_headers = dict(headers)
+
+        with PoolManager() as http:
+            response = http.request(
+                "GET",
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url_alt}/headers"},
+                headers=headers,
+            )
+
+        assert response.status == 200
+        data = response.json()
+        assert "Authorization" not in data
+        assert "Proxy-Authorization" not in data
+        assert "Cookie" not in data
+        assert headers == original_headers
+
+    def test_redirect_cross_host_accepts_read_only_bytes_mapping(self) -> None:
+        class ReadOnlyHeaders(typing.Mapping[bytes, bytes]):
+            def __init__(self, values: dict[bytes, bytes]) -> None:
+                self._data = values
+
+            def __getitem__(self, key: bytes) -> bytes:
+                return self._data[key]
+
+            def __iter__(self) -> typing.Iterator[bytes]:
+                return iter(self._data)
+
+            def __len__(self) -> int:
+                return len(self._data)
+
+        headers = ReadOnlyHeaders({b"Authorization": b"secret", b"X-Keep": b"value"})
+
+        with PoolManager() as http:
+            response = http.request(
+                "GET",
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url_alt}/headers"},
+                headers=headers,
+            )
+
+        data = response.json()
+        assert "Authorization" not in data
+        assert data["X-Keep"] == "value"
+        assert dict(headers) == {
+            b"Authorization": b"secret",
+            b"X-Keep": b"value",
+        }
+
     def test_redirect_cross_host_no_remove_headers(self) -> None:
         with PoolManager() as http:
             r = http.request(
@@ -390,6 +445,26 @@ class TestPoolManager(HypercornDummyServerTestCase):
         data = response.json()
         assert data["params"] == {}
         assert "Content-Type" not in HTTPHeaderDict(data["headers"])
+
+    def test_303_redirect_removes_bytes_entity_headers(self) -> None:
+        headers: typing.Mapping[bytes, bytes] = {
+            b"Content-Type": b"application/octet-stream"
+        }
+        original_headers = dict(headers)
+
+        with PoolManager() as http:
+            response = http.request(
+                "POST",
+                f"{self.base_url}/redirect"
+                "?target=%2Fheaders_and_params&status=303%20See%20Other",
+                body=b"secret",
+                headers=headers,
+            )
+
+        data = response.json()
+        assert data["params"] == {}
+        assert "Content-Type" not in HTTPHeaderDict(data["headers"])
+        assert headers == original_headers
 
     def test_unknown_scheme(self) -> None:
         with PoolManager() as http:
@@ -774,6 +849,21 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert "application/json" in r.headers["Content-Type"].replace(
                 " ", ""
             ).split(",")
+
+    def test_request_with_json_accepts_bytes_content_type_header(self) -> None:
+        headers: typing.Mapping[bytes, bytes] = {b"Content-Type": b"application/json"}
+        original_headers = dict(headers)
+
+        response = request(
+            method="POST",
+            url=f"{self.base_url}/echo_json",
+            headers=headers,
+            json={"attribute": "value"},
+        )
+
+        assert response.status == 200
+        assert response.json() == {"attribute": "value"}
+        assert headers == original_headers
 
     def test_top_level_request_with_body_and_json(self) -> None:
         match = "request got values for both 'body' and 'json' parameters which are mutually exclusive"
