@@ -30,6 +30,7 @@ from urllib3.exceptions import (
     UnrewindableBodyError,
 )
 from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
+from urllib3.multipart import MultipartEncoder
 from urllib3.util import SKIP_HEADER, SKIPPABLE_HEADERS
 from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import _TYPE_TIMEOUT, Timeout
@@ -652,6 +653,30 @@ class TestConnectionPool(HypercornDummyServerTestCase):
                 b"world\r\n",
                 b"--boundary--\r\n",
             ]
+
+    def test_post_with_streaming_multipart_encoder(self) -> None:
+        file_data = b"streamed file content" * 1024
+        encoder = MultipartEncoder(
+            [
+                ("field", "value"),
+                (
+                    "file",
+                    ("example.bin", io.BytesIO(file_data), "application/octet-stream"),
+                ),
+            ],
+            boundary="streaming-boundary",
+            blocksize=1024,
+        )
+        expected_body = encoder.read()
+        encoder.seek(0)
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request(
+                "POST", "/echo", body=encoder, headers=encoder.headers
+            )
+
+        assert response.data == expected_body
+        assert encoder.tell() == len(expected_body)
 
     def test_check_gzip(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
@@ -1387,6 +1412,44 @@ class TestRetryAfter(HypercornDummyServerTestCase):
 
 
 class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
+    def test_redirect_rewinds_streaming_multipart_encoder(self) -> None:
+        file_data = b"A" * 65535
+        boundary = "redirect-boundary"
+        encoder = MultipartEncoder(
+            [
+                ("field", "value"),
+                (
+                    "file",
+                    ("example.bin", io.BytesIO(file_data), "application/octet-stream"),
+                ),
+            ],
+            boundary=boundary,
+            blocksize=1024,
+        )
+        expected = MultipartEncoder(
+            [
+                ("field", "value"),
+                (
+                    "file",
+                    ("example.bin", file_data, "application/octet-stream"),
+                ),
+            ],
+            boundary=boundary,
+        ).read()
+
+        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
+            response = pool.urlopen(
+                "PUT",
+                "/redirect?target=/echo&status=307",
+                headers=encoder.headers,
+                body=encoder,
+                retries=Retry(total=1),
+                redirect=True,
+            )
+
+        assert response.status == 200
+        assert response.data == expected
+
     def test_retries_put_filehandle(self) -> None:
         """HTTP PUT retry with a file-like object should not timeout"""
         with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:

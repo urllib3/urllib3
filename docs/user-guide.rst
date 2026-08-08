@@ -386,6 +386,28 @@ to specify the file's MIME type explicitly:
         }
     )
 
+For large files, stream the upload with :class:`~urllib3.multipart.MultipartEncoder`
+so the whole body is not buffered in memory. Pass the encoder as ``body`` and
+use ``encoder.headers`` for ``Content-Type`` and ``Content-Length``:
+
+.. code-block:: python
+
+    from urllib3.multipart import MultipartEncoder
+
+    with open("example.txt", "rb") as fp:
+        encoder = MultipartEncoder(
+            fields={"filefield": ("example.txt", fp, "text/plain")}
+        )
+        resp = urllib3.request(
+            "POST",
+            "https://httpbin.org/post",
+            body=encoder,
+            headers=encoder.headers,
+        )
+
+The encoder supports ``seek(0, 0)`` to rewind all parts for retries and redirects
+when every part body is seekable.
+
 For sending raw binary data simply specify the ``body`` argument. It's also
 recommended to set the ``Content-Type`` header:
 

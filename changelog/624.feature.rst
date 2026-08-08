@@ -1,0 +1,4 @@
+Added ``urllib3.multipart.MultipartEncoder`` and ``MultipartDecoder`` for
+streaming ``multipart/form-data`` encoding and decoding. ``encode_multipart_formdata``
+now uses ``MultipartEncoder`` internally. The encoder supports ``seek(0, 0)`` to
+rewind all body parts for retries and redirects.
