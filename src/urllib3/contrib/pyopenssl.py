@@ -531,9 +531,7 @@ class PyOpenSSLContext:
         self._keyfile = keyfile
         self._password = password
         try:
-            self._load_cert_chain_on_ctx(
-                self._ctx, certfile, keyfile, password
-            )
+            self._load_cert_chain_on_ctx(self._ctx, certfile, keyfile, password)
         except (OpenSSL.SSL.Error, TypeError, ValueError) as e:
             raise ssl.SSLError(f"Unable to load certificate chain: {e!r}") from e
 
@@ -614,15 +612,13 @@ class PyOpenSSLContext:
                 ctx, self._certfile, self._keyfile, self._password
             )
         if self._alpn_protocols is not None:
-            alpn = [
-                util.util.to_bytes(p, "ascii") for p in self._alpn_protocols
-            ]
+            alpn = [util.util.to_bytes(p, "ascii") for p in self._alpn_protocols]
             ctx.set_alpn_protos(alpn)  # type: ignore[arg-type]
         return ctx
 
     @staticmethod
     def _load_cert_chain_on_ctx(
-        ctx: "OpenSSL.SSL.Context",
+        ctx: OpenSSL.SSL.Context,
         certfile: str,
         keyfile: str | None,
         password: str | bytes | None,
