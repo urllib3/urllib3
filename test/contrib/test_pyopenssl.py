@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import ssl
 from unittest import mock
 
 import pytest
@@ -50,6 +51,105 @@ from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
 from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
     TestSSL as TestSocketSSL,
 )
+
+
+class TestPyOpenSSLContextReuse:
+    """
+    Regression tests for issue #5107: ``PyOpenSSLContext.wrap_socket`` must
+    not crash on the second connection from a single pool. pyOpenSSL's
+    ``OpenSSL.SSL.Context`` is single-use: once a ``Connection`` has been
+    created from it, the same context cannot be reused. The wrapper has to
+    rebuild a fresh underlying context with the user's customisations so
+    the second connection succeeds.
+    """
+
+    def _make_fake_sock(self):
+        from socket import socket
+
+        s = socket()
+        s.settimeout(0.01)
+        return s
+
+    def test_wrap_socket_rebuilds_ctx_on_reuse(self) -> None:
+        """
+        Second ``wrap_socket`` call triggers a context rebuild and
+        succeeds even when the underlying pyOpenSSL context has been
+        marked as used.
+        """
+        from unittest import mock
+
+        import OpenSSL.SSL
+
+        from urllib3.contrib.pyopenssl import PyOpenSSLContext
+
+        ctx = PyOpenSSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.verify_mode = ssl.CERT_REQUIRED
+        ctx.check_hostname = True
+        ctx.set_ciphers("DEFAULT@SECLEVEL=1")
+
+        real_connection = OpenSSL.SSL.Connection
+        # Capture the original underlying context so we can detect
+        # when the wrapper passes the SAME spent context back to
+        # ``OpenSSL.SSL.Connection`` (which is what the wrapper is
+        # supposed to detect and rebuild around).
+        original_ctx = ctx._ctx
+
+        # Pretend pyOpenSSL's Context is single-use: re-using the
+        # same underlying context for a second ``Connection`` raises
+        # the exact error reported in #5107. After the wrapper
+        # rebuilds, the new context is different, so the second
+        # ``Connection`` call must succeed.
+        def fake_connection(c, sock, *args, **kwargs):
+            if c is original_ctx and getattr(ctx, "_ctx_used", False):
+                raise ValueError(
+                    "Context has already been used to create a Connection, "
+                    "it cannot be mutated again"
+                )
+            conn = real_connection(c, sock, *args, **kwargs)
+            # Stub the handshake to avoid hitting a real network — the
+            # point of the test is the Connection construction path,
+            # not the TLS handshake.
+            conn.do_handshake = mock.Mock()  # type: ignore[method-assign]
+            return conn
+
+        with mock.patch.object(OpenSSL.SSL, "Connection", side_effect=fake_connection):
+            ctx.wrap_socket(self._make_fake_sock())  # first
+            ctx.wrap_socket(self._make_fake_sock())  # second - must not crash
+
+        assert ctx._ctx_used is True
+        # The underlying context must have been replaced after the
+        # second call.
+        assert ctx._ctx is not original_ctx
+
+    def test_rebuild_ctx_preserves_customisations(self) -> None:
+        """
+        ``_rebuild_ctx`` must replay every customisation the user set
+        on the wrapper so the second connection keeps the same TLS
+        profile as the first.
+        """
+        from urllib3.contrib.pyopenssl import PyOpenSSLContext
+
+        ctx = PyOpenSSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.verify_mode = ssl.CERT_REQUIRED
+        ctx.check_hostname = True
+        ctx.set_ciphers("DEFAULT@SECLEVEL=1")
+        ctx.set_alpn_protocols(["h2", "http/1.1"])
+        ctx.set_default_verify_paths()
+
+        rebuilt = ctx._rebuild_ctx()
+
+        # The rebuilt context is a fresh OpenSSL.Context, not the
+        # original instance.
+        assert rebuilt is not ctx._ctx
+        # Verify mode and protocol are applied.
+        assert ctx.verify_mode == ssl.CERT_REQUIRED
+        assert ctx._verify_mode_value == ssl.CERT_REQUIRED
+        # ALPN is replayed.
+        assert ctx._alpn_protocols == ["h2", "http/1.1"]
+        # Ciphers are stored.
+        assert ctx._ciphers == b"DEFAULT@SECLEVEL=1"
+        # Default verify paths flag is set.
+        assert ctx._default_verify_paths_set is True
 
 
 class TestPyOpenSSLHelpers:

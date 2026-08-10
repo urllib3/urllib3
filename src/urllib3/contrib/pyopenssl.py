@@ -444,6 +444,25 @@ class PyOpenSSLContext:
         self._minimum_version: int = ssl.TLSVersion.MINIMUM_SUPPORTED
         self._maximum_version: int = ssl.TLSVersion.MAXIMUM_SUPPORTED
         self._verify_flags: int = ssl.VERIFY_X509_TRUSTED_FIRST
+        # pyOpenSSL's ``OpenSSL.SSL.Context`` is single-use: once a
+        # ``Connection`` has been created from it, the same context cannot be
+        # reused to create another one. ``urllib3`` shares a single
+        # ``PyOpenSSLContext`` across all connections in a pool, so we need
+        # to be able to rebuild the underlying context on the second
+        # ``wrap_socket`` call. The fields below capture every customisation
+        # the user applied through the wrapper so ``_rebuild_ctx`` can replay
+        # them on a fresh context. See issue #5107.
+        self._ctx_used: bool = False
+        self._verify_mode_value: int = ssl.CERT_NONE
+        self._ciphers: bytes | None = None
+        self._cafile: str | bytes | None = None
+        self._capath: str | bytes | None = None
+        self._cadata: bytes | None = None
+        self._certfile: str | None = None
+        self._keyfile: str | None = None
+        self._password: str | bytes | None = None
+        self._alpn_protocols: list[bytes | str] | None = None
+        self._default_verify_paths_set: bool = False
 
     @property
     def options(self) -> int:
@@ -465,18 +484,21 @@ class PyOpenSSLContext:
 
     @property
     def verify_mode(self) -> int:
-        return _openssl_to_stdlib_verify[self._ctx.get_verify_mode()]
+        return self._verify_mode_value
 
     @verify_mode.setter
     def verify_mode(self, value: ssl.VerifyMode) -> None:
+        self._verify_mode_value = value
         self._ctx.set_verify(_stdlib_to_openssl_verify[value], _verify_callback)
 
     def set_default_verify_paths(self) -> None:
+        self._default_verify_paths_set = True
         self._ctx.set_default_verify_paths()
 
     def set_ciphers(self, ciphers: bytes | str) -> None:
         if isinstance(ciphers, str):
             ciphers = ciphers.encode("utf-8")
+        self._ciphers = ciphers
         self._ctx.set_cipher_list(ciphers)
 
     def load_verify_locations(
@@ -485,6 +507,9 @@ class PyOpenSSLContext:
         capath: str | None = None,
         cadata: bytes | None = None,
     ) -> None:
+        self._cafile = cafile
+        self._capath = capath
+        self._cadata = cadata
         if cafile is not None:
             cafile = cafile.encode("utf-8")  # type: ignore[assignment]
         if capath is not None:
@@ -502,29 +527,18 @@ class PyOpenSSLContext:
         keyfile: str | None = None,
         password: str | bytes | None = None,
     ) -> None:
+        self._certfile = certfile
+        self._keyfile = keyfile
+        self._password = password
         try:
-            self._ctx.use_certificate_chain_file(certfile)
-            if password is not None:
-                if not isinstance(password, bytes):
-                    password = password.encode("utf-8")
-                # pyOpenSSL added cryptography-key support in 24.3.0.
-                # Keep using the older password-callback path until 2026's
-                # versions because set_passwd_cb() became deprecated in 26.3.0.
-                if int(OpenSSL.__version__.split(".")[0]) >= 26:
-                    with open(keyfile or certfile, "rb") as key_file:
-                        private_key = load_pem_private_key(key_file.read(), password)
-                    # cryptography's loader returns a wider private-key union
-                    # than pyOpenSSL accepts, so we add `type: ignore` here.
-                    self._ctx.use_privatekey(private_key)  # type: ignore[arg-type]
-                else:
-                    self._ctx.set_passwd_cb(lambda *_: password)
-                    self._ctx.use_privatekey_file(keyfile or certfile)
-            else:
-                self._ctx.use_privatekey_file(keyfile or certfile)
+            self._load_cert_chain_on_ctx(
+                self._ctx, certfile, keyfile, password
+            )
         except (OpenSSL.SSL.Error, TypeError, ValueError) as e:
             raise ssl.SSLError(f"Unable to load certificate chain: {e!r}") from e
 
     def set_alpn_protocols(self, protocols: list[bytes | str]) -> None:
+        self._alpn_protocols = list(protocols)
         protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
         return self._ctx.set_alpn_protos(protocols)  # type: ignore[arg-type]
 
@@ -536,7 +550,17 @@ class PyOpenSSLContext:
         suppress_ragged_eofs: bool = True,
         server_hostname: bytes | str | None = None,
     ) -> WrappedSocket:
+        # pyOpenSSL's ``OpenSSL.SSL.Context`` is single-use: once a
+        # ``Connection`` has been created from it, the same context cannot be
+        # reused to create another one. ``urllib3`` keeps one
+        # ``PyOpenSSLContext`` per pool and asks for a fresh ``Connection``
+        # for every request, so on the second-and-later call we have to
+        # rebuild the underlying context with the user's stored
+        # customisations. See issue #5107.
+        if self._ctx_used:
+            self._ctx = self._rebuild_ctx()
         cnx = OpenSSL.SSL.Connection(self._ctx, sock)
+        self._ctx_used = True
 
         # If server_hostname is an IP, don't use it for SNI, per RFC6066 Section 3
         if server_hostname and not util.ssl_.is_ipaddress(server_hostname):
@@ -558,6 +582,69 @@ class PyOpenSSLContext:
             break
 
         return WrappedSocket(cnx, sock)
+
+    def _rebuild_ctx(self) -> OpenSSL.SSL.Context:
+        """Build a fresh ``OpenSSL.SSL.Context`` that mirrors every
+        customisation the user applied through this wrapper. Called by
+        :meth:`wrap_socket` when the previous underlying context has
+        already been used to create a ``Connection`` (pyOpenSSL's
+        single-use limitation). See issue #5107.
+        """
+        ctx = OpenSSL.SSL.Context(self.protocol)
+        ctx.set_options(
+            self._options
+            | _openssl_to_ssl_minimum_version[self._minimum_version]
+            | _openssl_to_ssl_maximum_version[self._maximum_version]
+        )
+        if self._verify_flags:
+            ctx.get_cert_store().set_flags(self._verify_flags)  # type: ignore[union-attr]
+        ctx.set_verify(
+            _stdlib_to_openssl_verify[self._verify_mode_value], _verify_callback
+        )
+        if self._ciphers is not None:
+            ctx.set_cipher_list(self._ciphers)
+        if self._cafile is not None or self._capath is not None:
+            ctx.load_verify_locations(self._cafile, self._capath)
+        if self._cadata is not None:
+            ctx.load_verify_locations(self._cadata)
+        if self._default_verify_paths_set:
+            ctx.set_default_verify_paths()
+        if self._certfile is not None:
+            self._load_cert_chain_on_ctx(
+                ctx, self._certfile, self._keyfile, self._password
+            )
+        if self._alpn_protocols is not None:
+            alpn = [
+                util.util.to_bytes(p, "ascii") for p in self._alpn_protocols
+            ]
+            ctx.set_alpn_protos(alpn)  # type: ignore[arg-type]
+        return ctx
+
+    @staticmethod
+    def _load_cert_chain_on_ctx(
+        ctx: "OpenSSL.SSL.Context",
+        certfile: str,
+        keyfile: str | None,
+        password: str | bytes | None,
+    ) -> None:
+        ctx.use_certificate_chain_file(certfile)
+        if password is not None:
+            if not isinstance(password, bytes):
+                password = password.encode("utf-8")
+            # pyOpenSSL added cryptography-key support in 24.3.0.
+            # Keep using the older password-callback path until 2026's
+            # versions because set_passwd_cb() became deprecated in 26.3.0.
+            if int(OpenSSL.__version__.split(".")[0]) >= 26:
+                with open(keyfile or certfile, "rb") as key_file:
+                    private_key = load_pem_private_key(key_file.read(), password)
+                # cryptography's loader returns a wider private-key union
+                # than pyOpenSSL accepts, so we add `type: ignore` here.
+                ctx.use_privatekey(private_key)  # type: ignore[arg-type]
+            else:
+                ctx.set_passwd_cb(lambda *_: password)
+                ctx.use_privatekey_file(keyfile or certfile)
+        else:
+            ctx.use_privatekey_file(keyfile or certfile)
 
     def _set_ctx_options(self) -> None:
         self._ctx.set_options(
