@@ -61,6 +61,7 @@ if typing.TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 _TYPE_TIMEOUT = typing.Union[Timeout, float, _TYPE_DEFAULT, None]
+_DEFAULT_QUEUE_CLASS = queue.LifoQueue
 
 
 # Pool objects
@@ -76,7 +77,7 @@ class ConnectionPool:
     """
 
     scheme: str | None = None
-    QueueCls = queue.LifoQueue
+    QueueCls = _DEFAULT_QUEUE_CLASS
 
     def __init__(self, host: str, port: int | None = None) -> None:
         if not host:
@@ -111,6 +112,11 @@ class ConnectionPool:
         """
         Close all pooled connections and disable the pool.
         """
+
+    def _new_pool_queue(self, maxsize: int) -> queue.LifoQueue[typing.Any]:
+        if self.QueueCls is _DEFAULT_QUEUE_CLASS:
+            return queue.LifoQueue(maxsize)
+        return self.QueueCls(maxsize)
 
 
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
@@ -198,7 +204,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.timeout = timeout
         self.retries = retries
 
-        self.pool: queue.LifoQueue[typing.Any] | None = self.QueueCls(maxsize)
+        self.pool: queue.LifoQueue[typing.Any] | None = self._new_pool_queue(maxsize)
         self.block = block
 
         self.proxy = _proxy
