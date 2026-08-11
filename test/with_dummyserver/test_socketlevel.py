@@ -39,6 +39,7 @@ from urllib3 import (
     HTTPConnectionPool,
     HTTPResponse,
     HTTPSConnectionPool,
+    PoolManager,
     ProxyManager,
     util,
 )
@@ -2853,3 +2854,92 @@ class TestContentFraming(SocketDummyServerTestCase):
 
             sent_bytes = bytes(buffer)
             assert sent_bytes.endswith(expected)
+
+    def _start_303_redirect_server(self, requests: list[bytearray]) -> None:
+        """Answer the first request with a 303 and the second one with a 200.
+
+        Each request is read up to the end of its body, so that the bytes
+        recorded in ``requests`` include any framing the client emitted.
+        """
+
+        def read_request(sock: socket.socket) -> bytearray:
+            buffer = bytearray()
+            while b"\r\n\r\n" not in buffer:
+                buffer += sock.recv(65536)
+            # A chunked body is terminated by a zero-length chunk, everything
+            # else that urllib3 may send here is header-only.
+            if b"transfer-encoding" in buffer.lower():
+                while not buffer.endswith(b"0\r\n\r\n"):
+                    buffer += sock.recv(65536)
+            return buffer
+
+        def socket_handler(listener: socket.socket) -> None:
+            for response in (
+                b"HTTP/1.1 303 See Other\r\n"
+                b"Location: /done\r\n"
+                b"Content-Length: 0\r\n\r\n",
+                b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n",
+            ):
+                sock = listener.accept()[0]
+                sock.settimeout(LONG_TIMEOUT)
+                requests.append(read_request(sock))
+                sock.sendall(response)
+                sock.close()
+
+        self._start_server(socket_handler)
+
+    @pytest.mark.parametrize("use_pool_manager", [True, False])
+    @pytest.mark.parametrize("chunked_via", ["kwarg", "header"])
+    def test_303_redirect_drops_chunked_framing(
+        self, use_pool_manager: bool, chunked_via: str
+    ) -> None:
+        # A 303 makes urllib3 drop the request body, so the redirected GET
+        # must not keep announcing a chunked body it will never send.
+        requests: list[bytearray] = []
+        self._start_303_redirect_server(requests)
+
+        kw: dict[str, typing.Any] = {"body": iter([b"xxxxxxxx"])}
+        if chunked_via == "kwarg":
+            kw["chunked"] = True
+        else:
+            kw["headers"] = {"Transfer-Encoding": "chunked"}
+
+        if use_pool_manager:
+            with PoolManager(timeout=LONG_TIMEOUT) as http:
+                resp = http.request("POST", f"http://{self.host}:{self.port}/", **kw)
+        else:
+            with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
+                resp = pool.request("POST", "/", **kw)
+        assert resp.status == 200
+
+        assert len(requests) == 2
+        original, redirected = (bytes(request) for request in requests)
+        assert original.startswith(b"POST / ")
+        assert b"Transfer-Encoding: chunked\r\n" in original
+        assert original.endswith(b"8\r\nxxxxxxxx\r\n0\r\n\r\n")
+
+        assert redirected.startswith(b"GET /done ")
+        assert b"transfer-encoding" not in redirected.lower()
+        assert b"content-length" not in redirected.lower()
+        assert redirected.endswith(b"\r\n\r\n")
+
+    @pytest.mark.parametrize("use_pool_manager", [True, False])
+    def test_303_redirect_with_file_body(self, use_pool_manager: bool) -> None:
+        # The dropped body must not leave a body position behind, otherwise
+        # rewinding a body that is no longer there fails the whole request.
+        requests: list[bytearray] = []
+        self._start_303_redirect_server(requests)
+
+        body = io.BytesIO(b"xxxxxxxx")
+        if use_pool_manager:
+            with PoolManager(timeout=LONG_TIMEOUT) as http:
+                resp = http.request(
+                    "POST", f"http://{self.host}:{self.port}/", body=body, body_pos=0
+                )
+        else:
+            with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
+                resp = pool.request("POST", "/", body=body)
+        assert resp.status == 200
+
+        assert len(requests) == 2
+        assert bytes(requests[1]).startswith(b"GET /done ")

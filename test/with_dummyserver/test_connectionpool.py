@@ -1443,7 +1443,8 @@ class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
                 raise OSError
 
         body = BadTellObject(b"the data")
-        url = "/redirect?target=/successful_retry"
+        # A 307 keeps the body, so it has to be rewound for the redirect.
+        url = "/redirect?target=/successful_retry&status=307"
         # httplib uses fileno if Content-Length isn't supplied,
         # which is unsupported by BytesIO.
         headers = {"Content-Length": "8"}
@@ -1452,6 +1453,23 @@ class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
                 UnrewindableBodyError, match="Unable to record file position for"
             ):
                 pool.urlopen("PUT", url, headers=headers, body=body)
+
+    def test_303_redirect_with_failed_tell(self) -> None:
+        """A 303 drops the body, so it never needs to be rewound"""
+
+        class BadTellObject(io.BytesIO):
+            def tell(self) -> typing.NoReturn:
+                raise OSError
+
+        body = BadTellObject(b"the data")
+        url = "/redirect?target=/echo"
+        # httplib uses fileno if Content-Length isn't supplied,
+        # which is unsupported by BytesIO.
+        headers = {"Content-Length": "8"}
+        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
+            resp = pool.urlopen("PUT", url, headers=headers, body=body)
+        assert resp.status == 200
+        assert resp.data == b""
 
 
 class TestRetryPoolSize(HypercornDummyServerTestCase):

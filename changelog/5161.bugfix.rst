@@ -1,0 +1,5 @@
+Fixed following a 303 redirect to send the redirected ``GET`` request without
+the framing of the dropped request body. Previously the redirected request
+still carried ``Transfer-Encoding: chunked`` with an empty chunked body, and a
+file-like body made the redirect fail with
+``ValueError: body_pos must be of type integer, instead it was <class 'int'>``.
