@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import http.client as httplib
+import logging
 import queue
 import ssl
+import threading
 import typing
+from concurrent.futures import ThreadPoolExecutor
 from http.client import HTTPException
 from queue import Empty
 from socket import error as SocketError
@@ -318,6 +321,33 @@ class TestConnectionPool:
             assert pool.num_connections == 3
             assert "Connection pool is full, discarding connection" in caplog.text
             assert "Connection pool size: 1" in caplog.text
+
+    def test_put_conn_when_pool_is_full_warns_once_per_pool(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.DEBUG, logger="urllib3.connectionpool"):
+            for _ in range(2):
+                with HTTPConnectionPool(
+                    host="localhost", maxsize=1, block=False
+                ) as pool:
+                    barrier = threading.Barrier(4)
+
+                    def put_conn(conn: Mock) -> None:
+                        barrier.wait()
+                        pool._put_conn(conn)
+
+                    with ThreadPoolExecutor(max_workers=4) as executor:
+                        list(executor.map(put_conn, [Mock() for _ in range(4)]))
+
+        records = [
+            record
+            for record in caplog.records
+            if record.getMessage().startswith(
+                "Connection pool is full, discarding connection"
+            )
+        ]
+        assert sum(record.levelno == logging.WARNING for record in records) == 2
+        assert sum(record.levelno == logging.DEBUG for record in records) == 6
 
     def test_put_conn_when_pool_is_full_blocking(self) -> None:
         """
