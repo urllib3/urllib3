@@ -1,0 +1,4 @@
+Fixed ``HTTP2Connection.getresponse()`` raising ``UnicodeDecodeError`` on
+response header values containing ``obs-text`` bytes (``0x80``-``0xFF``). Such
+values are accepted on the HTTP/1.1 path, which decodes header bytes as
+latin-1, so HTTP/2 now decodes them the same way.
