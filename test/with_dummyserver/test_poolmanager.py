@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import logging
 import typing
 from test import LONG_TIMEOUT
 from unittest import mock
@@ -14,9 +15,10 @@ from dummyserver.testcase import (
 )
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
+from urllib3.exceptions import InvalidHeader, MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
+from urllib3.util.url import parse_url
 
 
 class TestPoolManager(HypercornDummyServerTestCase):
@@ -507,6 +509,97 @@ class TestPoolManager(HypercornDummyServerTestCase):
             returned_headers = r.json()
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
+
+    @pytest.mark.parametrize(
+        ("auth", "expected"),
+        [
+            ("user:password", "Basic dXNlcjpwYXNzd29yZA=="),
+            ("user%40example.com:p%40ss", "Basic dXNlckBleGFtcGxlLmNvbTpwQHNz"),
+        ],
+    )
+    def test_authorization_header_from_url_auth(self, auth: str, expected: str) -> None:
+        with PoolManager() as http:
+            r = http.request("GET", f"http://{auth}@{self.host}:{self.port}/headers")
+
+        assert r.json()["Authorization"] == expected
+
+    def test_url_auth_allows_matching_authorization_header(self) -> None:
+        headers = {"authorization": "Basic dXNlcjpwYXNzd29yZA=="}
+
+        with PoolManager() as http:
+            r = http.request(
+                "GET",
+                f"http://user:password@{self.host}:{self.port}/headers",
+                headers=headers,
+            )
+
+        assert r.json()["Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
+        assert headers == {"authorization": "Basic dXNlcjpwYXNzd29yZA=="}
+
+    def test_url_auth_does_not_persist_between_requests(self) -> None:
+        with PoolManager() as http:
+            authenticated = http.request(
+                "GET",
+                f"http://user:password@{self.host}:{self.port}/headers",
+            )
+            unauthenticated = http.request("GET", f"{self.base_url}/headers")
+
+        assert authenticated.json()["Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
+        assert "Authorization" not in unauthenticated.json()
+
+    @pytest.mark.parametrize("duplicate", [False, True])
+    def test_url_auth_rejects_conflicting_authorization_header(
+        self, duplicate: bool
+    ) -> None:
+        headers = HTTPHeaderDict()
+        headers.add("Authorization", "Basic dXNlcjpwYXNzd29yZA==")
+        if duplicate:
+            headers.add("Authorization", "Basic dXNlcjpwYXNzd29yZA==")
+        else:
+            headers["Authorization"] = "Basic ZGlmZmVyZW50"
+
+        with PoolManager() as http:
+            with pytest.raises(InvalidHeader, match="Authorization"):
+                http.request(
+                    "GET",
+                    f"http://user:password@{self.host}:{self.port}/headers",
+                    headers=headers,
+                )
+
+    def test_url_auth_redirects(self, caplog: pytest.LogCaptureFixture) -> None:
+        caplog.set_level(logging.INFO, logger="urllib3.poolmanager")
+        with PoolManager() as http:
+            same_host = http.request(
+                "GET",
+                f"http://user:password@{self.host}:{self.port}/redirect",
+                fields={"target": f"{self.base_url}/headers"},
+            )
+            cross_host = http.request(
+                "GET",
+                f"http://user:password@{self.host}:{self.port}/redirect",
+                fields={
+                    "target": (
+                        f"http://other:secret@{self.host_alt}:{self.port}/headers"
+                    )
+                },
+            )
+
+        assert same_host.json()["Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
+        assert cross_host.json()["Authorization"] == "Basic b3RoZXI6c2VjcmV0"
+        assert same_host.retries is not None
+        assert all(
+            history.url is None or parse_url(history.url).auth is None
+            for history in same_host.retries.history
+        )
+        redirect_logs = [
+            record.getMessage()
+            for record in caplog.records
+            if record.name == "urllib3.poolmanager"
+            and record.getMessage().startswith("Redirecting ")
+        ]
+        assert redirect_logs
+        assert all("user:password@" not in message for message in redirect_logs)
+        assert all("other:secret@" not in message for message in redirect_logs)
 
     def test_headers_http_header_dict(self) -> None:
         # Test uses a list of headers to assert the order
