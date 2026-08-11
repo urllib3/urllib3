@@ -384,3 +384,53 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+    def test_getresponse_obs_text_header_value(self) -> None:
+        # A field value carrying obs-text (bytes 0x80-0xFF) is legal per
+        # RFC 9110 and is accepted on the HTTP/1.1 path (http.client decodes
+        # header bytes as latin-1). getresponse() must not reject it.
+        import h2.config
+        import h2.connection
+
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock()
+        conn._request_url = "/"
+
+        server = h2.connection.H2Connection(
+            config=h2.config.H2Configuration(client_side=False)
+        )
+        server.initiate_connection()
+
+        client = conn._h2_conn._obj
+        client.initiate_connection()
+        server.receive_data(client.data_to_send())
+        client.receive_data(server.data_to_send())
+
+        client.send_headers(
+            1,
+            [
+                (":method", "GET"),
+                (":scheme", "https"),
+                (":authority", "example.com"),
+                (":path", "/"),
+            ],
+            end_stream=True,
+        )
+        server.receive_data(client.data_to_send())
+
+        server.send_headers(
+            1,
+            [
+                (":status", "200"),
+                ("content-disposition", b"attachment; filename=caf\xe9.txt"),
+            ],
+            end_stream=True,
+        )
+        conn.sock.recv.side_effect = [server.data_to_send(), b""]
+
+        response = conn.getresponse()
+
+        assert response.status == 200
+        assert (
+            response.headers["content-disposition"] == "attachment; filename=café.txt"
+        )

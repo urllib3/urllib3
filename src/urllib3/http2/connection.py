@@ -242,8 +242,13 @@ class HTTP2Connection(HTTPSConnection):
                                 if header == b":status":
                                     status = int(value.decode())
                                 else:
+                                    # Field values may carry obs-text (bytes
+                                    # 0x80-0xFF), which http.client decodes as
+                                    # latin-1 on the HTTP/1.1 path. Match that
+                                    # so an HTTP/2 response is not rejected.
                                     headers.add(
-                                        header.decode("ascii"), value.decode("ascii")
+                                        header.decode("latin-1"),
+                                        value.decode("latin-1"),
                                     )
 
                         elif isinstance(event, h2.events.DataReceived):
