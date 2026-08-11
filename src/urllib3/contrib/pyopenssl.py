@@ -453,7 +453,7 @@ class PyOpenSSLContext:
         # the user applied through the wrapper so ``_rebuild_ctx`` can replay
         # them on a fresh context. See issue #5107.
         self._ctx_used: bool = False
-        self._verify_mode_value: int = ssl.CERT_NONE
+        self._verify_mode_value: ssl.VerifyMode = ssl.CERT_NONE
         self._ciphers: bytes | None = None
         self._cafile: str | bytes | None = None
         self._capath: str | bytes | None = None
@@ -613,7 +613,7 @@ class PyOpenSSLContext:
             )
         if self._alpn_protocols is not None:
             alpn = [util.util.to_bytes(p, "ascii") for p in self._alpn_protocols]
-            ctx.set_alpn_protos(alpn)  # type: ignore[arg-type]
+            ctx.set_alpn_protos(alpn)
         return ctx
 
     @staticmethod
