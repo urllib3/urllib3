@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import socket as socket_module
 import ssl
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -63,10 +65,8 @@ class TestPyOpenSSLContextReuse:
     the second connection succeeds.
     """
 
-    def _make_fake_sock(self):
-        from socket import socket
-
-        s = socket()
+    def _make_fake_sock(self) -> socket_module.socket:
+        s = socket_module.socket()
         s.settimeout(0.01)
         return s
 
@@ -99,7 +99,9 @@ class TestPyOpenSSLContextReuse:
         # the exact error reported in #5107. After the wrapper
         # rebuilds, the new context is different, so the second
         # ``Connection`` call must succeed.
-        def fake_connection(c, sock, *args, **kwargs):
+        def fake_connection(
+            c: Any, sock: Any, *args: Any, **kwargs: Any
+        ) -> OpenSSL.SSL.Connection:
             if c is original_ctx and getattr(ctx, "_ctx_used", False):
                 raise ValueError(
                     "Context has already been used to create a Connection, "
@@ -112,9 +114,19 @@ class TestPyOpenSSLContextReuse:
             conn.do_handshake = mock.Mock()  # type: ignore[method-assign]
             return conn
 
-        with mock.patch.object(OpenSSL.SSL, "Connection", side_effect=fake_connection):
-            ctx.wrap_socket(self._make_fake_sock())  # first
-            ctx.wrap_socket(self._make_fake_sock())  # second - must not crash
+        sock1 = self._make_fake_sock()
+        sock2 = self._make_fake_sock()
+        try:
+            with mock.patch.object(
+                OpenSSL.SSL, "Connection", side_effect=fake_connection
+            ):
+                ctx.wrap_socket(sock1)  # first
+                ctx.wrap_socket(sock2)  # second - must not crash
+        finally:
+            # Close sockets so they do not show up as unraisable
+            # ``ResourceWarning`` at the end of the test session.
+            sock1.close()
+            sock2.close()
 
         assert ctx._ctx_used is True
         # The underlying context must have been replaced after the
