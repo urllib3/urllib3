@@ -83,6 +83,20 @@ def test_pool_requests(
         resp2 = http.request("GET", f"http://{host}:{port}/index")
         assert resp2.data.decode("utf-8") == "Dummy server!"
 
+        payload = b"multipart"
+        multipart = http.request(
+            "POST",
+            f"http://{host}:{port}/echo",
+            fields={"file": ("payload.bin", payload)},
+            multipart_boundary="boundary",
+        )
+        assert (
+            multipart.data
+            == urllib3.encode_multipart_formdata(
+                {"file": ("payload.bin", payload)}, boundary="boundary"
+            )[0]
+        )
+
         # should all have come from one pool
         assert len(http.pools) == 1
 

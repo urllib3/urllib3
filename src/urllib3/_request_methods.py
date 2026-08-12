@@ -6,8 +6,11 @@ from urllib.parse import urlencode
 
 from ._base_connection import _TYPE_BODY
 from ._collections import HTTPHeaderDict
-from .filepost import _TYPE_FIELDS, encode_multipart_formdata
+from .filepost import _TYPE_FIELDS
 from .response import BaseHTTPResponse
+
+if typing.TYPE_CHECKING:
+    from .multipart import MultipartEncoder as MultipartEncoderType
 
 __all__ = ["RequestMethods"]
 
@@ -196,8 +199,8 @@ class RequestMethods:
         the body. This is useful for request methods like POST, PUT, PATCH, etc.
 
         When ``encode_multipart=True`` (default), then
-        :func:`urllib3.encode_multipart_formdata` is used to encode
-        the payload with the appropriate content type. Otherwise
+        :class:`urllib3.multipart.MultipartEncoder` is used to stream the
+        payload with the appropriate content type. Otherwise
         :func:`urllib.parse.urlencode` is used with the
         'application/x-www-form-urlencoded' content type.
 
@@ -221,10 +224,9 @@ class RequestMethods:
         When uploading a file, providing a filename (the first parameter of the
         tuple) is optional but recommended to best mimic behavior of browsers.
 
-        Note that if ``headers`` are supplied, the 'Content-Type' header will
-        be overwritten because it depends on the dynamic random boundary string
-        which is used to compose the body of the request. The random boundary
-        string can be explicitly set with the ``multipart_boundary`` parameter.
+        Multipart headers are added only when they are not already present in
+        ``headers``. The random boundary string can be explicitly set with the
+        ``multipart_boundary`` parameter.
 
         :param method:
             HTTP request method (such as GET, POST, PUT, etc.)
@@ -252,7 +254,7 @@ class RequestMethods:
             headers = self.headers
 
         extra_kw: dict[str, typing.Any] = {"headers": HTTPHeaderDict(headers)}
-        body: bytes | str
+        body: bytes | str | MultipartEncoderType
 
         if fields:
             if "body" in urlopen_kw:
@@ -261,9 +263,16 @@ class RequestMethods:
                 )
 
             if encode_multipart:
-                body, content_type = encode_multipart_formdata(
-                    fields, boundary=multipart_boundary
-                )
+                from .multipart import MultipartEncoder
+
+                body = MultipartEncoder(fields, boundary=multipart_boundary)
+                for key, value in body.headers.items():
+                    if key.lower() == "content-length" and (
+                        urlopen_kw.get("chunked")
+                        or "Transfer-Encoding" in extra_kw["headers"]
+                    ):
+                        continue
+                    extra_kw["headers"].setdefault(key, value)
             else:
                 body, content_type = (
                     urlencode(fields),  # type: ignore[arg-type]
@@ -271,7 +280,8 @@ class RequestMethods:
                 )
 
             extra_kw["body"] = body
-            extra_kw["headers"].setdefault("Content-Type", content_type)
+            if not encode_multipart:
+                extra_kw["headers"].setdefault("Content-Type", content_type)
 
         extra_kw.update(urlopen_kw)
 
