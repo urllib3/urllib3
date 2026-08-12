@@ -354,7 +354,9 @@ class MultipartEncoder:
             except UnrewindableBodyError as e:
                 errors.append(e)
         if errors:
-            raise UnrewindableBodyError("Unable to rewind multipart body") from errors[0]
+            raise UnrewindableBodyError("Unable to rewind multipart body") from errors[
+                0
+            ]
         self._part_index = 0
         self._closing_offset = 0
         self._position = 0
@@ -402,6 +404,7 @@ class MultipartEncoder:
         if not chunk:
             raise StopIteration
         return chunk
+
 
 def _restore_stream(stream: typing.BinaryIO, position: int) -> None:
     try:
