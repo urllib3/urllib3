@@ -1332,3 +1332,15 @@ def test_pool_no_port(selenium_coverage: typing.Any) -> None:
         pool = HTTPConnectionPool("example.com", maxsize=10, block=True)
 
         pool.request("GET", "/")
+
+
+@run_in_pyodide  # type: ignore[untyped-decorator]
+def test_request_buffers_text_stream(selenium_coverage: typing.Any) -> None:
+    import io
+
+    from urllib3.contrib.emscripten.request import EmscriptenRequest
+
+    request = EmscriptenRequest("POST", "https://example.com/")
+    request.set_body(io.StringIO("café"))
+
+    assert request.body == b"caf\xc3\xa9"
