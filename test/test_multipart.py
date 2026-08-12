@@ -85,7 +85,9 @@ def test_encoder_preserves_integer_compatibility() -> None:
 
 
 def test_part_reads_headers_and_body_in_chunks() -> None:
-    part = Part(b"Header: value\r\n\r\n", OneShot(b"body"))
+    part = Part(
+        b"Header: value\r\n\r\n", typing.cast(typing.BinaryIO, OneShot(b"body"))
+    )
 
     assert part.read(0) == b""
     assert part.read(7) == b"Header:"
