@@ -11,6 +11,7 @@ import pytest
 from dummyserver.testcase import HypercornDummyServerTestCase as server
 from urllib3 import HTTPConnectionPool
 from urllib3.response import HTTPResponse
+from urllib3.util.connection import is_connection_dropped
 
 # See https://github.com/python/cpython/issues/146211
 # Xfail only on Python versions where neither the stdlib nor urllib3's
@@ -116,6 +117,37 @@ def test_connection_state_properties(pool: HTTPConnectionPool) -> None:
     assert conn.has_connected_to_proxy is False
     assert conn.is_verified is False
     assert conn.proxy_is_verified is None
+
+
+def test_is_connected_with_externally_closed_socket(pool: HTTPConnectionPool) -> None:
+    with contextlib.closing(pool._get_conn()) as conn:
+        conn.connect()
+
+        assert conn.is_connected is True
+        assert is_connection_dropped(conn) is False
+
+        # Close the socket without going through conn.close(), which is what
+        # happens when a response is released without being drained first.
+        assert conn.sock is not None  # type: ignore[attr-defined]
+        conn.sock.close()  # type: ignore[attr-defined]
+
+        assert conn.is_connected is False
+        assert is_connection_dropped(conn) is True
+
+
+def test_pool_reconnects_with_externally_closed_socket(
+    pool: HTTPConnectionPool,
+) -> None:
+    conn = pool._get_conn()
+    conn.connect()
+    assert conn.sock is not None  # type: ignore[attr-defined]
+    conn.sock.close()  # type: ignore[attr-defined]
+    pool._put_conn(conn)
+
+    # The pool must notice that the pooled connection is dropped and open a
+    # new one instead of failing on the socket's -1 file descriptor.
+    response = pool.request("GET", "/")
+    assert response.status == 200
 
 
 def test_set_tunnel_is_reset(pool: HTTPConnectionPool) -> None:
