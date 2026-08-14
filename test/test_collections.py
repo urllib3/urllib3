@@ -170,6 +170,12 @@ class TestHTTPHeaderDict:
         assert len(h) == 4
         assert "ab" in h
 
+    def test_create_from_dict_with_bytes_values(self) -> None:
+        h = HTTPHeaderDict({"ab": b"1"})  # type: ignore[arg-type]
+        assert len(h) == 1
+        assert "ab" in h
+        assert h["ab"] == "1"
+
     def test_create_from_iterator(self) -> None:
         teststr = "urllib3ontherocks"
         h = HTTPHeaderDict((c, c * 5) for c in teststr)
@@ -212,12 +218,17 @@ class TestHTTPHeaderDict:
 
     def test_setitem(self, d: HTTPHeaderDict) -> None:
         d["Cookie"] = "foo"
-        # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
+        # The bytes key gets converted to str. The API is typed for str only,
+        # but the implementation continues to support bytes.
         d[b"Cookie"] = "bar"  # type: ignore[index]
         assert d["cookie"] == "bar"
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
+
+    def test_setitem_with_bytes_value(self) -> None:
+        d = HTTPHeaderDict()
+        d["user-agent"] = b"Sch\xf6nefeld/1.18.0"  # type: ignore[assignment]
+        assert d["user-agent"] == "Sch\xf6nefeld/1.18.0"
 
     def test_update(self, d: HTTPHeaderDict) -> None:
         d.update(dict(Cookie="foo"))
@@ -241,16 +252,46 @@ class TestHTTPHeaderDict:
 
     def test_add_comma_separated_multiheader(self, d: HTTPHeaderDict) -> None:
         d.add("bar", "foo")
-        # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
+        # The bytes key gets converted to str. The API is typed for str only,
+        # but the implementation continues to support bytes.
         d.add(b"BAR", "bar")  # type: ignore[arg-type]
         d.add("Bar", "asdf")
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
         assert d["bar"] == "foo, bar, asdf"
 
+    def test_add_with_bytes_value(self) -> None:
+        d = HTTPHeaderDict()
+        d.add("user-agent", b"Sch\xf6nefeld/1.18.0")  # type: ignore[arg-type]
+        d.add("user-agent", b"caf\xe9/2.0")  # type: ignore[arg-type]
+        assert d.getlist("user-agent") == ["Sch\xf6nefeld/1.18.0", "caf\xe9/2.0"]
+        assert d["user-agent"] == "Sch\xf6nefeld/1.18.0, caf\xe9/2.0"
+        assert (
+            repr(d)
+            == "HTTPHeaderDict({'user-agent': 'Sch\xf6nefeld/1.18.0, caf\xe9/2.0'})"
+        )
+        assert list(d.itermerged()) == [
+            ("user-agent", "Sch\xf6nefeld/1.18.0, caf\xe9/2.0")
+        ]
+        items = d.items()
+        assert len(items) == 2
+        assert ("user-agent", "Sch\xf6nefeld/1.18.0") in items
+        assert ("user-agent", "caf\xe9/2.0") in items
+
+    def test_add_combine_with_bytes_value(self) -> None:
+        d = HTTPHeaderDict()
+        d.add("x-foo", b"first")  # type: ignore[arg-type]
+        d.add("x-foo", b"second", combine=True)  # type: ignore[arg-type]
+        assert d["x-foo"] == "first, second"
+        assert d.getlist("x-foo") == ["first, second"]
+
     def test_extend_from_list(self, d: HTTPHeaderDict) -> None:
         d.extend([("set-cookie", "100"), ("set-cookie", "200"), ("set-cookie", "300")])
         assert d["set-cookie"] == "100, 200, 300"
+
+    def test_extend_with_bytes_value(self) -> None:
+        d = HTTPHeaderDict()
+        d.extend([("user-agent", b"Sch\xf6nefeld/1.18.0")])  # type: ignore[list-item]
+        assert d["user-agent"] == "Sch\xf6nefeld/1.18.0"
 
     def test_extend_from_dict(self, d: HTTPHeaderDict) -> None:
         d.extend(dict(cookie="asdf"), b="100")
