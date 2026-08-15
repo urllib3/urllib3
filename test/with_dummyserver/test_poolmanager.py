@@ -904,6 +904,8 @@ class TestPoolManager(DualHypercornDummyServerTestCase):
                 retries=None,
                 timeout=2.5,
                 json=None,
+                http1=True,
+                http2=False,
             )
 
     @pytest.mark.parametrize(

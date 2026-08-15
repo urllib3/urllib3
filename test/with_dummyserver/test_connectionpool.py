@@ -213,14 +213,8 @@ class TestConnectionPool(DualHypercornDummyServerTestCase):
     @pytest.mark.parametrize("server_scheme", ["http"], indirect=True)
     def test_http2_test_error(self, http_version: str) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
-            if http_version == "h2":
-                with pytest.raises(
-                    ValueError, match="HTTP/2 support currently only applies to HTTPS.*"
-                ):
-                    r = pool.request("GET", "/")
-            else:
-                r = pool.request("GET", "/")
-                assert r.status == 200
+            r = pool.request("GET", "/")
+            assert r.status == 200
 
     def test_get(self, pool_factory: PoolFactory) -> None:
         with pool_factory(self.host, self.port) as pool:

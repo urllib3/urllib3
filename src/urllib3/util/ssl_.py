@@ -17,7 +17,7 @@ SSLContext = None
 SSLTransport = None
 HAS_NEVER_CHECK_COMMON_NAME = False
 IS_PYOPENSSL = False
-ALPN_PROTOCOLS = ["http/1.1"]
+ALPN_PROTOCOLS: list[str] = []
 
 _TYPE_VERSION_INFO = tuple[int, int, int, str, int]
 
@@ -343,6 +343,7 @@ def ssl_wrap_socket(
     key_password: str | None = ...,
     ca_cert_data: None | str | bytes = ...,
     tls_in_tls: typing.Literal[False] = ...,
+    alpn_protocols: list[str] | None = None,
 ) -> ssl.SSLSocket: ...
 
 
@@ -361,6 +362,7 @@ def ssl_wrap_socket(
     key_password: str | None = ...,
     ca_cert_data: None | str | bytes = ...,
     tls_in_tls: bool = ...,
+    alpn_protocols: list[str] | None = None,
 ) -> ssl.SSLSocket | SSLTransportType: ...
 
 
@@ -378,6 +380,7 @@ def ssl_wrap_socket(
     key_password: str | None = None,
     ca_cert_data: None | str | bytes = None,
     tls_in_tls: bool = False,
+    alpn_protocols: list[str] | None = None,
 ) -> ssl.SSLSocket | SSLTransportType:
     """
     All arguments except for server_hostname, ssl_context, tls_in_tls, ca_cert_data and
@@ -403,6 +406,8 @@ def ssl_wrap_socket(
         passing as the cadata parameter to SSLContext.load_verify_locations()
     :param tls_in_tls:
         Use SSLTransport to wrap the existing socket.
+    :param alpn_protocols:
+        List of supported ALPN protocols.
     """
     context = ssl_context
     if context is None:
@@ -432,7 +437,7 @@ def ssl_wrap_socket(
         else:
             context.load_cert_chain(certfile, keyfile, key_password)
 
-    context.set_alpn_protocols(ALPN_PROTOCOLS)
+    context.set_alpn_protocols(ALPN_PROTOCOLS or alpn_protocols or ["http/1.1"])
 
     ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
     return ssl_sock
