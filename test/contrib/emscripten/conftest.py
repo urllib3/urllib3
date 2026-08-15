@@ -87,7 +87,7 @@ def _get_coverage_code() -> tuple[str, str]:
 
 def _get_jspi_monkeypatch_code(runtime: str, prefer_jspi: bool) -> tuple[str, str]:
     """
-    Return code to make Pyodide think JSPI is disabled in Chrome when a
+    Return code to make Pyodide think JSPI is disabled in browsers when a
     test needs this to check some code paths.
     """
     if runtime == "node" or prefer_jspi:
