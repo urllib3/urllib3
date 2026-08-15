@@ -79,7 +79,11 @@ class ConnectionPool:
     scheme: str | None = None
     QueueCls = _DEFAULT_QUEUE_CLASS
 
-    def __init__(self, host: str, port: int | None = None) -> None:
+    def __init__(
+        self,
+        host: str,
+        port: int | None = None,
+    ) -> None:
         if not host:
             raise LocationValueError("No host specified.")
 
@@ -611,6 +615,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         body_pos: _TYPE_BODY_POSITION | None = None,
         preload_content: bool = True,
         decode_content: bool = True,
+        http1: bool = True,
+        http2: bool = False,
         **response_kw: typing.Any,
     ) -> BaseHTTPResponse:
         """
@@ -687,6 +693,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         :param bool decode_content:
             If True, will attempt to decode the body based on the
             'content-encoding' header.
+
+        :param http1:
+            Set to `True` to enable the HTTP/1.1 protocol. Note that at least one of `http1`
+            and `http2` must be set to `True`. For non-TLS connections, if `http1` is `True`
+            the the HTTP/1.1 protocol will be used, regardless of the value of `http2`.
+
+        :param http2:
+            Set to `True` to enable the HTTP/2 protocol. If set to `False`, then `http1`
+            must be set to `True`. If `http1` and `http2` are both `True`, then the protocol
+            is decided from the results of the ALPN negotiation. For non-TLS connections, set
+            `http1` to `False` and `http2` to `True` to set up an HTTP/2 prior knowledge
+            connection.
 
         :param release_conn:
             If False, then the urlopen call will not release the connection
@@ -772,6 +790,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Request a connection from the queue.
             conn = self._get_conn(timeout=pool_timeout)
             conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
+            conn.set_protocol_options(http1=http1, http2=http2)
 
             # Is this a closed/new connection that requires CONNECT tunnelling?
             if self.proxy is not None and http_tunnel_required and conn.is_closed:
