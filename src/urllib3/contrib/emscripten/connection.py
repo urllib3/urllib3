@@ -40,6 +40,9 @@ class EmscriptenHTTPConnection:
     is_verified: bool = False
     proxy_is_verified: bool | None = None
 
+    http1: bool
+    http2: bool
+
     response_class: type[BaseHTTPResponse] = EmscriptenHttpResponseWrapper
     _response: EmscriptenResponse | None
 
@@ -77,6 +80,9 @@ class EmscriptenHTTPConnection:
         headers: typing.Mapping[str, str] | None = None,
         scheme: str = "http",
     ) -> None:
+        pass
+
+    def set_protocol_options(self, http1: bool, http2: bool) -> None:
         pass
 
     def connect(self) -> None:
