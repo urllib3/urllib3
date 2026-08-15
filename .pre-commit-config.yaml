@@ -1,44 +1,44 @@
 repos:
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
+    rev: 75992aaa40730136014f34227e0135f63fc951b4 # frozen: v3.21.2
     hooks:
       - id: pyupgrade
         args: ["--py310-plus"]
 
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 25.11.0
+    rev: 2892f1f81088477370d4fbc56545c05d33d2493f # frozen: 25.11.0
     hooks:
       - id: black
         args: ["--target-version", "py310"]
 
   - repo: https://github.com/PyCQA/isort
-    rev: 7.0.0
+    rev: 0a09c783808cfe77bb3269250f663ff733d23302 # frozen: 7.0.0
     hooks:
       - id: isort
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.3.0
+    rev: c48217e1fc006c2dddd14df54e83b67da15de5cd # frozen: 7.3.0
     hooks:
       - id: flake8
         additional_dependencies: [flake8-2020]
 
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.11.7
+    rev: 6a280ba12b7901e47757c868c8c13c6a624c9ecb # frozen: 0.11.7
     hooks:
       - id: uv-lock
 
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.16.3
+    rev: 86ee5ea442ee969842e00913c6b76c060a7aa8ef # frozen: v1.16.3
     hooks:
       - id: zizmor
 
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: "v3.1.0"
+    rev: ffb6a759a979008c0e6dff86e39f4745a2d9eac4 # frozen: v3.1.0
     hooks:
       - id: prettier
         types_or: [javascript]
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v8.53.0
+    rev: 04b676c196b231e9f352b22b180b32ba5612d227 # frozen: v8.53.0
     hooks:
       - id: eslint
         args: ["--fix"]
