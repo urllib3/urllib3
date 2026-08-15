@@ -53,6 +53,9 @@ if typing.TYPE_CHECKING:
         is_verified: bool
         proxy_is_verified: bool | None
 
+        http1: bool
+        http2: bool
+
         def __init__(
             self,
             host: str,
@@ -73,6 +76,8 @@ if typing.TYPE_CHECKING:
             headers: typing.Mapping[str, str] | None = None,
             scheme: str = "http",
         ) -> None: ...
+
+        def set_protocol_options(self, http1: bool, http2: bool) -> None: ...
 
         def connect(self) -> None: ...
 
