@@ -219,12 +219,14 @@ class ServerRunnerInfo:
                 process.chdir('{self.dist_dir}');
                 """
             )
+            worker_options = ""
         else:
             worker_path = f"https://{self.host}:{self.port}/pyodide/webworker_dev.js"
+            worker_options = ", { type: 'module' }"
         coverage_out_binary = bytes(
             self.selenium.run_js(
                 f"""
-            let worker = new Worker('{worker_path}');
+            let worker = new Worker('{worker_path}'{worker_options});
             let p = new Promise((res, rej) => {{
                 worker.onmessageerror = e => rej(e);
                 worker.onerror = e => rej(e);
