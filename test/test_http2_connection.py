@@ -5,10 +5,10 @@ from unittest import mock
 
 import pytest
 
-from urllib3.connection import _get_default_user_agent
+from urllib3.connection import HTTPSConnection, _get_default_user_agent
 from urllib3.exceptions import ConnectionError
 from urllib3.http2.connection import (
-    HTTP2Connection,
+    HTTP2ProtocolHelper,
     _is_illegal_header_value,
     _is_legal_header_name,
 )
@@ -76,95 +76,107 @@ class TestHTTP2Connection:
         assert _is_illegal_header_value(b"foo\x09"), "foo\\x09"
 
     def test_default_socket_options(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
         assert conn.port == 443
 
     def test_putheader(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         conn.putheader("foo", "bar")
-        assert conn._headers == [(b"foo", b"bar")]
+        assert conn._protocol_helper._headers == [(b"foo", b"bar")]
 
     def test_request_putheader(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn.putheader = mock.MagicMock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper.putheader = mock.MagicMock(return_value=None)  # type: ignore[method-assign]
         conn.request("GET", "/", headers={"foo": "bar"})
-        conn.putheader.assert_has_calls(
+        conn._protocol_helper.putheader.assert_has_calls(
             [
                 mock.call("foo", "bar"),
-                mock.call(b"user-agent", _get_default_user_agent()),
+                mock.call("user-agent", _get_default_user_agent()),
             ]
         )
 
     def test_putheader_ValueError(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         with pytest.raises(ValueError):
             conn.putheader("foo\0bar", "baz")
         with pytest.raises(ValueError):
             conn.putheader("foo", "foo\r\nbar")
 
     def test_endheaders_ConnectionError(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         with pytest.raises(ConnectionError):
             conn.endheaders()
 
     def test_send_ConnectionError(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         with pytest.raises(ConnectionError):
             conn.send(b"foo")
 
     def test_send_bytes(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"bar")  # type: ignore[method-assign]
-        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"bar")  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
 
         conn.putrequest("GET", "/")
         conn.endheaders()
         conn.send(b"foo")
 
-        conn._h2_conn._obj.data_to_send.assert_called_with()
+        conn._protocol_helper._h2_conn._obj.data_to_send.assert_called_with()
         conn.sock.sendall.assert_called_with(b"bar")
-        conn._h2_conn._obj.send_data.assert_called_with(1, b"foo", end_stream=True)
+        conn._protocol_helper._h2_conn._obj.send_data.assert_called_with(
+            1, b"foo", end_stream=True
+        )
 
     def test_send_str(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"bar")  # type: ignore[method-assign]
-        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"bar")  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
 
         conn.putrequest("GET", "/")
         conn.endheaders(message_body=b"foo")
         conn.send("foo")
 
-        conn._h2_conn._obj.data_to_send.assert_called_with()
+        conn._protocol_helper._h2_conn._obj.data_to_send.assert_called_with()
         conn.sock.sendall.assert_called_with(b"bar")
-        conn._h2_conn._obj.send_data.assert_called_with(1, b"foo", end_stream=True)
+        conn._protocol_helper._h2_conn._obj.send_data.assert_called_with(
+            1, b"foo", end_stream=True
+        )
 
     def test_send_iter(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"baz")  # type: ignore[method-assign]
-        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
-        conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"baz")  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.end_stream = mock.Mock(return_value=None)  # type: ignore[method-assign]
 
         conn.putrequest("GET", "/")
         conn.endheaders(message_body=[b"foo", b"bar"])
         conn.send([b"foo", b"bar"])
 
-        conn._h2_conn._obj.data_to_send.assert_has_calls(
+        conn._protocol_helper._h2_conn._obj.data_to_send.assert_has_calls(
             [
                 mock.call(),
                 mock.call(),
@@ -176,79 +188,83 @@ class TestHTTP2Connection:
                 mock.call(b"baz"),
             ]
         )
-        conn._h2_conn._obj.send_data.assert_has_calls(
+        conn._protocol_helper._h2_conn._obj.send_data.assert_has_calls(
             [
                 mock.call(1, b"foo", end_stream=False),
                 mock.call(1, b"bar", end_stream=False),
             ]
         )
-        conn._h2_conn._obj.end_stream.assert_called_with(1)
+        conn._protocol_helper._h2_conn._obj.end_stream.assert_called_with(1)
 
     def test_send_file_str(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         mock_open = mock.mock_open(read_data="foo\r\nbar\r\n")
         with mock.patch("builtins.open", mock_open):
             conn.sock = mock.MagicMock(
                 sendall=mock.Mock(return_value=None),
             )
-            conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
-            conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
-            conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
-            conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)  # type: ignore[method-assign]
+            conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+            conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+            conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+            conn._protocol_helper._h2_conn._obj.end_stream = mock.Mock(return_value=None)  # type: ignore[method-assign]
 
             with open("foo") as body:
                 conn.putrequest("GET", "/")
                 conn.endheaders(message_body=body)
                 conn.send(body)
 
-                conn._h2_conn._obj.data_to_send.assert_called_with()
+                conn._protocol_helper._h2_conn._obj.data_to_send.assert_called_with()
                 conn.sock.sendall.assert_called_with(b"foo")
-                conn._h2_conn._obj.send_data.assert_called_with(
+                conn._protocol_helper._h2_conn._obj.send_data.assert_called_with(
                     1, b"foo\r\nbar\r\n", end_stream=False
                 )
-                conn._h2_conn._obj.end_stream.assert_called_with(1)
+                conn._protocol_helper._h2_conn._obj.end_stream.assert_called_with(1)
 
     def test_send_file_bytes(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         mock_open = mock.mock_open(read_data=b"foo\r\nbar\r\n")
         with mock.patch("builtins.open", mock_open):
             conn.sock = mock.MagicMock(
                 sendall=mock.Mock(return_value=None),
             )
-            conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
-            conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
-            conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
-            conn._h2_conn._obj.end_stream = mock.Mock(return_value=None)  # type: ignore[method-assign]
+            conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+            conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+            conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+            conn._protocol_helper._h2_conn._obj.end_stream = mock.Mock(return_value=None)  # type: ignore[method-assign]
 
             body = open("foo", "rb")
             conn.putrequest("GET", "/")
             conn.endheaders(message_body=body)
             conn.send(body)
 
-            conn._h2_conn._obj.data_to_send.assert_called_with()
+            conn._protocol_helper._h2_conn._obj.data_to_send.assert_called_with()
             conn.sock.sendall.assert_called_with(b"foo")
-            conn._h2_conn._obj.send_data.assert_called_with(
+            conn._protocol_helper._h2_conn._obj.send_data.assert_called_with(
                 1, b"foo\r\nbar\r\n", end_stream=False
             )
-            conn._h2_conn._obj.end_stream.assert_called_with(1)
+            conn._protocol_helper._h2_conn._obj.end_stream.assert_called_with(1)
 
     def test_send_invalid_type(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         conn.putrequest("GET", "/")
         with pytest.raises(TypeError):
             conn.send(1)
 
     def test_request_GET(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
         sendall = conn.sock.sendall
-        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
-        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
-        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
-        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
+        data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._protocol_helper._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        close_connection = conn._protocol_helper._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
             return_value=None
         )
 
@@ -272,15 +288,16 @@ class TestHTTP2Connection:
         close_connection.assert_called_with()
 
     def test_request_authority_port_zero(self) -> None:
-        conn = HTTP2Connection("example.com", port=0)
+        conn = HTTPSConnection("example.com", port=0)
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
-        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
-        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
-        conn._h2_conn._obj.close_connection = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._protocol_helper._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.close_connection = mock.Mock(return_value=None)  # type: ignore[method-assign]
 
         conn.request("GET", "/")
         conn.close()
@@ -298,16 +315,17 @@ class TestHTTP2Connection:
         )
 
     def test_request_POST(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
         sendall = conn.sock.sendall
-        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
-        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
-        send_data = conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
-        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
+        data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._protocol_helper._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        send_data = conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        close_connection = conn._protocol_helper._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
             return_value=None
         )
 
@@ -331,13 +349,14 @@ class TestHTTP2Connection:
         close_connection.assert_called_with()
 
     def test_close(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(side_effect=Exception("foo")),
         )
         sendall = conn.sock.sendall
-        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
-        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
+        data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        close_connection = conn._protocol_helper._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
             return_value=None
         )
 
@@ -349,20 +368,21 @@ class TestHTTP2Connection:
         close_connection.assert_called_with()
         data_to_send.assert_called_with()
         sendall.assert_called_with(b"foo")
-        assert conn._h2_stream is None
-        assert conn._headers == []
+        assert conn._protocol_helper._h2_stream is None
+        assert conn._protocol_helper._headers == []
 
     def test_request_ignore_chunked(self) -> None:
-        conn = HTTP2Connection("example.com")
+        conn = HTTPSConnection("example.com")
+        conn._protocol_helper = HTTP2ProtocolHelper(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
         sendall = conn.sock.sendall
-        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
-        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
-        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
-        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
-        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
+        data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._protocol_helper._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        close_connection = conn._protocol_helper._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
             return_value=None
         )
 
