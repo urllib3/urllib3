@@ -9,11 +9,12 @@ import typing
 import h2.config
 import h2.connection
 import h2.events
+import h2.exceptions
 
 from .._base_connection import _TYPE_BODY
 from .._collections import HTTPHeaderDict
 from ..connection import HTTPSConnection, _get_default_user_agent
-from ..exceptions import ConnectionError
+from ..exceptions import ConnectionError, ProtocolError
 from ..response import BaseHTTPResponse
 
 orig_HTTPSConnection = HTTPSConnection
@@ -234,7 +235,10 @@ class HTTP2Connection(HTTPSConnection):
             while not end_stream:
                 # TODO: Arbitrary read value.
                 if received_data := self.sock.recv(65535):
-                    events = conn.receive_data(received_data)
+                    try:
+                        events = conn.receive_data(received_data)
+                    except h2.exceptions.H2Error as e:
+                        raise ProtocolError(f"Connection broken: {e!r}", e) from e
                     for event in events:
                         if isinstance(event, h2.events.ResponseReceived):
                             headers = HTTPHeaderDict()
@@ -254,6 +258,8 @@ class HTTP2Connection(HTTPSConnection):
 
                         elif isinstance(event, h2.events.StreamEnded):
                             end_stream = True
+                else:  # The peer closed the connection.
+                    raise ProtocolError("Response ended prematurely")
 
                 if data_to_send := conn.data_to_send():
                     self.sock.sendall(data_to_send)
