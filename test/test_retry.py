@@ -438,3 +438,9 @@ class TestRetry:
                 sleep_mock.assert_called_with(sleep_duration)
             else:
                 sleep_mock.assert_not_called()
+def test_empty_allowed_methods() -> None:
+    """
+    Test that explicitly passing an empty set() to allowed_methods correctly prevents retries, rather than falling back to defaults. Fixes issue #5044"""
+    from urllib3.util.retry import Retry
+    retry = Retry(status_forcelist=[500], allowed_methods=set())
+    assert retry.is_retry("POST", status_code=500) is False
