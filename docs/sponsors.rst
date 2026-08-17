@@ -35,7 +35,7 @@ Let us know and we'll be glad to add you to our sponsors list.
 
 * `Spotify <https://engineering.atspotify.com/opensource/>`_ (June 2nd, 2022)
 
-* `GitCoin Grants <https://gitcoin.co/grants>`_ (2019-2020), sponsored `@sethmlarson <https://github.com/sethmlarson>`_
+* `GitCoin Grants <https://grants.gitcoin.co>`_ (2019-2020), sponsored `@sethmlarson <https://github.com/sethmlarson>`_
   and `@pquentin <https://github.com/pquentin>`_
 
 * `Abbott <https://abbott.com>`_ (2018-2019), sponsored `@sethmlarson <https://github.com/sethmlarson>`_
