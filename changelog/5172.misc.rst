@@ -1,0 +1,1 @@
+Updated the historical GitCoin Grants sponsor URL to the current grants site.
