@@ -1,0 +1,1 @@
+Fixed the Brotli package documentation link to the current PyPI project URL.
