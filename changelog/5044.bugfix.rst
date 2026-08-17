@@ -1,0 +1,1 @@
+Fixed bug where passing an empty set to "allowed_methods" in "Retry" bypassed the safety check.
