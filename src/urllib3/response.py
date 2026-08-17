@@ -774,6 +774,11 @@ class HTTPResponse(BaseHTTPResponse):
             self._fp = body  # type: ignore[assignment]
         self._sock_shutdown = sock_shutdown
 
+        # Set by close() only. Distinguishes "the caller closed this response"
+        # from "the body was fully consumed and auto_close closed the fp",
+        # which are indistinguishable from `self.closed` alone.
+        self._explicitly_closed = False
+
         # Are we using the chunked-style of transfer encoding?
         self.chunk_left: int | None = None
 
@@ -1256,12 +1261,21 @@ class HTTPResponse(BaseHTTPResponse):
         :param decode_content:
             If True, will attempt to decode the body based on the
             'content-encoding' header.
+
+        :raises ValueError:
+            If the response was closed before iteration started, or is closed
+            while iteration is in progress. Closing mid-iteration otherwise
+            truncates the body silently.
         """
+        self._raise_if_explicitly_closed()
+
         if amt == 0:
             return
 
         if self.chunked and self.supports_chunked_reads():
-            yield from self.read_chunked(amt, decode_content=decode_content)
+            for line in self.read_chunked(amt, decode_content=decode_content):
+                yield line
+                self._raise_if_explicitly_closed()
         else:
             while (
                 not is_fp_closed(self._fp)
@@ -1272,6 +1286,11 @@ class HTTPResponse(BaseHTTPResponse):
 
                 if data:
                     yield data
+                    self._raise_if_explicitly_closed()
+
+    def _raise_if_explicitly_closed(self) -> None:
+        if self._explicitly_closed:
+            raise ValueError("I/O operation on closed file.")
 
     # Overrides from io.IOBase
     def readable(self) -> bool:
@@ -1288,6 +1307,7 @@ class HTTPResponse(BaseHTTPResponse):
 
     def close(self) -> None:
         self._sock_shutdown = None
+        self._explicitly_closed = True
 
         if not self.closed and self._fp:
             self._fp.close()

@@ -1521,6 +1521,115 @@ class TestResponse:
         data = list(resp.stream(0))
         assert data == []
 
+    def test_stream_after_close_raises(self) -> None:
+        resp = HTTPResponse(BytesIO(b"hello\nworld\n"), preload_content=False)
+        resp.close()
+
+        with pytest.raises(ValueError, match="I/O operation on closed file."):
+            list(resp.stream(2))
+
+    def test_iter_after_close_raises(self) -> None:
+        resp = HTTPResponse(BytesIO(b"hello\nworld\n"), preload_content=False)
+        resp.close()
+
+        with pytest.raises(ValueError, match="I/O operation on closed file."):
+            list(resp)
+
+    def test_stream_after_close_raises_when_not_auto_close(self) -> None:
+        resp = HTTPResponse(
+            BytesIO(b"hello\nworld\n"), preload_content=False, auto_close=False
+        )
+        resp.close()
+
+        with pytest.raises(ValueError, match="I/O operation on closed file."):
+            list(resp.stream(2))
+
+    def test_close_during_stream_raises_instead_of_truncating(self) -> None:
+        payload = b"".join(b"line%03d\n" % i for i in range(200))
+        resp = HTTPResponse(BytesIO(payload), preload_content=False)
+
+        consumed = b""
+        with pytest.raises(ValueError, match="I/O operation on closed file."):
+            for chunk in resp.stream(16, decode_content=False):
+                consumed += chunk
+                if len(consumed) >= 32:
+                    resp.close()
+
+        # The point of the raise: the caller stopped well short of the body and
+        # without it would have had no way to tell that from a complete read.
+        assert 0 < len(consumed) < len(payload)
+
+    def test_close_during_iter_raises_instead_of_truncating(self) -> None:
+        payload = b"".join(b"line%03d\n" % i for i in range(200))
+        resp = HTTPResponse(BytesIO(payload), preload_content=False)
+
+        lines = []
+        with pytest.raises(ValueError, match="I/O operation on closed file."):
+            for line in resp.stream(16, decode_content=False):
+                lines.append(line)
+                resp.close()
+
+        assert lines
+
+    def test_close_during_chunked_stream_raises(self) -> None:
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = MockChunkedEncodingResponse(  # type: ignore[assignment]
+            [b"foo", b"bar", b"baz"]
+        )
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked"},
+        )
+
+        seen = []
+        with pytest.raises(ValueError, match="I/O operation on closed file."):
+            for chunk in resp.stream(decode_content=False):
+                seen.append(chunk)
+                resp.close()
+
+        assert seen == [b"foo"]
+
+    def test_stream_to_completion_does_not_raise(self) -> None:
+        """auto_close closes the fp at EOF; that must not look like close()."""
+        payload = b"".join(b"line%03d\n" % i for i in range(200))
+
+        resp = HTTPResponse(BytesIO(payload), preload_content=False)
+        assert b"".join(resp.stream(16, decode_content=False)) == payload
+        assert resp.closed
+
+        resp = HTTPResponse(BytesIO(payload), preload_content=False)
+        assert b"".join(resp) == payload
+
+    def test_close_that_fails_partway_still_stops_iteration(self) -> None:
+        """A close() that raises has still been asked for by the caller.
+
+        Pins the ordering inside close(): the response must be marked closed
+        before anything that can raise, or a failed close() leaves a response
+        that goes on streaming a body the caller has abandoned.
+        """
+
+        class ExplodingBytesIO(BytesIO):
+            def close(self) -> None:
+                raise OSError("socket already gone")
+
+        resp = HTTPResponse(ExplodingBytesIO(b"a" * 100), preload_content=False)
+        resp.read(10)
+
+        with pytest.raises(OSError, match="socket already gone"):
+            resp.close()
+
+        with pytest.raises(ValueError, match="I/O operation on closed file."):
+            list(resp.stream(16, decode_content=False))
+
+    def test_stream_inside_with_block_does_not_raise(self) -> None:
+        payload = b"hello\nworld\n"
+        with HTTPResponse(BytesIO(payload), preload_content=False) as resp:
+            assert b"".join(resp.stream(2, decode_content=False)) == payload
+        assert resp.closed
+
     def test_read_chunked_zero_amt(self) -> None:
         r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
         r.fp = MockChunkedEncodingResponse([b"hello"])  # type: ignore[assignment]
