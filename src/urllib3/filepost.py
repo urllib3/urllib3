@@ -30,7 +30,7 @@ def iter_field_objects(fields: _TYPE_FIELDS) -> typing.Iterable[RequestField]:
     """
     Iterate over fields.
 
-    Supports list of (k, v) tuples and dicts, and lists of
+    Supports a list of (k, v) tuples and dicts, and lists of
     :class:`~urllib3.fields.RequestField`.
 
     """
