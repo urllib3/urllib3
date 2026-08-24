@@ -78,14 +78,22 @@ RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 # Starting the optional OWS match at the beginning of a whitespace run avoids
-# quadratic backtracking for long header values.
-_OBSOLETE_FOLD_RE = re.compile(r"(?:(?<![ \t])[ \t]+)?\r\n[ \t]+")
+# quadratic backtracking for long header values. http.client accepts responses
+# with bare-LF line endings, so a folded value can arrive with \n or \r rather
+# than \r\n; match all three forms.
+_OBSOLETE_FOLD_RE = re.compile(r"(?:(?<![ \t])[ \t]+)?(?:\r\n|\r|\n)[ \t]+")
 
 
 def _normalize_header_value(value: str) -> str:
-    if "\r\n" not in value:
+    if "\r" not in value and "\n" not in value:
         return value
-    return _OBSOLETE_FOLD_RE.sub(" ", value)
+    value = _OBSOLETE_FOLD_RE.sub(" ", value)
+    # Any CR/LF left after unfolding is not a valid obs-fold (e.g. a bare-LF
+    # server injecting a line break that isn't followed by whitespace). Replace
+    # it so no raw line break survives into the header value.
+    if "\r" in value or "\n" in value:
+        value = value.replace("\r", " ").replace("\n", " ")
+    return value
 
 
 def _normalize_header_values(

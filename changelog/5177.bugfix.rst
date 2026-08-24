@@ -1,0 +1,4 @@
+Fixed unfolding of obsolete line-folded response headers so raw line breaks no
+longer survive in header values when a server uses bare-LF line endings. A
+folded value such as ``Set-Cookie`` then arrives without a ``\r\n`` substring,
+which previously bypassed the unfolding and left a raw ``\n`` in the value.
