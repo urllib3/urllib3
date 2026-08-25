@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import datetime
-from test import DUMMY_POOL
 from unittest import mock
 
 import pytest
 
+from test import DUMMY_POOL
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
@@ -314,7 +314,7 @@ class TestRetry:
 
     def test_history(self) -> None:
         retry = Retry(total=10, allowed_methods=frozenset(["GET", "POST"]))
-        assert retry.history == tuple()
+        assert retry.history == ()
         connection_error = ConnectTimeoutError("conntimeout")
         retry = retry.increment("GET", "/test1", None, connection_error)
         test_history1 = (RequestHistory("GET", "/test1", connection_error, None, None),)
@@ -438,3 +438,13 @@ class TestRetry:
                 sleep_mock.assert_called_with(sleep_duration)
             else:
                 sleep_mock.assert_not_called()
+
+
+def test_retry_empty_allowed_methods() -> None:
+    retry = Retry(total=3, allowed_methods=set())
+    assert not retry._is_method_retryable("GET")
+    assert not retry._is_method_retryable("POST")
+
+    retry_none = Retry(total=3, allowed_methods=None)
+    assert retry_none._is_method_retryable("GET")
+    assert retry_none._is_method_retryable("POST")

@@ -265,25 +265,25 @@ class Retry:
         self.backoff_jitter = backoff_jitter
 
     def new(self, **kw: typing.Any) -> Self:
-        params = dict(
-            total=self.total,
-            connect=self.connect,
-            read=self.read,
-            redirect=self.redirect,
-            status=self.status,
-            other=self.other,
-            allowed_methods=self.allowed_methods,
-            status_forcelist=self.status_forcelist,
-            backoff_factor=self.backoff_factor,
-            backoff_max=self.backoff_max,
-            retry_after_max=self.retry_after_max,
-            raise_on_redirect=self.raise_on_redirect,
-            raise_on_status=self.raise_on_status,
-            history=self.history,
-            remove_headers_on_redirect=self.remove_headers_on_redirect,
-            respect_retry_after_header=self.respect_retry_after_header,
-            backoff_jitter=self.backoff_jitter,
-        )
+        params = {
+            "total": self.total,
+            "connect": self.connect,
+            "read": self.read,
+            "redirect": self.redirect,
+            "status": self.status,
+            "other": self.other,
+            "allowed_methods": self.allowed_methods,
+            "status_forcelist": self.status_forcelist,
+            "backoff_factor": self.backoff_factor,
+            "backoff_max": self.backoff_max,
+            "retry_after_max": self.retry_after_max,
+            "raise_on_redirect": self.raise_on_redirect,
+            "raise_on_status": self.raise_on_status,
+            "history": self.history,
+            "remove_headers_on_redirect": self.remove_headers_on_redirect,
+            "respect_retry_after_header": self.respect_retry_after_header,
+            "backoff_jitter": self.backoff_jitter,
+        }
 
         params.update(kw)
         return type(self)(**params)  # type: ignore[arg-type]
@@ -340,10 +340,7 @@ class Retry:
             seconds = retry_date - time.time()
 
         seconds = max(seconds, 0)
-
-        # Check the seconds do not exceed the specified maximum
-        if seconds > self.retry_after_max:
-            seconds = self.retry_after_max
+        seconds = min(seconds, self.retry_after_max)
 
         return seconds
 
@@ -405,8 +402,8 @@ class Retry:
         """Checks if a given HTTP method should be retried upon, depending if
         it is included in the allowed_methods
         """
-        if self.allowed_methods and method.upper() not in self.allowed_methods:
-            return False
+        if self.allowed_methods is not None:
+            return method.upper() in self.allowed_methods
         return True
 
     def is_retry(
