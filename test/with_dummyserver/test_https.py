@@ -151,6 +151,22 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             assert r.headers["server"] == f"hypercorn-{http_version}"
             assert r.data == b"Dummy server!"
 
+    def test_simple_stream(self, http_version: str) -> None:
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ca_certs=DEFAULT_CA,
+            ssl_minimum_version=self.tls_version(),
+        ) as https_pool:
+            r = https_pool.request("GET", "/", preload_content=False)
+            try:
+                assert r.status == 200
+                assert r.headers["server"] == f"hypercorn-{http_version}"
+                assert r.read(5) == b"Dummy"
+                assert r.read() == b" server!"
+            finally:
+                r.close()
+
     def test_default_port(self) -> None:
         conn = HTTPSConnection(self.host, port=None)
         assert conn.port == 443

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import io
 import re
 import threading
 import types
@@ -10,11 +11,11 @@ import h2.config
 import h2.connection
 import h2.events
 
-from .._base_connection import _TYPE_BODY
+from .._base_connection import _ResponseOptions, _TYPE_BODY
 from .._collections import HTTPHeaderDict
 from ..connection import HTTPSConnection, _get_default_user_agent
 from ..exceptions import ConnectionError
-from ..response import BaseHTTPResponse
+from ..response import BaseHTTPResponse, _READ_CHUNK_SIZE
 
 orig_HTTPSConnection = HTTPSConnection
 
@@ -227,44 +228,75 @@ class HTTP2Connection(HTTPSConnection):
     def getresponse(  # type: ignore[override]
         self,
     ) -> HTTP2Response:
+        if self._response_options is None:
+            raise ConnectionError("Request has not been sent.")
+
+        resp_options = self._response_options
+        self._response_options = None
+
         status = None
+        headers = HTTPHeaderDict()
         data = bytearray()
+        end_stream = False
         with self._h2_conn as conn:
-            end_stream = False
-            while not end_stream:
+            while status is None:
                 # TODO: Arbitrary read value.
-                if received_data := self.sock.recv(65535):
-                    events = conn.receive_data(received_data)
-                    for event in events:
-                        if isinstance(event, h2.events.ResponseReceived):
-                            headers = HTTPHeaderDict()
-                            for header, value in event.headers:
-                                if header == b":status":
-                                    status = int(value.decode())
-                                else:
-                                    headers.add(
-                                        header.decode("ascii"), value.decode("ascii")
-                                    )
+                received_data = self.sock.recv(65535)
+                if not received_data:
+                    raise ConnectionError("Connection closed before response headers.")
 
-                        elif isinstance(event, h2.events.DataReceived):
-                            data += event.data
-                            conn.acknowledge_received_data(
-                                event.flow_controlled_length, event.stream_id
-                            )
+                events = conn.receive_data(received_data)
+                for event in events:
+                    if isinstance(event, h2.events.ResponseReceived):
+                        for header, value in event.headers:
+                            if header == b":status":
+                                status = int(value.decode())
+                            else:
+                                headers.add(
+                                    header.decode("ascii"), value.decode("ascii")
+                                )
 
-                        elif isinstance(event, h2.events.StreamEnded):
+                    elif isinstance(event, h2.events.DataReceived):
+                        if event.stream_id != self._h2_stream:
+                            continue
+
+                        data += event.data
+                        conn.acknowledge_received_data(
+                            event.flow_controlled_length, event.stream_id
+                        )
+
+                    elif isinstance(event, h2.events.StreamEnded):
+                        if event.stream_id == self._h2_stream:
                             end_stream = True
+                        break
+
+                    stream_ended = getattr(event, "stream_ended", None)
+                    if (
+                        stream_ended is not None
+                        and stream_ended.stream_id == self._h2_stream
+                    ):
+                        end_stream = True
 
                 if data_to_send := conn.data_to_send():
                     self.sock.sendall(data_to_send)
 
         assert status is not None
-        return HTTP2Response(
+        body = _HTTP2DataReader(
+            self.sock,
+            self._h2_conn,
+            self._h2_stream,
+            data=bytes(data),
+            end_stream=end_stream,
+        )
+        response = HTTP2Response(
             status=status,
             headers=headers,
             request_url=self._request_url,
-            data=bytes(data),
+            body=body,
+            decode_content=resp_options.decode_content,
+            preload_content=resp_options.preload_content,
         )
+        return response
 
     def request(  # type: ignore[override]
         self,
@@ -286,6 +318,14 @@ class HTTP2Connection(HTTPSConnection):
 
         if self.sock is not None:
             self.sock.settimeout(self.timeout)
+
+        self._response_options = _ResponseOptions(
+            request_method=method,
+            request_url=url,
+            preload_content=preload_content,
+            decode_content=decode_content,
+            enforce_content_length=enforce_content_length,
+        )
 
         self.putrequest(method, url)
 
@@ -322,15 +362,97 @@ class HTTP2Connection(HTTPSConnection):
         super().close()
 
 
+class _HTTP2DataReader:
+    def __init__(
+        self,
+        sock: typing.Any,
+        h2_conn: _LockedObject[h2.connection.H2Connection],
+        stream_id: int | None,
+        *,
+        data: bytes = b"",
+        end_stream: bool = False,
+    ) -> None:
+        if stream_id is None:
+            raise ConnectionError("Response stream has not been initialized.")
+
+        self._sock = sock
+        self._h2_conn = h2_conn
+        self._stream_id = stream_id
+        self._buffer = bytearray(data)
+        self._closed = end_stream
+
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
+    def _receive_more_data(self) -> None:
+        if self._closed:
+            return
+
+        with self._h2_conn as conn:
+            received_data = self._sock.recv(65535)
+            if not received_data:
+                self._closed = True
+                return
+
+            events = conn.receive_data(received_data)
+            for event in events:
+                if (
+                    isinstance(event, h2.events.DataReceived)
+                    and event.stream_id == self._stream_id
+                ):
+                    self._buffer += event.data
+                    conn.acknowledge_received_data(
+                        event.flow_controlled_length, event.stream_id
+                    )
+                elif (
+                    isinstance(event, h2.events.StreamEnded)
+                    and event.stream_id == self._stream_id
+                ):
+                    self._closed = True
+
+                stream_ended = getattr(event, "stream_ended", None)
+                if (
+                    stream_ended is not None
+                    and stream_ended.stream_id == self._stream_id
+                ):
+                    self._closed = True
+
+            if data_to_send := conn.data_to_send():
+                self._sock.sendall(data_to_send)
+
+    def read(self, amt: int | None = None) -> bytes:
+        if amt == 0:
+            return b""
+
+        while not self._closed and (amt is None or len(self._buffer) < amt):
+            self._receive_more_data()
+
+        if amt is None:
+            data = bytes(self._buffer)
+            self._buffer.clear()
+            return data
+
+        data = bytes(self._buffer[:amt])
+        del self._buffer[:amt]
+        return data
+
+    def read1(self, amt: int | None = None) -> bytes:
+        return self.read(amt)
+
+    def close(self) -> None:
+        self._closed = True
+
+
 class HTTP2Response(BaseHTTPResponse):
-    # TODO: This is a woefully incomplete response object, but works for non-streaming.
     def __init__(
         self,
         status: int,
         headers: HTTPHeaderDict,
         request_url: str,
-        data: bytes,
-        decode_content: bool = False,  # TODO: support decoding
+        body: _HTTP2DataReader,
+        decode_content: bool = False,
+        preload_content: bool = True,
     ) -> None:
         super().__init__(
             status=status,
@@ -343,15 +465,81 @@ class HTTP2Response(BaseHTTPResponse):
             decode_content=decode_content,
             request_url=request_url,
         )
-        self._data = data
-        self.length_remaining = 0
+        self._body: bytes | None = None
+        self._fp = body
+        self._connection: HTTPSConnection | None = None
+        self._pool: typing.Any = None
+        self.length_remaining = self._init_length()
+
+        if preload_content:
+            self._body = self.read(decode_content=decode_content)
+
+    def _init_length(self) -> int | None:
+        content_length = self.headers.get("content-length")
+        if content_length is None:
+            return None
+
+        try:
+            length = int(content_length)
+        except ValueError:
+            return None
+
+        return max(length, 0)
 
     @property
     def data(self) -> bytes:
-        return self._data
+        if self._body is None:
+            self._body = self.read(cache_content=True)
+        return self._body
+
+    def read(
+        self,
+        amt: int | None = None,
+        decode_content: bool | None = None,
+        cache_content: bool = False,
+    ) -> bytes:
+        if self._body is not None:
+            if amt is None:
+                return self._body
+            return self._body[:amt]
+
+        if amt is not None and amt < 0:
+            amt = None
+
+        data = self._fp.read(amt)
+        if self.length_remaining is not None:
+            self.length_remaining -= len(data)
+
+        if cache_content and amt is None:
+            self._body = data
+
+        return data
+
+    def read1(
+        self,
+        amt: int | None = None,
+        decode_content: bool | None = None,
+    ) -> bytes:
+        return self.read(amt=amt, decode_content=decode_content)
+
+    def stream(
+        self, amt: int | None = _READ_CHUNK_SIZE, decode_content: bool | None = None
+    ) -> typing.Generator[bytes]:
+        if amt == 0:
+            return
+
+        while True:
+            data = self.read(amt=amt, decode_content=decode_content)
+            if not data:
+                break
+            yield data
 
     def get_redirect_location(self) -> None:
         return None
 
     def close(self) -> None:
-        pass
+        self._fp.close()
+        if self._connection:
+            self._connection.close()
+            self._connection = None
+        io.IOBase.close(self)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import socket
 from unittest import mock
 
+import h2.events
 import pytest
 
 from urllib3.connection import _get_default_user_agent
@@ -17,6 +18,9 @@ from urllib3.http2.connection import (
 
 
 class TestHTTP2Connection:
+    def make_h2_event(self, event_type: type[object], **kwargs: object) -> object:
+        return event_type(**kwargs)
+
     def test__is_legal_header_name(self) -> None:
         assert _is_legal_header_name(b"foo"), "foo"
         assert _is_legal_header_name(b"foo-bar"), "foo-bar"
@@ -384,3 +388,122 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+    def test_response_preloads_http2_body(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(return_value=b"response-bytes"),
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        conn._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[method-assign]
+            return_value=[
+                self.make_h2_event(
+                    h2.events.ResponseReceived,
+                    headers=[(b":status", b"200"), (b"content-length", b"11")],
+                    stream_id=1,
+                ),
+                self.make_h2_event(
+                    h2.events.DataReceived,
+                    data=b"hello world",
+                    flow_controlled_length=11,
+                    stream_id=1,
+                ),
+                self.make_h2_event(h2.events.StreamEnded, stream_id=1),
+            ]
+        )
+
+        conn.request("GET", "/", preload_content=True)
+        response = conn.getresponse()
+
+        assert response.status == 200
+        assert response.data == b"hello world"
+        assert response.read() == b"hello world"
+
+    def test_response_read_streams_http2_body(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(side_effect=[b"headers", b"first", b"second"]),
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        conn._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[method-assign]
+            side_effect=[
+                [
+                    self.make_h2_event(
+                        h2.events.ResponseReceived,
+                        headers=[(b":status", b"200"), (b"content-length", b"10")],
+                        stream_id=1,
+                    )
+                ],
+                [
+                    self.make_h2_event(
+                        h2.events.DataReceived,
+                        data=b"hello",
+                        flow_controlled_length=5,
+                        stream_id=1,
+                    )
+                ],
+                [
+                    self.make_h2_event(
+                        h2.events.DataReceived,
+                        data=b"world",
+                        flow_controlled_length=5,
+                        stream_id=1,
+                    ),
+                    self.make_h2_event(h2.events.StreamEnded, stream_id=1),
+                ],
+            ]
+        )
+
+        conn.request("GET", "/", preload_content=False)
+        response = conn.getresponse()
+
+        assert response.read(3) == b"hel"
+        assert response.read(4) == b"lowo"
+        assert response.read() == b"rld"
+        assert response.length_remaining == 0
+
+    def test_response_stream_iterates_http2_body(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(side_effect=[b"headers", b"first", b"second"]),
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        conn._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[method-assign]
+            side_effect=[
+                [
+                    self.make_h2_event(
+                        h2.events.ResponseReceived,
+                        headers=[(b":status", b"200")],
+                        stream_id=1,
+                    )
+                ],
+                [
+                    self.make_h2_event(
+                        h2.events.DataReceived,
+                        data=b"abc",
+                        flow_controlled_length=3,
+                        stream_id=1,
+                    )
+                ],
+                [
+                    self.make_h2_event(
+                        h2.events.DataReceived,
+                        data=b"def",
+                        flow_controlled_length=3,
+                        stream_id=1,
+                    ),
+                    self.make_h2_event(h2.events.StreamEnded, stream_id=1),
+                ],
+            ]
+        )
+
+        conn.request("GET", "/", preload_content=False)
+        response = conn.getresponse()
+
+        assert list(response.stream(amt=2)) == [b"ab", b"cd", b"ef"]
