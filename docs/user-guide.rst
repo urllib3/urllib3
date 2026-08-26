@@ -626,8 +626,34 @@ specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
         retries=urllib3.Retry(5, redirect=2)
     )
 
-You still override this pool-level retry policy by specifying ``retries`` to
+You can still override this pool-level retry policy by specifying ``retries`` to
 :meth:`~urllib3.PoolManager.request`.
+
+Configuring Exponential Backoff
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, :class:`~urllib3.util.Retry` does not sleep between retry attempts
+(``backoff_factor=0``). In production systems, retrying immediately can overwhelm
+a recovering server or quickly exhaust API rate limits.
+
+It is recommended to set a non-zero ``backoff_factor`` (typically between ``0.5``
+and ``1.0`` seconds) to introduce exponential delays between retries:
+
+.. code-block:: python
+
+    import urllib3
+
+    # Retries wait 0.0s (immediate 2nd attempt), 1.0s, 2.0s, 4.0s...
+    retries = urllib3.Retry(
+        total=3,
+        backoff_factor=0.5,
+        backoff_jitter=0.5,
+        status_forcelist=[429, 500, 502, 503, 504],
+    )
+    http = urllib3.PoolManager(retries=retries)
+
+Adding ``backoff_jitter`` introduces random variance to avoid the "thundering
+herd" problem where many clients retry in lockstep against a server.
 
 Errors & Exceptions
 -------------------
