@@ -13,7 +13,7 @@ import h2.events
 from .._base_connection import _TYPE_BODY
 from .._collections import HTTPHeaderDict
 from ..connection import HTTPSConnection, _get_default_user_agent
-from ..exceptions import ConnectionError
+from ..exceptions import ConnectionError, ProtocolError
 from ..response import BaseHTTPResponse
 
 orig_HTTPSConnection = HTTPSConnection
@@ -49,6 +49,27 @@ def _is_illegal_header_value(value: bytes) -> bool:
     0x20 or 0x09)." (https://httpwg.org/specs/rfc9113.html#n-field-validity)
     """
     return bool(RE_IS_ILLEGAL_HEADER_VALUE.search(value))
+
+
+def _format_h2_error(error_code: object) -> str:
+    if hasattr(error_code, "name") and hasattr(error_code, "value"):
+        return f"{error_code.name} ({error_code.value})"
+    return str(error_code)
+
+
+def _raise_for_h2_error_event(event: object) -> None:
+    if isinstance(event, h2.events.StreamReset):
+        raise ProtocolError(
+            "HTTP/2 stream was reset by the peer: "
+            f"stream_id={event.stream_id}, error_code="
+            f"{_format_h2_error(event.error_code)}"
+        )
+
+    if isinstance(event, h2.events.ConnectionTerminated):
+        raise ProtocolError(
+            "HTTP/2 connection was terminated by the peer: "
+            f"error_code={_format_h2_error(event.error_code)}"
+        )
 
 
 class _LockedObject(typing.Generic[T]):
@@ -236,6 +257,13 @@ class HTTP2Connection(HTTPSConnection):
                 if received_data := self.sock.recv(65535):
                     events = conn.receive_data(received_data)
                     for event in events:
+                        try:
+                            _raise_for_h2_error_event(event)
+                        except ProtocolError:
+                            if isinstance(event, h2.events.ConnectionTerminated):
+                                self.close()
+                            raise
+
                         if isinstance(event, h2.events.ResponseReceived):
                             headers = HTTPHeaderDict()
                             for header, value in event.headers:

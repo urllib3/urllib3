@@ -3,10 +3,11 @@ from __future__ import annotations
 import socket
 from unittest import mock
 
+import h2.events
 import pytest
 
 from urllib3.connection import _get_default_user_agent
-from urllib3.exceptions import ConnectionError
+from urllib3.exceptions import ConnectionError, ProtocolError
 from urllib3.http2.connection import (
     HTTP2Connection,
     _is_illegal_header_value,
@@ -17,6 +18,15 @@ from urllib3.http2.connection import (
 
 
 class TestHTTP2Connection:
+    def make_h2_event(self, event_type: type[object], **kwargs: object) -> object:
+        try:
+            return event_type(**kwargs)
+        except TypeError:
+            event = event_type()
+            for key, value in kwargs.items():
+                setattr(event, key, value)
+            return event
+
     def test__is_legal_header_name(self) -> None:
         assert _is_legal_header_name(b"foo"), "foo"
         assert _is_legal_header_name(b"foo-bar"), "foo-bar"
@@ -384,3 +394,50 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+    def test_getresponse_raises_on_http2_stream_reset(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(return_value=b"reset"),
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        conn._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[method-assign]
+            return_value=[
+                self.make_h2_event(
+                    h2.events.StreamReset,
+                    stream_id=1,
+                    error_code=8,
+                )
+            ]
+        )
+
+        conn.request("GET", "/", preload_content=False)
+
+        with pytest.raises(ProtocolError, match="HTTP/2 stream was reset"):
+            conn.getresponse()
+
+    def test_getresponse_raises_on_http2_connection_terminated(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(return_value=b"terminated"),
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"")  # type: ignore[method-assign]
+        conn._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[method-assign]
+            return_value=[
+                self.make_h2_event(
+                    h2.events.ConnectionTerminated,
+                    error_code=1,
+                )
+            ]
+        )
+        conn.close = mock.Mock(return_value=None)  # type: ignore[method-assign]
+
+        conn.request("GET", "/", preload_content=False)
+
+        with pytest.raises(ProtocolError, match="HTTP/2 connection was terminated"):
+            conn.getresponse()
+        conn.close.assert_called_once_with()
