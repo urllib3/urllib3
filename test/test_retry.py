@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import typing
 from test import DUMMY_POOL
 from unittest import mock
 
@@ -263,7 +264,7 @@ class TestRetry:
         assert not retry.is_retry("GET", status_code=418)
 
     def test_allowed_methods_with_status_forcelist(self) -> None:
-        # Falsey allowed_methods means to retry on any method.
+        # None allowed_methods means to retry on any method.
         retry = Retry(status_forcelist=[500], allowed_methods=None)
         assert retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
@@ -272,6 +273,16 @@ class TestRetry:
         retry = Retry(status_forcelist=[500], allowed_methods=["POST"])
         assert not retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
+
+    @pytest.mark.parametrize("allowed_methods", [set(), [], frozenset()])
+    def test_empty_allowed_methods(
+        self, allowed_methods: typing.Collection[str]
+    ) -> None:
+        # An empty container is an allowlist with no members, so no method
+        # is retryable. It must not be conflated with None (retry any method).
+        retry = Retry(status_forcelist=[500], allowed_methods=allowed_methods)
+        assert not retry.is_retry("GET", status_code=500)
+        assert not retry.is_retry("POST", status_code=500)
 
     def test_exhausted(self) -> None:
         assert not Retry(0).is_exhausted()

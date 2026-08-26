@@ -1,0 +1,3 @@
+Fixed ``Retry`` to treat an empty ``allowed_methods`` container as disabling
+method-based retries instead of behaving like ``None`` and retrying on every
+method, which previously allowed retries on non-idempotent verbs such as POST.

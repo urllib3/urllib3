@@ -131,7 +131,8 @@ class Retry:
         idempotent (multiple requests with the same parameters end with the
         same state). See :attr:`Retry.DEFAULT_ALLOWED_METHODS`.
 
-        Set to a ``None`` value to retry on any verb.
+        Set to a ``None`` value to retry on any verb. An empty container
+        disables method-based retries entirely.
 
     :param Collection status_forcelist:
         A set of integer HTTP status codes that we should force a retry on.
@@ -405,7 +406,10 @@ class Retry:
         """Checks if a given HTTP method should be retried upon, depending if
         it is included in the allowed_methods
         """
-        if self.allowed_methods and method.upper() not in self.allowed_methods:
+        if (
+            self.allowed_methods is not None
+            and method.upper() not in self.allowed_methods
+        ):
             return False
         return True
 
