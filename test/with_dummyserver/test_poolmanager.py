@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import io
 import typing
 from test import LONG_TIMEOUT
 from unittest import mock
@@ -14,9 +15,20 @@ from dummyserver.testcase import (
 )
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
+from urllib3.exceptions import MaxRetryError, UnrewindableBodyError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
+
+
+class _TellOnlyBody:
+    def __init__(self, data: bytes) -> None:
+        self._body = io.BytesIO(data)
+
+    def read(self, size: int = -1) -> bytes:
+        return self._body.read(size)
+
+    def tell(self) -> int:
+        return self._body.tell()
 
 
 class TestPoolManager(HypercornDummyServerTestCase):
@@ -376,6 +388,61 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r._pool.num_requests == 2
             assert r._pool.num_connections == 1
             assert len(http.pools) == 1
+
+    def test_non_redirecting_tell_only_file_body(self) -> None:
+        data = b"PAYLOAD-DATA"
+        body = _TellOnlyBody(data)
+        with PoolManager() as http:
+            response = http.request(
+                "PUT",
+                f"{self.base_url}/echo",
+                body=body,  # type: ignore[arg-type]
+            )
+
+        assert response.status == 200
+        assert response.data == data
+
+    @pytest.mark.parametrize("status", (307, 308))
+    def test_redirect_rewinds_file_body(self, status: int) -> None:
+        data = b"PAYLOAD-DATA"
+        uploaded_file = io.BytesIO(b"prefix" + data)
+        uploaded_file.seek(len(b"prefix"))
+        with PoolManager() as http:
+            response = http.request(
+                "PUT",
+                f"{self.base_url}/redirect?target=/echo&status={status}",
+                body=uploaded_file,
+                retries=Retry(total=2, redirect=2),
+            )
+
+        assert response.status == 200
+        assert response.data == data
+
+    def test_redirect_tell_only_file_body_fails_after_first_request(self) -> None:
+        data = b"PAYLOAD-DATA"
+        body = _TellOnlyBody(data)
+        with PoolManager() as http:
+            with pytest.raises(ValueError, match="body_pos must be of type integer"):
+                http.request(
+                    "PUT",
+                    f"{self.base_url}/redirect?target=/echo&status=307",
+                    body=body,  # type: ignore[arg-type]
+                )
+
+        assert body.tell() == len(data)
+
+    def test_redirect_with_failed_tell(self) -> None:
+        class BadTellObject(io.BytesIO):
+            def tell(self) -> typing.NoReturn:
+                raise OSError
+
+        with PoolManager() as http:
+            with pytest.raises(UnrewindableBodyError):
+                http.request(
+                    "PUT",
+                    f"{self.base_url}/redirect?target=/echo&status=307",
+                    body=BadTellObject(b"PAYLOAD-DATA"),
+                )
 
     def test_303_redirect_makes_request_lose_body(self) -> None:
         with PoolManager() as http:

@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import set_file_position
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -453,6 +454,14 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        body_pos = kw.pop("body_pos", None)
+        if body_pos is None:
+            # Keep this position for a possible PoolManager redirect, but let the
+            # connection pool handle the first request without rewinding it.
+            body_pos = set_file_position(kw.get("body"), None)
+        else:
+            kw["body_pos"] = body_pos
+
         if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
         else:
@@ -470,6 +479,7 @@ class PoolManager(RequestMethods):
             method = "GET"
             # And lose the body not to transfer anything sensitive.
             kw["body"] = None
+            body_pos = None
             kw["headers"] = HTTPHeaderDict(kw["headers"])._prepare_for_method_change()
 
         retries = kw.get("retries", response.retries)
@@ -498,6 +508,7 @@ class PoolManager(RequestMethods):
 
         kw["retries"] = retries
         kw["redirect"] = redirect
+        kw["body_pos"] = body_pos
 
         log.info("Redirecting %s -> %s", url, redirect_location)
 
