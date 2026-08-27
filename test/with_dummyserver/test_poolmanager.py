@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import io
 import typing
 from test import LONG_TIMEOUT
 from unittest import mock
@@ -662,6 +663,48 @@ class TestPoolManager(HypercornDummyServerTestCase):
         r = request("POST", f"{self.base_url}/echo", body=b"test")
         assert r.status == 200
         assert r.data == b"test"
+
+    def test_redirect_resends_file_like_body(self) -> None:
+        # Issue #5181: a file-like body was sent empty on a body-preserving
+        # redirect (301/307/308) because PoolManager did not preserve the
+        # recorded body position across redirect hops.
+        data = b"PAYLOAD-DATA"
+        body = io.BytesIO(data)
+        url = (
+            f"{self.base_url}/redirect"
+            f"?target={self.base_url}/echo&status=307"
+        )
+        with PoolManager() as http:
+            response = http.request(
+                "PUT",
+                url,
+                body=body,
+                headers={"Content-Length": str(len(data))},
+                retries=Retry(total=1, redirect=1),
+            )
+        assert response.status == 200
+        assert response.data == data
+
+    def test_redirect_303_drops_file_like_body(self) -> None:
+        # A 303 redirect must not resend the request body (RFC 9110 15.4.4),
+        # even when the body is a seekable file-like object.
+        data = b"PAYLOAD-DATA"
+        body = io.BytesIO(data)
+        url = (
+            f"{self.base_url}/redirect"
+            f"?target={self.base_url}/echo&status=303"
+        )
+        with PoolManager() as http:
+            response = http.request(
+                "PUT",
+                url,
+                body=body,
+                headers={"Content-Length": str(len(data))},
+                retries=Retry(total=1, redirect=1),
+            )
+        assert response.status == 200
+        # 303 changes the method to GET, which does not carry a body.
+        assert response.data == b""
 
     def test_top_level_request_with_preload_content(self) -> None:
         r = request("GET", f"{self.base_url}/echo", preload_content=False)
