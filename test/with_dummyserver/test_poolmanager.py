@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import io
 import typing
 from test import LONG_TIMEOUT
 from unittest import mock
@@ -662,6 +663,23 @@ class TestPoolManager(HypercornDummyServerTestCase):
         r = request("POST", f"{self.base_url}/echo", body=b"test")
         assert r.status == 200
         assert r.data == b"test"
+
+    def test_file_body_is_rewound_on_redirect(self) -> None:
+        data = b"PAYLOAD-DATA"
+        body = io.BytesIO(data)
+        url = f"{self.base_url}/redirect?target={self.base_url}/echo&status=307"
+
+        with PoolManager() as http:
+            response = http.urlopen(
+                "PUT",
+                url,
+                body=body,
+                headers={"Content-Length": str(len(data))},
+                retries=Retry(total=1, redirect=1),
+            )
+
+        assert response.status == 200
+        assert response.data == data
 
     def test_top_level_request_with_preload_content(self) -> None:
         r = request("GET", f"{self.base_url}/echo", preload_content=False)

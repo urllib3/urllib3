@@ -1,0 +1,1 @@
+Fixed ``PoolManager`` redirects to resend file-like request bodies.

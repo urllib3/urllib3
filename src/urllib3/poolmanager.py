@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import set_file_position
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -447,6 +448,7 @@ class PoolManager(RequestMethods):
 
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
+        kw["body_pos"] = set_file_position(kw.get("body"), kw.get("body_pos"))
         kw["assert_same_host"] = False
         kw["redirect"] = False
 
@@ -470,6 +472,7 @@ class PoolManager(RequestMethods):
             method = "GET"
             # And lose the body not to transfer anything sensitive.
             kw["body"] = None
+            kw["body_pos"] = None
             kw["headers"] = HTTPHeaderDict(kw["headers"])._prepare_for_method_change()
 
         retries = kw.get("retries", response.retries)
