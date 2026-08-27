@@ -514,3 +514,51 @@ class TestPoolManager:
 
         # Connection should be closed, because reference to pool_1 is gone.
         assert conn_queue.qsize() == 0
+
+    def test_redirect_file_like_body_pos_preserved(self) -> None:
+        """Verify that PoolManager preserves body_pos across cross-pool redirects (issue #5181)."""
+        import io
+        from urllib3.response import HTTPResponse
+
+        p = PoolManager()
+        body = io.BytesIO(b"PAYLOAD-DATA")
+
+        pool1 = MagicMock()
+        resp1 = HTTPResponse(
+            status=307,
+            headers={"Location": "http://host2/target"},
+            preload_content=False,
+        )
+
+        def fake_urlopen1(*args: typing.Any, **kwargs: typing.Any) -> HTTPResponse:
+            assert kwargs.get("body_pos") == 0
+            body.read()  # advances stream to EOF
+            return resp1
+
+        pool1.urlopen.side_effect = fake_urlopen1
+        pool1.is_same_host.return_value = False
+
+        pool2 = MagicMock()
+        resp2 = HTTPResponse(status=200, body=b"OK", preload_content=False)
+        received_body_pos = None
+        received_stream_pos = None
+
+        def fake_urlopen2(*args: typing.Any, **kwargs: typing.Any) -> HTTPResponse:
+            nonlocal received_body_pos, received_stream_pos
+            received_body_pos = kwargs.get("body_pos")
+            from urllib3.util.request import set_file_position
+
+            set_file_position(kwargs.get("body"), kwargs.get("body_pos"))
+            received_stream_pos = body.tell()
+            return resp2
+
+        pool2.urlopen.side_effect = fake_urlopen2
+
+        with patch.object(p, "connection_from_host") as mock_conn:
+            mock_conn.side_effect = [pool1, pool2]
+            res = p.urlopen("PUT", "http://host1/start", body=body)
+
+        assert res.status == 200
+        assert received_body_pos == 0
+        assert received_stream_pos == 0
+
