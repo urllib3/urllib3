@@ -776,7 +776,7 @@ class TestConnectionPool:
 
         The non-absolute-form branch above never collapses ../. segments
         in a path, so the absolute-form branch used for proxied requests
-        must not either -- otherwise the request sent on the wire no
+        must not either, since otherwise the request sent on the wire no
         longer matches the URL the caller asked for.
         """
         with HTTPConnectionPool(host="localhost", port=80) as pool:
