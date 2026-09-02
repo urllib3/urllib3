@@ -94,10 +94,27 @@ def _can_resolve(host: str) -> bool:
 RESOLVES_LOCALHOST_FQDN = _can_resolve("localhost.")
 
 
+def _filter_category_matches(category: object, cls: type[Warning]) -> bool:
+    """Return True if a warnings.filters category covers ``cls``.
+
+    CPython may store a tuple of types as the category (for example
+    ``codeop._maybe_compile`` inserts ``(SyntaxWarning, DeprecationWarning)``).
+    ``issubclass`` only accepts a class, so tuple entries must be expanded.
+    """
+    categories: tuple[object, ...]
+    if isinstance(category, tuple):
+        categories = category
+    else:
+        categories = (category,)
+    return any(
+        isinstance(item, type) and issubclass(item, cls) for item in categories
+    )
+
+
 def clear_warnings(cls: type[Warning] = HTTPWarning) -> None:
     new_filters = []
     for f in warnings.filters:
-        if issubclass(f[2], cls):
+        if _filter_category_matches(f[2], cls):
             continue
         new_filters.append(f)
     warnings.filters[:] = new_filters  # type: ignore[index]
