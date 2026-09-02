@@ -1,0 +1,1 @@
+Fixed test failures with pytest >= 9.1.
