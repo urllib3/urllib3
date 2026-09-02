@@ -867,7 +867,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not conn:
             # Try again
             log.warning(
-                "Retrying (%r) after connection broken by '%r': %s", retries, err, url
+                "Retrying (%r) after connection broken by '%r': %s%s",
+                retries,
+                err,
+                self.host,
+                url if str(url).startswith("/") else f"/{url}",
             )
             return self.urlopen(
                 method,
