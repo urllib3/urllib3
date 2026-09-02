@@ -603,9 +603,13 @@ def send_jspi_request(
     )
     if streaming:
         # get via inputstream
-        if response_js.body is not None:
+        # Pyodide maps JS `null` to a JsNull object, not Python None, so a
+        # body-less fetch response fails `is not None` and then blows up on
+        # .getReader() (see #3723). Treat any body without getReader as empty.
+        body_js = getattr(response_js, "body", None)
+        if body_js is not None and hasattr(body_js, "getReader"):
             # get a reader from the fetch response
-            body_stream_js = response_js.body.getReader()
+            body_stream_js = body_js.getReader()
             body = _JSPIReadStream(
                 body_stream_js, timeout, request, response, js_abort_controller
             )
