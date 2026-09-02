@@ -94,10 +94,27 @@ def _can_resolve(host: str) -> bool:
 RESOLVES_LOCALHOST_FQDN = _can_resolve("localhost.")
 
 
+def _filter_category_is_cls(category: object, cls: type[Warning]) -> bool:
+    """Return True if a warnings.filter category matches ``cls``.
+
+    ``warnings.simplefilter`` accepts a tuple of warning types (see
+    ``codeop._maybe_compile``). ``issubclass`` then iterates the tuple, but
+    ``issubclass(the_tuple, cls)`` itself raises ``TypeError``.
+    """
+    if isinstance(category, tuple):
+        return any(
+            isinstance(item, type) and issubclass(item, cls) for item in category
+        )
+    try:
+        return issubclass(category, cls)  # type: ignore[arg-type]
+    except TypeError:
+        return False
+
+
 def clear_warnings(cls: type[Warning] = HTTPWarning) -> None:
     new_filters = []
     for f in warnings.filters:
-        if issubclass(f[2], cls):
+        if _filter_category_is_cls(f[2], cls):
             continue
         new_filters.append(f)
     warnings.filters[:] = new_filters  # type: ignore[index]
