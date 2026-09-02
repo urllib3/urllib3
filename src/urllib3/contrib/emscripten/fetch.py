@@ -603,9 +603,12 @@ def send_jspi_request(
     )
     if streaming:
         # get via inputstream
-        if response_js.body is not None:
+        # Pyodide converts JS null to JsNull, which is not Python None and has
+        # no getReader(). See https://github.com/urllib3/urllib3/issues/3723
+        body_js = response_js.body
+        if body_js is not None and hasattr(body_js, "getReader"):
             # get a reader from the fetch response
-            body_stream_js = response_js.body.getReader()
+            body_stream_js = body_js.getReader()
             body = _JSPIReadStream(
                 body_stream_js, timeout, request, response, js_abort_controller
             )

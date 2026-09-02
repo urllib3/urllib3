@@ -1,0 +1,1 @@
+Fixed an ``AttributeError`` in the Emscripten fetch backend when a streaming response body is JavaScript ``null`` (Pyodide ``JsNull``).
