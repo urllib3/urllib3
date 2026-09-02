@@ -97,7 +97,13 @@ RESOLVES_LOCALHOST_FQDN = _can_resolve("localhost.")
 def clear_warnings(cls: type[Warning] = HTTPWarning) -> None:
     new_filters = []
     for f in warnings.filters:
-        if issubclass(f[2], cls):
+        # Filter categories are usually a class, but can be a tuple of
+        # classes (e.g. warnings.simplefilter("ignore", (SyntaxWarning, DeprecationWarning))
+        # as used by codeop._maybe_compile). issubclass() only accepts a
+        # class as its first argument.
+        category = f[2]
+        categories = category if isinstance(category, tuple) else (category,)
+        if any(isinstance(c, type) and issubclass(c, cls) for c in categories):
             continue
         new_filters.append(f)
     warnings.filters[:] = new_filters  # type: ignore[index]
