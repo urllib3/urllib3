@@ -36,6 +36,12 @@ ValidHTTPHeaderSource = typing.Union[
 ]
 
 
+def _normalize_header_value(value: str | bytes) -> str:
+    if isinstance(value, bytes):
+        return value.decode("latin-1")
+    return value
+
+
 class _Sentinel(Enum):
     not_passed = auto()
 
@@ -252,6 +258,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
+        val = _normalize_header_value(val)
         self._container[key.lower()] = [key, val]
 
     def __getitem__(self, key: str) -> str:
@@ -325,6 +332,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
+        val = _normalize_header_value(val)
         key_lower = key.lower()
         new_vals = [key, val]
         # Keep the common case aka no item present as fast as possible
