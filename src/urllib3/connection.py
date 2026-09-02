@@ -604,6 +604,29 @@ class HTTPSConnection(HTTPConnection):
     """
     Many of the parameters to this constructor are passed to the underlying SSL
     socket by means of :py:func:`urllib3.util.ssl_wrap_socket`.
+
+    Hostname and certificate identity are controlled by two optional
+    constructor arguments that autodoc previously listed without explaining
+    when to use them:
+
+    :param assert_hostname:
+        Hostname (or IP) expected in the peer certificate. Defaults to
+        ``None``, which verifies against the connection ``host``. Pass a
+        different string when connecting by IP but the certificate is issued
+        to a DNS name (or vice versa). Pass ``False`` to skip hostname
+        checking entirely; the certificate is still validated against the
+        trust store unless ``cert_reqs`` is ``ssl.CERT_NONE``.
+    :type assert_hostname: str or False or None
+    :param assert_fingerprint:
+        Hex-encoded MD5, SHA-1, or SHA-256 fingerprint of the peer
+        certificate (colons optional). When set, urllib3 checks the
+        fingerprint *instead of* the hostname: a matching fingerprint is
+        treated as verified even if the SAN/CN would not match
+        ``assert_hostname``. Use this for certificate pinning, or when the
+        peer presents a self-signed cert you trust by hash rather than by
+        CA. Mutually exclusive in effect with hostname checking — if both
+        are given, the fingerprint wins.
+    :type assert_fingerprint: str or None
     """
 
     default_port = port_by_scheme["https"]  # type: ignore[misc]
