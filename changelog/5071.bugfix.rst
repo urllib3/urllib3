@@ -1,0 +1,2 @@
+Fixed port-zero handling to avoid treating explicit :0 values as the default 80
+or 443 ports in URL parsing, pool selection, and proxy configuration.

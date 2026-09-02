@@ -1,0 +1,3 @@
+Fixed ``HTTPConnectionPool.urlopen`` raising a misleading ``FullPoolError``
+instead of ``ValueError`` when called with an invalid ``timeout`` argument on
+a pool created with ``block=True``.
