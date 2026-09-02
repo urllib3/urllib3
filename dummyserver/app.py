@@ -392,7 +392,7 @@ def _get_pyodide_template(py_file: str) -> bytes | None:
     # before anything else
     if py_file == "webworker_dev.js":
         return b"""
-            importScripts("./pyodide.js");
+            import { loadPyodide } from "./pyodide.mjs";
 
             onmessage = async function (e) {
                 try {

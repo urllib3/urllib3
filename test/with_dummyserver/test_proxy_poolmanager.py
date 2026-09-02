@@ -10,6 +10,7 @@ import shutil
 import socket
 import ssl
 import tempfile
+import typing
 from test import LONG_TIMEOUT, SHORT_TIMEOUT, resolvesLocalhostFQDN, withPyOpenSSL
 from test.conftest import ServerConfig
 
@@ -24,7 +25,7 @@ from dummyserver.testcase import (
 )
 from urllib3 import HTTPResponse
 from urllib3._collections import HTTPHeaderDict
-from urllib3.connection import VerifiedHTTPSConnection
+from urllib3.connection import HTTPSConnection, VerifiedHTTPSConnection
 from urllib3.connectionpool import connection_from_url
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -113,6 +114,13 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert r.status == 200
             assert_is_verified(https, proxy=True, target=False)
 
+    def test_is_verified_https_proxy_to_http_target_without_proxy_config(self) -> None:
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            https.connection_pool_kw["_proxy_config"] = None
+            r = https.request("GET", f"{self.http_url}/")
+            assert r.status == 200
+            assert_is_verified(https, proxy=True, target=False)
+
     def test_is_verified_https_proxy_to_https_target(self) -> None:
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", f"{self.https_url}/")
@@ -144,6 +152,18 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert r.status == 200
 
     @withPyOpenSSL
+    def test_https_proxy_with_proxy_ssl_context_pyopenssl(self) -> None:
+        proxy_ssl_context = create_urllib3_context()
+        proxy_ssl_context.load_verify_locations(DEFAULT_CA)
+
+        with proxy_from_url(
+            self.https_proxy_url,
+            proxy_ssl_context=proxy_ssl_context,
+        ) as https:
+            response = https.request("GET", f"{self.http_url}/")
+            assert response.status == 200
+
+    @withPyOpenSSL
     def test_https_proxy_pyopenssl_not_supported(self) -> None:
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", f"{self.http_url}/")
@@ -165,6 +185,43 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
 
             r = https.request("GET", f"{self.https_url}/")
             assert r.status == 200
+
+    @requires_network()
+    @pytest.mark.parametrize(
+        "proxy_ssl_context_kw",
+        [
+            ("ssl_context",),
+            ("proxy_ssl_context",),
+            ("ssl_context", "proxy_ssl_context"),
+        ],
+    )
+    def test_https_proxy_forwarding_for_https_with_custom_context(
+        self, proxy_ssl_context_kw: tuple[str, ...]
+    ) -> None:
+        """
+        Test that an HTTP request succeeds when using a forwarding HTTPS
+        proxy with an SSL context provided via either
+        ``proxy_ssl_context``, ``ssl_context`` (fallback), or both.
+        """
+
+        proxy_ctx = ssl.create_default_context()
+        proxy_ctx.load_verify_locations(DEFAULT_CA)
+
+        warning_checker: contextlib.AbstractContextManager[typing.Any]
+        if "ssl_context" in proxy_ssl_context_kw:
+            warning_checker = pytest.warns(FutureWarning, match="ssl_context")
+        else:
+            warning_checker = contextlib.nullcontext()
+        with warning_checker:
+            proxy = proxy_from_url(
+                self.https_proxy_url,
+                **{kw: proxy_ctx for kw in proxy_ssl_context_kw},
+                use_forwarding_for_https=True,
+            )
+
+        with proxy:
+            resp = proxy.request("GET", self.https_url)
+            assert resp.status == 200
 
     def test_nagle_proxy(self) -> None:
         """Test that proxy connections do not have TCP_NODELAY turned on"""
@@ -694,20 +751,8 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert isinstance(e.value.reason.original_error, SSLError)
 
     @requires_network()
-    @pytest.mark.parametrize(
-        ["proxy_scheme", "use_forwarding_for_https"],
-        [
-            ("http", False),
-            ("https", False),
-            ("https", True),
-        ],
-    )
-    def test_proxy_https_target_tls_error(
-        self, proxy_scheme: str, use_forwarding_for_https: str
-    ) -> None:
-        if proxy_scheme == "https" and use_forwarding_for_https:
-            pytest.skip("Test is expected to fail due to urllib3/urllib3#2577")
-
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    def test_proxy_https_target_tls_error(self, proxy_scheme: str) -> None:
         proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
         proxy_ctx = ssl.create_default_context()
         proxy_ctx.load_verify_locations(DEFAULT_CA)
@@ -717,11 +762,126 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             proxy_url,
             proxy_ssl_context=proxy_ctx,
             ssl_context=ctx,
-            use_forwarding_for_https=use_forwarding_for_https,
         ) as proxy:
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", self.https_url)
             assert isinstance(e.value.reason, SSLError)
+
+    @requires_network()
+    def test_forwarding_proxy_tls_error_with_fallback(self) -> None:
+        """
+        Test that when only ``ssl_context`` is passed to a forwarding
+        HTTPS proxy, a ``FutureWarning`` is emitted and if the TLS
+        handshake with the proxy fails using that context, the error is
+        a ``ProxyError`` wrapping the original TLS error.
+        """
+        ctx = ssl.create_default_context()
+
+        with pytest.warns(FutureWarning, match="ssl_context"):
+            proxy = proxy_from_url(
+                self.https_proxy_url,
+                ssl_context=ctx,
+                use_forwarding_for_https=True,
+            )
+
+        with proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", self.https_url)
+            assert isinstance(e.value.reason, ProxyError)
+            assert isinstance(e.value.reason.original_error, SSLError)
+
+    @requires_network()
+    def test_forwarding_proxy_ssl_context_precedence(self) -> None:
+        """
+        Test that when both ``ssl_context`` and ``proxy_ssl_context``
+        are passed to a forwarding HTTPS proxy, ``proxy_ssl_context`` is
+        used for the proxy connection and ``ssl_context`` is ignored
+        (with a warning).
+        """
+        ssl_context = create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
+        proxy_ssl_context = create_urllib3_context(cert_reqs=ssl.CERT_NONE)
+
+        with pytest.warns(FutureWarning, match="ssl_context"):
+            proxy = proxy_from_url(
+                self.https_proxy_url,
+                proxy_ssl_context=proxy_ssl_context,
+                ssl_context=ssl_context,
+                use_forwarding_for_https=True,
+            )
+
+        with proxy:
+            pool = proxy.connection_from_url(self.https_url)
+            with contextlib.closing(pool._new_conn()) as conn:
+                conn = typing.cast(HTTPSConnection, conn)
+                conn.connect()
+                assert isinstance(conn.sock, ssl.SSLSocket)
+                assert conn.sock.context is proxy_ssl_context
+                assert proxy_ssl_context.verify_mode == ssl.CERT_NONE
+
+    @requires_network()
+    def test_forwarding_proxy_ssl_context_fallback(self) -> None:
+        """
+        Test that when only ``ssl_context`` is passed to a forwarding
+        HTTPS proxy, a ``FutureWarning`` is emitted and ``ssl_context``
+        is used as the proxy TLS context (fallback).
+        """
+        ssl_context = create_urllib3_context(cert_reqs=ssl.CERT_NONE)
+
+        with pytest.warns(FutureWarning, match="ssl_context"):
+            proxy = proxy_from_url(
+                self.https_proxy_url,
+                ssl_context=ssl_context,
+                cert_reqs=ssl.CERT_REQUIRED,
+                ca_certs=DEFAULT_CA,
+                use_forwarding_for_https=True,
+            )
+
+        assert proxy.proxy_ssl_context is ssl_context
+        assert proxy.proxy_config is not None
+        assert proxy.proxy_config.ssl_context is None
+
+        with proxy:
+            pool = proxy.connection_from_url(self.https_url)
+            with contextlib.closing(pool._new_conn()) as conn:
+                conn = typing.cast(HTTPSConnection, conn)
+                conn.connect()
+                assert isinstance(conn.sock, ssl.SSLSocket)
+                assert conn.sock.context is ssl_context
+                assert ssl_context.verify_mode == ssl.CERT_REQUIRED
+
+    @requires_network()
+    def test_https_proxy_to_http_target_ssl_context_fallback(self) -> None:
+        ssl_context = create_urllib3_context()
+        ssl_context.load_verify_locations(DEFAULT_CA)
+
+        with proxy_from_url(
+            self.https_proxy_url,
+            ssl_context=ssl_context,
+        ) as proxy:
+            pool = proxy.connection_from_url(self.http_url)
+            with contextlib.closing(pool._new_conn()) as conn:
+                conn = typing.cast(HTTPSConnection, conn)
+                conn.connect()
+                assert isinstance(conn.sock, ssl.SSLSocket)
+                assert conn.sock.context is ssl_context
+
+    @requires_network()
+    def test_forwarding_non_https_proxy_ssl_context_fallback(self) -> None:
+        """
+        Test that when only ``ssl_context`` is passed to a forwarding
+        non-HTTPS proxy, no warning or error is emitted.
+        """
+        ssl_context = ssl.create_default_context(cafile=DEFAULT_CA)
+        # No warning/error should be emitted even when ``ssl_context``
+        # is provided to a non-HTTPS proxy for some reason.
+        proxy = proxy_from_url(
+            self.proxy_url,
+            ssl_context=ssl_context,
+            use_forwarding_for_https=True,
+        )
+        with proxy:
+            resp = proxy.request("GET", self.https_url)
+            assert resp.status == 200
 
     def test_scheme_host_case_insensitive(self) -> None:
         """Assert that upper-case schemes and hosts are normalized."""
@@ -804,32 +964,38 @@ class TestHTTPSProxyVerification:
         destination_url = f"https://{server.host}:{server.port}"
 
         proxy_ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
+        proxy_ctx.load_verify_locations(proxy.ca_certs)
         proxy_fingerprint = self._get_proxy_fingerprint_md5(proxy.ca_certs)
         with proxy_from_url(
             proxy_url,
-            ca_certs=proxy.ca_certs,
+            ca_certs=server.ca_certs,
             proxy_ssl_context=proxy_ctx,
             proxy_assert_fingerprint=proxy_fingerprint,
         ) as https:
             https.request("GET", destination_url)
 
+    @pytest.mark.parametrize("use_forwarding_for_https", [False, True])
     def test_https_proxy_assert_fingerprint_md5_non_matching(
-        self, no_san_proxy_with_server: tuple[ServerConfig, ServerConfig]
+        self,
+        no_san_proxy_with_server: tuple[ServerConfig, ServerConfig],
+        use_forwarding_for_https: bool,
     ) -> None:
         proxy, server = no_san_proxy_with_server
         proxy_url = f"https://{proxy.host}:{proxy.port}"
         destination_url = f"https://{server.host}:{server.port}"
 
         proxy_ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
+        proxy_ctx.load_verify_locations(proxy.ca_certs)
         proxy_fingerprint = self._get_proxy_fingerprint_md5(proxy.ca_certs)
         new_char = "b" if proxy_fingerprint[5] == "a" else "a"
         proxy_fingerprint = proxy_fingerprint[:5] + new_char + proxy_fingerprint[6:]
 
         with proxy_from_url(
             proxy_url,
-            ca_certs=proxy.ca_certs,
+            ca_certs=server.ca_certs,
             proxy_ssl_context=proxy_ctx,
             proxy_assert_fingerprint=proxy_fingerprint,
+            use_forwarding_for_https=use_forwarding_for_https,
         ) as https:
             with pytest.raises(MaxRetryError) as e:
                 https.request("GET", destination_url)
@@ -847,8 +1013,11 @@ class TestHTTPSProxyVerification:
         ) as https:
             https.request("GET", destination_url)
 
+    @pytest.mark.parametrize("use_forwarding_for_https", [False, True])
     def test_https_proxy_assert_hostname_non_matching(
-        self, san_proxy_with_server: tuple[ServerConfig, ServerConfig]
+        self,
+        san_proxy_with_server: tuple[ServerConfig, ServerConfig],
+        use_forwarding_for_https: bool,
     ) -> None:
         proxy, server = san_proxy_with_server
         destination_url = f"https://{server.host}:{server.port}"
@@ -858,6 +1027,7 @@ class TestHTTPSProxyVerification:
             proxy.base_url,
             ca_certs=proxy.ca_certs,
             proxy_assert_hostname=proxy_hostname,
+            use_forwarding_for_https=use_forwarding_for_https,
         ) as https:
             with pytest.raises(MaxRetryError) as e:
                 https.request("GET", destination_url)
@@ -947,6 +1117,7 @@ class TestHTTPSProxyVerification:
         destination_url = f"https://{server.host}:{server.port}"
 
         proxy_ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
+        proxy_ctx.load_verify_locations(proxy.ca_certs)
         try:
             proxy_ctx.hostname_checks_common_name = True
         # PyPy doesn't like us setting 'hostname_checks_common_name'
@@ -957,6 +1128,86 @@ class TestHTTPSProxyVerification:
             pytest.skip("Test requires 'SSLContext.hostname_checks_common_name=True'")
 
         with proxy_from_url(
-            proxy_url, ca_certs=proxy.ca_certs, proxy_ssl_context=proxy_ctx
+            proxy_url, ca_certs=server.ca_certs, proxy_ssl_context=proxy_ctx
         ) as https:
             https.request("GET", destination_url)
+
+    @pytest.mark.parametrize(
+        "target_tls_kwargs",
+        [
+            pytest.param({"server_hostname": "example.com"}, id="server-hostname"),
+            pytest.param({"assert_hostname": "example.com"}, id="assert-hostname"),
+            pytest.param({"assert_fingerprint": "00" * 32}, id="assert-fingerprint"),
+        ],
+    )
+    def test_https_proxy_forwarding_ignores_target_identity_settings(
+        self,
+        san_proxy_with_server: tuple[ServerConfig, ServerConfig],
+        target_tls_kwargs: dict[str, typing.Any],
+    ) -> None:
+        proxy, server = san_proxy_with_server
+        proxy_ctx = create_urllib3_context()
+        proxy_ctx.load_verify_locations(proxy.ca_certs)
+
+        with proxy_from_url(
+            proxy.base_url,
+            proxy_ssl_context=proxy_ctx,
+            proxy_assert_hostname=proxy.host,
+            use_forwarding_for_https=True,
+            **target_tls_kwargs,
+        ) as https:
+            pool = https.connection_from_url(server.base_url)
+            with contextlib.closing(pool._new_conn()) as conn:
+                conn = typing.cast(HTTPSConnection, conn)
+                conn.connect()
+                assert isinstance(conn.sock, ssl.SSLSocket)
+                assert conn.sock.context is proxy_ctx
+
+    def test_https_proxy_forwarding_ignores_target_client_certificate(
+        self,
+        san_proxy_with_server: tuple[ServerConfig, ServerConfig],
+    ) -> None:
+        proxy, server = san_proxy_with_server
+        proxy_ctx = create_urllib3_context()
+        proxy_ctx.load_verify_locations(proxy.ca_certs)
+        missing_cert = str(pathlib.Path(proxy.ca_certs).with_name("missing-cert.pem"))
+
+        with proxy_from_url(
+            proxy.base_url,
+            proxy_ssl_context=proxy_ctx,
+            cert_file=missing_cert,
+            use_forwarding_for_https=True,
+        ) as https:
+            pool = https.connection_from_url(server.base_url)
+            with contextlib.closing(pool._new_conn()) as conn:
+                conn = typing.cast(HTTPSConnection, conn)
+                conn.connect()
+                assert isinstance(conn.sock, ssl.SSLSocket)
+                assert conn.sock.context is proxy_ctx
+
+    def test_https_proxy_forwarding_ignores_target_tls_policy(
+        self,
+        san_proxy_with_server: tuple[ServerConfig, ServerConfig],
+    ) -> None:
+        proxy, server = san_proxy_with_server
+        proxy_ctx = create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
+        proxy_ctx.load_verify_locations(proxy.ca_certs)
+        proxy_cert_store_stats = proxy_ctx.cert_store_stats()
+
+        with proxy_from_url(
+            proxy.base_url,
+            proxy_ssl_context=proxy_ctx,
+            cert_reqs=ssl.CERT_NONE,
+            ca_certs=DEFAULT_CA,
+            use_forwarding_for_https=True,
+        ) as https:
+            for target_url in (server.base_url, "https://example.com/"):
+                pool = https.connection_from_url(target_url)
+                with contextlib.closing(pool._new_conn()) as conn:
+                    conn = typing.cast(HTTPSConnection, conn)
+                    conn.connect()
+                    assert isinstance(conn.sock, ssl.SSLSocket)
+                    assert conn.sock.context is proxy_ctx
+
+        assert proxy_ctx.verify_mode == ssl.CERT_REQUIRED
+        assert proxy_ctx.cert_store_stats() == proxy_cert_store_stats

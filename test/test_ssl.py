@@ -23,6 +23,13 @@ class TestSSL:
             "127.0.0.1",
             "8.8.8.8",
             b"127.0.0.1",
+            # Non-standard IPv4 forms accepted by socket.connect
+            "2130706433",  # decimal integer
+            "0x7f000001",  # hex integer
+            "0177.0.0.01",  # dotted octal
+            "0x7f.0x0.0x0.0x1",  # dotted hex
+            "127.1",  # 2-part
+            "127.0.1",  # 3-part
             # IPv6 w/ Zone IDs
             "FE80::8939:7684:D84b:a5A4%251",
             b"FE80::8939:7684:D84b:a5A4%251",
@@ -169,19 +176,21 @@ class TestSSL:
 
         context.set_ciphers.assert_not_called()
 
+    # PROTOCOL_TLS_SERVER is used as a stand-in for any non-default ssl_version.
+    # PROTOCOL_TLSv1/TLSv1_2 are unavailable when Python is built with OpenSSL 4+.
     @pytest.mark.parametrize(
         "kwargs",
         [
             {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
+                "ssl_version": ssl.PROTOCOL_TLS_SERVER,
                 "ssl_minimum_version": ssl.TLSVersion.MINIMUM_SUPPORTED,
             },
             {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
+                "ssl_version": ssl.PROTOCOL_TLS_SERVER,
                 "ssl_maximum_version": ssl.TLSVersion.TLSv1,
             },
             {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
+                "ssl_version": ssl.PROTOCOL_TLS_SERVER,
                 "ssl_minimum_version": ssl.TLSVersion.MINIMUM_SUPPORTED,
                 "ssl_maximum_version": ssl.TLSVersion.MAXIMUM_SUPPORTED,
             },
@@ -222,10 +231,10 @@ class TestSSL:
     @pytest.mark.parametrize(
         "kwargs",
         [
-            {"ssl_version": ssl.PROTOCOL_TLSv1, "ssl_minimum_version": None},
-            {"ssl_version": ssl.PROTOCOL_TLSv1, "ssl_maximum_version": None},
+            {"ssl_version": ssl.PROTOCOL_TLS_SERVER, "ssl_minimum_version": None},
+            {"ssl_version": ssl.PROTOCOL_TLS_SERVER, "ssl_maximum_version": None},
             {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
+                "ssl_version": ssl.PROTOCOL_TLS_SERVER,
                 "ssl_minimum_version": None,
                 "ssl_maximum_version": None,
             },
