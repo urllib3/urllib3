@@ -597,6 +597,26 @@ class BaseHTTPResponse(io.IOBase):
     def close(self) -> None:
         raise NotImplementedError()
 
+    def __enter__(self) -> BaseHTTPResponse:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: typing.Any,
+    ) -> None:
+        """Close the response body and release the connection back to the pool.
+
+        ``io.IOBase.__exit__`` only calls :meth:`close`. HTTP connections also
+        need :meth:`release_conn` so the socket can be reused; this override
+        does both. See #3513.
+        """
+        try:
+            self.close()
+        finally:
+            self.release_conn()
+
     def _init_decoder(self) -> None:
         """
         Set-up the _decoder attribute if necessary.
