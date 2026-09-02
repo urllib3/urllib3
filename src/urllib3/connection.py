@@ -952,13 +952,16 @@ def _ssl_wrap_socket_and_match_hostname(
 
     # Try to load OS default certs if none are given. We need to do the hasattr() check
     # for custom pyOpenSSL SSLContext objects because they don't support
-    # load_default_certs().
+    # load_default_certs(). Skip this when verification is disabled: loading
+    # the system store is wasted work and can fail on some platforms even
+    # though the certs would never be consulted (see #3519).
     if (
         not ca_certs
         and not ca_cert_dir
         and not ca_cert_data
         and default_ssl_context
         and hasattr(context, "load_default_certs")
+        and context.verify_mode != ssl.CERT_NONE
     ):
         context.load_default_certs()
 
