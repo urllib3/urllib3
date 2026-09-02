@@ -604,6 +604,22 @@ class HTTPSConnection(HTTPConnection):
     """
     Many of the parameters to this constructor are passed to the underlying SSL
     socket by means of :py:func:`urllib3.util.ssl_wrap_socket`.
+
+    ``assert_hostname`` and ``assert_fingerprint`` control identity checks
+    after the TLS handshake. They are independent of certificate-chain
+    validation (``cert_reqs``).
+
+    :param assert_hostname:
+        Hostname expected in the server certificate. ``None`` (the default)
+        uses the connection host / SNI name. Pass a string when you connect
+        by IP address or through a proxy and the certificate is issued for a
+        different name. Pass ``False`` to skip hostname matching entirely
+        (chain validation still applies unless you also change ``cert_reqs``).
+    :param assert_fingerprint:
+        Hex digest of the leaf certificate (colons optional). When set,
+        urllib3 checks the peer certificate against this digest. Use this
+        when you pin a known certificate and do not want to rely on the
+        hostname SAN/CN. See also :ref:`assert_fingerprint`.
     """
 
     default_port = port_by_scheme["https"]  # type: ignore[misc]

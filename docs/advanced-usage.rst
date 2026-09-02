@@ -415,6 +415,45 @@ hostname or the SNI hostname, you can use ``assert_hostname``:
     pool.request("GET", "/")
 
 
+.. _assert_fingerprint:
+
+Verifying TLS with a certificate fingerprint
+--------------------------------------------
+
+If you already know the digest of the server's leaf certificate, pin it with
+``assert_fingerprint`` instead of (or in addition to) hostname matching.
+This is useful when you connect by IP, through a name that is not on the
+certificate, or when you want to reject any other certificate even if it
+would otherwise chain to a trusted CA.
+
+The value is a hex SHA-256 (or SHA-1 / MD5) digest; colons are optional:
+
+.. code-block:: python
+
+    import urllib3
+
+    pool = urllib3.HTTPSConnectionPool(
+        "example.com",
+        assert_fingerprint="92:10:1F:...",  # SHA-256 of the leaf certificate
+    )
+    pool.request("GET", "/")
+
+If the presented certificate does not match, urllib3 raises an SSL error
+before the request body is sent. Prefer SHA-256 fingerprints over SHA-1 or
+MD5. Hostname matching is still the usual default; use fingerprint pinning
+when you have a specific certificate you trust.
+
+When to use which
+^^^^^^^^^^^^^^^^^
+
+* ``assert_hostname``: the certificate is valid for a name other than the
+  one you connected to (for example connecting by IP to a host whose cert
+  is for ``example.com``). See :ref:`assert_hostname`.
+* ``assert_fingerprint``: you want to pin one exact leaf certificate.
+* ``assert_hostname=False``: skip hostname matching only. Do not use this
+  as a substitute for ``cert_reqs``; it does not disable chain validation.
+
+
 .. _ssl_client:
 
 Client Certificates
