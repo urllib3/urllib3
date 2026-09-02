@@ -224,7 +224,7 @@ def body_to_chunks(
         chunks = (to_bytes(body),)
         content_length = len(chunks[0])
 
-    # File-like object, TODO: use seek() and tell() for length?
+    # File-like object: use seek()/tell() for Content-Length when we can.
     elif hasattr(body, "read"):
 
         def chunk_readable() -> typing.Iterable[bytes]:
@@ -239,6 +239,21 @@ def body_to_chunks(
 
         chunks = chunk_readable()
         content_length = None
+        # Text streams report tell() in characters, not UTF-8 bytes.
+        if not isinstance(body, io.TextIOBase):
+            body_seek = getattr(body, "seek", None)
+            body_tell = getattr(body, "tell", None)
+            if callable(body_seek) and callable(body_tell):
+                try:
+                    pos = body_tell()
+                    body_seek(0, io.SEEK_END)
+                    end = body_tell()
+                    body_seek(pos)
+                    remaining = end - pos
+                    if remaining >= 0:
+                        content_length = remaining
+                except (OSError, ValueError, io.UnsupportedOperation, AttributeError):
+                    content_length = None
 
     # Otherwise we need to start checking via duck-typing.
     else:
