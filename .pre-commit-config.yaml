@@ -42,3 +42,11 @@ repos:
     hooks:
       - id: eslint
         args: ["--fix"]
+        additional_dependencies:
+          # Configuring additional dependencies replaces the hook defaults,
+          # so ESLint itself must be included explicitly.
+          - "eslint@10.9.1"
+          # ESLint 10 flat config provides recommended rules and worker globals
+          # through these separate packages.
+          - "@eslint/js@10.0.1"
+          - "globals@17.12.0"
