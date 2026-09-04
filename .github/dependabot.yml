@@ -14,3 +14,17 @@ updates:
         update-types: ["version-update:semver-patch"]
     cooldown:
       default-days: 7
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "quarterly"
+    # Combine all pre-commit hook updates into one pull request.
+    groups:
+      pre-commit:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "Skip Changelog"
+    cooldown:
+      default-days: 7
