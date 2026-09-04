@@ -643,7 +643,7 @@ and ``1.0`` seconds) to introduce exponential delays between retries:
 
     import urllib3
 
-    # Retries wait 0.0s (immediate 2nd attempt), 1.0s, 2.0s, 4.0s...
+    # Retries wait 0.0s (immediate 2nd attempt), 1.0s, and 2.0s (plus jitter)
     retries = urllib3.Retry(
         total=3,
         backoff_factor=0.5,
