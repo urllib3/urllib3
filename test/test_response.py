@@ -300,6 +300,40 @@ class TestResponse:
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "deflate"})
 
+    @pytest.mark.parametrize("content_encoding", (None, "gzip"))
+    def test_content_encoding_is_inspected_once(
+        self, content_encoding: str | None
+    ) -> None:
+        headers = {"content-encoding": content_encoding} if content_encoding else None
+        r = HTTPResponse(BytesIO(), headers=headers, preload_content=False)
+
+        with mock.patch.object(r.headers, "get", wraps=r.headers.get) as get_header:
+            r._init_decoder()
+            r._init_decoder()
+
+        assert get_header.call_count == 1
+        if content_encoding is None:
+            assert r._decoder is None
+        else:
+            assert r._decoder is not None
+
+    def test_decoder_initialization_is_retried_after_failure(self) -> None:
+        r = HTTPResponse(
+            BytesIO(), headers={"content-encoding": "gzip"}, preload_content=False
+        )
+        decoder = mock.Mock()
+
+        with mock.patch(
+            "urllib3.response._get_decoder", side_effect=(RuntimeError, decoder)
+        ) as get_decoder:
+            with pytest.raises(RuntimeError):
+                r._init_decoder()
+            r._init_decoder()
+            r._init_decoder()
+
+        assert r._decoder is decoder
+        assert get_decoder.call_count == 2
+
     def test_reference_read(self) -> None:
         fp = BytesIO(b"foo")
         r = HTTPResponse(fp, preload_content=False)
