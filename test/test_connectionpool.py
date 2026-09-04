@@ -25,7 +25,6 @@ from urllib3.connectionpool import (
 )
 from urllib3.exceptions import (
     ClosedPoolError,
-    ConnectTimeoutError,
     EmptyPoolError,
     FullPoolError,
     HostChangedError,
@@ -786,8 +785,16 @@ class TestRetryWarningIncludesHost:
         failed request is visible, not just the (usually relative) path.
         """
         caplog.set_level(logging.WARNING, logger="urllib3.connectionpool")
-        with HTTPConnectionPool(host="example.com", port=1) as pool:
-            with pytest.raises(ConnectTimeoutError):
-                pool.urlopen("GET", "/", retries=1, timeout=SHORT_TIMEOUT)
+        with HTTPConnectionPool(host="example.com", port=80) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                side_effect=[
+                    ProtocolError("Connection aborted.", OSError("boom")),
+                    HTTPResponse(status=200),
+                ],
+            ):
+                response = pool.urlopen("GET", "/", retries=1)
+        assert response.status == 200
         assert "Retrying" in caplog.text
-        assert "example.com" in caplog.text
+        assert "http://example.com/" in caplog.text
