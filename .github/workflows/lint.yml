@@ -1,13 +1,17 @@
 name: lint
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    # Dependabot branches run through pull_request; tag pushes are not run.
+    branches-ignore: ["dependabot/**"]
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: "read"
 
 jobs:
   lint:
-    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/heads/dependabot/')
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

@@ -1,6 +1,11 @@
 name: CI
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    # Dependabot branches run through pull_request; tag pushes are not run.
+    branches-ignore: ["dependabot/**"]
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: "read"
@@ -13,7 +18,6 @@ env:
 
 jobs:
   package:
-    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/heads/dependabot/')
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -37,7 +41,6 @@ jobs:
           python -m twine check dist/*
 
   test:
-    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/heads/dependabot/')
     strategy:
       fail-fast: false
       matrix:
@@ -169,7 +172,7 @@ jobs:
 
 
   coverage:
-    if: always() && (github.event_name != 'push' || !startsWith(github.ref, 'refs/heads/dependabot/'))
+    if: always()
     runs-on: "ubuntu-24.04"
     needs: test
     steps:
