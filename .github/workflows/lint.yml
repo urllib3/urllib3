@@ -7,6 +7,7 @@ permissions:
 
 jobs:
   lint:
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/heads/dependabot/')
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

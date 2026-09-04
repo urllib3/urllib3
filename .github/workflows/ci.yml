@@ -13,6 +13,7 @@ env:
 
 jobs:
   package:
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/heads/dependabot/')
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -36,6 +37,7 @@ jobs:
           python -m twine check dist/*
 
   test:
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/heads/dependabot/')
     strategy:
       fail-fast: false
       matrix:
@@ -167,7 +169,7 @@ jobs:
 
 
   coverage:
-    if: always()
+    if: always() && (github.event_name != 'push' || !startsWith(github.ref, 'refs/heads/dependabot/'))
     runs-on: "ubuntu-24.04"
     needs: test
     steps:
