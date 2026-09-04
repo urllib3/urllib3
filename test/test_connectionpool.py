@@ -25,6 +25,7 @@ from urllib3.connectionpool import (
 )
 from urllib3.exceptions import (
     ClosedPoolError,
+    ConnectTimeoutError,
     EmptyPoolError,
     FullPoolError,
     HostChangedError,
