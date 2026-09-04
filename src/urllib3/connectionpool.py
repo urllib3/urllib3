@@ -872,9 +872,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not conn:
             # Try again
             log.warning(
-                "Retrying (%r) after connection broken by '%r': %s",
+                "Retrying (%r) after connection broken by '%r': %s://%s%s",
                 retries,
                 err,
+                self.scheme,
+                self.host,
                 url,
                 # Provide an unique attribute with the host needed by pip to
                 # rewrite this warning. Ideally, we'd go with a better solution,
