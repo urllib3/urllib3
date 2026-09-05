@@ -14,6 +14,7 @@ from logging import NullHandler
 from . import exceptions
 from ._base_connection import _TYPE_BODY
 from ._collections import HTTPHeaderDict
+from ._typing import _TYPE_HEADERS
 from ._version import __version__
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, connection_from_url
 from .filepost import _TYPE_FIELDS, encode_multipart_formdata
@@ -120,7 +121,7 @@ def request(
     *,
     body: _TYPE_BODY | None = None,
     fields: _TYPE_FIELDS | None = None,
-    headers: typing.Mapping[str, str] | None = None,
+    headers: _TYPE_HEADERS | None = None,
     preload_content: bool | None = True,
     decode_content: bool | None = True,
     redirect: bool | None = True,
