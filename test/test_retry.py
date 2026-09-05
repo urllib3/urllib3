@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import datetime
 import typing
+from test import DUMMY_POOL
 from unittest import mock
 
 import pytest
 
-from test import DUMMY_POOL
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
@@ -275,7 +275,9 @@ class TestRetry:
         assert retry.is_retry("POST", status_code=500)
 
     @pytest.mark.parametrize("empty_collection", [set(), [], (), frozenset()])
-    def test_empty_allowed_methods(self, empty_collection: typing.Collection[str]) -> None:
+    def test_empty_allowed_methods(
+        self, empty_collection: typing.Collection[str]
+    ) -> None:
         # Empty collection means to retry on no methods.
         retry = Retry(status_forcelist=[500], allowed_methods=empty_collection)
         assert not retry.is_retry("GET", status_code=500)
