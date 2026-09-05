@@ -7,13 +7,14 @@ import typing
 from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
 
-from ..._base_connection import _TYPE_BODY
+from ..._base_connection import _TYPE_BODY, _TYPE_HEADERS
 from ...connection import HTTPConnection, ProxyConfig, port_by_scheme
 from ...exceptions import TimeoutError
 from ...response import BaseHTTPResponse
 from ...util.connection import _TYPE_SOCKET_OPTIONS
 from ...util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from ...util.url import Url
+from ...util.util import to_str
 from .fetch import _RequestError, _TimeoutError, send_request, send_streaming_request
 from .request import EmscriptenRequest
 from .response import EmscriptenHttpResponseWrapper, EmscriptenResponse
@@ -74,7 +75,7 @@ class EmscriptenHTTPConnection:
         self,
         host: str,
         port: int | None = 0,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
         scheme: str = "http",
     ) -> None:
         pass
@@ -87,7 +88,7 @@ class EmscriptenHTTPConnection:
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADERS | None = None,
         # We know *at least* botocore is depending on the order of the
         # first 3 parameters so to be safe we only mark the later ones
         # as keyword-only to ensure we have space to extend.
@@ -114,7 +115,7 @@ class EmscriptenHTTPConnection:
         request.set_body(body)
         if headers:
             for k, v in headers.items():
-                request.set_header(k, v)
+                request.set_header(to_str(k), to_str(v))
         self._response = None
         try:
             if not preload_content:

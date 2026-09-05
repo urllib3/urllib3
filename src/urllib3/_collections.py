@@ -12,10 +12,10 @@ if typing.TYPE_CHECKING:
 
     from typing_extensions import Self
 
-    class HasGettableStringKeys(Protocol):
-        def keys(self) -> typing.Iterator[str]: ...
+    class HasGettableHeaderKeys(Protocol):
+        def keys(self) -> typing.Iterator[str | bytes]: ...
 
-        def __getitem__(self, key: str) -> str: ...
+        def __getitem__(self, key: str | bytes) -> str | bytes: ...
 
 
 __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
@@ -31,8 +31,12 @@ _DT = typing.TypeVar("_DT")
 ValidHTTPHeaderSource = typing.Union[
     "HTTPHeaderDict",
     typing.Mapping[str, str],
+    typing.Mapping[bytes, bytes],
+    typing.Mapping[str | bytes, str | bytes],
     typing.Iterable[tuple[str, str]],
-    "HasGettableStringKeys",
+    typing.Iterable[tuple[bytes, bytes]],
+    typing.Iterable[tuple[str | bytes, str | bytes]],
+    "HasGettableHeaderKeys",
 ]
 
 
@@ -48,14 +52,14 @@ def ensure_can_construct_http_header_dict(
     elif isinstance(potential, typing.Mapping):
         # Full runtime checking of the contents of a Mapping is expensive, so for the
         # purposes of typechecking, we assume that any Mapping is the right shape.
-        return typing.cast(typing.Mapping[str, str], potential)
+        return typing.cast(typing.Mapping[str | bytes, str | bytes], potential)
     elif isinstance(potential, typing.Iterable):
         # Similarly to Mapping, full runtime checking of the contents of an Iterable is
         # expensive, so for the purposes of typechecking, we assume that any Iterable
         # is the right shape.
-        return typing.cast(typing.Iterable[tuple[str, str]], potential)
+        return typing.cast(typing.Iterable[tuple[str | bytes, str | bytes]], potential)
     elif hasattr(potential, "keys") and hasattr(potential, "__getitem__"):
-        return typing.cast("HasGettableStringKeys", potential)
+        return typing.cast("HasGettableHeaderKeys", potential)
     else:
         return None
 
@@ -248,10 +252,12 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         if kwargs:
             self.extend(kwargs)
 
-    def __setitem__(self, key: str, val: str) -> None:
+    def __setitem__(self, key: str, val: str | bytes) -> None:
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
+        if isinstance(val, bytes):
+            val = val.decode("latin-1")
         self._container[key.lower()] = [key, val]
 
     def __getitem__(self, key: str) -> str:
@@ -303,7 +309,9 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         except KeyError:
             pass
 
-    def add(self, key: str, val: str, *, combine: bool = False) -> None:
+    def add(
+        self, key: str | bytes, val: str | bytes, *, combine: bool = False
+    ) -> None:
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
@@ -325,6 +333,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
+        if isinstance(val, bytes):
+            val = val.decode("latin-1")
         key_lower = key.lower()
         new_vals = [key, val]
         # Keep the common case aka no item present as fast as possible
@@ -350,25 +360,25 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         other = args[0] if len(args) >= 1 else ()
 
         if isinstance(other, HTTPHeaderDict):
-            for key, val in other.iteritems():
-                self.add(key, val)
+            for item_key, item_value in other.iteritems():
+                self.add(item_key, item_value)
         elif isinstance(other, typing.Mapping):
-            for key, val in other.items():
-                self.add(key, val)
-        elif isinstance(other, typing.Iterable):
-            for key, value in other:
-                self.add(key, value)
+            for mapping_key, mapping_value in other.items():
+                self.add(mapping_key, mapping_value)
         elif hasattr(other, "keys") and hasattr(other, "__getitem__"):
             # THIS IS NOT A TYPESAFE BRANCH
             # In this branch, the object has a `keys` attr but is not a Mapping or any of
             # the other types indicated in the method signature. We do some stuff with
             # it as though it partially implements the Mapping interface, but we're not
             # doing that stuff safely AT ALL.
-            for key in other.keys():
-                self.add(key, other[key])
+            for gettable_key in other.keys():
+                self.add(gettable_key, other[gettable_key])
+        elif isinstance(other, typing.Iterable):
+            for iterable_key, iterable_value in other:
+                self.add(iterable_key, iterable_value)
 
-        for key, value in kwargs.items():
-            self.add(key, value)
+        for header_key, header_value in kwargs.items():
+            self.add(header_key, header_value)
 
     @typing.overload
     def getlist(self, key: str) -> list[str]: ...
