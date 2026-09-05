@@ -1,44 +1,52 @@
 repos:
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
+    rev: 75992aaa40730136014f34227e0135f63fc951b4 # frozen: v3.21.2
     hooks:
       - id: pyupgrade
         args: ["--py310-plus"]
 
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 25.11.0
+    rev: 4160603246a6b365d4a2af661c6d71b0a0f50478 # frozen: 26.5.1
     hooks:
       - id: black
         args: ["--target-version", "py310"]
 
   - repo: https://github.com/PyCQA/isort
-    rev: 7.0.0
+    rev: 131f4adcd5582bfc53928ab0d740eceb8b506b6c # frozen: 9.0.1
     hooks:
       - id: isort
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.3.0
+    rev: c48217e1fc006c2dddd14df54e83b67da15de5cd # frozen: 7.3.0
     hooks:
       - id: flake8
         additional_dependencies: [flake8-2020]
 
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.11.7
+    rev: 0f34924c4110aca2294a4e4204aac7b3e31803fb # frozen: 0.12.7
     hooks:
       - id: uv-lock
 
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.16.3
+    rev: 451b56af716f9f0d0c2b816503a3fd0cf8b036fa # frozen: v1.29.0
     hooks:
       - id: zizmor
 
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: "v3.1.0"
+    rev: ffb6a759a979008c0e6dff86e39f4745a2d9eac4 # frozen: v3.1.0
     hooks:
       - id: prettier
         types_or: [javascript]
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v8.53.0
+    rev: be68a779a7464c7c4c92e9410fb56e0cfc983d0d # frozen: v10.9.1
     hooks:
       - id: eslint
         args: ["--fix"]
+        additional_dependencies:
+          # Configuring additional dependencies replaces the hook defaults,
+          # so ESLint itself must be included explicitly.
+          - "eslint@10.9.1"
+          # ESLint 10 flat config provides recommended rules and worker globals
+          # through these separate packages.
+          - "@eslint/js@10.0.1"
+          - "globals@17.12.0"

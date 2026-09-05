@@ -2086,7 +2086,7 @@ class TestHeaders(SocketDummyServerTestCase):
             ]
 
             for header in self.received_headers:
-                (key, value) = header.split(b": ")
+                key, value = header.split(b": ")
                 self.parsed_headers[key.decode("ascii")] = value.decode("ascii")
 
             sock.send(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")
