@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import typing
 from test import DUMMY_POOL
 from unittest import mock
 
@@ -263,7 +264,7 @@ class TestRetry:
         assert not retry.is_retry("GET", status_code=418)
 
     def test_allowed_methods_with_status_forcelist(self) -> None:
-        # Falsey allowed_methods means to retry on any method.
+        # None allowed_methods means to retry on any method.
         retry = Retry(status_forcelist=[500], allowed_methods=None)
         assert retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
@@ -271,6 +272,22 @@ class TestRetry:
         # Criteria of allowed_methods and status_forcelist are ANDed.
         retry = Retry(status_forcelist=[500], allowed_methods=["POST"])
         assert not retry.is_retry("GET", status_code=500)
+        assert retry.is_retry("POST", status_code=500)
+
+    @pytest.mark.parametrize("empty_collection", [set(), [], (), frozenset()])
+    def test_empty_allowed_methods(
+        self, empty_collection: typing.Collection[str]
+    ) -> None:
+        # Empty collection means to retry on no methods.
+        retry = Retry(status_forcelist=[500], allowed_methods=empty_collection)
+        assert not retry.is_retry("GET", status_code=500)
+        assert not retry.is_retry("POST", status_code=500)
+
+    def test_allowed_methods_false_backwards_compat(self) -> None:
+        # False allowed_methods is supported for backwards compatibility and means
+        # to retry on any method.
+        retry = Retry(status_forcelist=[500], allowed_methods=False)  # type: ignore[arg-type]
+        assert retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
 
     def test_exhausted(self) -> None:

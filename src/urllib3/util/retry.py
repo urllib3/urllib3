@@ -405,8 +405,8 @@ class Retry:
         """Checks if a given HTTP method should be retried upon, depending if
         it is included in the allowed_methods
         """
-        if self.allowed_methods and method.upper() not in self.allowed_methods:
-            return False
+        if self.allowed_methods is not None and self.allowed_methods is not False:  # type: ignore[comparison-overlap]
+            return method.upper() in self.allowed_methods
         return True
 
     def is_retry(

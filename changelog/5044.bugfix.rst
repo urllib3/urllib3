@@ -1,0 +1,1 @@
+Fixed ``Retry`` to treat an empty ``allowed_methods`` collection as allowing no HTTP methods.
