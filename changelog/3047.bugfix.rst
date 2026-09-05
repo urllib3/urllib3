@@ -1,0 +1,1 @@
+Fixed request header type hints to accept mappings with ``str`` or ``bytes`` keys and values.
