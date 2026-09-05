@@ -5,11 +5,60 @@ import typing
 from urllib.parse import urlencode
 
 from ._base_connection import _TYPE_BODY
-from ._collections import HTTPHeaderDict
+from ._collections import _TYPE_HEADER_MAPPING, HTTPHeaderDict
 from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .response import BaseHTTPResponse
 
 __all__ = ["RequestMethods"]
+
+
+def _copy_request_headers(
+    headers: _TYPE_HEADER_MAPPING,
+) -> HTTPHeaderDict | dict[str | bytes, str | bytes]:
+    """Copy request headers without coercing opaque bytes values."""
+    if isinstance(headers, HTTPHeaderDict):
+        return headers.copy()
+    if all(
+        isinstance(key, str) and isinstance(value, str)
+        for key, value in headers.items()
+    ):
+        return HTTPHeaderDict(typing.cast(typing.Mapping[str, str], headers))
+    return dict(typing.cast(typing.Mapping[str | bytes, str | bytes], headers))
+
+
+def _prepare_request_headers_for_method_change(
+    headers: _TYPE_HEADER_MAPPING,
+) -> HTTPHeaderDict | dict[str | bytes, str | bytes]:
+    """Copy request headers and remove entity headers after a 303 redirect."""
+    copied_headers = _copy_request_headers(headers)
+    if isinstance(copied_headers, HTTPHeaderDict):
+        return copied_headers._prepare_for_method_change()
+
+    entity_headers = {
+        "content-encoding",
+        "content-language",
+        "content-location",
+        "content-type",
+        "content-length",
+        "digest",
+        "last-modified",
+    }
+    for header in tuple(copied_headers):
+        if _is_header_in(header, entity_headers):
+            del copied_headers[header]
+    return copied_headers
+
+
+def _is_header_in(header: str | bytes, header_names: typing.Collection[str]) -> bool:
+    """Match a request header name without decoding opaque bytes."""
+    header_lower = header.lower()
+    if isinstance(header_lower, bytes):
+        return any(
+            name.isascii() and header_lower == name.encode("ascii")
+            for name in header_names
+        )
+    return header_lower in header_names
+
 
 _TYPE_ENCODE_URL_FIELDS = typing.Union[
     typing.Sequence[tuple[str, typing.Union[str, bytes]]],
@@ -48,7 +97,7 @@ class RequestMethods:
 
     _encode_url_methods = {"DELETE", "GET", "HEAD", "OPTIONS"}
 
-    def __init__(self, headers: typing.Mapping[str, str] | None = None) -> None:
+    def __init__(self, headers: _TYPE_HEADER_MAPPING | None = None) -> None:
         self.headers = headers or {}
 
     def urlopen(
@@ -56,7 +105,7 @@ class RequestMethods:
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         encode_multipart: bool = True,
         multipart_boundary: str | None = None,
         **kw: typing.Any,
@@ -72,7 +121,7 @@ class RequestMethods:
         url: str,
         body: _TYPE_BODY | None = None,
         fields: _TYPE_FIELDS | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         json: typing.Any | None = None,
         **urlopen_kw: typing.Any,
     ) -> BaseHTTPResponse:
@@ -120,8 +169,8 @@ class RequestMethods:
             if headers is None:
                 headers = self.headers
 
-            if not ("content-type" in map(str.lower, headers.keys())):
-                headers = HTTPHeaderDict(headers)
+            if not any(_is_header_in(key, {"content-type"}) for key in headers):
+                headers = _copy_request_headers(headers)
                 headers["Content-Type"] = "application/json"
 
             body = _json.dumps(json, separators=(",", ":"), ensure_ascii=False).encode(
@@ -149,7 +198,7 @@ class RequestMethods:
         method: str,
         url: str,
         fields: _TYPE_ENCODE_URL_FIELDS | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
@@ -186,7 +235,7 @@ class RequestMethods:
         method: str,
         url: str,
         fields: _TYPE_FIELDS | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         encode_multipart: bool = True,
         multipart_boundary: str | None = None,
         **urlopen_kw: str,
@@ -251,7 +300,7 @@ class RequestMethods:
         if headers is None:
             headers = self.headers
 
-        extra_kw: dict[str, typing.Any] = {"headers": HTTPHeaderDict(headers)}
+        extra_kw: dict[str, typing.Any] = {"headers": _copy_request_headers(headers)}
         body: bytes | str
 
         if fields:
@@ -271,7 +320,14 @@ class RequestMethods:
                 )
 
             extra_kw["body"] = body
-            extra_kw["headers"].setdefault("Content-Type", content_type)
+            request_headers = typing.cast(
+                HTTPHeaderDict | dict[str | bytes, str | bytes],
+                extra_kw["headers"],
+            )
+            if not any(
+                _is_header_in(header, {"content-type"}) for header in request_headers
+            ):
+                request_headers["Content-Type"] = content_type
 
         extra_kw.update(urlopen_kw)
 

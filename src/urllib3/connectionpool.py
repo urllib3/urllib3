@@ -11,8 +11,13 @@ from socket import timeout as SocketTimeout
 from types import TracebackType
 
 from ._base_connection import _TYPE_BODY
-from ._collections import HTTPHeaderDict
-from ._request_methods import RequestMethods
+from ._collections import _TYPE_HEADER_MAPPING, HTTPHeaderDict
+from ._request_methods import (
+    RequestMethods,
+    _copy_request_headers,
+    _is_header_in,
+    _prepare_request_headers_for_method_change,
+)
 from .connection import (
     BaseSSLError,
     BrokenPipeError,
@@ -62,6 +67,73 @@ log = logging.getLogger(__name__)
 
 _TYPE_TIMEOUT = typing.Union[Timeout, float, _TYPE_DEFAULT, None]
 _DEFAULT_QUEUE_CLASS = queue.LifoQueue
+
+
+def _normalize_proxy_tunnel_headers(
+    headers: _TYPE_HEADER_MAPPING,
+) -> HTTPHeaderDict:
+    """Adapt opaque bytes for stdlib's Latin-1 HTTP CONNECT serialization."""
+    normalized = HTTPHeaderDict()
+    for key, value in headers.items():
+        normalized.add(
+            key.decode("latin-1") if isinstance(key, bytes) else key,
+            value.decode("latin-1") if isinstance(value, bytes) else value,
+        )
+    return normalized
+
+
+def _copy_and_merge_proxy_headers(
+    headers: _TYPE_HEADER_MAPPING, proxy_headers: _TYPE_HEADER_MAPPING
+) -> _TYPE_HEADER_MAPPING:
+    """Copy and merge headers while preserving capable custom mappings."""
+    if isinstance(headers, HTTPHeaderDict):
+        copied_headers = headers.copy()
+        # HTTPHeaderDict is string-only. Latin-1 is the codec used later by
+        # http.client, so this conversion preserves every input byte on wire.
+        for key, value in _normalize_proxy_tunnel_headers(proxy_headers).itermerged():
+            copied_headers[key] = value
+        return copied_headers
+
+    if hasattr(headers, "copy"):
+        candidate = typing.cast(typing.Any, headers).copy()
+    else:
+        candidate = None
+    if candidate is headers or not isinstance(candidate, typing.MutableMapping):
+        candidate = dict(typing.cast(typing.Mapping[str | bytes, str | bytes], headers))
+
+    merged_headers = typing.cast(
+        typing.MutableMapping[str | bytes, str | bytes], candidate
+    )
+    proxy_items = (
+        proxy_headers.itermerged()
+        if isinstance(proxy_headers, HTTPHeaderDict)
+        else proxy_headers.items()
+    )
+    for proxy_key, proxy_value in proxy_items:
+        matching_keys = [
+            request_key
+            for request_key in merged_headers
+            if _header_names_equal(request_key, proxy_key)
+        ]
+        if matching_keys:
+            # Keep the first semantic header in its existing ordered slot.
+            merged_headers[matching_keys[0]] = proxy_value
+            for duplicate_key in matching_keys[1:]:
+                del merged_headers[duplicate_key]
+        else:
+            merged_headers[proxy_key] = proxy_value
+    return merged_headers
+
+
+def _header_names_equal(left: str | bytes, right: str | bytes) -> bool:
+    """Compare HTTP header names without decoding bytes."""
+    if isinstance(left, bytes):
+        if isinstance(right, bytes):
+            return left.lower() == right.lower()
+        return right.isascii() and left.lower() == right.lower().encode("ascii")
+    if isinstance(right, str):
+        return left.lower() == right.lower()
+    return left.isascii() and left.lower().encode("ascii") == right.lower()
 
 
 # Pool objects
@@ -185,10 +257,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         timeout: _TYPE_TIMEOUT | None = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         retries: Retry | bool | int | None = None,
         _proxy: Url | None = None,
-        _proxy_headers: typing.Mapping[str, str] | None = None,
+        _proxy_headers: _TYPE_HEADER_MAPPING | None = None,
         _proxy_config: ProxyConfig | None = None,
         **conn_kw: typing.Any,
     ):
@@ -386,7 +458,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         retries: Retry | None = None,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
@@ -500,7 +572,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 method,
                 url,
                 body=body,
-                headers=headers,
+                # BaseHTTPConnection also describes the experimental HTTP/2
+                # implementation, whose request headers remain string-only.
+                headers=typing.cast(typing.Mapping[str, str] | None, headers),
                 chunked=chunked,
                 preload_content=preload_content,
                 decode_content=decode_content,
@@ -600,7 +674,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         retries: Retry | bool | int | None = None,
         redirect: bool = True,
         assert_same_host: bool = True,
@@ -752,8 +826,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
         if not http_tunnel_required:
-            headers = headers.copy()  # type: ignore[attr-defined]
-            headers.update(self.proxy_headers)  # type: ignore[union-attr]
+            headers = _copy_and_merge_proxy_headers(headers, self.proxy_headers)
 
         # Must keep the exception bound to a separate variable or else Python 3
         # complains about UnboundLocalError.
@@ -909,7 +982,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 method = "GET"
                 # And lose the body not to transfer anything sensitive.
                 body = None
-                headers = HTTPHeaderDict(headers)._prepare_for_method_change()
+                headers = _prepare_request_headers_for_method_change(headers)
 
             # Strip headers marked as unsafe to forward to the redirected location.
             # Check remove_headers_on_redirect to avoid a potential network call within
@@ -917,10 +990,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if retries.remove_headers_on_redirect and not self.is_same_host(
                 redirect_location
             ):
-                new_headers = headers.copy()  # type: ignore[union-attr]
+                new_headers = _copy_request_headers(headers)
                 for header in headers:
-                    if header.lower() in retries.remove_headers_on_redirect:
-                        new_headers.pop(header, None)
+                    if _is_header_in(header, retries.remove_headers_on_redirect):
+                        if isinstance(new_headers, HTTPHeaderDict):
+                            new_headers.discard(typing.cast(str, header))
+                        else:
+                            new_headers.pop(header, None)
                 headers = new_headers
 
             try:
@@ -1011,10 +1087,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         timeout: _TYPE_TIMEOUT | None = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         retries: Retry | bool | int | None = None,
         _proxy: Url | None = None,
-        _proxy_headers: typing.Mapping[str, str] | None = None,
+        _proxy_headers: _TYPE_HEADER_MAPPING | None = None,
         key_file: str | None = None,
         cert_file: str | None = None,
         cert_reqs: int | str | None = None,
@@ -1064,7 +1140,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             scheme=tunnel_scheme,
             host=self._tunnel_host,
             port=self.port,
-            headers=self.proxy_headers,
+            # http.client serializes tunnel strings as Latin-1. Decode bytes
+            # with the same codec here so they round-trip to identical octets.
+            headers=_normalize_proxy_tunnel_headers(self.proxy_headers),
         )
         conn.connect()
 
