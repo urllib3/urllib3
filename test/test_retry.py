@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import typing
 from test import DUMMY_POOL
 from unittest import mock
 
@@ -263,7 +264,7 @@ class TestRetry:
         assert not retry.is_retry("GET", status_code=418)
 
     def test_allowed_methods_with_status_forcelist(self) -> None:
-        # Falsey allowed_methods means to retry on any method.
+        # ``None`` allowed_methods means to retry on any method.
         retry = Retry(status_forcelist=[500], allowed_methods=None)
         assert retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
@@ -271,6 +272,28 @@ class TestRetry:
         # Criteria of allowed_methods and status_forcelist are ANDed.
         retry = Retry(status_forcelist=[500], allowed_methods=["POST"])
         assert not retry.is_retry("GET", status_code=500)
+        assert retry.is_retry("POST", status_code=500)
+
+    @pytest.mark.parametrize("empty_methods", [set(), frozenset(), [], (), {}])
+    def test_empty_allowed_methods_retries_no_method(
+        self, empty_methods: typing.Collection[str]
+    ) -> None:
+        # An explicitly empty ``allowed_methods`` collection means "retry
+        # on no methods". This differs from ``None``, which retries on any
+        # method, and it protects users who make mistakes like
+        # ``allowed_methods=DEFAULT_ALLOWED_METHODS & {"POST"}`` (intersection
+        # instead of union) from silently retrying on every method.
+        retry = Retry(status_forcelist=[500], allowed_methods=empty_methods)
+        assert not retry.is_retry("GET", status_code=500)
+        assert not retry.is_retry("POST", status_code=500)
+
+    def test_allowed_methods_false_retries_any_method(self) -> None:
+        # urllib3 1.26.x documented ``allowed_methods=False`` as meaning
+        # "retry on any verb", so it is treated identically to ``None`` for
+        # backward compatibility. The type hint does not advertise this, but
+        # code still passing ``False`` must not silently regress.
+        retry = Retry(status_forcelist=[500], allowed_methods=False)  # type: ignore[arg-type]
+        assert retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
 
     def test_exhausted(self) -> None:
