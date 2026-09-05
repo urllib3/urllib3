@@ -247,6 +247,19 @@ class TestPoolManager:
         assert pool.assert_hostname
         assert fingerprint == pool.assert_fingerprint
 
+    def test_ssl_keywords_filtered_on_http(self) -> None:
+        """Assert SSL-specific kwargs are filtered when creating HTTP pools."""
+        fingerprint = "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
+        p = PoolManager(assert_hostname=True, assert_fingerprint=fingerprint)
+        pool = p.connection_from_url("http://example.com/")
+        assert 1 == len(p.pools)
+        assert not isinstance(pool, HTTPSConnectionPool)
+        # HTTP pool should not receive SSL_KEYWORDS kwargs
+        with pytest.raises(AttributeError):
+            _ = pool.assert_hostname  # type: ignore[attr-defined]
+        with pytest.raises(AttributeError):
+            _ = pool.assert_fingerprint  # type: ignore[attr-defined]
+
     def test_http_connection_from_context_case_insensitive(self) -> None:
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
@@ -469,6 +482,11 @@ class TestPoolManager:
         conn.connect()
 
         assert ssl_wrap_socket.call_args[1]["server_hostname"] == "a::b"
+
+    def test_connection_from_host_port_zero(self) -> None:
+        p = PoolManager()
+        pool = p.connection_from_host("example.com", port=0, scheme="http")
+        assert pool.port == 0
 
     def test_thread_safty(self) -> None:
         pool_manager = PoolManager(num_pools=2)

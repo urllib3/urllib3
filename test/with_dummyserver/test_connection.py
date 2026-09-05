@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import sys
 import typing
 from http.client import ResponseNotReady
 from unittest import mock
@@ -10,6 +11,16 @@ import pytest
 from dummyserver.testcase import HypercornDummyServerTestCase as server
 from urllib3 import HTTPConnectionPool
 from urllib3.response import HTTPResponse
+
+# See https://github.com/python/cpython/issues/146211
+# Xfail only on Python versions where neither the stdlib nor urllib3's
+# compatibility _tunnel implementation rejects invalid tunnel input.
+_MISSING_TUNNEL_CONTROL_CHAR_FIX = (
+    # 3.13 before 3.13.14 missing fix (no ported implementation for this version)
+    (sys.version_info[:2] == (3, 13) and sys.version_info[2] < 14)
+    # 3.14 before 3.14.5 missing fix (no ported implementation for this version)
+    or (sys.version_info[:2] == (3, 14) and sys.version_info[2] < 5)
+)
 
 
 @pytest.fixture()
@@ -138,3 +149,81 @@ def test_invalid_tunnel_scheme(pool: HTTPConnectionPool) -> None:
         str(e.value)
         == "Invalid proxy scheme for tunneling: 'socks', must be either 'http' or 'https'"
     )
+
+
+@pytest.mark.parametrize(
+    "name,value",
+    [
+        ("Invalid\r\nName", "ValidValue"),
+        ("Invalid\rName", "ValidValue"),
+        ("Invalid\nName", "ValidValue"),
+        ("\r\nInvalidName", "ValidValue"),
+        ("\rInvalidName", "ValidValue"),
+        ("\nInvalidName", "ValidValue"),
+        (" InvalidName", "ValidValue"),
+        ("\tInvalidName", "ValidValue"),
+        ("Invalid:Name", "ValidValue"),
+        (":InvalidName", "ValidValue"),
+        ("ValidName", "Invalid\r\nValue"),
+        ("ValidName", "Invalid\rValue"),
+        ("ValidName", "Invalid\nValue"),
+        ("ValidName", "InvalidValue\r\n"),
+        ("ValidName", "InvalidValue\r"),
+        ("ValidName", "InvalidValue\n"),
+    ],
+)
+@pytest.mark.xfail(
+    _MISSING_TUNNEL_CONTROL_CHAR_FIX,
+    reason="Control characters in tunnel headers not rejected in older Python versions",
+)
+def test_invalid_tunnel_headers(
+    pool: HTTPConnectionPool, name: str, value: str
+) -> None:
+    conn = pool._get_conn()
+    conn.set_tunnel("tunnel", headers={name: value})
+    with pytest.raises(ValueError, match="Invalid header"):
+        conn.connect()
+    conn.close()
+
+
+@pytest.mark.parametrize(
+    "tunnel_host",
+    [
+        "invalid\r.host",
+        "\ninvalid.host",
+        "invalid.host\r\n",
+        "invalid.host\x00",
+        "invalid host",
+    ],
+)
+@pytest.mark.xfail(
+    _MISSING_TUNNEL_CONTROL_CHAR_FIX,
+    reason="Control characters in tunnel host not rejected in older Python versions",
+)
+def test_invalid_tunnel_host(pool: HTTPConnectionPool, tunnel_host: str) -> None:
+    conn = pool._get_conn()
+    conn.set_tunnel(tunnel_host)
+    with pytest.raises(
+        ValueError, match="Tunnel host can't contain control characters"
+    ):
+        conn.connect()
+    conn.close()
+
+
+def test_response_after_drain_conn(pool: HTTPConnectionPool) -> None:
+    """
+    Test that a connection can be reused after calling `drain_conn` on
+    an unread response.
+    """
+    conn = pool._get_conn()
+
+    conn.request("GET", "/", preload_content=False)
+    response = conn.getresponse()
+    assert response.status == 200
+    response.drain_conn()
+
+    conn.request("GET", "/", preload_content=False)
+    response = conn.getresponse()
+    assert response.status == 200
+
+    conn.close()

@@ -7,10 +7,7 @@ import pytest
 
 try:
     from cryptography import x509
-    from OpenSSL.crypto import (  # type: ignore[import-not-found]
-        FILETYPE_PEM,
-        load_certificate,
-    )
+    from OpenSSL.crypto import FILETYPE_PEM, load_certificate
 
     from urllib3.contrib.pyopenssl import _dnsname_to_stdlib, get_subj_alt_name
 except ImportError:
@@ -45,13 +42,12 @@ from ..with_dummyserver.test_https import (  # noqa: E402, F401
     TestHTTPS_TLSv1_2,
     TestHTTPS_TLSv1_3,
 )
-from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
+
+from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401  # isort: skip
     TestClientCerts,
     TestSNI,
-    TestSocketClosing,
-)
-from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
     TestSSL as TestSocketSSL,
+    TestSocketClosing,
 )
 
 
@@ -95,7 +91,7 @@ class TestPyOpenSSLHelpers:
         an x509.DuplicateExtension exception.
         """
         path = os.path.join(os.path.dirname(__file__), "duplicate_san.pem")
-        with open(path) as fp:
+        with open(path, "rb") as fp:
             cert = load_certificate(FILETYPE_PEM, fp.read())
 
         assert get_subj_alt_name(cert) == []

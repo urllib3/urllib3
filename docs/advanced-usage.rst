@@ -536,7 +536,7 @@ Brotli Encoding
 
 Brotli is a compression algorithm created by Google with better compression
 than gzip and deflate and is supported by urllib3 if the
-`Brotli <https://pypi.org/Brotli>`_ package or
+`Brotli <https://pypi.org/project/brotli/>`_ package or
 `brotlicffi <https://github.com/python-hyper/brotlicffi>`_ package is installed.
 You may also request the package be installed via the ``urllib3[brotli]`` extra:
 

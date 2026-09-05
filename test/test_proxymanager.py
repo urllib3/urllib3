@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from urllib3.exceptions import MaxRetryError, NewConnectionError, ProxyError
+from urllib3.exceptions import (
+    LocationParseError,
+    MaxRetryError,
+    NewConnectionError,
+    ProxyError,
+)
 from urllib3.poolmanager import ProxyManager
+from urllib3.response import HTTPResponse
 from urllib3.util.retry import Retry
 from urllib3.util.url import parse_url
 
@@ -49,6 +55,11 @@ class TestProxyManager:
             assert p.proxy is not None
             assert p.proxy.port == 443
 
+    def test_proxy_port_zero(self) -> None:
+        with ProxyManager("http://proxy:0") as p:
+            assert p.proxy is not None
+            assert p.proxy.port == 0
+
     def test_invalid_scheme(self) -> None:
         with pytest.raises(AssertionError):
             ProxyManager("invalid://host/p")
@@ -69,6 +80,53 @@ class TestProxyManager:
         with ProxyManager("https://proxy:8080", use_forwarding_for_https=True) as p:
             assert p._proxy_requires_url_absolute_form(http_url)
             assert p._proxy_requires_url_absolute_form(https_url)
+
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    def test_absolute_form_request_target_strips_fragment_for_custom_pool(
+        self, proxy_scheme: str
+    ) -> None:
+        class CustomConnectionPool:
+            requested_urls: list[str] = []
+
+            def __init__(self, host: str, port: int | None = None, **kw: object):
+                pass
+
+            def urlopen(self, method: str, url: str, **kw: object) -> HTTPResponse:
+                self.requested_urls.append(url)
+                return HTTPResponse(status=200)
+
+        with ProxyManager(f"{proxy_scheme}://proxy:8080") as p:
+            p.pool_classes_by_scheme = p.pool_classes_by_scheme.copy()
+            p.pool_classes_by_scheme[proxy_scheme] = CustomConnectionPool
+            response = p.urlopen(
+                "GET",
+                "http://example.com/path?x=1#marker=value",
+            )
+
+        assert response.status == 200
+        assert CustomConnectionPool.requested_urls == ["http://example.com/path?x=1"]
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://victim.example\r\nInjected/path",
+            "https://[::1%25%0d%0a]/",
+        ],
+    )
+    def test_proxy_connect_rejects_control_characters_in_tunnel_host(
+        self, url: str
+    ) -> None:
+        with ProxyManager("http://proxy:8080") as p:
+            with pytest.raises(LocationParseError):
+                p.connection_from_url(url)
+
+    @pytest.mark.parametrize("host", ["foo%.example", "foo%zz.example"])
+    def test_proxy_connect_rejects_malformed_percent_escapes_in_tunnel_host(
+        self, host: str
+    ) -> None:
+        with ProxyManager("http://proxy:8080") as p:
+            with pytest.raises(LocationParseError):
+                p.connection_from_host(host, scheme="https")
 
     def test_proxy_connect_retry(self) -> None:
         retry = Retry(total=None, connect=False)

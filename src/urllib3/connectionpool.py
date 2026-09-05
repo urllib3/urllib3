@@ -61,6 +61,7 @@ if typing.TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 _TYPE_TIMEOUT = typing.Union[Timeout, float, _TYPE_DEFAULT, None]
+_DEFAULT_QUEUE_CLASS = queue.LifoQueue
 
 
 # Pool objects
@@ -76,7 +77,7 @@ class ConnectionPool:
     """
 
     scheme: str | None = None
-    QueueCls = queue.LifoQueue
+    QueueCls = _DEFAULT_QUEUE_CLASS
 
     def __init__(self, host: str, port: int | None = None) -> None:
         if not host:
@@ -111,6 +112,11 @@ class ConnectionPool:
         """
         Close all pooled connections and disable the pool.
         """
+
+    def _new_pool_queue(self, maxsize: int) -> queue.LifoQueue[typing.Any]:
+        if self.QueueCls is _DEFAULT_QUEUE_CLASS:
+            return queue.LifoQueue(maxsize)
+        return self.QueueCls(maxsize)
 
 
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
@@ -198,7 +204,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.timeout = timeout
         self.retries = retries
 
-        self.pool: queue.LifoQueue[typing.Any] | None = self.QueueCls(maxsize)
+        self.pool: queue.LifoQueue[typing.Any] | None = self._new_pool_queue(maxsize)
         self.block = block
 
         self.proxy = _proxy
@@ -582,9 +588,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             host = _normalize_host(host, scheme=scheme)
 
         # Use explicit default port for comparison when none is given
-        if self.port and not port:
+        if self.port is not None and port is None:
             port = port_by_scheme.get(scheme)
-        elif not self.port and port == port_by_scheme.get(scheme):
+        elif self.port is None and port == port_by_scheme.get(scheme):
             port = None
 
         return (scheme, host, port) == (self.scheme, self.host, self.port)
@@ -702,8 +708,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
         """
-        parsed_url = parse_url(url)
-        destination_scheme = parsed_url.scheme
+        # Ensure that the URL we're connecting to is properly encoded
+        if url.startswith("/"):
+            # URLs starting with / are inherently schemeless.
+            url = to_str(_encode_target(url))
+            destination_scheme = None
+        else:
+            parsed_url = parse_url(url)
+            destination_scheme = parsed_url.scheme
+            url = to_str(parsed_url._replace(fragment=None).url)
 
         if headers is None:
             headers = self.headers
@@ -717,12 +730,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Check host
         if assert_same_host and not self.is_same_host(url):
             raise HostChangedError(self, url, retries)
-
-        # Ensure that the URL we're connecting to is properly encoded
-        if url.startswith("/"):
-            url = to_str(_encode_target(url))
-        else:
-            url = to_str(parsed_url.url)
 
         conn = None
 
@@ -760,11 +767,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # for future rewinds in the event of a redirect/retry.
         body_pos = set_file_position(body, body_pos)
 
+        timeout_obj = self._get_timeout(timeout)
         try:
             # Request a connection from the queue.
-            timeout_obj = self._get_timeout(timeout)
             conn = self._get_conn(timeout=pool_timeout)
-
             conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
 
             # Is this a closed/new connection that requires CONNECT tunnelling?
@@ -866,7 +872,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not conn:
             # Try again
             log.warning(
-                "Retrying (%r) after connection broken by '%r': %s", retries, err, url
+                "Retrying (%r) after connection broken by '%r': %s",
+                retries,
+                err,
+                url,
+                # Provide an unique attribute with the host needed by pip to
+                # rewrite this warning. Ideally, we'd go with a better solution,
+                # but backwards compatibility and other constraints make those
+                # unfeasible, so this is the least bad option.
+                # See also: https://github.com/urllib3/urllib3/issues/2580.
+                extra={"__urllib3-retry-warning": {"host": self.host}},
             )
             return self.urlopen(
                 method,
@@ -895,6 +910,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # And lose the body not to transfer anything sensitive.
                 body = None
                 headers = HTTPHeaderDict(headers)._prepare_for_method_change()
+
+            # Strip headers marked as unsafe to forward to the redirected location.
+            # Check remove_headers_on_redirect to avoid a potential network call within
+            # self.is_same_host() which may use socket.gethostbyname() in the future.
+            if retries.remove_headers_on_redirect and not self.is_same_host(
+                redirect_location
+            ):
+                new_headers = headers.copy()  # type: ignore[union-attr]
+                for header in headers:
+                    if header.lower() in retries.remove_headers_on_redirect:
+                        new_headers.pop(header, None)
+                headers = new_headers
 
             try:
                 retries = retries.increment(method, url, response=response, _pool=self)
@@ -1127,7 +1154,8 @@ def connection_from_url(url: str, **kw: typing.Any) -> HTTPConnectionPool:
     """
     scheme, _, host, port, *_ = parse_url(url)
     scheme = scheme or "http"
-    port = port or port_by_scheme.get(scheme, 80)
+    if port is None:
+        port = port_by_scheme.get(scheme, 80)
     if scheme == "https":
         return HTTPSConnectionPool(host, port=port, **kw)  # type: ignore[arg-type]
     else:
