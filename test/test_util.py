@@ -465,6 +465,30 @@ class TestUtil:
         assert actual_url == expected_url
         assert actual_url.url == expected_url.url
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            # Same inputs as test_parse_and_normalize_url_paths, but with
+            # normalize_path=False none of them should be touched.
+            "/abc/../def",
+            "/..",
+            "/./abc/./def/",
+            "/.",
+            "/./",
+            "/abc/./.././d/././e/.././f/./../../ghi",
+        ],
+    )
+    def test_parse_url_without_normalizing_path(self, url: str) -> None:
+        assert parse_url(url, normalize_path=False).path == url
+
+    def test_parse_url_without_normalizing_path_still_encodes_invalid_chars(
+        self,
+    ) -> None:
+        # Dot segments are left alone, but characters that aren't valid in a
+        # path still get percent-encoded either way.
+        actual_url = parse_url("http://example.com/../foo bar<>", normalize_path=False)
+        assert actual_url.path == "/../foo%20bar%3C%3E"
+
     def test_parse_url_invalid_IPv6(self) -> None:
         with pytest.raises(LocationParseError):
             parse_url("[::1")

@@ -458,7 +458,7 @@ def _encode_target(target: str) -> str:
     return encoded_target
 
 
-def parse_url(url: str) -> Url:
+def parse_url(url: str, *, normalize_path: bool = True) -> Url:
     """
     Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
     performed to parse incomplete urls. Fields not provided will be None.
@@ -468,6 +468,12 @@ def parse_url(url: str) -> Url:
     work done in the ``rfc3986`` module.
 
     :param str url: URL to parse into a :class:`.Url` namedtuple.
+    :param bool normalize_path:
+        Whether to collapse ``.``/``..`` path segments per RFC 3986 Section
+        6.2.2.3. Callers that need to send a path exactly as given, such as
+        forwarding a request line to a proxy, should pass ``False``;
+        percent-encoding of otherwise-invalid characters still happens
+        either way.
 
     Partly backwards-compatible with :mod:`urllib.parse`.
 
@@ -539,7 +545,8 @@ def parse_url(url: str) -> Url:
     host = _normalize_host(host, scheme)
 
     if normalize_uri and path:
-        path = _remove_path_dot_segments(path)
+        if normalize_path:
+            path = _remove_path_dot_segments(path)
         path = _encode_invalid_chars(path, _PATH_CHARS)
     if normalize_uri and query:
         query = _encode_invalid_chars(query, _QUERY_CHARS)
