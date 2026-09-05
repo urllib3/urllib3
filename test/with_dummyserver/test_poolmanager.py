@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import io
 import typing
 from test import LONG_TIMEOUT
 from unittest import mock
@@ -12,9 +13,9 @@ from dummyserver.testcase import (
     HypercornDummyServerTestCase,
     IPv6HypercornDummyServerTestCase,
 )
-from urllib3 import HTTPHeaderDict, HTTPResponse, request
+from urllib3 import HTTPHeaderDict, HTTPResponse, encode_multipart_formdata, request
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
+from urllib3.exceptions import MaxRetryError, UnrewindableBodyError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
@@ -391,6 +392,66 @@ class TestPoolManager(HypercornDummyServerTestCase):
         assert data["params"] == {}
         assert "Content-Type" not in HTTPHeaderDict(data["headers"])
 
+    def test_307_redirect_rewinds_multipart_body(self) -> None:
+        payload = b"multipart pool manager redirect"
+        expected = encode_multipart_formdata(
+            {"file": ("payload.bin", payload)}, boundary="boundary"
+        )[0]
+
+        with PoolManager() as http:
+            response = http.request(
+                "POST",
+                f"{self.base_url}/redirect?target=/echo&status=307",
+                fields={"file": ("payload.bin", io.BytesIO(payload))},
+                multipart_boundary="boundary",
+            )
+
+        assert response.data == expected
+
+    def test_redirect_failed_tell_only_fails_on_replay(self) -> None:
+        class BadTell(io.BytesIO):
+            def tell(self) -> typing.NoReturn:
+                raise OSError
+
+        url = f"{self.base_url}/redirect?target=/echo&status=307"
+        headers = {"Content-Length": "8"}
+        with PoolManager() as http:
+            response = http.urlopen(
+                "PUT", url, body=BadTell(b"the data"), headers=headers, redirect=False
+            )
+            assert response.status == 307
+
+            with pytest.raises(
+                UnrewindableBodyError, match="Unable to record file position for"
+            ):
+                http.urlopen("PUT", url, body=BadTell(b"the data"), headers=headers)
+
+    @pytest.mark.parametrize("explicit_body_pos", [False, True])
+    def test_307_redirect_preserves_body_position(
+        self, explicit_body_pos: bool
+    ) -> None:
+        prefix = b"prefix:"
+        payload = b"body from explicit position"
+        body = io.BytesIO(prefix + payload)
+        request_kw: dict[str, typing.Any]
+        if explicit_body_pos:
+            body.seek(0, 2)
+            request_kw = {"body_pos": len(prefix)}
+        else:
+            body.seek(len(prefix))
+            request_kw = {}
+
+        with PoolManager() as http:
+            response = http.urlopen(
+                "PUT",
+                f"{self.base_url}/redirect?target=/echo&status=307",
+                body=body,
+                headers={"Content-Length": str(len(payload))},
+                **request_kw,
+            )
+
+        assert response.data == payload
+
     def test_unknown_scheme(self) -> None:
         with PoolManager() as http:
             unknown_scheme = "unknown"
@@ -582,16 +643,18 @@ class TestPoolManager(HypercornDummyServerTestCase):
                 encode_multipart=True,
             )
             returned_headers = r.json()["headers"]
-            assert returned_headers[5:] == [
+            assert returned_headers[-4:] == [
                 ["Multi", "1"],
                 ["Multi", "2"],
                 ["Content-Type", "multipart/form-data; boundary=b"],
+                ["Content-Length", "59"],
             ]
             # Assert that the previous headers weren't modified.
             assert headers == old_headers
 
             # Set a default value for the Content-Type
             headers["Content-Type"] = "multipart/form-data; boundary=b; field=value"
+            old_headers = headers.copy()
             r = http.request(
                 "POST",
                 f"{self.base_url}/multi_headers",
@@ -600,12 +663,32 @@ class TestPoolManager(HypercornDummyServerTestCase):
                 encode_multipart=True,
             )
             returned_headers = r.json()["headers"]
-            assert returned_headers[5:] == [
+            assert returned_headers[-4:] == [
                 ["Multi", "1"],
                 ["Multi", "2"],
                 # Uses the set value, not the one that would be generated.
                 ["Content-Type", "multipart/form-data; boundary=b; field=value"],
+                ["Content-Length", "59"],
             ]
+            assert headers == old_headers
+
+    def test_multipart_transfer_encoding_omits_content_length(self) -> None:
+        requests: list[dict[str, typing.Any]] = [
+            {"chunked": True},
+            {"headers": {"Transfer-Encoding": "chunked"}},
+        ]
+        with PoolManager() as http:
+            for request_kw in requests:
+                response = http.request(
+                    "POST",
+                    f"{self.base_url}/headers",
+                    fields={"field": "value"},
+                    multipart_boundary="boundary",
+                    **request_kw,
+                )
+                returned_headers = HTTPHeaderDict(response.json())
+                assert returned_headers["Transfer-Encoding"] == "chunked"
+                assert "Content-Length" not in returned_headers
 
     def test_body(self) -> None:
         with PoolManager() as http:

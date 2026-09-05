@@ -909,6 +909,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 method = "GET"
                 # And lose the body not to transfer anything sensitive.
                 body = None
+                body_pos = None
                 headers = HTTPHeaderDict(headers)._prepare_for_method_change()
 
             # Strip headers marked as unsafe to forward to the redirected location.
