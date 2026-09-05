@@ -9,6 +9,7 @@ import pytest
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
+    MaxRetryAfterWaitError,
     MaxRetryError,
     ReadTimeoutError,
     ResponseError,
@@ -438,3 +439,54 @@ class TestRetry:
                 sleep_mock.assert_called_with(sleep_duration)
             else:
                 sleep_mock.assert_not_called()
+
+    def test_retry_after_max_strict_raises(self) -> None:
+        """When strict mode is enabled and Retry-After exceeds max, raise."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        with pytest.raises(MaxRetryAfterWaitError) as exc_info:
+            retry.parse_retry_after("20")
+        assert exc_info.value.retry_after == 20
+        assert exc_info.value.max_wait == 10
+
+    def test_retry_after_max_strict_within_limit(self) -> None:
+        """When strict mode is enabled but value is within limit, return normally."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        result = retry.parse_retry_after("5")
+        assert result == 5
+        assert result <= retry.retry_after_max
+
+    def test_retry_after_max_strict_exact_boundary(self) -> None:
+        """Exact boundary value (value == max) should NOT raise in strict mode."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        result = retry.parse_retry_after("10")
+        assert result == 10
+        assert result == retry.retry_after_max
+
+    def test_retry_after_max_strict_default_caps(self) -> None:
+        """Default behavior (strict=False) caps instead of raising."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=False)
+        result = retry.parse_retry_after("20")
+        assert result == 10
+        assert result == retry.retry_after_max
+
+    def test_retry_after_max_strict_sleep_raises(self) -> None:
+        """sleep_for_retry raises when strict mode is triggered."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        response = HTTPResponse(status=503, headers={"Retry-After": "20"})
+        with pytest.raises(MaxRetryAfterWaitError) as exc_info:
+            retry.sleep_for_retry(response)
+        assert exc_info.value.retry_after == 20
+
+    def test_retry_after_max_strict_zero_value(self) -> None:
+        """Zero Retry-After passes through in strict mode without raising."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        assert retry.parse_retry_after("0") == 0
+        assert retry.retry_after_max_strict is True
+
+    def test_retry_after_max_strict_propagated_via_new(self) -> None:
+        """retry_after_max_strict is preserved through new()."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        new_retry = retry.new()
+        assert new_retry.retry_after_max_strict is True
+        with pytest.raises(MaxRetryAfterWaitError):
+            new_retry.parse_retry_after("20")
