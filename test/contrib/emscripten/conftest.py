@@ -64,7 +64,7 @@ def _get_coverage_code() -> tuple[str, str]:
 
         _coverage = coverage.Coverage(source_pkgs=["urllib3"])
         _coverage.start()
-        """
+        """,
     )
     end = textwrap.dedent(
         """
@@ -80,17 +80,17 @@ def _get_coverage_code() -> tuple[str, str]:
         # convert to js Array (as default conversion is TypedArray which does
         # bad things in firefox)
         _coverage_js.Array.from_(_coverage_outdata)
-        """
+        """,
     )
     return begin, end
 
 
 def _get_jspi_monkeypatch_code(runtime: str, prefer_jspi: bool) -> tuple[str, str]:
     """
-    Return code to make Pyodide think JSPI is disabled in Chrome when a
+    Return code to make Pyodide think JSPI is disabled in browsers when a
     test needs this to check some code paths.
     """
-    if runtime != "chrome" or prefer_jspi:
+    if runtime == "node" or prefer_jspi:
         return "", ""
     monkeypatch_code = textwrap.dedent(
         """
@@ -99,7 +99,7 @@ def _get_jspi_monkeypatch_code(runtime: str, prefer_jspi: bool) -> tuple[str, st
         original_can_run_sync = pyodide.ffi.can_run_sync
         if pyodide.ffi.can_run_sync():
             pyodide.ffi.can_run_sync = lambda: False
-        """
+        """,
     )
     unmonkeypatch_code = "pyodide.ffi.can_run_sync = original_can_run_sync"
     return monkeypatch_code, unmonkeypatch_code
@@ -217,14 +217,16 @@ class ServerRunnerInfo:
                 }} = require('node:worker_threads');
                 globalThis.Worker= Worker;
                 process.chdir('{self.dist_dir}');
-                """
+                """,
             )
+            worker_options = ""
         else:
             worker_path = f"https://{self.host}:{self.port}/pyodide/webworker_dev.js"
+            worker_options = ", { type: 'module' }"
         coverage_out_binary = bytes(
             self.selenium.run_js(
                 f"""
-            let worker = new Worker('{worker_path}');
+            let worker = new Worker('{worker_path}'{worker_options});
             let p = new Promise((res, rej) => {{
                 worker.onmessageerror = e => rej(e);
                 worker.onerror = e => rej(e);
@@ -303,11 +305,6 @@ def pytest_collection_modifyitems(
             deselected_tests.append(item)
             continue
 
-        # Firefox cannot run JSPI tests.
-        if runtime.startswith("firefox") and item.get_closest_marker("with_jspi"):
-            deselected_tests.append(item)
-            continue
-
         selected_tests.append(item)
 
     config.hook.pytest_deselected(items=deselected_tests)
@@ -332,12 +329,8 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             else:
                 can_run_with_jspi = True
                 can_run_without_jspi = False
-        # firefox doesn't support JSPI
-        elif metafunc.config.getoption("--runtime").startswith("firefox"):
-            can_run_with_jspi = False
-            can_run_without_jspi = True
         else:
-            # chrome supports JSPI on or off
+            # Chrome and Firefox support JSPI on or off
             can_run_without_jspi = True
             can_run_with_jspi = True
 
