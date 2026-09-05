@@ -234,6 +234,16 @@ class TestUtil:
             fragment="fragment" + percent_char,
         )
 
+    def test_backslash_in_userinfo_is_percent_encoded(self) -> None:
+        parsed_url = parse_url("http://domain\\user:password@proxy.example:8080")
+        assert parsed_url == Url(
+            scheme="http",
+            auth="domain%5Cuser:password",
+            host="proxy.example",
+            port=8080,
+        )
+        assert parsed_url.auth_decoded == ("domain\\user", "password")
+
     @pytest.mark.parametrize(
         "url_template",
         [
@@ -249,6 +259,17 @@ class TestUtil:
         self, url_template: str, char: str
     ) -> None:
         with pytest.raises(LocationParseError, match="contains invalid character"):
+            parse_url(url_template.format(char))
+
+    @pytest.mark.parametrize(
+        "url_template",
+        ["http://victim.example{}Injected/path", "victim.example{}Injected"],
+    )
+    @pytest.mark.parametrize("char", ['"', "<", ">", "\\", "^", "`", "{", "|", "}"])
+    def test_non_rfc3986_ascii_characters_in_host_raise(
+        self, url_template: str, char: str
+    ) -> None:
+        with pytest.raises(LocationParseError, match="is not a valid host or port"):
             parse_url(url_template.format(char))
 
     @pytest.mark.parametrize(
@@ -665,14 +686,7 @@ class TestUtil:
         # See https://bugs.xdavidhu.me/google/2020/03/08/the-unexpected-google-wide-domain-check-bypass/
         (
             "https://user:pass@xdavidhu.me\\test.corp.google.com:8080/path/to/something?param=value#hash",
-            Url(
-                scheme="https",
-                auth="user:pass",
-                host="xdavidhu.me",
-                path="/%5Ctest.corp.google.com:8080/path/to/something",
-                query="param=value",
-                fragment="hash",
-            ),
+            False,
         ),
         # Tons of '@' causing backtracking
         pytest.param(
