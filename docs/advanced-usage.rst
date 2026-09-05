@@ -56,6 +56,47 @@ Any new requests will block until a connection is available from the pool.
 This is a great way to prevent flooding a host with too many connections in
 multi-threaded applications.
 
+.. _cleaning_up:
+.. _closing_pools:
+
+Cleaning Up
+-----------
+
+:class:`~poolmanager.PoolManager` and :class:`~connectionpool.ConnectionPool`
+keep live sockets open for reuse. Long-running processes should close those
+pools when they are no longer needed so sockets are not left until garbage
+collection.
+
+Both classes are context managers. Leaving the ``with`` block calls
+:meth:`~poolmanager.PoolManager.clear` (or :meth:`~connectionpool.ConnectionPool.close`)
+and closes idle connections in the pool:
+
+.. code-block:: python
+
+    import urllib3
+
+    with urllib3.PoolManager() as http:
+        resp = http.request("GET", "https://httpbin.org/get")
+        print(resp.status)
+
+You can also clear a pool explicitly without using a context manager:
+
+.. code-block:: python
+
+    import urllib3
+
+    http = urllib3.PoolManager()
+    try:
+        resp = http.request("GET", "https://httpbin.org/get")
+        print(resp.status)
+    finally:
+        http.clear()
+
+.. note::
+   Clearing a pool does not interrupt in-flight requests. Connections that are
+   still in use finish normally, but they will not be returned to the pool
+   afterward.
+
 .. _stream:
 .. _streaming_and_io:
 
