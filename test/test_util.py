@@ -1243,7 +1243,7 @@ class TestUtilSSL:
 
     def test_ssl_wrap_socket_loads_the_cert_chain(self) -> None:
         socket = Mock()
-        mock_context = Mock()
+        mock_context = Mock(spec=ssl.SSLContext)
         ssl_wrap_socket(
             ssl_context=mock_context, sock=socket, certfile="/path/to/certfile"
         )
@@ -1261,7 +1261,7 @@ class TestUtilSSL:
 
     def test_ssl_wrap_socket_loads_verify_locations(self) -> None:
         socket = Mock()
-        mock_context = Mock()
+        mock_context = Mock(spec=ssl.SSLContext)
         ssl_wrap_socket(ssl_context=mock_context, ca_certs="/path/to/pem", sock=socket)
         mock_context.load_verify_locations.assert_called_once_with(
             "/path/to/pem", None, None
@@ -1269,7 +1269,7 @@ class TestUtilSSL:
 
     def test_ssl_wrap_socket_loads_certificate_directories(self) -> None:
         socket = Mock()
-        mock_context = Mock()
+        mock_context = Mock(spec=ssl.SSLContext)
         ssl_wrap_socket(
             ssl_context=mock_context, ca_cert_dir="/path/to/pems", sock=socket
         )
@@ -1279,7 +1279,7 @@ class TestUtilSSL:
 
     def test_ssl_wrap_socket_loads_certificate_data(self) -> None:
         socket = Mock()
-        mock_context = Mock()
+        mock_context = Mock(spec=ssl.SSLContext)
         ssl_wrap_socket(
             ssl_context=mock_context, ca_cert_data="TOTALLY PEM DATA", sock=socket
         )
@@ -1290,7 +1290,7 @@ class TestUtilSSL:
     def _wrap_socket_and_mock_warn(
         self, sock: socket.socket, server_hostname: str | None
     ) -> tuple[Mock, MagicMock]:
-        mock_context = Mock()
+        mock_context = Mock(spec=ssl.SSLContext)
         with patch("warnings.warn") as warn:
             ssl_wrap_socket(
                 ssl_context=mock_context,
