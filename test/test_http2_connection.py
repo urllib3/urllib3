@@ -3,10 +3,11 @@ from __future__ import annotations
 import socket
 from unittest import mock
 
+import h2.exceptions
 import pytest
 
 from urllib3.connection import _get_default_user_agent
-from urllib3.exceptions import ConnectionError
+from urllib3.exceptions import ConnectionError, ProtocolError
 from urllib3.http2.connection import (
     HTTP2Connection,
     _is_illegal_header_value,
@@ -384,3 +385,29 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+    def test_getresponse_peer_closed_connection(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(return_value=b""),
+        )
+
+        with pytest.raises(ProtocolError, match="Response ended prematurely"):
+            conn.getresponse()
+
+        # An empty read used to leave 'end_stream' false and re-enter the
+        # loop, so 'recv()' was called until the process was killed.
+        assert conn.sock.recv.call_count == 1
+
+    def test_getresponse_h2_error(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            recv=mock.Mock(return_value=b"not-a-valid-frame"),
+        )
+        h2_error = h2.exceptions.ProtocolError("cannot receive data before headers")
+        conn._h2_conn._obj.receive_data = mock.Mock(side_effect=h2_error)  # type: ignore[method-assign]
+
+        with pytest.raises(ProtocolError, match="Connection broken") as excinfo:
+            conn.getresponse()
+
+        assert excinfo.value.__cause__ is h2_error
