@@ -1,0 +1,1 @@
+Added Happy Eyeballs-style fallback for connection attempts when a host resolves to multiple IPv4 and IPv6 addresses.
