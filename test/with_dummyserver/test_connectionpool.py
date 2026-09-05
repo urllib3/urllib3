@@ -1112,7 +1112,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
 
     def test_bytes_header(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
-            headers = {"User-Agent": "test header"}
+            headers = {b"User-Agent": b"test header"}
             r = pool.request("GET", "/headers", headers=headers)
             request_headers = r.json()
             assert "User-Agent" in request_headers
@@ -1121,7 +1121,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
     @pytest.mark.parametrize(
         "user_agent", ["Schönefeld/1.18.0", "Schönefeld/1.18.0".encode("iso-8859-1")]
     )
-    def test_user_agent_non_ascii_user_agent(self, user_agent: str) -> None:
+    def test_user_agent_non_ascii_user_agent(self, user_agent: str | bytes) -> None:
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             r = pool.urlopen(
                 "GET",
