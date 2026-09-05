@@ -514,3 +514,27 @@ class TestPoolManager:
 
         # Connection should be closed, because reference to pool_1 is gone.
         assert conn_queue.qsize() == 0
+
+    @pytest.mark.parametrize(
+        ["url", "expected_url"],
+        [
+            # An existing query is joined with '&', not a second '?'.
+            ("http://example.com/p?a=b", "http://example.com/p?a=b&q=1"),
+            # A '?' inside the fragment is not a query, and the fragment stays.
+            ("http://example.com/p#a?b", "http://example.com/p?q=1#a?b"),
+        ],
+    )
+    def test_request_encode_url_merges_fields(
+        self, url: str, expected_url: str
+    ) -> None:
+        """Fields join an existing query and stay ahead of the fragment.
+
+        The fragment is kept because ``RequestMethods`` is a documented mixin:
+        urllib3's own pools drop it before sending, but a third-party
+        ``urlopen`` may not.
+        """
+        with PoolManager() as http:
+            with patch.object(PoolManager, "urlopen") as mock_urlopen:
+                http.request_encode_url("GET", url, fields={"q": "1"})
+
+        assert mock_urlopen.call_args[0][1] == expected_url
