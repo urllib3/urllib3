@@ -493,9 +493,12 @@ class BaseHTTPResponse(io.IOBase):
 
         self.chunked = False
         tr_enc = self.headers.get("transfer-encoding", "").lower()
-        # Don't incur the penalty of creating a list and then discarding it
-        encodings = (enc.strip() for enc in tr_enc.split(","))
-        if "chunked" in encodings:
+        # Per RFC 9112 section 6.1 "chunked" must be the final transfer
+        # coding. Only treat the body as chunk-framed when it is, so a
+        # malformed value such as "chunked, gzip" (where "chunked" is not
+        # last) is not read as chunked while http.client frames it otherwise.
+        encodings = [enc.strip() for enc in tr_enc.split(",") if enc.strip()]
+        if encodings and encodings[-1] == "chunked":
             self.chunked = True
 
         self._decoder: ContentDecoder | None = None

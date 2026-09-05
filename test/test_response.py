@@ -263,6 +263,31 @@ class TestResponse:
         assert r._body is None
         assert r.data == b""
 
+    @pytest.mark.parametrize(
+        "transfer_encoding, chunked",
+        [
+            ("chunked", True),
+            ("chunked ", True),
+            ("chunked,", True),
+            (", chunked", True),
+            ("gzip, chunked", True),
+            # "chunked" is not the final transfer coding (RFC 9112 section 6.1),
+            # so the body is not chunk-framed.
+            ("chunked, gzip", False),
+            ("gzip, chunked, identity", False),
+            ("gzip", False),
+        ],
+    )
+    def test_chunked_requires_final_transfer_coding(
+        self, transfer_encoding: str, chunked: bool
+    ) -> None:
+        r = HTTPResponse(
+            BytesIO(b""),
+            headers={"transfer-encoding": transfer_encoding},
+            preload_content=False,
+        )
+        assert r.chunked is chunked
+
     def test_default(self) -> None:
         r = HTTPResponse()
         assert r.data is None
