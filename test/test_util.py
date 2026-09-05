@@ -189,11 +189,13 @@ class TestUtil:
             ("Https://Example.Com/#Fragment", "https://example.com/#Fragment"),
             # IPv6 addresses with zone IDs. Both RFC 6874 (%25) as well as
             # non-standard (unquoted %) variants.
-            ("[::1%zone]", "[::1%zone]"),
-            ("[::1%25zone]", "[::1%zone]"),
-            ("[::1%0d]", "[::1%0d]"),
-            ("[::1%25]", "[::1%25]"),
-            ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%etH0%FF]/%AB%AF"),
+            # Scheme-less inputs keep their authority: parse_url(...).url emits
+            # the RFC 3986 "//" network-path prefix so the result round-trips.
+            ("[::1%zone]", "//[::1%zone]"),
+            ("[::1%25zone]", "//[::1%zone]"),
+            ("[::1%0d]", "//[::1%0d]"),
+            ("[::1%25]", "//[::1%25]"),
+            ("[::Ff%etH0%Ff]/%ab%Af", "//[::ff%etH0%FF]/%AB%AF"),
             (
                 "http://user:pass@[AaAa::Ff%25etH0%Ff]/%ab%Af",
                 "http://user:pass@[aaaa::ff%etH0%FF]/%AB%AF",
@@ -366,7 +368,7 @@ class TestUtil:
         ("http://google.com/mail", Url("http", host="google.com", path="/mail")),
         ("http://google.com/mail/", Url("http", host="google.com", path="/mail/")),
         ("http://google.com/mail", Url("http", host="google.com", path="mail")),
-        ("google.com/mail", Url(host="google.com", path="/mail")),
+        ("//google.com/mail", Url(host="google.com", path="/mail")),
         ("http://google.com/", Url("http", host="google.com", path="/")),
         ("http://google.com", Url("http", host="google.com")),
         ("http://google.com?foo", Url("http", host="google.com", path="", query="foo")),
@@ -447,6 +449,33 @@ class TestUtil:
     @pytest.mark.parametrize("url, expected_url", parse_url_host_map)
     def test_unparse_url(self, url: str, expected_url: Url) -> None:
         assert url == expected_url.url
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "//localhost:8080",
+            "//user@localhost:8080",
+            "//[::1%zone]",
+            "//google.com/mail",
+            "https://user:pass@example.com:443/p?q#f",
+            "http://example.com/p",
+            "/just/a/path",
+        ],
+    )
+    def test_url_round_trips_scheme_less_authority(self, url: str) -> None:
+        # A scheme-less authority must serialize with the RFC 3986 "//" prefix,
+        # otherwise "//host:port" would collapse to "host:port" and be reparsed
+        # as "scheme:path". Url.url must round-trip these.
+        assert parse_url(url).url == url
+
+    def test_url_authority_requires_double_slash(self) -> None:
+        # The "//" that introduces an authority is tied to the authority, not to
+        # the scheme (RFC 3986 section 3), so a scheme-less authority keeps it.
+        assert Url(host="localhost", port=8080).url == "//localhost:8080"
+        assert Url(host="example.com").url == "//example.com"
+        assert Url(scheme="https", host="h", path="/x").url == "https://h/x"
+        # No authority means no "//".
+        assert Url(path="/just/a/path").url == "/just/a/path"
 
     @pytest.mark.parametrize(
         ["url", "expected_url"],
