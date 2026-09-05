@@ -11,7 +11,7 @@ from socket import timeout as SocketTimeout
 from types import TracebackType
 
 from ._base_connection import _TYPE_BODY
-from ._collections import HTTPHeaderDict
+from ._collections import _TYPE_HTTP_HEADER_MAPPING, HTTPHeaderDict
 from ._request_methods import RequestMethods
 from .connection import (
     BaseSSLError,
@@ -185,10 +185,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         timeout: _TYPE_TIMEOUT | None = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         retries: Retry | bool | int | None = None,
         _proxy: Url | None = None,
-        _proxy_headers: typing.Mapping[str, str] | None = None,
+        _proxy_headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         _proxy_config: ProxyConfig | None = None,
         **conn_kw: typing.Any,
     ):
@@ -386,7 +386,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         retries: Retry | None = None,
         timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
@@ -600,7 +600,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         retries: Retry | bool | int | None = None,
         redirect: bool = True,
         assert_same_host: bool = True,
@@ -752,8 +752,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
         if not http_tunnel_required:
-            headers = headers.copy()  # type: ignore[attr-defined]
-            headers.update(self.proxy_headers)  # type: ignore[union-attr]
+            headers = HTTPHeaderDict(headers)
+            for header_name, header_value in self.proxy_headers.items():
+                headers[header_name] = header_value
 
         # Must keep the exception bound to a separate variable or else Python 3
         # complains about UnboundLocalError.
@@ -917,9 +918,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if retries.remove_headers_on_redirect and not self.is_same_host(
                 redirect_location
             ):
-                new_headers = headers.copy()  # type: ignore[union-attr]
+                new_headers = HTTPHeaderDict(headers)
                 for header in headers:
-                    if header.lower() in retries.remove_headers_on_redirect:
+                    if to_str(header.lower()) in retries.remove_headers_on_redirect:
                         new_headers.pop(header, None)
                 headers = new_headers
 
@@ -1011,10 +1012,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         timeout: _TYPE_TIMEOUT | None = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         retries: Retry | bool | int | None = None,
         _proxy: Url | None = None,
-        _proxy_headers: typing.Mapping[str, str] | None = None,
+        _proxy_headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         key_file: str | None = None,
         cert_file: str | None = None,
         cert_reqs: int | str | None = None,

@@ -4,6 +4,8 @@ import email.utils
 import mimetypes
 import typing
 
+from ._collections import _TYPE_HTTP_HEADER_MAPPING
+
 _TYPE_FIELD_VALUE = typing.Union[str, bytes]
 _TYPE_FIELD_VALUE_TUPLE = typing.Union[
     _TYPE_FIELD_VALUE,
@@ -173,7 +175,7 @@ class RequestField:
         name: str,
         data: _TYPE_FIELD_VALUE,
         filename: str | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HTTP_HEADER_MAPPING | None = None,
         header_formatter: typing.Callable[[str, _TYPE_FIELD_VALUE], str] | None = None,
     ):
         self._name = name
@@ -181,7 +183,12 @@ class RequestField:
         self.data = data
         self.headers: dict[str, str | None] = {}
         if headers:
-            self.headers = dict(headers)
+            self.headers = {
+                k.decode("latin-1") if isinstance(k, bytes) else k: (
+                    v.decode("latin-1") if isinstance(v, bytes) else v
+                )
+                for k, v in headers.items()
+            }
 
         if header_formatter is not None:
             import warnings
