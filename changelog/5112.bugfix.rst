@@ -1,0 +1,4 @@
+Bounded the length of the chunk-size line and trailer lines read while
+decoding a chunked response, matching the limit :mod:`http.client` already
+applies, so a malicious server can no longer make ``read_chunked`` or
+``stream`` buffer an unbounded single line in memory.
