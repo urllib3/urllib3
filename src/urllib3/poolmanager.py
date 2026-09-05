@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import set_file_position
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -453,6 +454,17 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        # PoolManager follows redirects itself (conn.urlopen gets redirect=False)
+        # and must carry body_pos the same way HTTPConnectionPool.urlopen does,
+        # otherwise a file-like body is re-recorded at EOF on hop 2 and resent
+        # empty. Capture the original position before the first request.
+        body_pos = kw.get("body_pos")
+        if body_pos is None:
+            body_pos = set_file_position(kw.get("body"), None)
+            # Don't inject a freshly recorded position into this hop: a failed
+            # tell() becomes _FAILEDTELL and would abort before any request.
+            kw.pop("body_pos", None)
+
         if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
         else:
@@ -471,6 +483,7 @@ class PoolManager(RequestMethods):
             # And lose the body not to transfer anything sensitive.
             kw["body"] = None
             kw["headers"] = HTTPHeaderDict(kw["headers"])._prepare_for_method_change()
+            body_pos = None
 
         retries = kw.get("retries", response.retries)
         if not isinstance(retries, Retry):
@@ -498,6 +511,7 @@ class PoolManager(RequestMethods):
 
         kw["retries"] = retries
         kw["redirect"] = redirect
+        kw["body_pos"] = body_pos
 
         log.info("Redirecting %s -> %s", url, redirect_location)
 

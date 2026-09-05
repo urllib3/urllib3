@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import io
 import typing
 from test import LONG_TIMEOUT
 from unittest import mock
@@ -14,7 +15,7 @@ from dummyserver.testcase import (
 )
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
+from urllib3.exceptions import MaxRetryError, UnrewindableBodyError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
@@ -91,6 +92,97 @@ class TestPoolManager(HypercornDummyServerTestCase):
 
             assert r.status == 200
             assert r.data == b"Dummy server!"
+
+    @pytest.mark.parametrize("status", (301, 307, 308))
+    def test_redirect_put_file(self, status: int) -> None:
+        """PUT with a file-like body must be resent after a body-preserving redirect.
+
+        Twin of TestFileBodiesOnRetryOrRedirect.test_redirect_put_file covering
+        PoolManager's own redirect loop (inner pools are called with redirect=False).
+        """
+        # httplib reads in 8k chunks; use a larger content length
+        content_length = 65535
+        data = b"A" * content_length
+        uploaded_file = io.BytesIO(data)
+        headers = {
+            "test-name": "test_redirect_put_file",
+            "Content-Length": str(content_length),
+        }
+        url = f"{self.base_url}/redirect?target=/echo&status={status}"
+        with PoolManager() as http:
+            resp = http.request(
+                "PUT",
+                url,
+                headers=headers,
+                retries=Retry(total=3, redirect=3),
+                body=uploaded_file,
+                timeout=LONG_TIMEOUT,
+            )
+        assert resp.status == 200
+        assert resp.data == data
+
+    def test_top_level_request_redirect_put_file(self) -> None:
+        """urllib3.request() routes through PoolManager, so file bodies must rewind."""
+        content_length = 65535
+        data = b"A" * content_length
+        uploaded_file = io.BytesIO(data)
+        headers = {
+            "test-name": "test_top_level_request_redirect_put_file",
+            "Content-Length": str(content_length),
+        }
+        url = f"{self.base_url}/redirect?target=/echo&status=307"
+        resp = request(
+            "PUT",
+            url,
+            headers=headers,
+            retries=Retry(total=3, redirect=3),
+            body=uploaded_file,
+            timeout=LONG_TIMEOUT,
+        )
+        assert resp.status == 200
+        assert resp.data == data
+
+    def test_redirect_303_drops_file_body(self) -> None:
+        """303 must drop a file-like body (and not raise while clearing body_pos)."""
+        data = b"SENSITIVE"
+        uploaded_file = io.BytesIO(data)
+        headers = {"Content-Length": str(len(data))}
+        url = f"{self.base_url}/redirect?target=/echo&status=303"
+        with PoolManager() as http:
+            resp = http.request(
+                "PUT",
+                url,
+                headers=headers,
+                retries=Retry(total=3, redirect=3),
+                body=uploaded_file,
+                timeout=LONG_TIMEOUT,
+            )
+        assert resp.status == 200
+        # 303 becomes GET without a body; /echo on GET returns the query string.
+        assert resp.data == b""
+
+    def test_redirect_put_file_with_failed_tell(self) -> None:
+        """Abort a PoolManager redirect if tell() cannot record the body position."""
+
+        class BadTellObject(io.BytesIO):
+            def tell(self) -> typing.NoReturn:
+                raise OSError
+
+        body = BadTellObject(b"the data")
+        headers = {"Content-Length": "8"}
+        url = f"{self.base_url}/redirect?target=/echo&status=307"
+        with PoolManager() as http:
+            with pytest.raises(
+                UnrewindableBodyError, match="Unable to record file position for"
+            ):
+                http.request(
+                    "PUT",
+                    url,
+                    headers=headers,
+                    retries=Retry(total=3, redirect=3),
+                    body=body,
+                    timeout=LONG_TIMEOUT,
+                )
 
     @pytest.mark.parametrize(
         "retries",
