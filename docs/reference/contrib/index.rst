@@ -9,3 +9,4 @@ prime time or that require optional third-party dependencies.
    emscripten
    pyopenssl
    socks
+   wasi

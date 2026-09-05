@@ -1,0 +1,1 @@
+Added support for using urllib3 with WASI / componentize-py.
