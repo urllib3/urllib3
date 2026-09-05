@@ -524,6 +524,7 @@ def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
             if name.lower() not in HEADERS_TO_IGNORE:
                 js_xhr.setRequestHeader(name, value)
 
+        js_xhr.withCredentials = True
         js_xhr.send(to_js(request.body))
 
         headers = dict(Parser().parsestr(js_xhr.getAllResponseHeaders()))
@@ -570,6 +571,7 @@ def send_jspi_request(
         "body": to_js(req_body),
         "method": request.method,
         "signal": js_abort_controller.signal,
+        "credentials": "include",
     }
     # Node.js returns the whole response (unlike opaqueredirect in browsers),
     # so urllib3 can set `redirect: manual` to control redirects itself.
