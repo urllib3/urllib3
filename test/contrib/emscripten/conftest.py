@@ -64,7 +64,7 @@ def _get_coverage_code() -> tuple[str, str]:
 
         _coverage = coverage.Coverage(source_pkgs=["urllib3"])
         _coverage.start()
-        """
+        """,
     )
     end = textwrap.dedent(
         """
@@ -80,7 +80,7 @@ def _get_coverage_code() -> tuple[str, str]:
         # convert to js Array (as default conversion is TypedArray which does
         # bad things in firefox)
         _coverage_js.Array.from_(_coverage_outdata)
-        """
+        """,
     )
     return begin, end
 
@@ -99,7 +99,7 @@ def _get_jspi_monkeypatch_code(runtime: str, prefer_jspi: bool) -> tuple[str, st
         original_can_run_sync = pyodide.ffi.can_run_sync
         if pyodide.ffi.can_run_sync():
             pyodide.ffi.can_run_sync = lambda: False
-        """
+        """,
     )
     unmonkeypatch_code = "pyodide.ffi.can_run_sync = original_can_run_sync"
     return monkeypatch_code, unmonkeypatch_code
@@ -217,7 +217,7 @@ class ServerRunnerInfo:
                 }} = require('node:worker_threads');
                 globalThis.Worker= Worker;
                 process.chdir('{self.dist_dir}');
-                """
+                """,
             )
             worker_options = ""
         else:
