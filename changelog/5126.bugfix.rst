@@ -1,0 +1,7 @@
+Fixed ``PoolManager.urlopen()`` to compare the redirect target against the
+request URL instead of the connection pool when deciding which headers to
+forward. When forwarding through an HTTP proxy the pool belongs to the proxy,
+so ``remove_headers_on_redirect`` was applied on same-host redirects and
+skipped on redirects pointing at the proxy's own origin. The ``Host`` header
+derived by ``ProxyManager._set_proxy_headers()`` is now also recomputed for the
+new location rather than carried over from the previous request.

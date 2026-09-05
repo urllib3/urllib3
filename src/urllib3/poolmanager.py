@@ -22,7 +22,7 @@ from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.url import Url, parse_url
+from .util.url import Url, _normalize_host, parse_url
 
 if typing.TYPE_CHECKING:
     import ssl
@@ -159,6 +159,26 @@ key_fn_by_scheme = {
 }
 
 pool_classes_by_scheme = {"http": HTTPConnectionPool, "https": HTTPSConnectionPool}
+
+
+def _same_origin(url: Url, other: Url) -> bool:
+    """
+    Check whether two absolute URLs address the same scheme, host and port,
+    using the default port for the scheme when none is given.
+    """
+    scheme = url.scheme or "http"
+    other_scheme = other.scheme or "http"
+    port = url.port if url.port is not None else port_by_scheme.get(scheme)
+    other_port = (
+        other.port if other.port is not None else port_by_scheme.get(other_scheme)
+    )
+
+    return (
+        scheme == other_scheme
+        and _normalize_host(url.host, scheme=scheme)
+        == _normalize_host(other.host, scheme=other_scheme)
+        and port == other_port
+    )
 
 
 class PoolManager(RequestMethods):
@@ -476,15 +496,16 @@ class PoolManager(RequestMethods):
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect)
 
-        # Strip headers marked as unsafe to forward to the redirected location.
-        # Check remove_headers_on_redirect to avoid a potential network call within
-        # conn.is_same_host() which may use socket.gethostbyname() in the future.
-        if retries.remove_headers_on_redirect and not conn.is_same_host(
-            redirect_location
-        ):
+        # Strip headers marked as unsafe to forward to the redirected location,
+        # along with Host, which ProxyManager._set_proxy_headers() derives from
+        # the request URL and so has to be recomputed for the new location.
+        # 'conn' is the proxy's pool when forwarding through an HTTP proxy, so
+        # compare the request URL itself rather than asking the pool.
+        if not _same_origin(u, parse_url(redirect_location)):
+            headers_to_remove = retries.remove_headers_on_redirect | {"host"}
             new_headers = kw["headers"].copy()
             for header in kw["headers"]:
-                if header.lower() in retries.remove_headers_on_redirect:
+                if header.lower() in headers_to_remove:
                     new_headers.pop(header, None)
             kw["headers"] = new_headers
 
