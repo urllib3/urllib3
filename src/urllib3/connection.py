@@ -323,7 +323,7 @@ class HTTPConnection(_HTTPConnection):
 
                 response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
                 try:
-                    (version, code, message) = response._read_status()  # type: ignore[attr-defined]
+                    version, code, message = response._read_status()  # type: ignore[attr-defined]
 
                     if code != http.HTTPStatus.OK:
                         self.close()
@@ -377,7 +377,7 @@ class HTTPConnection(_HTTPConnection):
 
                 response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
                 try:
-                    (version, code, message) = response._read_status()  # type: ignore[attr-defined]
+                    version, code, message = response._read_status()  # type: ignore[attr-defined]
 
                     self._raw_proxy_headers = http.client._read_headers(response.fp)  # type: ignore[attr-defined]
 
