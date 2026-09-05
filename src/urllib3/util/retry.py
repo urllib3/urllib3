@@ -131,7 +131,8 @@ class Retry:
         idempotent (multiple requests with the same parameters end with the
         same state). See :attr:`Retry.DEFAULT_ALLOWED_METHODS`.
 
-        Set to a ``None`` value to retry on any verb.
+        Set to a ``None`` value to retry on any verb. Passing an empty
+        collection (e.g. ``set()``) disables retries on all methods.
 
     :param Collection status_forcelist:
         A set of integer HTTP status codes that we should force a retry on.
@@ -405,9 +406,14 @@ class Retry:
         """Checks if a given HTTP method should be retried upon, depending if
         it is included in the allowed_methods
         """
-        if self.allowed_methods and method.upper() not in self.allowed_methods:
-            return False
-        return True
+        # ``allowed_methods=False`` was documented in urllib3 1.26.x as
+        # retrying on any verb, so it is preserved here for backward
+        # compatibility even though the type hint does not advertise it.
+        # An explicitly empty collection, on the other hand, means "retry
+        # on no methods".
+        if self.allowed_methods is None or isinstance(self.allowed_methods, bool):
+            return True
+        return method.upper() in self.allowed_methods
 
     def is_retry(
         self, method: str, status_code: int, has_retry_after: bool = False

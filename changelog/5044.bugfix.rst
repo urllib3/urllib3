@@ -1,0 +1,5 @@
+Fixed ``Retry`` to treat an explicitly empty ``allowed_methods`` collection
+(``set()``, ``frozenset()``, ``[]``, ``()``, ``{}``) as "retry on no methods"
+instead of falling back to the ``None`` behavior of retrying on any method.
+Passing ``None`` (or the legacy ``False`` from urllib3 1.26.x) still retries
+on every method.
