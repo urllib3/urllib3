@@ -12,6 +12,7 @@ from ._request_methods import RequestMethods
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
+    InvalidHeader,
     LocationValueError,
     MaxRetryError,
     ProxySchemeUnknown,
@@ -20,6 +21,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -159,6 +161,35 @@ key_fn_by_scheme = {
 }
 
 pool_classes_by_scheme = {"http": HTTPConnectionPool, "https": HTTPSConnectionPool}
+
+
+def _url_auth_header(url: Url, *, proxy: bool = False) -> tuple[str, str] | None:
+    auth = url.auth_decoded_joined
+    if auth is None:
+        return None
+
+    if proxy:
+        return (
+            "Proxy-Authorization",
+            make_headers(proxy_basic_auth=auth)["proxy-authorization"],
+        )
+    return "Authorization", make_headers(basic_auth=auth)["authorization"]
+
+
+def _merge_url_auth_header(
+    headers: typing.Mapping[str, str] | None,
+    auth_header: tuple[str, str],
+) -> HTTPHeaderDict:
+    header_name, header_value = auth_header
+    headers_ = HTTPHeaderDict(headers)
+    existing_values = headers_.getlist(header_name)
+    if existing_values and existing_values != [header_value]:
+        raise InvalidHeader(
+            f"{header_name} header conflicts with credentials in the URL"
+        )
+    if not existing_values:
+        headers_[header_name] = header_value
+    return headers_
 
 
 class PoolManager(RequestMethods):
@@ -453,6 +484,12 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        url_auth_header = _url_auth_header(u)
+        if url_auth_header is not None:
+            kw["headers"] = _merge_url_auth_header(kw["headers"], url_auth_header)
+            u = u._replace(auth=None)
+            url = u.url
+
         if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
         else:
@@ -499,9 +536,9 @@ class PoolManager(RequestMethods):
         kw["retries"] = retries
         kw["redirect"] = redirect
 
-        log.info("Redirecting %s -> %s", url, redirect_location)
-
         response.drain_conn()
+        redirect_log_location = parse_url(redirect_location)._replace(auth=None).url
+        log.info("Redirecting %s -> %s", url, redirect_log_location)
         return self.urlopen(method, redirect_location, **kw)
 
 
@@ -605,6 +642,13 @@ class ProxyManager(PoolManager):
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
+        self._proxy_url_auth_header = _url_auth_header(proxy, proxy=True)
+        if self._proxy_url_auth_header is not None:
+            proxy_headers = _merge_url_auth_header(
+                proxy_headers, self._proxy_url_auth_header
+            )
+            proxy = proxy._replace(auth=None)
+
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
         self.proxy_config = ProxyConfig(
@@ -663,6 +707,8 @@ class ProxyManager(PoolManager):
             # headers on the CONNECT to the proxy. If we're not using CONNECT,
             # we'll definitely need to set 'Host' at the very least.
             headers = kw.get("headers", self.headers)
+            if self._proxy_url_auth_header is not None:
+                headers = _merge_url_auth_header(headers, self._proxy_url_auth_header)
             kw["headers"] = self._set_proxy_headers(url, headers)
 
         return super().urlopen(method, url, redirect=redirect, **kw)
