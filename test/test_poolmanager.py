@@ -22,6 +22,22 @@ from urllib3.util.url import Url
 
 
 class TestPoolManager:
+    def test_pool_classes_by_scheme_accepts_callable(self) -> None:
+        # A scheme may map to any callable returning a pool, not only a pool
+        # class -- e.g. a functools.partial (see GH #3554). This is primarily
+        # a typing regression test; mypy runs over the test suite.
+        import functools
+
+        from urllib3.connectionpool import HTTPConnectionPool
+
+        p = PoolManager()
+        p.pool_classes_by_scheme = {
+            "http": functools.partial(HTTPConnectionPool),
+            "https": functools.partial(HTTPConnectionPool),
+        }
+        pool = p.connection_from_url("http://localhost:8081/")
+        assert isinstance(pool, HTTPConnectionPool)
+
     @resolvesLocalhostFQDN()
     def test_same_url(self) -> None:
         # Convince ourselves that normally we don't get the same object
