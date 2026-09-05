@@ -155,7 +155,9 @@ class Retry:
         sleep for [0.0s, 0.2s, 0.4s, 0.8s, ...] between retries. No backoff will ever
         be longer than `backoff_max`.
 
-        By default, backoff is disabled (factor set to 0).
+        By default, backoff is disabled (factor set to 0). In production services,
+        setting a non-zero factor (e.g. 0.5 to 1.0) along with `backoff_jitter` is
+        recommended to prevent overloading servers with immediate retries.
 
     :param float backoff_max:
         The maximum backoff time (in seconds) between retry attempts.
