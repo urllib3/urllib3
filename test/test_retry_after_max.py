@@ -32,9 +32,7 @@ def test_raise_on_retry_after_max_boundary() -> None:
 
 def test_raise_on_retry_after_max_http_date() -> None:
     retry = Retry(retry_after_max=60, raise_on_retry_after_max=True)
-    now = datetime.datetime(
-        2019, 6, 3, 11, tzinfo=datetime.timezone.utc
-    ).timestamp()
+    now = datetime.datetime(2019, 6, 3, 11, tzinfo=datetime.timezone.utc).timestamp()
 
     with mock.patch("time.time", return_value=now):
         with pytest.raises(RetryAfterMaxExceededError) as exc_info:
