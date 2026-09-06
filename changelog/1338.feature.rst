@@ -1,0 +1,2 @@
+Added ``raise_on_retry_after_max`` to ``Retry`` to raise an informative exception
+instead of capping ``Retry-After`` values that exceed ``retry_after_max``.
