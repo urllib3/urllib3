@@ -82,6 +82,9 @@ _USERINFO_CHARS = _UNRESERVED_CHARS | _SUB_DELIM_CHARS | {":"}
 _PATH_CHARS = _USERINFO_CHARS | {"@", "/"}
 _QUERY_CHARS = _FRAGMENT_CHARS = _PATH_CHARS | {"?"}
 
+# Percent-encoded form of every possible byte value, indexed by byte value.
+_PERCENT_ENCODED_BYTES = tuple(b"%%%02X" % byte_ord for byte_ord in range(256))
+
 
 class Url(
     typing.NamedTuple(
@@ -285,6 +288,18 @@ def _encode_invalid_chars(
 
     component = to_str(component)
 
+    # Fast path: an ASCII component that consists only of allowed characters
+    # and contains no '%' needs neither encoding nor percent-normalization.
+    # Components containing '%' always take the general path below because
+    # how '%' is treated depends on whether the whole component is already
+    # percent-encoded.
+    if (
+        "%" not in component
+        and component.isascii()
+        and all(map(allowed_chars.__contains__, component))
+    ):
+        return component
+
     # Normalize existing percent-encoded bytes.
     # Try to see if the component we're encoding is already percent-encoded
     # so we can skip all '%' characters but still encode all others.
@@ -296,16 +311,14 @@ def _encode_invalid_chars(
     is_percent_encoded = percent_encodings == uri_bytes.count(b"%")
     encoded_component = bytearray()
 
-    for i in range(0, len(uri_bytes)):
-        # Will return a single character bytestring
-        byte = uri_bytes[i : i + 1]
-        byte_ord = ord(byte)
-        if (is_percent_encoded and byte == b"%") or (
-            byte_ord < 128 and byte.decode() in allowed_chars
+    # Iterating over bytes yields integers; 0x25 is '%'.
+    for byte_ord in uri_bytes:
+        if (is_percent_encoded and byte_ord == 0x25) or (
+            byte_ord < 128 and chr(byte_ord) in allowed_chars
         ):
-            encoded_component += byte
-            continue
-        encoded_component.extend(b"%" + (hex(byte_ord)[2:].encode().zfill(2).upper()))
+            encoded_component.append(byte_ord)
+        else:
+            encoded_component += _PERCENT_ENCODED_BYTES[byte_ord]
 
     return encoded_component.decode()
 

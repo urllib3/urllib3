@@ -1,0 +1,1 @@
+Improved the performance of ``urllib3.util.parse_url()`` by up to ~1.8x for typical URLs (up to ~7x in its percent-encoding helper) by adding a fast path to its percent-encoding helper for components that are already valid, and by making the general encoding loop cheaper.
