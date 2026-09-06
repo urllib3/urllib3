@@ -81,6 +81,22 @@ ConnectionError = ProtocolError
 # Leaf Exceptions
 
 
+class RetryAfterMaxExceededError(HTTPError):
+    """Raised when ``Retry-After`` exceeds the configured maximum wait time.
+
+    :param float retry_after: The server-requested delay in seconds.
+    :param int max_wait: The configured maximum delay in seconds.
+    """
+
+    def __init__(self, retry_after: float, max_wait: int) -> None:
+        self.retry_after = retry_after
+        self.max_wait = max_wait
+        super().__init__(
+            f"Retry-After requested {retry_after} seconds, exceeding "
+            f"the configured maximum of {max_wait} seconds"
+        )
+
+
 class MaxRetryError(RequestError):
     """Raised when the maximum number of retries is exceeded.
 
