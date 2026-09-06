@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -452,9 +453,23 @@ class PoolManager(RequestMethods):
 
         if "headers" not in kw:
             kw["headers"] = self.headers
+        url_auth = u.auth_decoded_joined
+        generated_auth = False
+        if url_auth:
+            expected_auth = make_headers(basic_auth=url_auth)["authorization"]
+            header_dict = HTTPHeaderDict(kw["headers"])
+            explicit_auth = header_dict.get("authorization")
+            if explicit_auth is not None and explicit_auth != expected_auth:
+                raise ValueError("URL credentials conflict with Authorization header")
+            if explicit_auth is None:
+                header_dict["authorization"] = expected_auth
+                kw["headers"] = header_dict
+                generated_auth = True
 
         if self._proxy_requires_url_absolute_form(u):
-            response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
+            response = conn.urlopen(
+                method, u._replace(auth=None, fragment=None).url, **kw
+            )
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 
@@ -498,6 +513,10 @@ class PoolManager(RequestMethods):
 
         kw["retries"] = retries
         kw["redirect"] = redirect
+        if generated_auth:
+            headers = HTTPHeaderDict(kw["headers"])
+            headers.pop("authorization", None)
+            kw["headers"] = headers
 
         log.info("Redirecting %s -> %s", url, redirect_location)
 
@@ -605,8 +624,23 @@ class ProxyManager(PoolManager):
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
-        self.proxy = proxy
-        self.proxy_headers = proxy_headers or {}
+        proxy_auth = proxy.auth_decoded_joined
+        self.proxy = proxy._replace(auth=None)
+        self.proxy_headers = HTTPHeaderDict(proxy_headers or {})
+        if proxy_auth:
+            expected_proxy_auth = make_headers(proxy_basic_auth=proxy_auth)[
+                "proxy-authorization"
+            ]
+            explicit_proxy_auth = self.proxy_headers.get("proxy-authorization")
+            if (
+                explicit_proxy_auth is not None
+                and explicit_proxy_auth != expected_proxy_auth
+            ):
+                raise ValueError(
+                    "Proxy URL credentials conflict with Proxy-Authorization header"
+                )
+            if explicit_proxy_auth is None:
+                self.proxy_headers["proxy-authorization"] = expected_proxy_auth
         self.proxy_config = ProxyConfig(
             proxy_ssl_context,
             use_forwarding_for_https,

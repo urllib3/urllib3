@@ -17,6 +17,36 @@ from .port_helpers import find_unused_port
 
 
 class TestProxyManager:
+    @pytest.mark.parametrize("scheme", ["http", "https"])
+    @pytest.mark.parametrize("userinfo", ["user:pass", "%75ser:pa%73s"])
+    @pytest.mark.parametrize(
+        "headers", [None, {"Proxy-Authorization": "Basic dXNlcjpwYXNz"}]
+    )
+    def test_proxy_url_credentials_create_proxy_authorization_header(
+        self, scheme: str, userinfo: str, headers: dict[str, str] | None
+    ) -> None:
+        with ProxyManager(
+            f"{scheme}://{userinfo}@proxy:8080", proxy_headers=headers
+        ) as manager:
+            assert manager.proxy_headers == {
+                "proxy-authorization": "Basic dXNlcjpwYXNz"
+            }
+            assert manager.proxy is not None
+            assert manager.proxy.auth is None
+        assert headers is None or headers == {
+            "Proxy-Authorization": "Basic dXNlcjpwYXNz"
+        }
+
+    @pytest.mark.parametrize("header", ["Proxy-Authorization", "proxy-authorization"])
+    def test_proxy_url_credentials_reject_conflicting_proxy_authorization(
+        self, header: str
+    ) -> None:
+        with pytest.raises(ValueError, match="conflict"):
+            ProxyManager(
+                "http://user:pass@proxy:8080",
+                proxy_headers={header: "Basic d3Jvbmc6cGFzcw=="},
+            )
+
     @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
     def test_proxy_headers(self, proxy_scheme: str) -> None:
         url = "http://pypi.org/project/urllib3/"
@@ -82,8 +112,9 @@ class TestProxyManager:
             assert p._proxy_requires_url_absolute_form(https_url)
 
     @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    @pytest.mark.parametrize("userinfo", ["", "user:pass@"])
     def test_absolute_form_request_target_strips_fragment_for_custom_pool(
-        self, proxy_scheme: str
+        self, proxy_scheme: str, userinfo: str
     ) -> None:
         class CustomConnectionPool:
             requested_urls: list[str] = []
@@ -100,7 +131,7 @@ class TestProxyManager:
             p.pool_classes_by_scheme[proxy_scheme] = CustomConnectionPool
             response = p.urlopen(
                 "GET",
-                "http://example.com/path?x=1#marker=value",
+                f"http://{userinfo}example.com/path?x=1#marker=value",
             )
 
         assert response.status == 200
