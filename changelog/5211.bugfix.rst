@@ -1,0 +1,3 @@
+Fixed ``assert_fingerprint()`` raising ``binascii.Error`` instead of
+``urllib3.exceptions.SSLError`` when given a fingerprint containing
+non-hexadecimal characters.
