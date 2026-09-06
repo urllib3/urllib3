@@ -1,0 +1,1 @@
+Improved the performance of ``urllib3.util.parse_url()`` by skipping percent-encoding work for already-valid URL components and reducing per-byte overhead when encoding is needed.

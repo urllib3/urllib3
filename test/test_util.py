@@ -34,7 +34,7 @@ from urllib3.util.ssl_ import (
     ssl_wrap_socket,
 )
 from urllib3.util.timeout import _DEFAULT_TIMEOUT, Timeout
-from urllib3.util.url import Url, _encode_invalid_chars, parse_url
+from urllib3.util.url import _PATH_CHARS, Url, _encode_invalid_chars, parse_url
 from urllib3.util.util import to_bytes, to_str
 
 from . import clear_warnings
@@ -149,6 +149,56 @@ class TestUtil:
 
     def test_encode_invalid_chars_none(self) -> None:
         assert _encode_invalid_chars(None, set()) is None
+
+    @pytest.mark.parametrize(
+        "component, expected",
+        [
+            # Already valid components are returned unchanged.
+            ("", ""),
+            ("/", "/"),
+            ("/path/to/resource", "/path/to/resource"),
+            (b"/bytes/path", "/bytes/path"),
+            # Invalid ASCII characters are percent-encoded (uppercase hex).
+            ("/a b|c", "/a%20b%7Cc"),
+            (b"/a b", "/a%20b"),
+            # Non-ASCII characters are encoded as UTF-8 bytes.
+            ("/caf\xe9", "/caf%C3%A9"),
+            ("/日本/\U0001f600", "/%E6%97%A5%E6%9C%AC/%F0%9F%98%80"),
+            # Lone surrogates are encoded with 'surrogatepass' (3 bytes).
+            ("/a\udc80b", "/a%ED%B2%80b"),
+            ("\ud800", "%ED%A0%80"),
+            # Fully percent-encoded components keep their '%' and get their
+            # hex digits normalized to uppercase.
+            ("/%2f%2F", "/%2F%2F"),
+            ("/a%20b c", "/a%20b%20c"),
+            ("%C3%A9\xe9", "%C3%A9%C3%A9"),
+            # A single bare '%' makes every '%' get encoded, even valid ones.
+            ("%", "%25"),
+            ("%2", "%252"),
+            ("%%20", "%25%2520"),
+            ("/%2F%", "/%252F%25"),
+            ("/%2f%2F%zz", "/%252F%252F%25zz"),
+        ],
+    )
+    def test_encode_invalid_chars(self, component: str | bytes, expected: str) -> None:
+        assert _encode_invalid_chars(component, _PATH_CHARS) == expected  # type: ignore[arg-type]
+
+    def test_encode_invalid_chars_respects_allowed_chars(self) -> None:
+        # Only characters in ``allowed_chars`` are kept, and any container
+        # type works, not only the module's own sets.
+        assert _encode_invalid_chars("abc", {"a", "b"}) == "ab%63"
+        assert _encode_invalid_chars("abc", "ab") == "ab%63"
+        assert _encode_invalid_chars("abc", ["a", "b"]) == "ab%63"
+        assert _encode_invalid_chars("abc", frozenset()) == "%61%62%63"
+        assert _encode_invalid_chars("abc", set()) == "%61%62%63"
+        # Non-ASCII characters are always encoded, even if "allowed".
+        assert _encode_invalid_chars("\xe9", {"\xe9"}) == "%C3%A9"
+        # '%' is only kept when the whole component is percent-encoded,
+        # or when it is explicitly allowed.
+        assert _encode_invalid_chars("a%", {"a"}) == "a%25"
+        assert _encode_invalid_chars("a%", {"a", "%"}) == "a%"
+        assert _encode_invalid_chars("a%41%", {"a"}) == "a%25%34%31%25"
+        assert _encode_invalid_chars("a%41%", {"a", "%"}) == "a%%34%31%"
 
     @pytest.mark.parametrize(
         "url",
