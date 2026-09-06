@@ -545,21 +545,22 @@ class TestConnectionPool(HypercornDummyServerTestCase):
         # The body is dropped, so the redirected GET must not keep announcing
         # a chunked body that it is never going to send.
         #
-        # The server does not read the chunked body, since nothing routes it to
-        # a form parser, so the connection is closed instead of being reused:
-        # otherwise the leftover body would desynchronize the redirected GET.
-        headers = {"Connection": "close"}
+        # The body has to be announced as a form, otherwise the server never
+        # reads it and the leftover bytes desynchronize the redirected GET on
+        # the reused connection. The header itself is dropped by the change of
+        # method, so it does not affect what is asserted below.
+        request_headers = {"Content-Type": "application/x-www-form-urlencoded"}
         kw: dict[str, typing.Any] = {}
         if chunked_via == "kwarg":
             kw["chunked"] = True
         else:
-            headers["Transfer-Encoding"] = "chunked"
+            request_headers["Transfer-Encoding"] = "chunked"
         with HTTPConnectionPool(self.host, self.port) as pool:
             response = pool.request(
                 "POST",
                 "/redirect?target=/headers_and_params",
                 body=iter([b"xxxxxxxx"]),
-                headers=headers,
+                headers=request_headers,
                 **kw,
             )
         headers = HTTPHeaderDict(response.json()["headers"])
