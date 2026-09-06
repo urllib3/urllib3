@@ -525,6 +525,11 @@ class Retry:
                 cause = ResponseError.SPECIFIC_ERROR.format(status_code=response.status)
                 status = response.status
 
+        if error is not None:
+            # Stored retry history must not keep request frames alive through the
+            # exception traceback.
+            error.with_traceback(None)
+
         history = self.history + (
             RequestHistory(method, url, error, status, redirect_location),
         )

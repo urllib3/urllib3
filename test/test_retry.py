@@ -337,6 +337,19 @@ class TestRetry:
         )
         assert retry.history == test_history3
 
+    def test_history_does_not_keep_error_traceback(self) -> None:
+        def make_error() -> ConnectTimeoutError:
+            try:
+                raise ConnectTimeoutError("conntimeout")
+            except ConnectTimeoutError as error:
+                return error
+
+        error = make_error()
+        retry = Retry(connect=1).increment(error=error)
+
+        assert retry.history[-1].error is error
+        assert error.__traceback__ is None
+
     def test_retry_method_not_allowed(self) -> None:
         error = ReadTimeoutError(DUMMY_POOL, "/", "read timed out")
         retry = Retry()
