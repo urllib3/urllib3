@@ -255,3 +255,7 @@ class TestSSL:
             ssl_.assert_fingerprint(
                 cert=None, fingerprint="55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
             )
+
+    def test_assert_fingerprint_raises_ssl_error_on_non_hex_fingerprint(self) -> None:
+        with pytest.raises(SSLError):
+            ssl_.assert_fingerprint(cert=b"certificate", fingerprint="g" * 40)
