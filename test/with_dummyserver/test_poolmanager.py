@@ -20,6 +20,41 @@ from urllib3.util.retry import Retry
 
 
 class TestPoolManager(HypercornDummyServerTestCase):
+    @pytest.mark.parametrize(
+        "target, expected_auth",
+        [
+            ("/headers", "Basic dXNlcjpwYXNz"),
+            ("http://{host}:{port}/headers", None),
+            ("http://{host_alt}:{port}/headers", None),
+            ("http://next:pass@{host}:{port}/headers", "Basic bmV4dDpwYXNz"),
+        ],
+    )
+    @pytest.mark.parametrize("remove_headers", [[], ["Authorization", "Cookie"]])
+    def test_url_credentials_on_redirect(
+        self, target: str, expected_auth: str | None, remove_headers: list[str]
+    ) -> None:
+        headers = {"Cookie": "private", "X-Test": "retained"}
+        with PoolManager() as manager:
+            response = manager.request(
+                "GET",
+                f"http://user:pass@{self.host}:{self.port}/redirect",
+                fields={
+                    "target": target.format(
+                        host=self.host, host_alt=self.host_alt, port=self.port
+                    )
+                },
+                headers=headers,
+                retries=Retry(total=1, remove_headers_on_redirect=remove_headers),
+            )
+        assert response.status == 200
+        received = response.json()
+        assert received.get("Authorization") == expected_auth
+        assert received["X-Test"] == "retained"
+        assert received.get("Cookie") == (
+            None if "{host_alt}" in target and "Cookie" in remove_headers else "private"
+        )
+        assert headers == {"Cookie": "private", "X-Test": "retained"}
+
     @classmethod
     def setup_class(cls) -> None:
         super().setup_class()

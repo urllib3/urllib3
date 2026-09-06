@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from urllib3 import connection_from_url
+from urllib3 import HTTPHeaderDict, connection_from_url
 from urllib3.connectionpool import HTTPSConnectionPool
 from urllib3.exceptions import LocationValueError
 from urllib3.poolmanager import (
@@ -17,11 +17,49 @@ from urllib3.poolmanager import (
     PoolManager,
     key_fn_by_scheme,
 )
+from urllib3.response import HTTPResponse
 from urllib3.util import retry, timeout
 from urllib3.util.url import Url
 
 
 class TestPoolManager:
+    @pytest.mark.parametrize("userinfo", ["user:pass", "%75ser:pa%73s"])
+    @pytest.mark.parametrize("headers", [None, {"Authorization": "Basic dXNlcjpwYXNz"}])
+    @patch("urllib3.poolmanager.PoolManager.connection_from_host")
+    def test_url_credentials_create_authorization_header(
+        self,
+        connection_from_host: MagicMock,
+        userinfo: str,
+        headers: dict[str, str] | None,
+    ) -> None:
+        connection = MagicMock()
+        connection.urlopen.return_value = HTTPResponse(status=200)
+        connection_from_host.return_value = connection
+
+        with PoolManager() as manager:
+            manager.urlopen(
+                "GET", f"http://{userinfo}@example.com/path", headers=headers
+            )
+            assert manager.headers == {}
+
+        _, kwargs = connection.urlopen.call_args
+        assert (
+            HTTPHeaderDict(kwargs["headers"])["authorization"] == "Basic dXNlcjpwYXNz"
+        )
+        assert connection.urlopen.call_args.args[1] == "/path"
+        assert headers is None or headers == {"Authorization": "Basic dXNlcjpwYXNz"}
+
+    @pytest.mark.parametrize("header", ["Authorization", "authorization"])
+    def test_url_credentials_reject_conflicting_authorization(
+        self, header: str
+    ) -> None:
+        with pytest.raises(ValueError, match="conflict"):
+            PoolManager().request(
+                "GET",
+                "http://user:pass@example.com/path",
+                headers={header: "Basic d3Jvbmc6cGFzcw=="},
+            )
+
     @resolvesLocalhostFQDN()
     def test_same_url(self) -> None:
         # Convince ourselves that normally we don't get the same object
