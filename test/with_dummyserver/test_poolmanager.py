@@ -398,16 +398,22 @@ class TestPoolManager(HypercornDummyServerTestCase):
     ) -> None:
         # The body is dropped, so the redirected GET must not keep announcing
         # a chunked body that it is never going to send.
+        #
+        # The server does not read the chunked body, since nothing routes it to
+        # a form parser, so the connection is closed instead of being reused:
+        # otherwise the leftover body would desynchronize the redirected GET.
+        headers = {"Connection": "close"}
         kw: dict[str, typing.Any] = {}
         if chunked_via == "kwarg":
             kw["chunked"] = True
         else:
-            kw["headers"] = {"Transfer-Encoding": "chunked"}
+            headers["Transfer-Encoding"] = "chunked"
         with PoolManager() as http:
             response = http.request(
                 "POST",
                 f"{self.base_url}/redirect?target={self.base_url}/headers_and_params",
                 body=iter([b"xxxxxxxx"]),
+                headers=headers,
                 **kw,
             )
         headers = HTTPHeaderDict(response.json()["headers"])
