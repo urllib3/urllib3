@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import io
 import typing
 from test import LONG_TIMEOUT
 from unittest import mock
@@ -390,6 +391,42 @@ class TestPoolManager(HypercornDummyServerTestCase):
         data = response.json()
         assert data["params"] == {}
         assert "Content-Type" not in HTTPHeaderDict(data["headers"])
+
+    @pytest.mark.parametrize("chunked_via", ["kwarg", "header"])
+    def test_303_redirect_makes_request_lose_body_framing(
+        self, chunked_via: str
+    ) -> None:
+        # The body is dropped, so the redirected GET must not keep announcing
+        # a chunked body that it is never going to send.
+        kw: dict[str, typing.Any] = {}
+        if chunked_via == "kwarg":
+            kw["chunked"] = True
+        else:
+            kw["headers"] = {"Transfer-Encoding": "chunked"}
+        with PoolManager() as http:
+            response = http.request(
+                "POST",
+                f"{self.base_url}/redirect?target={self.base_url}/headers_and_params",
+                body=iter([b"xxxxxxxx"]),
+                **kw,
+            )
+        headers = HTTPHeaderDict(response.json()["headers"])
+        assert "Transfer-Encoding" not in headers
+        assert "Content-Length" not in headers
+
+    def test_303_redirect_with_body_pos(self) -> None:
+        # The body is dropped, so the position recorded to rewind it has to go
+        # as well, otherwise the redirect tries to rewind a body that is gone.
+        with PoolManager() as http:
+            response = http.urlopen(
+                "POST",
+                f"{self.base_url}/redirect?target={self.base_url}/echo",
+                body=io.BytesIO(b"the data"),
+                headers={"Content-Length": "8"},
+                body_pos=0,
+            )
+        assert response.status == 200
+        assert response.data == b""
 
     def test_unknown_scheme(self) -> None:
         with PoolManager() as http:
