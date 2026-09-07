@@ -267,6 +267,11 @@ class TestHTTPHeaderDict:
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
 
+    def test_setdefault_with_bytes_key(self, d: HTTPHeaderDict) -> None:
+        assert d.setdefault(b"COOKIE", b"ignored") == "foo, bar"
+        assert d.setdefault(b"X-New", b"caf\xe9") == "caf\xe9"
+        assert d["x-new"] == "caf\xe9"
+
     def test_update(self, d: HTTPHeaderDict) -> None:
         d.update(dict(Cookie="foo"))
         assert d["cookie"] == "foo"

@@ -4,7 +4,6 @@ import typing
 from unittest import mock
 
 import pytest
-from typing_extensions import assert_type
 
 import urllib3
 from urllib3 import HTTPConnectionPool, HTTPResponse, PoolManager, ProxyManager
@@ -67,6 +66,7 @@ def test_json_adds_content_type_to_readonly_binary_headers() -> None:
 
 
 if typing.TYPE_CHECKING:
+    from typing_extensions import assert_type
 
     def check_public_header_inputs(
         strings: dict[str, str],
