@@ -1,0 +1,1 @@
+Updated request header type annotations to accept ``str`` or ``bytes`` header names and values.
