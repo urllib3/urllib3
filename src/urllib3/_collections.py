@@ -28,10 +28,18 @@ _VT = typing.TypeVar("_VT")
 # Default type
 _DT = typing.TypeVar("_DT")
 
+# Mapping keys are invariant: keep the homogeneous alternatives so ordinary
+# dict[str, str] and HTTPHeaderDict remain valid header inputs.
+_TYPE_HEADERS = typing.Union[
+    typing.Mapping[str, str | bytes],
+    typing.Mapping[bytes, str | bytes],
+    typing.Mapping[str | bytes, str | bytes],
+]
+
 ValidHTTPHeaderSource = typing.Union[
     "HTTPHeaderDict",
-    typing.Mapping[str, str | bytes],
-    typing.Iterable[tuple[str, str | bytes]],
+    _TYPE_HEADERS,
+    typing.Iterable[tuple[str | bytes, str | bytes]],
     "HasGettableStringKeys",
 ]
 
@@ -253,7 +261,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         if kwargs:
             self.extend(kwargs)
 
-    def __setitem__(self, key: str, val: str | bytes) -> None:
+    def __setitem__(self, key: str | bytes, val: str | bytes) -> None:
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
@@ -261,13 +269,13 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             val = val.decode("latin-1")
         self._container[key.lower()] = [key, val]
 
-    def __getitem__(self, key: str) -> str:
+    def __getitem__(self, key: str | bytes) -> str:
         if isinstance(key, bytes):
             key = key.decode("latin-1")
         val = self._container[key.lower()]
         return ", ".join(val[1:])
 
-    def __delitem__(self, key: str) -> None:
+    def __delitem__(self, key: str | bytes) -> None:
         if isinstance(key, bytes):
             key = key.decode("latin-1")
         del self._container[key.lower()]
@@ -279,9 +287,11 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             return key.lower() in self._container
         return False
 
-    def setdefault(self, key: str, default: str | bytes = "") -> str:
+    def setdefault(self, key: str | bytes, default: str | bytes = "") -> str:
         if isinstance(default, bytes):
             default = default.decode("latin-1")
+        if isinstance(key, bytes):
+            key = key.decode("latin-1")
         return super().setdefault(key, default)
 
     def __eq__(self, other: object) -> bool:
@@ -306,13 +316,13 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         for vals in self._container.values():
             yield vals[0]
 
-    def discard(self, key: str) -> None:
+    def discard(self, key: str | bytes) -> None:
         try:
             del self[key]
         except KeyError:
             pass
 
-    def add(self, key: str, val: str | bytes, *, combine: bool = False) -> None:
+    def add(self, key: str | bytes, val: str | bytes, *, combine: bool = False) -> None:
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
@@ -360,6 +370,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             )
         other = args[0] if len(args) >= 1 else ()
 
+        key: str | bytes
         val: str | bytes
         if isinstance(other, HTTPHeaderDict):
             for key, val in other.iteritems():
@@ -383,13 +394,13 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             self.add(key, value)
 
     @typing.overload
-    def getlist(self, key: str) -> list[str]: ...
+    def getlist(self, key: str | bytes) -> list[str]: ...
 
     @typing.overload
-    def getlist(self, key: str, default: _DT) -> list[str] | _DT: ...
+    def getlist(self, key: str | bytes, default: _DT) -> list[str] | _DT: ...
 
     def getlist(
-        self, key: str, default: _Sentinel | _DT = _Sentinel.not_passed
+        self, key: str | bytes, default: _Sentinel | _DT = _Sentinel.not_passed
     ) -> list[str] | _DT:
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""

@@ -1,0 +1,1 @@
+Aligned header input annotations across request and response APIs to accept string, byte, and mixed mappings without widening response header values. Fixed binary header handling for JSON requests and proxy defaults.
