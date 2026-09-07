@@ -27,6 +27,7 @@ from urllib3.exceptions import (
     NameResolutionError,
     NewConnectionError,
     ReadTimeoutError,
+    RetryAfterError,
     UnrewindableBodyError,
 )
 from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
@@ -1300,6 +1301,30 @@ class TestRetry(HypercornDummyServerTestCase):
 
 
 class TestRetryAfter(HypercornDummyServerTestCase):
+    @pytest.mark.parametrize("redirect", [False, True])
+    @pytest.mark.parametrize("preload_content", [False, True])
+    def test_raise_on_retry_after(self, redirect: bool, preload_content: bool) -> None:
+        retry = Retry(
+            retry_after_max=0, raise_on_retry_after=True, status_forcelist=[303]
+        )
+        with HTTPConnectionPool(self.host, self.port, maxsize=1, block=True) as pool:
+            with mock.patch("time.sleep") as sleep:
+                with pytest.raises(RetryAfterError) as exc:
+                    pool.request(
+                        "GET",
+                        "/redirect_after",
+                        retries=retry,
+                        redirect=redirect,
+                        preload_content=preload_content,
+                    )
+            assert exc.value.retry_after == 1
+            assert exc.value.retry_after_max == 0
+            sleep.assert_not_called()
+            # Aborting the retry must return the connection to the pool.
+            response = pool.request("GET", "/", pool_timeout=SHORT_TIMEOUT)
+            assert response.status == 200
+            assert pool.num_connections == 1
+
     def test_retry_after(self) -> None:
         # Request twice in a second to get a 429 response.
         with HTTPConnectionPool(self.host, self.port) as pool:
