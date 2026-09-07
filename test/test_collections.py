@@ -137,10 +137,12 @@ class NonMappingHeaderContainer:
         self._data = {}
         self._data.update(kwargs)
 
-    def keys(self) -> typing.Iterator[str]:
+    def keys(self) -> typing.Iterator[str | bytes]:
         return iter(self._data)
 
-    def __getitem__(self, key: str) -> str:
+    def __getitem__(self, key: str | bytes) -> str:
+        if isinstance(key, bytes):
+            key = key.decode("latin-1")
         return self._data[key]
 
 
@@ -161,9 +163,11 @@ class TestHTTPHeaderDict:
         h = HTTPHeaderDict(a="1")
         assert h.setdefault("A", "3") == "1"
         assert h.setdefault("b", "2") == "2"
+        assert h.setdefault(b"d", b"4") == "4"
         assert h.setdefault("c") == ""
         assert h["c"] == ""
         assert h["b"] == "2"
+        assert h["d"] == "4"
 
     def test_create_from_dict(self) -> None:
         h = HTTPHeaderDict(dict(ab="1", cd="2", ef="3", gh="4"))
@@ -212,12 +216,17 @@ class TestHTTPHeaderDict:
 
     def test_setitem(self, d: HTTPHeaderDict) -> None:
         d["Cookie"] = "foo"
-        # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
-        d[b"Cookie"] = "bar"  # type: ignore[index]
+        # The bytes value gets converted to str.
+        d[b"Cookie"] = "bar"
         assert d["cookie"] == "bar"
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
+
+    def test_setitem_with_bytes_value(self) -> None:
+        h = HTTPHeaderDict()
+        h["X-Bytes"] = b"value"
+        assert h["x-bytes"] == "value"
+        assert list(h.items()) == [("X-Bytes", "value")]
 
     def test_update(self, d: HTTPHeaderDict) -> None:
         d.update(dict(Cookie="foo"))
@@ -231,7 +240,7 @@ class TestHTTPHeaderDict:
         assert "COOKIE" not in d
 
     def test_delitem_with_bytes_key(self, d: HTTPHeaderDict) -> None:
-        del d[b"cookie"]  # type: ignore[arg-type]
+        del d[b"cookie"]
         assert "cookie" not in d
 
     def test_add_well_known_multiheader(self, d: HTTPHeaderDict) -> None:
@@ -241,12 +250,23 @@ class TestHTTPHeaderDict:
 
     def test_add_comma_separated_multiheader(self, d: HTTPHeaderDict) -> None:
         d.add("bar", "foo")
-        # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
-        d.add(b"BAR", "bar")  # type: ignore[arg-type]
+        # The bytes value gets converted to str.
+        d.add(b"BAR", "bar")
         d.add("Bar", "asdf")
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
         assert d["bar"] == "foo, bar, asdf"
+
+    def test_add_with_bytes_value(self) -> None:
+        h = HTTPHeaderDict()
+        h.add(b"X-Bytes", b"value")
+        assert h["x-bytes"] == "value"
+        assert list(h.items()) == [("X-Bytes", "value")]
+
+    def test_create_from_bytes_mapping(self) -> None:
+        h = HTTPHeaderDict({b"X-Bytes": b"value"})
+        assert h["x-bytes"] == "value"
+        assert h.getlist(b"x-bytes") == ["value"]
+        assert list(h.items()) == [("X-Bytes", "value")]
 
     def test_extend_from_list(self, d: HTTPHeaderDict) -> None:
         d.extend([("set-cookie", "100"), ("set-cookie", "200"), ("set-cookie", "300")])
@@ -323,12 +343,12 @@ class TestHTTPHeaderDict:
         assert d.getlist("b") == ["asdf"]
 
     def test_getlist_with_bytes_key(self, d: HTTPHeaderDict) -> None:
-        assert d.getlist(b"cookie") == ["foo", "bar"]  # type: ignore[call-overload]
+        assert d.getlist(b"cookie") == ["foo", "bar"]
 
     def test_getitem_with_bytes(self, d: HTTPHeaderDict) -> None:
         d["Content-Type"] = "application/json"
         d.add("Content-Type", "charset=utf-8")
-        result = d[b"Content-Type"]  # type: ignore[index]
+        result = d[b"Content-Type"]
         assert result == "application/json, charset=utf-8"
 
     def test_contains_with_bytes(self, d: HTTPHeaderDict) -> None:
