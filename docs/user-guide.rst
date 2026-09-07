@@ -629,6 +629,31 @@ specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
 You still override this pool-level retry policy by specifying ``retries`` to
 :meth:`~urllib3.PoolManager.request`.
 
+By default, :class:`~util.retry.Retry` does not wait between attempts
+(``backoff_factor=0``). For anything beyond quick, best-effort requests, it's
+best practice to enable a backoff so retries don't hammer a server that's
+already struggling:
+
+.. code-block:: python
+
+    import urllib3
+
+    resp = urllib3.request(
+        "GET",
+        "https://httpbin.org/ip",
+        retries=urllib3.Retry(
+            total=3,
+            backoff_factor=0.5,
+            backoff_jitter=0.5,
+        )
+    )
+
+With ``backoff_factor=0.5``, urllib3 sleeps for ``[0.5s, 1.0s, 2.0s, ...]``
+between attempts (see :class:`~util.retry.Retry` for the exact formula).
+Adding ``backoff_jitter`` spreads out retries from multiple clients so they
+don't all land on the server at once, and ``backoff_max`` caps how long any
+single sleep can be.
+
 Errors & Exceptions
 -------------------
 
