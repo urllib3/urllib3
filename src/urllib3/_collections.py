@@ -240,7 +240,9 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
 
     _container: typing.MutableMapping[str, list[str]]
 
-    def __init__(self, headers: ValidHTTPHeaderSource | None = None, **kwargs: str | bytes):
+    def __init__(
+        self, headers: ValidHTTPHeaderSource | None = None, **kwargs: str | bytes
+    ):
         super().__init__()
         self._container = {}  # 'dict' is insert-ordered
         if headers is not None:

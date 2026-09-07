@@ -37,7 +37,10 @@ class TestHTTPHeaderBytesValues:
         assert headers.setdefault("Empty", b"") == ""
         assert headers.setdefault("Other", b"ignored") == "three"
         assert dict(headers.itermerged()) == {
-            "X-Value": "one, two", "Other": "three", "Last": "four", "Empty": "",
+            "X-Value": "one, two",
+            "Other": "three",
+            "Last": "four",
+            "Empty": "",
         }
         assert (headers | {"Other": b"five"})["other"] == "three, five"
         assert (HTTPHeaderDict(Agent=b"caf\xe9"))["agent"] == "caf\xe9"
