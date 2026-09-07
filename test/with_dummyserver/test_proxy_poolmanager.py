@@ -57,6 +57,24 @@ def assert_is_verified(pm: ProxyManager, *, proxy: bool, target: bool) -> None:
 
 
 class TestHTTPProxyManager(HypercornDummyProxyTestCase):
+    @pytest.mark.parametrize("secure_proxy", [False, True])
+    @pytest.mark.parametrize("secure_target", [False, True])
+    def test_url_credentials(self, secure_proxy: bool, secure_target: bool) -> None:
+        proxy_url = self.https_proxy_url if secure_proxy else self.proxy_url
+        target_url = self.https_url if secure_target else self.http_url
+        with proxy_from_url(
+            proxy_url.replace("://", "://proxy:password@"), ca_certs=DEFAULT_CA
+        ) as manager:
+            response = manager.request(
+                "GET", target_url.replace("://", "://user:pass@") + "/headers"
+            )
+            headers = response.json()
+            assert headers["Authorization"] == "Basic dXNlcjpwYXNz"
+            if secure_target:
+                assert "Proxy-Authorization" not in headers
+            else:
+                assert headers["Proxy-Authorization"] == "Basic cHJveHk6cGFzc3dvcmQ="
+
     @classmethod
     def setup_class(cls) -> None:
         super().setup_class()

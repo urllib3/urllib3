@@ -20,6 +20,33 @@ from urllib3.util.retry import Retry
 
 
 class TestPoolManager(HypercornDummyServerTestCase):
+    @pytest.mark.parametrize("cross_host", [False, True])
+    def test_url_auth_redirect(self, cross_host: bool) -> None:
+        target = f"{self.base_url_alt if cross_host else self.base_url}/headers"
+        authenticated_url = self.base_url.replace("://", "://user:pass@")
+        with PoolManager() as manager:
+            response = manager.request(
+                "GET", f"{authenticated_url}/redirect", fields={"target": target}
+            )
+            headers = response.json()
+            if cross_host:
+                assert "Authorization" not in headers
+            else:
+                assert headers["Authorization"] == "Basic dXNlcjpwYXNz"
+            # A later request using the same manager must not inherit credentials.
+            assert (
+                "Authorization"
+                not in manager.request("GET", f"{self.base_url}/headers").json()
+            )
+
+    def test_url_auth_relative_redirect(self) -> None:
+        authenticated_url = self.base_url.replace("://", "://user:pass@")
+        with PoolManager() as manager:
+            response = manager.request(
+                "GET", f"{authenticated_url}/redirect", fields={"target": "/headers"}
+            )
+            assert response.json()["Authorization"] == "Basic dXNlcjpwYXNz"
+
     @classmethod
     def setup_class(cls) -> None:
         super().setup_class()

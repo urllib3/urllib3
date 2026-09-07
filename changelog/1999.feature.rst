@@ -1,0 +1,1 @@
+Generate Basic authentication headers from credentials in request and HTTP(S) proxy URLs. Conflicting explicit authentication headers raise ``ValueError``. URL credentials are percent-decoded and encoded as Latin-1, matching :func:`urllib3.util.make_headers`.
