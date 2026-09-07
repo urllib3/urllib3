@@ -16,11 +16,13 @@ from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
 
 if typing.TYPE_CHECKING:
+    from typing_extensions import Buffer
+
     from .response import HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
 
-from ._collections import HTTPHeaderDict
+from ._collections import _TYPE_HEADER_MAPPING, HTTPHeaderDict
 from .http2 import probe as http2_probe
 from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
@@ -474,7 +476,9 @@ class HTTPConnection(_HTTPConnection):
             method, url, skip_host=skip_host, skip_accept_encoding=skip_accept_encoding
         )
 
-    def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
+    def putheader(
+        self, header: str | bytes, *values: str | bytes | int | Buffer
+    ) -> None:
         """"""
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
@@ -493,7 +497,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         *,
         chunked: bool = False,
         preload_content: bool = True,
@@ -590,7 +594,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
     ) -> None:
         """
         Alternative to the common request method, which sends the

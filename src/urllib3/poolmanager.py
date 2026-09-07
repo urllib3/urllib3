@@ -7,8 +7,13 @@ import warnings
 from types import TracebackType
 from urllib.parse import urljoin
 
-from ._collections import HTTPHeaderDict, RecentlyUsedContainer
-from ._request_methods import RequestMethods
+from ._collections import _TYPE_HEADER_MAPPING, RecentlyUsedContainer
+from ._request_methods import (
+    RequestMethods,
+    _copy_request_headers,
+    _is_header_in,
+    _prepare_request_headers_for_method_change,
+)
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
@@ -201,7 +206,7 @@ class PoolManager(RequestMethods):
     def __init__(
         self,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         **connection_pool_kw: typing.Any,
     ) -> None:
         super().__init__(headers)
@@ -470,7 +475,7 @@ class PoolManager(RequestMethods):
             method = "GET"
             # And lose the body not to transfer anything sensitive.
             kw["body"] = None
-            kw["headers"] = HTTPHeaderDict(kw["headers"])._prepare_for_method_change()
+            kw["headers"] = _prepare_request_headers_for_method_change(kw["headers"])
 
         retries = kw.get("retries", response.retries)
         if not isinstance(retries, Retry):
@@ -482,9 +487,9 @@ class PoolManager(RequestMethods):
         if retries.remove_headers_on_redirect and not conn.is_same_host(
             redirect_location
         ):
-            new_headers = kw["headers"].copy()
+            new_headers = _copy_request_headers(kw["headers"])
             for header in kw["headers"]:
-                if header.lower() in retries.remove_headers_on_redirect:
+                if _is_header_in(header, retries.remove_headers_on_redirect):
                     new_headers.pop(header, None)
             kw["headers"] = new_headers
 
@@ -566,8 +571,8 @@ class ProxyManager(PoolManager):
         self,
         proxy_url: str,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
-        proxy_headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
+        proxy_headers: _TYPE_HEADER_MAPPING | None = None,
         proxy_ssl_context: ssl.SSLContext | None = None,
         use_forwarding_for_https: bool = False,
         proxy_assert_hostname: None | str | typing.Literal[False] = None,
@@ -637,20 +642,27 @@ class ProxyManager(PoolManager):
         )
 
     def _set_proxy_headers(
-        self, url: str, headers: typing.Mapping[str, str] | None = None
-    ) -> typing.Mapping[str, str]:
+        self, url: str, headers: _TYPE_HEADER_MAPPING | None = None
+    ) -> typing.Mapping[str | bytes, str | bytes]:
         """
         Sets headers needed by proxies: specifically, the Accept and Host
         headers. Only sets headers not provided by the user.
         """
-        headers_ = {"Accept": "*/*"}
+        headers_: dict[str | bytes, str | bytes] = {}
+        header_names = tuple(headers) if headers is not None else ()
+        if not any(_is_header_in(header, {"accept"}) for header in header_names):
+            headers_["Accept"] = "*/*"
 
         netloc = parse_url(url).netloc
-        if netloc:
+        if netloc and not any(
+            _is_header_in(header, {"host"}) for header in header_names
+        ):
             headers_["Host"] = netloc
 
         if headers:
-            headers_.update(headers)
+            headers_.update(
+                typing.cast(typing.Mapping[str | bytes, str | bytes], headers)
+            )
         return headers_
 
     def urlopen(  # type: ignore[override]

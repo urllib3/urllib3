@@ -1542,6 +1542,57 @@ class TestProxyManager(SocketDummyServerTestCase):
                 == "Tunnel connection failed: 501 Not Implemented"
             )
 
+    def test_bytes_proxy_tunnel_headers_are_sent_unchanged(self) -> None:
+        received = bytearray()
+
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            while not received.endswith(b"\r\n\r\n"):
+                received.extend(sock.recv(65536))
+            sock.send(b"HTTP/1.0 501 Not Implemented\r\nConnection: close\r\n\r\n")
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+        proxy_headers: typing.Mapping[bytes, bytes] = {
+            b"Proxy-Authorization": b"\xff\xfe"
+        }
+
+        with ProxyManager(base_url, proxy_headers=proxy_headers) as proxy:
+            with pytest.raises(MaxRetryError):
+                proxy.request("GET", "https://example.com", retries=0)
+
+        assert b"Proxy-Authorization: \xff\xfe\r\n" in received
+
+    def test_bytes_proxy_headers_override_request_headers(self) -> None:
+        received = bytearray()
+
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            while not received.endswith(b"\r\n\r\n"):
+                received.extend(sock.recv(65536))
+            sock.send(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        with ProxyManager(
+            base_url,
+            proxy_headers={b"Proxy-Authorization": b"configured"},
+        ) as proxy:
+            response = proxy.request(
+                "GET",
+                "http://example.com/",
+                headers={"proxy-authorization": "request"},
+                retries=0,
+            )
+
+        assert response.status == 204
+        header_block = bytes(received).split(b"\r\n\r\n", 1)[0].lower()
+        assert header_block.count(b"proxy-authorization:") == 1
+        assert b"proxy-authorization: configured\r\n" in header_block + b"\r\n"
+
     def test_early_eof_doesnt_cause_infinite_loop(self) -> None:
         def http_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -2109,6 +2160,57 @@ class TestHeaders(SocketDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             pool.request("GET", "/", headers=HTTPHeaderDict(headers))
             assert expected_headers == self.parsed_headers
+
+    def test_bytes_header_names_and_values_are_sent_unchanged(self) -> None:
+        received = bytearray()
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            while not received.endswith(b"\r\n\r\n"):
+                received.extend(sock.recv(65536))
+            sock.sendall(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")
+            sock.close()
+
+        self._start_server(socket_handler)
+        headers: typing.Mapping[str | bytes, str | bytes] = {
+            b"X-Bytes": b"\xff\xfe",
+            "X-Mixed": b"\x80",
+        }
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            response = pool.request("GET", "/", headers=headers)
+
+        assert response.status == 204
+        assert b"X-Bytes: \xff\xfe\r\n" in received
+        assert b"X-Mixed: \x80\r\n" in received
+
+    @pytest.mark.parametrize("content_type", ["content-type", b"Content-Type"])
+    def test_multipart_bytes_content_type_is_not_duplicated(
+        self, content_type: str | bytes
+    ) -> None:
+        received = bytearray()
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            while b"\r\n\r\n" not in received:
+                received.extend(sock.recv(65536))
+            sock.sendall(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")
+            sock.close()
+
+        self._start_server(socket_handler)
+        headers: typing.Mapping[str | bytes, str | bytes] = {
+            content_type: b"application/example"
+        }
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            response = pool.request(
+                "POST", "/", fields={"field": "value"}, headers=headers
+            )
+
+        assert response.status == 204
+        header_block = bytes(received).split(b"\r\n\r\n", 1)[0].lower()
+        assert header_block.count(b"content-type:") == 1
+        assert b"content-type: application/example\r\n" in header_block + b"\r\n"
 
     def test_ua_header_can_be_overridden(self) -> None:
         headers = {"uSeR-AgENt": "Definitely not urllib3!"}

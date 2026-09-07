@@ -28,6 +28,12 @@ _VT = typing.TypeVar("_VT")
 # Default type
 _DT = typing.TypeVar("_DT")
 
+_TYPE_HEADER_MAPPING: typing.TypeAlias = (
+    typing.Mapping[str, str | bytes]
+    | typing.Mapping[bytes, str | bytes]
+    | typing.Mapping[str | bytes, str | bytes]
+)
+
 ValidHTTPHeaderSource = typing.Union[
     "HTTPHeaderDict",
     typing.Mapping[str, str],

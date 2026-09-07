@@ -323,9 +323,9 @@ class TestConnection:
     @pytest.mark.parametrize("chunked", [True, False])
     def test_skip_header(
         self,
-        accept_encoding: str | None,
-        host: str | None,
-        user_agent: str | None,
+        accept_encoding: str | bytes | None,
+        host: str | bytes | None,
+        user_agent: str | bytes | None,
         chunked: bool,
     ) -> None:
         headers = {}

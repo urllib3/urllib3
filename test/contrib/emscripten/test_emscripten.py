@@ -1331,3 +1331,28 @@ def test_pool_no_port(selenium_coverage: typing.Any) -> None:
         pool = HTTPConnectionPool("example.com", maxsize=10, block=True)
 
         pool.request("GET", "/")
+
+
+@run_in_pyodide  # type: ignore[untyped-decorator]
+def test_bytes_request_headers_are_converted_losslessly(
+    selenium_coverage: typing.Any,
+) -> None:
+    from unittest.mock import patch
+
+    from urllib3.contrib.emscripten.connection import EmscriptenHTTPConnection
+    from urllib3.contrib.emscripten.request import EmscriptenRequest
+    from urllib3.contrib.emscripten.response import EmscriptenResponse
+
+    def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
+        assert request.headers["X-bytes"].encode("latin-1") == b"\xff\xfe"
+        assert all(
+            isinstance(name, str) and isinstance(value, str)
+            for name, value in request.headers.items()
+        )
+        return EmscriptenResponse(
+            status_code=200, headers={}, body=b"", request=request
+        )
+
+    connection = EmscriptenHTTPConnection("example.com")
+    with patch("urllib3.contrib.emscripten.connection.send_request", new=send_request):
+        connection.request("GET", "/", headers={b"X-Bytes": b"\xff\xfe"})

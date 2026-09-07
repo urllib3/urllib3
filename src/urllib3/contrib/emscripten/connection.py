@@ -8,6 +8,7 @@ from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
 
 from ..._base_connection import _TYPE_BODY
+from ..._collections import _TYPE_HEADER_MAPPING
 from ...connection import HTTPConnection, ProxyConfig, port_by_scheme
 from ...exceptions import TimeoutError
 from ...response import BaseHTTPResponse
@@ -20,6 +21,11 @@ from .response import EmscriptenHttpResponseWrapper, EmscriptenResponse
 
 if typing.TYPE_CHECKING:
     from ..._base_connection import BaseHTTPConnection, BaseHTTPSConnection
+
+
+def _normalize_request_header(value: str | bytes) -> str:
+    """Convert a header to the Web API's string form without changing octets."""
+    return value.decode("latin-1") if isinstance(value, bytes) else value
 
 
 class EmscriptenHTTPConnection:
@@ -74,7 +80,7 @@ class EmscriptenHTTPConnection:
         self,
         host: str,
         port: int | None = 0,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         scheme: str = "http",
     ) -> None:
         pass
@@ -87,7 +93,7 @@ class EmscriptenHTTPConnection:
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         # We know *at least* botocore is depending on the order of the
         # first 3 parameters so to be safe we only mark the later ones
         # as keyword-only to ensure we have space to extend.
@@ -114,7 +120,11 @@ class EmscriptenHTTPConnection:
         request.set_body(body)
         if headers:
             for k, v in headers.items():
-                request.set_header(k, v)
+                # Fetch and XMLHttpRequest accept Web IDL ByteString values.
+                # Latin-1 maps each input byte to the same code point.
+                request.set_header(
+                    _normalize_request_header(k), _normalize_request_header(v)
+                )
         self._response = None
         try:
             if not preload_content:
