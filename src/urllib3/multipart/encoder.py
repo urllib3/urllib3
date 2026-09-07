@@ -608,14 +608,27 @@ def coerce_data(data: str, encoding: str) -> _CustomBytesIO: ...
 
 
 @typing.overload
-def coerce_data(data: bytes, encoding: str) -> _CustomBytesIO: ...
+def coerce_data(
+    data: bytes | bytearray | memoryview, encoding: str
+) -> _CustomBytesIO: ...
 
 
 def coerce_data(
-    data: _CustomBytesIO | io.BytesIO | typing.BinaryIO | str | bytes,
+    data: (
+        _CustomBytesIO
+        | io.BytesIO
+        | typing.BinaryIO
+        | str
+        | bytes
+        | bytearray
+        | memoryview
+    ),
     encoding: str,
 ) -> _CustomBytesIO | FileWrapper:
     """Ensure that every object's __len__ behaves uniformly."""
+    if isinstance(data, (bytearray, memoryview)):
+        return _CustomBytesIO(bytes(data), encoding)
+
     if not isinstance(data, _CustomBytesIO):
         if isinstance(data, (str, bytes)):
             return _CustomBytesIO(data, encoding)
