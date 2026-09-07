@@ -1,11 +1,57 @@
 from __future__ import annotations
 
 import typing
+from http.client import HTTPConnection
+from unittest.mock import Mock
 
 import pytest
 
 from urllib3._collections import HTTPHeaderDict
 from urllib3._collections import RecentlyUsedContainer as Container
+
+
+class TestHTTPHeaderBytesValues:
+    def test_setitem_and_roundtrip(self) -> None:
+        headers = HTTPHeaderDict()
+        value = bytes(range(256))
+        headers["X-Value"] = value
+        assert headers["x-value"].encode("latin-1") == value
+        assert headers.getlist("X-Value") == [value.decode("latin-1")]
+
+    @pytest.mark.parametrize("combine", [False, True])
+    def test_add_mixed_values(self, combine: bool) -> None:
+        headers = HTTPHeaderDict({"X-Value": b"caf\xe9"})
+        headers.add("x-value", "text", combine=combine)
+        headers.add("X-VALUE", b"\xff", combine=combine)
+        assert headers["x-value"] == "caf\xe9, text, \xff"
+        assert list(headers.itermerged()) == [("X-Value", "caf\xe9, text, \xff")]
+        expected = ["caf\xe9, text, \xff"] if combine else ["caf\xe9", "text", "\xff"]
+        assert headers.getlist("x-value") == expected
+        assert list(headers.items()) == [("X-Value", value) for value in expected]
+        assert headers.copy() == headers
+
+    def test_import_and_default_paths(self) -> None:
+        headers = HTTPHeaderDict([("X-Value", b"one"), ("x-value", "two")])
+        headers.extend({"Other": b"three"})
+        headers.extend(Last=b"four")
+        assert headers.setdefault("Empty", b"") == ""
+        assert headers.setdefault("Other", b"ignored") == "three"
+        assert dict(headers.itermerged()) == {
+            "X-Value": "one, two", "Other": "three", "Last": "four", "Empty": "",
+        }
+        assert (headers | {"Other": b"five"})["other"] == "three, five"
+        assert (HTTPHeaderDict(Agent=b"caf\xe9"))["agent"] == "caf\xe9"
+
+    def test_http11_preserves_non_ascii_octets(self) -> None:
+        headers = HTTPHeaderDict({"User-Agent": b"Sch\xf6nefeld/1.18.0"})
+        connection = HTTPConnection("example.invalid")
+        connection.sock = Mock()
+        connection.putrequest("GET", "/")
+        for key, value in headers.items():
+            connection.putheader(key, value)
+        connection.endheaders()
+        wire = connection.sock.sendall.call_args.args[0]
+        assert b"User-Agent: Sch\xf6nefeld/1.18.0\r\n" in wire
 
 
 class TestLRUContainer:

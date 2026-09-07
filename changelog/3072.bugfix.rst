@@ -1,0 +1,1 @@
+Added support for byte-valued headers in ``HTTPHeaderDict``, decoding them with Latin-1 on insertion so lookups and duplicate-header merging consistently return strings.
