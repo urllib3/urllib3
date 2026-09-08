@@ -173,6 +173,26 @@ to ``False``. By default HTTP responses are closed after reading all bytes, this
     # </body>
     # </html>
 
+HTTP Basic authentication
+-------------------------
+
+Credentials in a request URL are percent-decoded and sent in an
+``Authorization: Basic ...`` header. For example,
+``https://user:password@example.com/`` authenticates as ``user`` with password
+``password``. A username without a colon uses an empty password. URL credentials
+are removed from the request target.
+
+An explicit ``Authorization`` header must match the generated header; conflicting
+values raise ``ValueError`` before sending the request. Header names are compared
+case-insensitively. By default, authentication headers are removed when following
+a redirect to another host, port, or scheme.
+
+HTTP and HTTPS proxy URLs support credentials in the same way, using
+``Proxy-Authorization`` instead. Pass explicit proxy authentication headers in
+``ProxyManager(proxy_headers=...)``. When tunneling HTTPS, proxy credentials are
+sent on the CONNECT request, not on the request to the destination server.
+
+
 .. _request_data:
 
 Request Data
