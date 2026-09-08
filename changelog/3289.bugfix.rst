@@ -1,0 +1,5 @@
+Changed behavior of the default ``ConnectionPool.pool`` initialization.
+``LifoQueue`` is now resolved from the ``queue`` module after the ``ConnectionPool``
+is instantiated instead of using default cached ``QueueCls`` class property.
+This is done because sometimes the ``queue.LifoQueue`` is monkey-patched
+late in the program, such as by gevent.

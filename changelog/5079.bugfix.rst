@@ -1,0 +1,1 @@
+Fixed ``HTTPConnectionPool.urlopen()`` and HTTP proxy forwarding to strip URL fragments from absolute request targets before sending requests.

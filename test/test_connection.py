@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import socket
 import typing
-from http.client import ResponseNotReady
+from http.client import HTTPMessage, ResponseNotReady
 from unittest import mock
 
 import pytest
@@ -14,6 +14,8 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     HTTPConnection,
     HTTPSConnection,
     _match_hostname,
+    _normalize_header_value,
+    _normalize_header_values,
     _url_from_connection,
     _wrap_proxy_error,
 )
@@ -206,6 +208,43 @@ class TestConnection:
         two_years = datetime.timedelta(days=365 * 2)
         assert RECENT_DATE > (datetime.datetime.today() - two_years).date()
 
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            ("ordinary\tvalue", "ordinary\tvalue"),
+            ("before \t\r\n\t  after", "before after"),
+            ("one\r\n two\t\r\n\tthree", "one two three"),
+            ("one\r\n \r\n\tthree", "one  three"),
+        ],
+    )
+    def test_normalize_header_value(self, value: str, expected: str) -> None:
+        assert _normalize_header_value(value) == expected
+
+    def test_normalize_header_values_preserves_message(self) -> None:
+        message = HTTPMessage()
+        message["X-First"] = "one"
+        message["Set-Cookie"] = "a=1 \r\n two"
+        message["X-Second"] = "three"
+        message["Set-Cookie"] = "b=2"
+        message.set_payload("payload")
+        defects = message.defects
+        policy = message.policy
+
+        header_items = _normalize_header_values(message)
+
+        expected = [
+            ("X-First", "one"),
+            ("Set-Cookie", "a=1 two"),
+            ("X-Second", "three"),
+            ("Set-Cookie", "b=2"),
+        ]
+        assert header_items == expected
+        assert message.items() == expected
+        assert message.get_all("Set-Cookie") == ["a=1 two", "b=2"]
+        assert message.get_payload() == "payload"
+        assert message.defects is defects
+        assert message.policy is policy
+
     def test_HTTPSConnection_default_socket_options(self) -> None:
         conn = HTTPSConnection("not.a.real.host", port=443)
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
@@ -297,14 +336,14 @@ class TestConnection:
         if user_agent is not None:
             headers[user_agent] = SKIP_HEADER
 
-        # When dropping support for Python 3.9, this can be rewritten to parenthesized
-        # context managers
-        with mock.patch("urllib3.util.connection.create_connection"):
-            with mock.patch(
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch(
                 "urllib3.connection._HTTPConnection.putheader"
-            ) as http_client_putheader:
-                conn = HTTPConnection("")
-                conn.request("GET", "/headers", headers=headers, chunked=chunked)
+            ) as http_client_putheader,
+        ):
+            conn = HTTPConnection("")
+            conn.request("GET", "/headers", headers=headers, chunked=chunked)
 
         request_headers = {}
         for call in http_client_putheader.call_args_list:

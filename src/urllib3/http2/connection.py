@@ -6,9 +6,9 @@ import threading
 import types
 import typing
 
-import h2.config  # type: ignore[import-untyped]
-import h2.connection  # type: ignore[import-untyped]
-import h2.events  # type: ignore[import-untyped]
+import h2.config
+import h2.connection
+import h2.events
 
 from .._base_connection import _TYPE_BODY
 from .._collections import HTTPHeaderDict
@@ -127,10 +127,11 @@ class HTTP2Connection(HTTPSConnection):
         self._request_url = url or "/"
         self._validate_path(url)  # type: ignore[attr-defined]
 
+        port = self.port if self.port is not None else 443
         if ":" in self.host:
-            authority = f"[{self.host}]:{self.port or 443}"
+            authority = f"[{self.host}]:{port}"
         else:
-            authority = f"{self.host}:{self.port or 443}"
+            authority = f"{self.host}:{port}"
 
         self._headers.append((b":scheme", b"https"))
         self._headers.append((b":method", method.encode()))
@@ -140,7 +141,7 @@ class HTTP2Connection(HTTPSConnection):
         with self._h2_conn as conn:
             self._h2_stream = conn.get_next_available_stream_id()
 
-    def putheader(self, header: str | bytes, *values: str | bytes) -> None:
+    def putheader(self, header: str | bytes, *values: str | bytes) -> None:  # type: ignore[override]
         # TODO SKIPPABLE_HEADERS from urllib3 are ignored.
         header = header.encode() if isinstance(header, str) else header
         header = header.lower()  # A lot of upstream code uses capitalized headers.
@@ -185,7 +186,7 @@ class HTTP2Connection(HTTPSConnection):
                     if not chunk:
                         break
                     if isinstance(chunk, str):
-                        chunk = chunk.encode()  # pragma: no cover
+                        chunk = chunk.encode()
                     conn.send_data(self._h2_stream, chunk, end_stream=False)
                     if data_to_send := conn.data_to_send():
                         self.sock.sendall(data_to_send)

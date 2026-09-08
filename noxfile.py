@@ -1,66 +1,80 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sys
-import typing
 from pathlib import Path
 
 import nox
 
 nox.options.error_on_missing_interpreters = True
+nox.options.default_venv_backend = "uv"
 
 
 def tests_impl(
     session: nox.Session,
-    extras: str = "socks,brotli,zstd,h2",
+    extras: str | None = None,
+    extra_dependencies: list[str] | None = None,
     # hypercorn dependency h2 compares bytes and strings
     # https://github.com/python-hyper/h2/issues/1236
     byte_string_comparisons: bool = False,
     integration: bool = False,
     pytest_extra_args: list[str] = [],
+    dependency_group: str = "dev",
+    no_default_groups: bool = False,
 ) -> None:
     # Retrieve sys info from the Python implementation under test
     # to avoid enabling memray when nox runs under CPython but tests PyPy
     session_python_info = session.run(
         "python",
         "-c",
-        "import sys; print(sys.implementation.name, sys.version_info.releaselevel)",
+        "import sys; print(sys.implementation.name, sys.version_info.releaselevel, getattr(sys, '_is_gil_enabled', lambda: True)())",
         silent=True,
     ).strip()  # type: ignore[union-attr] # mypy doesn't know that silent=True  will return a string
-    implementation_name, release_level = session_python_info.split(" ")
+    implementation_name, release_level, _is_gil_enabled = session_python_info.split(" ")
+    free_threading = _is_gil_enabled == "False"
+
+    if extras is None:
+        # brotlicffi does not support free-threading
+        extras = "socks,zstd,h2" if free_threading else "socks,brotli,zstd,h2"
 
     # Install deps and the package itself.
-    session.install("-r", "dev-requirements.txt")
-    session.install(f".[{extras}]")
-
-    # Show the pip version.
-    session.run("pip", "--version")
-    # Print the Python version and bytesize.
+    session.run_install(
+        "uv",
+        "sync",
+        "--frozen",
+        *("--no-default-groups",) if no_default_groups else (),
+        "--group",
+        dependency_group,
+        *(f"--extra={extra}" for extra in (extras.split(",") if extras else ())),
+    )
+    if extra_dependencies:
+        session.install(*extra_dependencies)
+    # Show the uv version.
+    session.run("uv", "--version")
+    # Print the Python version, bytesize and free-threading status.
     session.run("python", "--version")
     session.run("python", "-c", "import struct; print(struct.calcsize('P') * 8)")
+    session.run(
+        "python",
+        "-c",
+        "import sys; print(getattr(sys, '_is_gil_enabled', lambda: True)())",
+    )
     # Print OpenSSL information.
     session.run("python", "-m", "OpenSSL.debug")
 
     memray_supported = True
-    if implementation_name != "cpython":
-        memray_supported = False  # pytest-memray requires CPython 3.8+
+    if implementation_name != "cpython" or release_level != "final" or free_threading:
+        memray_supported = False
     elif sys.platform == "win32":
         memray_supported = False
 
     # Environment variables being passed to the pytest run.
     pytest_session_envvars = {
-        "PYTHONWARNINGS": "always::DeprecationWarning",
+        "PYTHONWARNINGS": "always::FutureWarning",
+        "COVERAGE_CORE": "sysmon",
     }
-
-    # In coverage 7.4.0 we can only set the setting for Python 3.12+
-    # Future versions of coverage will use sys.monitoring based on availability.
-    if (
-        isinstance(session.python, str)
-        and "." in session.python
-        and int(session.python.split(".")[1]) >= 12
-    ):
-        pytest_session_envvars["COVERAGE_CORE"] = "sysmon"
 
     # Inspired from https://hynek.me/articles/ditch-codecov-python/
     # We use parallel mode and then combine in a later CI step
@@ -77,14 +91,13 @@ def tests_impl(
         "-v",
         "-ra",
         *(("--integration",) if integration else ()),
-        f"--color={'yes' if 'GITHUB_ACTIONS' in os.environ else 'auto'}",
         "--tb=native",
         "--durations=10",
         "--strict-config",
         "--strict-markers",
         "--disable-socket",
         "--allow-unix-socket",
-        "--allow-hosts=localhost,::1,127.0.0.0,240.0.0.0",  # See `TARPIT_HOST`
+        "--allow-hosts=localhost,127.0.0.1,::1,127.0.0.0,240.0.0.0",  # See `TARPIT_HOST`
         *pytest_extra_args,
         *(session.posargs or ("test/",)),
         env=pytest_session_envvars,
@@ -93,23 +106,42 @@ def tests_impl(
 
 @nox.session(
     python=[
-        "3.8",
-        "3.9",
         "3.10",
         "3.11",
         "3.12",
         "3.13",
-        "pypy3.10",
+        "3.14",
+        "3.14t",
+        "3.15",
+        "pypy3.11",
     ]
 )
 def test(session: nox.Session) -> None:
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     tests_impl(session)
 
 
 @nox.session(python="3")
 def test_integration(session: nox.Session) -> None:
     """Run integration tests"""
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     tests_impl(session, integration=True)
+
+
+# We use 3.13 in GitHub Actions.
+@nox.session(python="3.13")
+def test_min_pyopenssl(session: nox.Session) -> None:
+    """
+    Check that we do not break with the documented minimum supported
+    pyOpenSSL version.
+    """
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
+    tests_impl(
+        session,
+        pytest_extra_args=["-k", "pyopenssl"],
+        dependency_group="dev-min-pyopenssl",
+        no_default_groups=True,
+    )
 
 
 @nox.session(python="3")
@@ -117,8 +149,13 @@ def test_brotlipy(session: nox.Session) -> None:
     """Check that if 'brotlipy' is installed instead of 'brotli' or
     'brotlicffi' that we still don't blow up.
     """
-    session.install("brotlipy")
-    tests_impl(session, extras="socks", byte_string_comparisons=False)
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
+    tests_impl(
+        session,
+        extras="socks",
+        extra_dependencies=["brotlipy"],
+        byte_string_comparisons=False,
+    )
 
 
 def git_clone(session: nox.Session, git_url: str) -> None:
@@ -139,7 +176,7 @@ def git_clone(session: nox.Session, git_url: str) -> None:
         session.run("git", "-C", expected_directory, "pull", external=True)
 
 
-@nox.session()
+@nox.session(venv_backend="virtualenv")  # botocore fails with uv
 def downstream_botocore(session: nox.Session) -> None:
     root = os.getcwd()
     tmp_dir = session.create_tmp()
@@ -184,7 +221,7 @@ def format(session: nox.Session) -> None:
     lint(session)
 
 
-@nox.session(python="3.12")
+@nox.session()
 def lint(session: nox.Session) -> None:
     session.install("pre-commit")
     session.run("pre-commit", "run", "--all-files")
@@ -192,32 +229,43 @@ def lint(session: nox.Session) -> None:
     mypy(session)
 
 
-@nox.session(python="3.11")
+@nox.session(python="3.12")
 def pyodideconsole(session: nox.Session) -> None:
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
     # build wheel into dist folder
-    session.install("build")
-    session.run("python", "-m", "build")
-    session.run(
-        "cp",
-        "test/contrib/emscripten/templates/pyodide-console.html",
-        "dist/index.html",
-        external=True,
-    )
-    session.cd("dist")
-    session.run("python", "-m", "http.server")
+    # Run build and capture output
+    build_output = session.run("uv", "run", "-m", "build", "--wheel", silent=True)
+    assert build_output
+
+    # Extract wheel name using regex
+    wheel_match = re.search(r"urllib3-[^\s]+\.whl", build_output)
+    assert wheel_match
+    wheel_name = wheel_match.group(0)
+
+    # Read template and replace wheel name
+    template_path = Path("test/contrib/emscripten/templates/pyodide-console.html")
+    html_content = template_path.read_text()
+    html_content = html_content.replace("{urllib3_wheel_name}.whl", wheel_name)
+
+    # Write modified content to dist/index.html
+    dist_path = Path("dist")
+    (dist_path / "index.html").write_text(html_content)
+
+    session.run("python", "-m", "http.server", "-d", "dist", "-b", "localhost")
 
 
-# TODO: node support is not tested yet - it should work if you require('xmlhttprequest') before
-# loading pyodide, but there is currently no nice way to do this with pytest-pyodide
-# because you can't override the test runner properties easily - see
-# https://github.com/pyodide/pytest-pyodide/issues/118 for more
-@nox.session(python="3.11")
-@nox.parametrize("runner", ["firefox", "chrome"])
+@nox.session(python="3.12")
+@nox.parametrize(
+    "runner", ["node", "firefox", "chrome"], ids=["node", "firefox", "chrome"]
+)
 def emscripten(session: nox.Session, runner: str) -> None:
-    """Test on Emscripten with Pyodide & Chrome / Firefox"""
-    session.install("-r", "emscripten-requirements.txt")
-    # build wheel into dist folder
-    session.run("python", "-m", "build")
+    """Test on Emscripten with Pyodide & Chrome / Firefox / Node.js"""
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
+    if runner == "node":
+        print(
+            "Node version:",
+            session.run("node", "--version", silent=True, external=True),
+        )
     # make sure we have a dist dir for pyodide
     dist_dir = None
     if "PYODIDE_ROOT" in os.environ:
@@ -225,26 +273,20 @@ def emscripten(session: nox.Session, runner: str) -> None:
         # use the dist directory from that
         dist_dir = Path(os.environ["PYODIDE_ROOT"]) / "dist"
     else:
-        # we don't have a build tree, get one
-        # that matches the version of pyodide build
-        pyodide_version = typing.cast(
-            str,
-            session.run(
-                "python",
-                "-c",
-                "import pyodide_build;print(pyodide_build.__version__)",
-                silent=True,
-            ),
-        ).strip()
+        # we don't have a build tree
+        pyodide_version = "314.0.4"
 
         pyodide_artifacts_path = Path(session.cache_dir) / f"pyodide-{pyodide_version}"
         if not pyodide_artifacts_path.exists():
             print("Fetching pyodide build artifacts")
             session.run(
-                "wget",
+                "curl",
+                "-L",
                 f"https://github.com/pyodide/pyodide/releases/download/{pyodide_version}/pyodide-{pyodide_version}.tar.bz2",
+                "--output-dir",
+                session.cache_dir,
                 "-O",
-                f"{pyodide_artifacts_path}.tar.bz2",
+                external=True,
             )
             pyodide_artifacts_path.mkdir(parents=True)
             session.run(
@@ -255,64 +297,34 @@ def emscripten(session: nox.Session, runner: str) -> None:
                 str(pyodide_artifacts_path),
                 "--strip-components",
                 "1",
+                external=True,
             )
 
         dist_dir = pyodide_artifacts_path
+    session.run("uv", "run", "-m", "build")
     assert dist_dir is not None
     assert dist_dir.exists()
-    if runner == "chrome":
-        # install chrome webdriver and add it to path
-        driver = typing.cast(
-            str,
-            session.run(
-                "python",
-                "-c",
-                "from webdriver_manager.chrome import ChromeDriverManager;print(ChromeDriverManager().install())",
-                silent=True,
-            ),
-        ).strip()
-        session.env["PATH"] = f"{Path(driver).parent}:{session.env['PATH']}"
-
-        tests_impl(
-            session,
-            pytest_extra_args=[
-                "--rt",
-                "chrome-no-host",
-                "--dist-dir",
-                str(dist_dir),
-                "test",
-            ],
-        )
-    elif runner == "firefox":
-        driver = typing.cast(
-            str,
-            session.run(
-                "python",
-                "-c",
-                "from webdriver_manager.firefox import GeckoDriverManager;print(GeckoDriverManager().install())",
-                silent=True,
-            ),
-        ).strip()
-        session.env["PATH"] = f"{Path(driver).parent}:{session.env['PATH']}"
-
-        tests_impl(
-            session,
-            pytest_extra_args=[
-                "--rt",
-                "firefox-no-host",
-                "--dist-dir",
-                str(dist_dir),
-                "test",
-            ],
-        )
-    else:
-        raise ValueError(f"Unknown runner: {runner}")
+    tests_impl(
+        session,
+        extras="",
+        pytest_extra_args=[
+            "--runtime",
+            f"{runner}-no-host",
+            "--dist-dir",
+            str(dist_dir),
+            "test/contrib/emscripten",
+            "-v",
+        ],
+        dependency_group="emscripten",
+    )
 
 
 @nox.session(python="3.12")
 def mypy(session: nox.Session) -> None:
     """Run mypy."""
-    session.install("-r", "mypy-requirements.txt")
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
+    session.run_install("uv", "sync", "--frozen", "--only-group", "mypy")
+    session.install(".")
     session.run("mypy", "--version")
     session.run(
         "mypy",
@@ -329,8 +341,20 @@ def mypy(session: nox.Session) -> None:
 
 @nox.session
 def docs(session: nox.Session) -> None:
-    session.install("-r", "docs/requirements.txt")
-    session.install(".[socks,brotli,zstd]")
+    session.env["UV_PROJECT_ENVIRONMENT"] = session.virtualenv.location
+    session.run_install(
+        "uv",
+        "sync",
+        "--frozen",
+        "--group",
+        "docs",
+        "--extra",
+        "socks",
+        "--extra",
+        "brotli",
+        "--extra",
+        "zstd",
+    )
 
     session.chdir("docs")
     if os.path.exists("_build"):

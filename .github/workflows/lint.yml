@@ -1,29 +1,35 @@
 name: lint
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    # Dependabot branches run through pull_request; tag pushes are not run.
+    branches-ignore: ["dependabot/**"]
+  pull_request:
+  workflow_dispatch:
 
-permissions: "read-all"
+permissions:
+  contents: "read"
 
 jobs:
   lint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: "Setup Python"
-        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.x"
-          cache: pip
 
-      - name: "Run pre-commit"
-        uses: pre-commit/action@646c83fcd040023954eafda54b4db0192ce70507 # v3.0.0
+      - name: "Install uv"
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.11.7"
 
-      - name: "Install dependencies"
-        run: python -m pip install nox
-
-      - name: "Run mypy"
-        run: nox -s mypy
+      - name: "Lint code"
+        run: uvx nox -s lint

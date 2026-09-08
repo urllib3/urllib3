@@ -66,7 +66,8 @@ When using ``preload_content=True`` (the default setting) the
 response body will be read immediately into memory and the HTTP connection
 will be released back into the pool without manual intervention.
 
-However, when dealing with large responses it's often better to stream the response
+However, when dealing with responses of large or unknown length,
+it's often better to stream the response
 content using ``preload_content=False``. Setting ``preload_content`` to ``False`` means
 that urllib3 will only read from the socket when data is requested.
 
@@ -535,7 +536,7 @@ Brotli Encoding
 
 Brotli is a compression algorithm created by Google with better compression
 than gzip and deflate and is supported by urllib3 if the
-`Brotli <https://pypi.org/Brotli>`_ package or
+`Brotli <https://pypi.org/project/brotli/>`_ package or
 `brotlicffi <https://github.com/python-hyper/brotlicffi>`_ package is installed.
 You may also request the package be installed via the ``urllib3[brotli]`` extra:
 
@@ -561,11 +562,14 @@ Zstandard Encoding
 `Zstandard <https://datatracker.ietf.org/doc/html/rfc8878>`_
 is a compression algorithm created by Facebook with better compression
 than brotli, gzip and deflate (see `benchmarks <https://facebook.github.io/zstd/#benchmarks>`_)
-and is supported by urllib3 if the `zstandard package <https://pypi.org/project/zstandard/>`_ is installed.
+and is supported by urllib3 in Python 3.14+ using the `compression.zstd <https://peps.python.org/pep-0784/>`_ standard library module
+and for Python 3.13 and earlier if the `backports.zstd package <https://pypi.org/project/backports.zstd/>`_ is installed.
 You may also request the package be installed via the ``urllib3[zstd]`` extra:
 
 .. code-block:: bash
 
+    # This is only necessary on Python 3.13 and earlier.
+    # Otherwise zstandard support is included in the Python standard library.
     $ python -m pip install urllib3[zstd]
 
 .. note::
@@ -588,7 +592,7 @@ Here's an example using zstd encoding via the ``Accept-Encoding`` header:
 
 Decrypting Captured TLS Sessions with Wireshark
 -----------------------------------------------
-Python 3.8 and higher support logging of TLS pre-master secrets.
+Python supports logging of TLS pre-master secrets.
 With these secrets tools like `Wireshark <https://wireshark.org>`_ can decrypt captured
 network traffic.
 

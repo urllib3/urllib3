@@ -1,0 +1,1 @@
+Added ``Url.auth_decoded`` and ``Url.auth_decoded_joined`` convenience properties to the result of ``parse_url()``.

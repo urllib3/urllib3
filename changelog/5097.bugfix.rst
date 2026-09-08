@@ -1,0 +1,2 @@
+Fixed an ``AttributeError`` on Python built with OpenSSL 4+, where
+``ssl.PROTOCOL_TLSv1`` no longer exists.

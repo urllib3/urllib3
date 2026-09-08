@@ -14,6 +14,7 @@ import socket
 import ssl
 import tempfile
 import threading
+import time
 import typing
 import zlib
 from collections import OrderedDict
@@ -21,6 +22,7 @@ from pathlib import Path
 from test import LONG_TIMEOUT, SHORT_TIMEOUT, notWindows, resolvesLocalhostFQDN
 from threading import Event
 from unittest import mock
+from urllib.parse import urlparse
 
 import pytest
 import trustme
@@ -32,7 +34,14 @@ from dummyserver.socketserver import (
     get_unreachable_address,
 )
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
+from urllib3 import (
+    BaseHTTPResponse,
+    HTTPConnectionPool,
+    HTTPResponse,
+    HTTPSConnectionPool,
+    ProxyManager,
+    util,
+)
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.connectionpool import _url_from_pool
@@ -79,6 +88,62 @@ class TestCookies(SocketDummyServerTestCase):
             r = pool.request("GET", "/", retries=0)
             assert r.headers == {"set-cookie": "foo=1, bar=1"}
             assert r.headers.getlist("set-cookie") == ["foo=1", "bar=1"]
+
+    def test_obsolete_line_folding_is_unfolded(self) -> None:
+        def folded_cookie_response_handler(listener: socket.socket) -> None:
+            with listener.accept()[0] as sock:
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += sock.recv(65536)
+
+                sock.sendall(
+                    b"HTTP/1.1 200 OK\r\n"
+                    b"Set-Cookie: ___utmvbtouVBFmB=gZg\r\n"
+                    b"    XbNOjalT: Lte; path=/; Max-Age=900\r\n"
+                    b"Set-Cookie: ordinary=1; Path=/\r\n"
+                    b"Fold-Space-Space: before \r\n"
+                    b" after\r\n"
+                    b"Fold-Space-Tab: before \r\n"
+                    b"\tafter\r\n"
+                    b"Fold-Tab-Space: before\t\r\n"
+                    b" after\r\n"
+                    b"Fold-Tab-Tab: before\t\r\n"
+                    b"\tafter\r\n"
+                    b"Fold-Mixed-Repeated: one \t\r\n"
+                    b"\t  two\t \r\n"
+                    b" \tthree\r\n"
+                    b"Ordinary: one\t two\r\n"
+                    b"Content-Length: 0\r\n"
+                    b"\r\n"
+                )
+
+        self._start_server(folded_cookie_response_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/", retries=0)
+
+            assert r.headers.getlist("set-cookie") == [
+                "___utmvbtouVBFmB=gZg XbNOjalT: Lte; path=/; Max-Age=900",
+                "ordinary=1; Path=/",
+            ]
+            assert r.headers["fold-space-space"] == "before after"
+            assert r.headers["fold-space-tab"] == "before after"
+            assert r.headers["fold-tab-space"] == "before after"
+            assert r.headers["fold-tab-tab"] == "before after"
+            assert r.headers["fold-mixed-repeated"] == "one two three"
+            assert r.headers["ordinary"] == "one\t two"
+            assert r.headers["content-length"] == "0"
+            assert all(
+                "\r" not in value and "\n" not in value for value in r.headers.values()
+            )
+
+            assert isinstance(r, HTTPResponse)
+            assert r._original_response is not None
+            assert r._original_response.headers is r._original_response.msg
+            assert r._original_response.msg.get_all("set-cookie") == [
+                "___utmvbtouVBFmB=gZg XbNOjalT: Lte; path=/; Max-Age=900",
+                "ordinary=1; Path=/",
+            ]
+            assert r._original_response.msg["fold-mixed-repeated"] == "one two three"
 
 
 class TestSNI(SocketDummyServerTestCase):
@@ -960,25 +1025,28 @@ class TestSocketClosing(SocketDummyServerTestCase):
             listener: socket.socket,
         ) -> None:
             try:
-                with listener.accept()[0] as sock, original_ssl_wrap_socket(
-                    sock,
-                    server_side=True,
-                    keyfile=DEFAULT_CERTS["keyfile"],
-                    certfile=DEFAULT_CERTS["certfile"],
-                    ca_certs=DEFAULT_CA,
-                ) as ssl_sock:
+                with (
+                    listener.accept()[0] as sock,
+                    original_ssl_wrap_socket(
+                        sock,
+                        server_side=True,
+                        keyfile=DEFAULT_CERTS["keyfile"],
+                        certfile=DEFAULT_CERTS["certfile"],
+                        ca_certs=DEFAULT_CA,
+                    ) as ssl_sock,
+                ):
                     consume_socket(ssl_sock, quit_event=quit_event)
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
         self._start_server(consume_ssl_socket, quit_event=quit_event)
-        with socket.create_connection(
-            (self.host, self.port)
-        ) as sock, contextlib.closing(
-            ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
-        ) as ssl_sock, ssl_sock.makefile(
-            "rb"
-        ) as f:
+        with (
+            socket.create_connection((self.host, self.port)) as sock,
+            contextlib.closing(
+                ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
+            ) as ssl_sock,
+            ssl_sock.makefile("rb") as f,
+        ):
             ssl_sock.close()
             f.close()
             with pytest.raises(OSError):
@@ -990,33 +1058,134 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         def consume_ssl_socket(listener: socket.socket) -> None:
             try:
-                with listener.accept()[0] as sock, original_ssl_wrap_socket(
-                    sock,
-                    server_side=True,
-                    keyfile=DEFAULT_CERTS["keyfile"],
-                    certfile=DEFAULT_CERTS["certfile"],
-                    ca_certs=DEFAULT_CA,
-                ) as ssl_sock:
+                with (
+                    listener.accept()[0] as sock,
+                    original_ssl_wrap_socket(
+                        sock,
+                        server_side=True,
+                        keyfile=DEFAULT_CERTS["keyfile"],
+                        certfile=DEFAULT_CERTS["certfile"],
+                        ca_certs=DEFAULT_CA,
+                    ) as ssl_sock,
+                ):
                     consume_socket(ssl_sock, quit_event=quit_event)
             except (ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
 
         self._start_server(consume_ssl_socket, quit_event=quit_event)
-        with socket.create_connection(
-            (self.host, self.port)
-        ) as sock, contextlib.closing(
-            ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
-        ) as ssl_sock, ssl_sock.makefile(
-            "rb"
+        with (
+            socket.create_connection((self.host, self.port)) as sock,
+            contextlib.closing(
+                ssl_wrap_socket(sock, server_hostname=self.host, ca_certs=DEFAULT_CA)
+            ) as ssl_sock,
+            ssl_sock.makefile("rb"),
         ):
             ssl_sock.close()
             ssl_sock.close()
             ssl_sock.sendall(b"hello")
             assert ssl_sock.fileno() > 0
 
+    def test_socket_shutdown_stops_recv(self) -> None:
+        timed_out, starting_read = Event(), Event()
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            ssl_sock = original_ssl_wrap_socket(
+                sock,
+                server_side=True,
+                keyfile=DEFAULT_CERTS["keyfile"],
+                certfile=DEFAULT_CERTS["certfile"],
+                ca_certs=DEFAULT_CA,
+            )
+
+            # Consume request
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf = ssl_sock.recv(65535)
+
+            # Send incomplete message (note Content-Length)
+            ssl_sock.send(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Content-Length: 10\r\n"
+                b"\r\n"
+                b"Hi-"
+            )
+            timed_out.wait(5)
+            ssl_sock.close()
+
+        self._start_server(socket_handler)
+
+        class TestClient(threading.Thread):
+            def __init__(self, host: str, port: int) -> None:
+                super().__init__()
+                self.host, self.port = host, port
+                self.response: BaseHTTPResponse | None = None
+
+            def run(self) -> None:
+                with HTTPSConnectionPool(
+                    self.host, self.port, ca_certs=DEFAULT_CA
+                ) as pool:
+                    self.response = pool.urlopen(
+                        "GET", "/", preload_content=False, retries=0
+                    )
+                    with pytest.raises(ProtocolError, match="Connection broken"):
+                        starting_read.set()
+                        self.response.read()
+
+        test_client = TestClient(self.host, self.port)
+        test_client.start()
+        # First, wait to make sure the client is really stuck reading
+        starting_read.wait(5)
+        time.sleep(LONG_TIMEOUT)
+        # Calling shutdown here calls shutdown() on the underlying socket,
+        # so that the remaining read will fail instead of blocking
+        # indefinitely
+        assert test_client.response is not None
+        test_client.response.shutdown()
+        timed_out.set()
+
 
 class TestProxyManager(SocketDummyServerTestCase):
-    def test_simple(self) -> None:
+    @pytest.mark.parametrize(
+        ("target_url", "expected_request_line", "expected_host"),
+        [
+            pytest.param(
+                "http://google.com/",
+                b"GET http://google.com/ HTTP/1.1",
+                b"Host: google.com",
+                id="simple",
+            ),
+            pytest.param(
+                "http://example.com/path#marker=value",
+                b"GET http://example.com/path HTTP/1.1",
+                b"Host: example.com",
+                id="fragment-after-path",
+            ),
+            pytest.param(
+                "http://example.com/path?x=1#marker=value",
+                b"GET http://example.com/path?x=1 HTTP/1.1",
+                b"Host: example.com",
+                id="fragment-after-query",
+            ),
+            pytest.param(
+                "http://example.com/#marker=value",
+                b"GET http://example.com/ HTTP/1.1",
+                b"Host: example.com",
+                id="root-path-with-fragment",
+            ),
+            pytest.param(
+                "http://example.com/path?x=1#",
+                b"GET http://example.com/path?x=1 HTTP/1.1",
+                b"Host: example.com",
+                id="empty-fragment",
+            ),
+        ],
+    )
+    def test_simple(
+        self, target_url: str, expected_request_line: bytes, expected_host: bytes
+    ) -> None:
         def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
@@ -1038,7 +1207,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         self._start_server(echo_socket_handler)
         base_url = f"http://{self.host}:{self.port}"
         with proxy_from_url(base_url) as proxy:
-            r = proxy.request("GET", "http://google.com/")
+            r = proxy.request("GET", target_url)
 
             assert r.status == 200
             # FIXME: The order of the headers is not predictable right now. We
@@ -1046,8 +1215,8 @@ class TestProxyManager(SocketDummyServerTestCase):
             # OrderedDict/MultiDict).
             assert sorted(r.data.split(b"\r\n")) == sorted(
                 [
-                    b"GET http://google.com/ HTTP/1.1",
-                    b"Host: google.com",
+                    expected_request_line,
+                    expected_host,
                     b"Accept-Encoding: identity",
                     b"Accept: */*",
                     b"User-Agent: " + _get_default_user_agent().encode("utf-8"),
@@ -1215,7 +1384,7 @@ class TestProxyManager(SocketDummyServerTestCase):
             r = conn.urlopen("GET", url, retries=0)
             assert r.status == 200
 
-    def test_connect_ipv6_addr(self) -> None:
+    def test_connect_ipv6_addr_from_host(self) -> None:
         ipv6_addr = "2001:4998:c:a06::2:4008"
 
         def echo_socket_handler(listener: socket.socket) -> None:
@@ -1255,13 +1424,75 @@ class TestProxyManager(SocketDummyServerTestCase):
 
         with proxy_from_url(base_url, cert_reqs="NONE") as proxy:
             url = f"https://[{ipv6_addr}]"
+
+            # Try with connection_from_host
+            parsed_request_url = urlparse(url)
+
+            conn = proxy.connection_from_host(
+                scheme=parsed_request_url.scheme.lower(),
+                host=parsed_request_url.hostname,
+                port=parsed_request_url.port,
+            )
+            try:
+                with pytest.warns(InsecureRequestWarning):
+                    r = conn.urlopen("GET", url, retries=0)
+                assert r.status == 200
+            except MaxRetryError:
+                pytest.fail(
+                    "Invalid IPv6 format in HTTP CONNECT request when using connection_from_host"
+                )
+
+    def test_connect_ipv6_addr_from_url(self) -> None:
+        ipv6_addr = "2001:4998:c:a06::2:4008"
+
+        def echo_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+            s = buf.decode("utf-8")
+
+            if s.startswith(f"CONNECT [{ipv6_addr}]:443"):
+                sock.send(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                ssl_sock = original_ssl_wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                )
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += ssl_sock.recv(65536)
+
+                ssl_sock.send(
+                    b"HTTP/1.1 200 OK\r\n"
+                    b"Content-Type: text/plain\r\n"
+                    b"Content-Length: 2\r\n"
+                    b"Connection: close\r\n"
+                    b"\r\n"
+                    b"Hi"
+                )
+                ssl_sock.close()
+            else:
+                sock.close()
+
+        self._start_server(echo_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        with proxy_from_url(base_url, cert_reqs="NONE") as proxy:
+            url = f"https://[{ipv6_addr}]"
+
+            # Try with connection_from_url
             conn = proxy.connection_from_url(url)
             try:
                 with pytest.warns(InsecureRequestWarning):
                     r = conn.urlopen("GET", url, retries=0)
                 assert r.status == 200
             except MaxRetryError:
-                pytest.fail("Invalid IPv6 format in HTTP CONNECT request")
+                pytest.fail(
+                    "Invalid IPv6 format in HTTP CONNECT request when using connection_from_url"
+                )
 
     @pytest.mark.parametrize("target_scheme", ["http", "https"])
     def test_https_proxymanager_connected_to_http_proxy(
@@ -1855,7 +2086,7 @@ class TestHeaders(SocketDummyServerTestCase):
             ]
 
             for header in self.received_headers:
-                (key, value) = header.split(b": ")
+                key, value = header.split(b": ")
                 self.parsed_headers[key.decode("ascii")] = value.decode("ascii")
 
             sock.send(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")
@@ -1904,7 +2135,7 @@ class TestHeaders(SocketDummyServerTestCase):
         ]
 
         def filter_non_x_headers(
-            d: typing.OrderedDict[str, str]
+            d: typing.OrderedDict[str, str],
         ) -> list[tuple[str, str]]:
             return [(k, v) for (k, v) in d.items() if k.startswith("X-Header-")]
 
@@ -2348,7 +2579,7 @@ class TestMultipartResponse(SocketDummyServerTestCase):
                     try:
                         sock = listener.accept()[0]
                         break
-                    except (TimeoutError, socket.timeout):
+                    except TimeoutError:
                         continue
 
                 sock.settimeout(LONG_TIMEOUT)
@@ -2442,7 +2673,7 @@ class TestContentFraming(SocketDummyServerTestCase):
                 try:
                     sock = listener.accept()[0]
                     break
-                except (TimeoutError, socket.timeout):
+                except TimeoutError:
                     continue
             sock.settimeout(LONG_TIMEOUT)
 
@@ -2464,7 +2695,7 @@ class TestContentFraming(SocketDummyServerTestCase):
         body: typing.Any
         if body_type == "generator":
 
-            def body_generator() -> typing.Generator[bytes, None, None]:
+            def body_generator() -> typing.Generator[bytes]:
                 yield b"x" * 10
 
             body = body_generator()
@@ -2502,7 +2733,7 @@ class TestContentFraming(SocketDummyServerTestCase):
 
         if body_type == "generator":
 
-            def body_generator() -> typing.Generator[bytes, None, None]:
+            def body_generator() -> typing.Generator[bytes]:
                 yield b"x" * 10
 
             body = body_generator()

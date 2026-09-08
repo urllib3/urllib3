@@ -1,3 +1,231 @@
+2.7.0 (2026-05-07)
+=======================
+
+Security
+--------
+
+Addressed high-severity security issues.
+Impact was limited to specific use cases detailed in the accompanying
+advisories; overall user exposure was estimated to be marginal.
+
+- Decompression-bomb safeguards of the streaming API were bypassed:
+
+  1. When ``HTTPResponse.drain_conn()`` was called after the response had been
+     read and decompressed partially.
+  2. During the second ``HTTPResponse.read(amt=N)`` or
+     ``HTTPResponse.stream(amt=N)`` call when the response was decompressed
+     using the official `Brotli <https://pypi.org/project/brotli/>`__ library.
+
+  See `GHSA-mf9v-mfxr-j63j <https://github.com/urllib3/urllib3/security/advisories/GHSA-mf9v-mfxr-j63j>`__
+  for details.
+
+- HTTP pools created using ``ProxyManager.connection_from_url`` did not strip
+  sensitive headers specified in ``Retry.remove_headers_on_redirect`` when
+  redirecting to a different host.
+  (`GHSA-qccp-gfcp-xxvc <https://github.com/urllib3/urllib3/security/advisories/GHSA-qccp-gfcp-xxvc>`__)
+
+
+Deprecations and Removals
+-------------------------
+
+- Used ``FutureWarning`` instead of ``DeprecationWarning`` for better
+  visibility of existing deprecation notices. Rescheduled the removal of
+  deprecated features to version 3.0.
+  (`#3763 <https://github.com/urllib3/urllib3/issues/3763>`__)
+- Removed support for end-of-life Python 3.9.
+  (`#3720 <https://github.com/urllib3/urllib3/issues/3720>`__)
+- Removed support for end-of-life PyPy3.10.
+  (`#4979 <https://github.com/urllib3/urllib3/issues/4979>`__)
+- Bumped the minimum supported pyOpenSSL version to 19.0.0.
+  (`#3777 <https://github.com/urllib3/urllib3/issues/3777>`__)
+
+
+Bugfixes
+--------
+
+- Fixed a bug where ``HTTPResponse.read(amt=None)`` was ignoring decompressed
+  data buffered from previous partial reads.
+  (`#3636 <https://github.com/urllib3/urllib3/issues/3636>`__)
+- Fixed a bug where ``HTTPResponse.read()`` could cache only part of the
+  response after a partial read when ``cache_content=True``.
+  (`#4967 <https://github.com/urllib3/urllib3/issues/4967>`__)
+- Fixed ``HTTPResponse.stream()`` and ``HTTPResponse.read_chunked()`` to handle
+  ``amt=0``.
+  (`#3793 <https://github.com/urllib3/urllib3/issues/3793>`__)
+- Updated ``_TYPE_BODY`` type alias to include missing ``Iterable[str]``,
+  matching the documented and runtime behavior of chunked request bodies.
+  (`#3798 <https://github.com/urllib3/urllib3/issues/3798>`__)
+- Fixed ``LocationParseError`` when paths resembling schemeless URIs were
+  passed to ``HTTPConnectionPool.urlopen()``.
+  (`#3352 <https://github.com/urllib3/urllib3/issues/3352>`__)
+- Fixed ``BaseHTTPResponse.readinto()`` type annotation to accept
+  ``memoryview`` in addition to ``bytearray``, matching the
+  ``io.RawIOBase.readinto`` contract and enabling use with
+  ``io.BufferedReader`` without type errors.
+  (`#3764 <https://github.com/urllib3/urllib3/issues/3764>`__)
+
+
+2.6.3 (2026-01-07)
+==================
+
+- Fixed a high-severity security issue where decompression-bomb safeguards of
+  the streaming API were bypassed when HTTP redirects were followed.
+  (`GHSA-38jv-5279-wg99 <https://github.com/urllib3/urllib3/security/advisories/GHSA-38jv-5279-wg99>`__)
+- Started treating ``Retry-After`` times greater than 6 hours as 6 hours by
+  default. (`#3743 <https://github.com/urllib3/urllib3/issues/3743>`__)
+- Fixed ``urllib3.connection.VerifiedHTTPSConnection`` on Emscripten.
+  (`#3752 <https://github.com/urllib3/urllib3/issues/3752>`__)
+
+
+2.6.2 (2025-12-11)
+==================
+
+- Fixed ``HTTPResponse.read_chunked()`` to properly handle leftover data in
+  the decoder's buffer when reading compressed chunked responses.
+  (`#3734 <https://github.com/urllib3/urllib3/issues/3734>`__)
+
+
+2.6.1 (2025-12-08)
+==================
+
+- Restore previously removed ``HTTPResponse.getheaders()`` and
+  ``HTTPResponse.getheader()`` methods.
+  (`#3731 <https://github.com/urllib3/urllib3/issues/3731>`__)
+
+
+2.6.0 (2025-12-05)
+==================
+
+Security
+--------
+
+- Fixed a security issue where streaming API could improperly handle highly
+  compressed HTTP content ("decompression bombs") leading to excessive resource
+  consumption even when a small amount of data was requested. Reading small
+  chunks of compressed data is safer and much more efficient now.
+  (`GHSA-2xpw-w6gg-jr37 <https://github.com/urllib3/urllib3/security/advisories/GHSA-2xpw-w6gg-jr37>`__)
+- Fixed a security issue where an attacker could compose an HTTP response with
+  virtually unlimited links in the ``Content-Encoding`` header, potentially
+  leading to a denial of service (DoS) attack by exhausting system resources
+  during decoding. The number of allowed chained encodings is now limited to 5.
+  (`GHSA-gm62-xv2j-4w53 <https://github.com/urllib3/urllib3/security/advisories/GHSA-gm62-xv2j-4w53>`__)
+
+.. caution::
+  - If urllib3 is not installed with the optional `urllib3[brotli]` extra, but
+    your environment contains a Brotli/brotlicffi/brotlipy package anyway, make
+    sure to upgrade it to at least Brotli 1.2.0 or brotlicffi 1.2.0.0 to
+    benefit from the security fixes and avoid warnings. Prefer using
+    `urllib3[brotli]` to install a compatible Brotli package automatically.
+
+  - If you use custom decompressors, please make sure to update them to
+    respect the changed API of ``urllib3.response.ContentDecoder``.
+
+
+Features
+--------
+
+- Enabled retrieval, deletion, and membership testing in ``HTTPHeaderDict`` using bytes keys. (`#3653 <https://github.com/urllib3/urllib3/issues/3653>`__)
+- Added host and port information to string representations of ``HTTPConnection``. (`#3666 <https://github.com/urllib3/urllib3/issues/3666>`__)
+- Added support for Python 3.14 free-threading builds explicitly. (`#3696 <https://github.com/urllib3/urllib3/issues/3696>`__)
+
+
+Removals
+--------
+
+- Removed the ``HTTPResponse.getheaders()`` method in favor of ``HTTPResponse.headers``.
+  Removed the ``HTTPResponse.getheader(name, default)`` method in favor of ``HTTPResponse.headers.get(name, default)``. (`#3622 <https://github.com/urllib3/urllib3/issues/3622>`__)
+
+
+Bugfixes
+--------
+
+- Fixed redirect handling in ``urllib3.PoolManager`` when an integer is passed
+  for the retries parameter. (`#3649 <https://github.com/urllib3/urllib3/issues/3649>`__)
+- Fixed ``HTTPConnectionPool`` when used in Emscripten with no explicit port. (`#3664 <https://github.com/urllib3/urllib3/issues/3664>`__)
+- Fixed handling of ``SSLKEYLOGFILE`` with expandable variables. (`#3700 <https://github.com/urllib3/urllib3/issues/3700>`__)
+
+
+Misc
+----
+
+- Changed the ``zstd`` extra to install ``backports.zstd`` instead of ``zstandard`` on Python 3.13 and before. (`#3693 <https://github.com/urllib3/urllib3/issues/3693>`__)
+- Improved the performance of content decoding by optimizing ``BytesQueueBuffer`` class. (`#3710 <https://github.com/urllib3/urllib3/issues/3710>`__)
+- Allowed building the urllib3 package with newer setuptools-scm v9.x. (`#3652 <https://github.com/urllib3/urllib3/issues/3652>`__)
+- Ensured successful urllib3 builds by setting Hatchling requirement to >= 1.27.0. (`#3638 <https://github.com/urllib3/urllib3/issues/3638>`__)
+
+
+2.5.0 (2025-06-18)
+==================
+
+Features
+--------
+
+- Added support for the ``compression.zstd`` module that is new in Python 3.14.
+  See `PEP 784 <https://peps.python.org/pep-0784/>`_ for more information. (`#3610 <https://github.com/urllib3/urllib3/issues/3610>`__)
+- Added support for version 0.5 of ``hatch-vcs`` (`#3612 <https://github.com/urllib3/urllib3/issues/3612>`__)
+
+
+Bugfixes
+--------
+
+- Fixed a security issue where restricting the maximum number of followed
+  redirects at the ``urllib3.PoolManager`` level via the ``retries`` parameter
+  did not work.
+- Made the Node.js runtime respect redirect parameters such as ``retries``
+  and ``redirects``.
+- Raised exception for ``HTTPResponse.shutdown`` on a connection already released to the pool. (`#3581 <https://github.com/urllib3/urllib3/issues/3581>`__)
+- Fixed incorrect `CONNECT` statement when using an IPv6 proxy with `connection_from_host`. Previously would not be wrapped in `[]`. (`#3615 <https://github.com/urllib3/urllib3/issues/3615>`__)
+
+
+2.4.0 (2025-04-10)
+==================
+
+Features
+--------
+
+- Applied PEP 639 by specifying the license fields in pyproject.toml. (`#3522 <https://github.com/urllib3/urllib3/issues/3522>`__)
+- Updated exceptions to save and restore more properties during the pickle/serialization process. (`#3567 <https://github.com/urllib3/urllib3/issues/3567>`__)
+- Added ``verify_flags`` option to ``create_urllib3_context`` with a default of ``VERIFY_X509_PARTIAL_CHAIN`` and ``VERIFY_X509_STRICT`` for Python 3.13+. (`#3571 <https://github.com/urllib3/urllib3/issues/3571>`__)
+
+
+Bugfixes
+--------
+
+- Fixed a bug with partial reads of streaming data in Emscripten. (`#3555 <https://github.com/urllib3/urllib3/issues/3555>`__)
+
+
+Misc
+----
+
+- Switched to uv for installing development dependecies. (`#3550 <https://github.com/urllib3/urllib3/issues/3550>`__)
+- Removed the ``multiple.intoto.jsonl`` asset from GitHub releases. Attestation of release files since v2.3.0 can be found on PyPI. (`#3566 <https://github.com/urllib3/urllib3/issues/3566>`__)
+
+
+2.3.0 (2024-12-22)
+==================
+
+Features
+--------
+
+- Added ``HTTPResponse.shutdown()`` to stop any ongoing or future reads for a specific response. It calls ``shutdown(SHUT_RD)`` on the underlying socket. This feature was `sponsored by LaunchDarkly <https://opencollective.com/urllib3/contributions/815307>`__. (`#2868 <https://github.com/urllib3/urllib3/issues/2868>`__)
+- Added support for JavaScript Promise Integration on Emscripten. This enables more efficient WebAssembly
+  requests and streaming, and makes it possible to use in Node.js if you launch it as  ``node --experimental-wasm-stack-switching``. (`#3400 <https://github.com/urllib3/urllib3/issues/3400>`__)
+- Added the ``proxy_is_tunneling`` property to ``HTTPConnection`` and ``HTTPSConnection``. (`#3285 <https://github.com/urllib3/urllib3/issues/3285>`__)
+- Added pickling support to ``NewConnectionError`` and ``NameResolutionError``. (`#3480 <https://github.com/urllib3/urllib3/issues/3480>`__)
+
+
+Bugfixes
+--------
+
+- Fixed an issue in debug logs where the HTTP version was rendering as "HTTP/11" instead of "HTTP/1.1". (`#3489 <https://github.com/urllib3/urllib3/issues/3489>`__)
+
+
+Deprecations and Removals
+-------------------------
+
+- Removed support for Python 3.8. (`#3492 <https://github.com/urllib3/urllib3/issues/3492>`__)
+
+
 2.2.3 (2024-09-12)
 ==================
 

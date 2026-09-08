@@ -36,7 +36,7 @@ We use some external dependencies, multiple interpreters and code coverage
 analysis while running test suite. Our ``noxfile.py`` handles much of this for
 you::
 
-  $ nox --reuse-existing-virtualenvs --sessions test-3.12 test-pypy3.10
+  $ nox --reuse-existing-virtualenvs --sessions test-3.12 test-pypy3.11
   [ Nox will create virtualenv if needed, install the specified dependencies, and run the commands in order.]
 
 
@@ -48,8 +48,8 @@ like so::
   $ which python3.12
   ~/.pyenv/versions/3.12.1/bin/python3.12
 
-  $ which pypy3.10
-  ~/.pyenv/versions/pypy3.10-7.3.13/bin/pypy3.10
+  $ which pypy3.11
+  ~/.pyenv/versions/pypy3.11-7.3.22/bin/pypy3.11
 
 
 There is also a nox command for running all of our tests and multiple python
@@ -66,12 +66,12 @@ suite::
   [ Nox will create virtualenv if needed, install the specified dependencies, and run the commands in order.]
   .......
   .......
-  nox > Session test-3.8 was successful.
-  nox > Session test-3.9 was successful.
   nox > Session test-3.10 was successful.
   nox > Session test-3.11 was successful.
   nox > Session test-3.12 was successful.
   nox > Session test-3.13 was successful.
+  nox > Session test-3.14 was successful.
+  nox > Session test-3.15 was successful.
   nox > Session test-pypy was successful.
 
 Our test suite `runs continuously on GitHub Actions
@@ -79,13 +79,13 @@ Our test suite `runs continuously on GitHub Actions
 
 To run specific tests or quickly re-run without nox recreating the env, do the following::
 
-  $ nox --reuse-existing-virtualenvs --sessions test-3.8 -- pyTestArgument1 pyTestArgument2 pyTestArgumentN
+  $ nox --reuse-existing-virtualenvs --sessions test-3.13 -- pyTestArgument1 pyTestArgument2 pyTestArgumentN
   [ Nox will create virtualenv, install the specified dependencies, and run the commands in order.]
-  nox > Running session test-3.8
-  nox > Re-using existing virtual environment at .nox/test-3-8.
+  nox > Running session test-3.13
+  nox > Re-using existing virtual environment at .nox/test-3-13.
   .......
   .......
-  nox > Session test-3.8 was successful.
+  nox > Session test-3.13 was successful.
 
 After the ``--`` indicator, any arguments will be passed to pytest.
 To specify an exact test case the following syntax also works:
@@ -128,7 +128,7 @@ that is marked with the `"💰 Bounty $X00" label <https://github.com/urllib3/ur
 - The list above isn't an exhaustive list of criteria or rules for how/when money is distributed.
   **The final say on whether money will be distributed is up to maintainers.**
 
-This program is an experiment so if you have positive or negative feedback on the process you can contact the maintainers through one of the above channels. 
+This program is an experiment so if you have positive or negative feedback on the process you can contact the maintainers through one of the above channels.
 
 Note that this program isn't a "bug bounty" program, we don't distribute funds to reporters of bugs or security vulnerabilities at this time.
 
@@ -178,7 +178,7 @@ While writing documentation you should follow these guidelines:
 - Comments should always go above a code section rather than below with the exception of print
   statements where the comment containing the result goes below.
 - Imports should be their own section separated from the rest of the example with a line of whitespace.
-- Imports should minimized if possible. Use import urllib3 instead of from urllib3 import X. 
+- Imports should minimized if possible. Use import urllib3 instead of from urllib3 import X.
 - Sort imports similarly to isort, standard library first and third-party (like urllib3) come after.
 - No whitespace is required between the sections as normally would be in case of isort.
 - Add print statements along with a comment below them showing the output, potentially compressed.

@@ -1,13 +1,15 @@
 # This file is protected via CODEOWNERS
 
 [build-system]
-requires = ["hatchling>=1.6.0,<2", "hatch-vcs==0.4.0"]
+requires = ["hatchling>=1.27.0,<2", "hatch-vcs>=0.4.0,<0.6.0", "setuptools-scm>=8,<11"]
 build-backend = "hatchling.build"
 
 [project]
 name = "urllib3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE.txt"]
 keywords = ["urllib", "httplib", "threadsafe", "filepost", "http", "https", "ssl", "pooling"]
 authors = [
   {name = "Andrey Petrov", email = "andrey.petrov@shazow.net"}
@@ -20,38 +22,108 @@ maintainers = [
 classifiers = [
   "Environment :: Web Environment",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
+  "Programming Language :: Python :: Free Threading :: 2 - Beta",
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Software Development :: Libraries",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dynamic = ["version"]
 
 [project.optional-dependencies]
 brotli = [
-  "brotli>=1.0.9; platform_python_implementation == 'CPython'",
-  "brotlicffi>=0.8.0; platform_python_implementation != 'CPython'"
+  "brotli>=1.2.0; platform_python_implementation == 'CPython'",
+  "brotlicffi>=1.2.0.0; platform_python_implementation != 'CPython'"
 ]
 zstd = [
-  "zstandard>=0.18.0",
+  "backports.zstd>=1.0.0; python_version<'3.14'",
 ]
 socks = [
   "PySocks>=1.5.6,<2.0,!=1.5.7",
 ]
 h2 = [
   "h2>=4,<5"
+]
+
+[dependency-groups]
+# Bare dependencies needed to run the test suite. Kept free of profiling
+# (`coverage`, `pytest-memray`) and maintainer tooling (`build`, `towncrier`)
+# so downstream packagers can install just this group when generating
+# build-time test requirements (see issue #3594).
+test = [
+    "anyio[trio]>=4.8.0",
+    "h2>=4.1.0",
+    "httpx>=0.28.1",
+    "hypercorn>=0.15.0",
+    "pysocks>=1.7.1",
+    "pytest>=8.3.4",
+    "pytest-socket>=0.7.0",
+    "pytest-timeout>=2.3.1",
+    "quart>=0.20.0",
+    "quart-trio>=0.12.0",
+    "trio>=0.27.0",
+]
+dev-base = [
+    {include-group = "test"},
+    "build>=1.2.2.post1",
+    "coverage>=7.8.0",
+    "pytest-memray==1.8.0 ; python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'",
+    "towncrier>=24.8.0",
+]
+dev = [
+    {include-group = "dev-base"},
+    "cryptography>=44.0.2",
+    "idna>=3.10",
+    "pyopenssl>=25.0.0",
+    "trustme>=1.2.1",
+]
+dev-min-pyopenssl = [
+    {include-group = "dev-base"},
+    # 19.0.0 (2019-01-21) was the first version to support OpenSSL 1.1.1.
+    # The following versions of pyOpenSSL and cryptography are documented
+    # as the minimum supported ones in our docs.
+    "pyopenssl==19.0.0",
+    "cryptography==2.3",
+    # We document 2.1 as the minimum supported version of idna from
+    # cryptography, but 2.8 is the minimum needed for tests because of anyio.
+    "idna==2.8",
+    # The last version of trustme to support cryptography < 3.1.
+    "trustme==0.9.0",
+]
+mypy = [
+    {include-group = "test"},
+    "backports.zstd>=1.0.0; python_version<'3.14'",
+    "cryptography>=44.0.2",
+    "idna>=3.10",
+    "mypy>=1.18.2",
+    "trustme>=1.2.1",
+    "types-requests>=2.32.0.20241016",
+    "nox>=2024.10.9",
+    "types-pysocks>=1.7.1.20251001",
+    "pyopenssl>=25.3.0",
+]
+emscripten = [
+    "build>=1.2.2.post1",
+    "pytest-pyodide>=0.58.4",
+    "selenium>=4.27.1",
+]
+docs = [
+    "furo>=2024.8.6",
+    "requests>=2.32.3",
+    "sphinx>=7.2.6",
+    "sphinx-copybutton>=0.5.2",
+    "sphinxext-opengraph>=0.9.1",
 ]
 
 [project.urls]
@@ -73,7 +145,7 @@ include = [
   "/dummyserver",
   "/src",
   "/test",
-  "/dev-requirements.txt",
+  "/uv.lock",
   "/CHANGES.rst",
   "/README.md",
   "/LICENSE.txt",
@@ -86,6 +158,11 @@ markers = [
     "limit_memory: Limit memory with memray",
     "requires_network: This test needs access to the Internet",
     "integration: Slow integrations tests not run by default",
+    "in_webbrowser: Emscripten - run only in browser (not in Node.js)",
+    "with_jspi: Emscripten - run only if WebAssembly JavaScript Promise Integration is supported",
+    "without_jspi: Emscripten - run only if this platform works without  WebAssembly JavaScript Promise Integration",
+    "webworkers: Emscripten - run only if this platform can test web workers",
+    "node_without_jspi: Emscripten - run in node with jspi enabled (for failure testing only)",
 ]
 log_level = "DEBUG"
 filterwarnings = [
@@ -100,8 +177,11 @@ filterwarnings = [
     '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
-    '''default:Async generator 'quart\.wrappers\.response\.DataBody\.__aiter__\.<locals>\._aiter' was garbage collected.*:ResourceWarning''',  # https://github.com/pallets/quart/issues/301
-    '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',  # https://github.com/SeleniumHQ/selenium/issues/13328
+    '''default:Brotli >= 1.2.0 is required to prevent decompression bombs\.:urllib3.exceptions.DependencyWarning''',
+    # https://github.com/SeleniumHQ/selenium/issues/13328
+    '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',
+    # https://github.com/SeleniumHQ/selenium/issues/14686
+    '''default:setting remote_server_addr in RemoteConnection\(\) is deprecated, set in ClientConfig instance instead:FutureWarning'''
 ]
 
 [tool.isort]
@@ -128,3 +208,19 @@ warn_unused_ignores = true
 enable_error_code = [
   "ignore-without-code",
 ]
+
+[tool.uv]
+package = true
+conflicts = [
+  [
+    {group = "dev"},
+    {group = "dev-min-pyopenssl"},
+  ],
+  [
+    {group = "dev-min-pyopenssl"},
+    {group = "mypy"},
+  ],
+]
+
+[tool.uv.sources]
+hypercorn = { git = "https://github.com/urllib3/hypercorn", rev = "urllib3-changes" }

@@ -6,6 +6,7 @@ import datetime
 import os.path
 import shutil
 import ssl
+import sys
 import tempfile
 import time
 import typing
@@ -755,14 +756,14 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         ) as https_pool:
             https_pool.ssl_version = ssl_version = self.certs["ssl_version"]
             if ssl_version is getattr(ssl, "PROTOCOL_TLS", object()):
-                cmgr: contextlib.AbstractContextManager[
-                    object
-                ] = contextlib.nullcontext()
+                cmgr: contextlib.AbstractContextManager[object] = (
+                    contextlib.nullcontext()
+                )
             else:
                 cmgr = pytest.warns(
-                    DeprecationWarning,
+                    FutureWarning,
                     match=r"'ssl_version' option is deprecated and will be removed "
-                    r"in urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version'",
+                    r"in urllib3 v3\.0\. Instead use 'ssl_minimum_version'",
                 )
             with cmgr:
                 r = https_pool.request("GET", "/")
@@ -770,11 +771,11 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
 
     def test_set_cert_default_cert_required(self) -> None:
         conn = VerifiedHTTPSConnection(self.host, self.port)
-        with pytest.warns(DeprecationWarning) as w:
+        with pytest.warns(FutureWarning) as w:
             conn.set_cert()
         assert conn.cert_reqs == ssl.CERT_REQUIRED
         assert len(w) == 1 and str(w[0].message) == (
-            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v2.1.0. "
+            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v3.0. "
             "Instead provide the parameters to the HTTPSConnection constructor."
         )
 
@@ -786,7 +787,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         assert ssl_context.verify_mode == verify_mode
 
         conn = HTTPSConnection(self.host, self.port, ssl_context=ssl_context)
-        with pytest.warns(DeprecationWarning) as w:
+        with pytest.warns(FutureWarning) as w:
             conn.set_cert()
 
         assert conn.cert_reqs == verify_mode
@@ -794,7 +795,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             conn.ssl_context is not None and conn.ssl_context.verify_mode == verify_mode
         )
         assert len(w) == 1 and str(w[0].message) == (
-            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v2.1.0. "
+            "HTTPSConnection.set_cert() is deprecated and will be removed in urllib3 v3.0. "
             "Instead provide the parameters to the HTTPSConnection constructor."
         )
 
@@ -827,16 +828,16 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             self.host, self.port, ca_certs=DEFAULT_CA, ssl_version=self.ssl_version()
         ) as https_pool:
             with contextlib.closing(https_pool._get_conn()) as conn:
-                with pytest.warns(DeprecationWarning) as w:
+                with pytest.warns(FutureWarning) as w:
                     conn.connect()
 
         assert len(w) >= 1
-        assert any(x.category == DeprecationWarning for x in w)
+        assert any(x.category == FutureWarning for x in w)
         assert any(
             str(x.message)
             == (
                 "'ssl_version' option is deprecated and will be removed in "
-                "urllib3 v2.1.0. Instead use 'ssl_minimum_version'"
+                "urllib3 v3.0. Instead use 'ssl_minimum_version'"
             )
             for x in w
         )
@@ -912,14 +913,25 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 finally:
                     conn.close()
 
+    @pytest.mark.parametrize("use_env_var_expansion", [True, False])
     def test_sslkeylogfile(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        use_env_var_expansion: bool,
     ) -> None:
         if not hasattr(util.SSLContext, "keylog_filename"):
             pytest.skip("requires OpenSSL 1.1.1+")
 
         keylog_file = tmp_path / "keylogfile.txt"
-        monkeypatch.setenv("SSLKEYLOGFILE", str(keylog_file))
+        if use_env_var_expansion:
+            monkeypatch.setenv("FILEPATH", str(keylog_file))
+            if sys.platform == "win32":
+                monkeypatch.setenv("SSLKEYLOGFILE", "%FILEPATH%")
+            else:
+                monkeypatch.setenv("SSLKEYLOGFILE", "${FILEPATH}")
+        else:
+            monkeypatch.setenv("SSLKEYLOGFILE", str(keylog_file))
 
         with HTTPSConnectionPool(
             self.host,
@@ -1130,15 +1142,20 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             )
 
         with pytest.warns(
-            DeprecationWarning,
+            FutureWarning,
             match=r"'ssl_version' option is deprecated and will be removed in "
-            r"urllib3 v2\.1\.0\. Instead use 'ssl_minimum_version'",
+            r"urllib3 v3\.0\. Instead use 'ssl_minimum_version'",
         ):
             ctx = urllib3.util.ssl_.create_urllib3_context(
                 ssl_version=self.ssl_version()
             )
         assert ctx.minimum_version == self.tls_version()
         assert ctx.maximum_version == self.tls_version()
+
+    def test_default_ssl_context_verify_flags(self) -> None:
+        ctx = urllib3.util.ssl_.create_urllib3_context()
+        ssl_ctx = ssl.create_default_context()
+        assert ctx.verify_flags == ssl_ctx.verify_flags
 
     def test_assert_missing_hashfunc(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fingerprint = "55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
@@ -1208,14 +1225,16 @@ class TestHTTPS_Hostname:
                 MaxRetryError,
             ) as e:
                 https_pool.request("GET", "/")
-            assert "mismatch, certificate is not valid" in str(
-                e.value
-            ) or "no appropriate subjectAltName" in str(e.value)
+            assert (
+                "mismatch, certificate is not valid" in str(e.value)
+                or "no appropriate subjectAltName" in str(e.value)
+                or "Empty Subject Alternative Name extension" in str(e.value)
+            )
 
     def test_common_name_without_san_with_different_common_name(
         self, no_san_server_with_different_commmon_name: ServerConfig
     ) -> None:
-        ctx = urllib3.util.ssl_.create_urllib3_context()
+        ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
         try:
             ctx.hostname_checks_common_name = True
         except AttributeError:
@@ -1238,7 +1257,7 @@ class TestHTTPS_Hostname:
     def test_hostname_checks_common_name_respected(
         self, no_san_server: ServerConfig, use_assert_hostname: bool
     ) -> None:
-        ctx = urllib3.util.ssl_.create_urllib3_context()
+        ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
         if not hasattr(ctx, "hostname_checks_common_name"):
             pytest.skip("Test requires 'SSLContext.hostname_checks_common_name'")
         ctx.load_verify_locations(no_san_server.ca_certs)
@@ -1291,11 +1310,13 @@ class TestHTTPS_Hostname:
         self, no_san_server_with_different_commmon_name: ServerConfig
     ) -> None:
         """Ensure CN errors are not raised while assert_hostname is false"""
+        ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
         with HTTPSConnectionPool(
             no_san_server_with_different_commmon_name.host,
             no_san_server_with_different_commmon_name.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=no_san_server_with_different_commmon_name.ca_certs,
+            ssl_context=ctx,
             assert_hostname=False,
         ) as https_pool:
             https_pool.request("GET", "/")

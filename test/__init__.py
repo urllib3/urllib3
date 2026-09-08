@@ -26,7 +26,10 @@ except ImportError:
     brotli = None
 
 try:
-    import zstandard as _unused_module_zstd  # noqa: F401
+    if sys.version_info >= (3, 14):
+        from compression import zstd as _unused_module_zstd  # noqa: F401
+    else:
+        from backports import zstd as _unused_module_zstd  # noqa: F401
 except ImportError:
     HAS_ZSTD = False
 else:
@@ -127,14 +130,15 @@ def notBrotli() -> typing.Callable[[_TestFuncT], _TestFuncT]:
 
 def onlyZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
-        not HAS_ZSTD, reason="only run if a python-zstandard library is installed"
+        not HAS_ZSTD,
+        reason="only run if backports.zstd library is installed or Python 3.14 and later",
     )
 
 
 def notZstd() -> typing.Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         HAS_ZSTD,
-        reason="only run if a python-zstandard library is not installed",
+        reason="only run if backports.zstd library is not installed and Python 3.13 and earlier",
     )
 
 
@@ -155,7 +159,7 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
             sock = socket.create_connection((TARPIT_HOST, 80), 0.0001)
             sock.close()
             return True
-        except socket.timeout:
+        except TimeoutError:
             return True
         except OSError as e:
             if _is_unreachable_err(e):
@@ -178,7 +182,7 @@ def requires_network() -> typing.Callable[[_TestFuncT], _TestFuncT]:
         return typing.cast(_TestFuncT, wrapper)
 
     def _decorator_requires_internet(
-        decorator: typing.Callable[[_TestFuncT], _TestFuncT]
+        decorator: typing.Callable[[_TestFuncT], _TestFuncT],
     ) -> typing.Callable[[_TestFuncT], _TestFuncT]:
         """Mark a decorator with the "requires_internet" mark"""
 

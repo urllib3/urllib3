@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.client as httplib
+import queue
 import ssl
 import typing
 from http.client import HTTPException
@@ -26,12 +27,14 @@ from urllib3.exceptions import (
     EmptyPoolError,
     FullPoolError,
     HostChangedError,
+    LocationParseError,
     LocationValueError,
     MaxRetryError,
     ProtocolError,
     ReadTimeoutError,
     SSLError,
     TimeoutError,
+    UnrewindableBodyError,
 )
 from urllib3.response import HTTPResponse
 from urllib3.util.ssl_match_hostname import CertificateError
@@ -155,6 +158,42 @@ class TestConnectionPool:
             assert c.is_same_host(b)
 
     @pytest.mark.parametrize(
+        "host",
+        [
+            "127.0.0.1\n",
+            "127.0.0.1 ",
+            "::1\n",
+            "[::1]\n",
+        ],
+    )
+    def test_control_characters_in_host_raise(self, host: str) -> None:
+        with pytest.raises(LocationParseError):
+            HTTPConnectionPool(host)
+
+    @pytest.mark.parametrize("host", ["foo%.example", "foo%zz.example"])
+    def test_malformed_percent_escapes_in_host_raise(self, host: str) -> None:
+        with pytest.raises(LocationParseError):
+            HTTPConnectionPool(host)
+
+    @pytest.mark.parametrize(
+        "host, expected_host, expected_tunnel_host",
+        [
+            ("EXAMPLE%2Ecom%2E", "example.com.", "example.com."),
+            (
+                "[2607:f8b0:4005:805::200e%25eth0]",
+                "2607:f8b0:4005:805::200e%eth0",
+                "[2607:f8b0:4005:805::200e%eth0]",
+            ),
+        ],
+    )
+    def test_host_and_tunnel_host_are_normalized(
+        self, host: str, expected_host: str, expected_tunnel_host: str
+    ) -> None:
+        with HTTPSConnectionPool(host) as pool:
+            assert pool.host == expected_host
+            assert pool._tunnel_host == expected_tunnel_host
+
+    @pytest.mark.parametrize(
         "a, b",
         [
             ("google.com", "https://google.com/"),
@@ -217,6 +256,30 @@ class TestConnectionPool:
         with HTTPUnixConnectionPool(a) as c:
             assert not c.is_same_host(b)
 
+    def test_same_host_port_zero(self) -> None:
+        with HTTPConnectionPool("example.com", port=0) as c:
+            assert c.is_same_host("http://example.com:0/")
+            assert not c.is_same_host("http://example.com/")
+            assert not c.is_same_host("https://example.com/")
+            assert not c.is_same_host("http://example.com:80/")
+            assert not c.is_same_host("https://example.com:443/")
+
+    @pytest.mark.parametrize(
+        "url, expected_port",
+        [
+            ("http://example.com:0/", 0),
+            ("https://example.com:0/", 0),
+            ("http://example.com/", 80),
+            ("https://example.com/", 443),
+            ("http://example.com:8080/", 8080),
+        ],
+    )
+    def test_connection_from_url_preserves_port_zero(
+        self, url: str, expected_port: int
+    ) -> None:
+        with connection_from_url(url) as c:
+            assert c.port == expected_port
+
     def test_max_connections(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
             pool._get_conn(timeout=SHORT_TIMEOUT)
@@ -276,6 +339,14 @@ class TestConnectionPool:
             assert conn2_close.called is True
 
             assert conn1 == pool._get_conn()
+
+    def test_urlopen_invalid_timeout_raises_value_error(self) -> None:
+        with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
+            with pytest.raises(
+                ValueError,
+                match="Timeout value connect was 1, but it must be an int, float or None",
+            ):
+                pool.urlopen("GET", "/", timeout="1")  # type: ignore[arg-type]
 
     def test_put_conn_closed_pool(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
@@ -583,6 +654,53 @@ class TestConnectionPool:
         _test(SocketError)
         _test(ProtocolError)
 
+    def test_retry_with_body_that_has_tell_but_no_seek(self) -> None:
+        """
+        This is a regression test for issue #3779 [1] where, if
+        seek is missing from body and we retried, we previously raised
+        a confusing error.
+
+        [1] <https://github.com/urllib3/urllib3/issues/3779>
+        """
+
+        class TellableStream:
+            """A stream-like object with tell() and read() but no seek()."""
+
+            def __init__(self, data: bytes) -> None:
+                self._data = data
+                self._pos = 0
+
+            def read(self, n: int = -1) -> bytes:
+                if n == -1:
+                    chunk = self._data[self._pos :]
+                    self._pos = len(self._data)
+                else:
+                    chunk = self._data[self._pos : self._pos + n]
+                    self._pos += len(chunk)
+                return chunk
+
+            def tell(self) -> int:
+                return self._pos
+
+        body = TellableStream(b"hello world")
+
+        with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                side_effect=OSError("connection reset"),
+            ):
+                with pytest.raises(
+                    UnrewindableBodyError, match="body does not implement seek"
+                ):
+                    pool.urlopen(
+                        "POST",
+                        "/",
+                        body=body,  # type: ignore[arg-type]
+                        retries=Retry(total=2, allowed_methods=["POST"]),
+                        body_pos=None,
+                    )
+
     def test_read_timeout_0_does_not_raise_bad_status_line_error(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
             conn = Mock(spec=HTTPConnection)
@@ -592,3 +710,114 @@ class TestConnectionPool:
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout=timeout)
+
+    def test_default_queuecls_uses_current_lifoqueue(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        original_queue_cls = HTTPConnectionPool.QueueCls
+
+        class PatchedLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        monkeypatch.setattr(queue, "LifoQueue", PatchedLifoQueue)
+
+        assert HTTPConnectionPool.QueueCls is original_queue_cls
+
+        with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+            assert isinstance(pool.pool, PatchedLifoQueue)
+
+    def test_queuecls_override_is_preserved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class CustomLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        class PatchedLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        class CustomQueueConnectionPool(HTTPConnectionPool):
+            QueueCls = CustomLifoQueue
+
+        monkeypatch.setattr(queue, "LifoQueue", PatchedLifoQueue)
+
+        with CustomQueueConnectionPool(host="localhost", maxsize=1) as pool:
+            assert isinstance(pool.pool, CustomLifoQueue)
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "//v:h",
+            "//host:8080/path",
+            "//host/path",
+            "//v:h?key=val",
+            "/",
+        ],
+    )
+    def test_paths_arent_parsed_as_urls(self, path: str) -> None:
+        """See https://github.com/urllib3/urllib3/issues/3352."""
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool, "_make_request", return_value=HTTPResponse(status=200)
+            ) as mock_request:
+                pool.urlopen("GET", path)
+
+            # Verify the URL isn't mangled
+            actual_url = mock_request.call_args[0][2]
+            assert actual_url == path
+
+    @pytest.mark.parametrize(
+        ("target_url", "expected_url"),
+        [
+            pytest.param(
+                "http://localhost/path#marker=value",
+                "http://localhost/path",
+                id="fragment-after-path",
+            ),
+            pytest.param(
+                "http://localhost/path?x=1#marker=value",
+                "http://localhost/path?x=1",
+                id="fragment-after-query",
+            ),
+            pytest.param(
+                "http://localhost/#marker=value",
+                "http://localhost/",
+                id="root-path-with-fragment",
+            ),
+            pytest.param(
+                "http://localhost/path?x=1#",
+                "http://localhost/path?x=1",
+                id="empty-fragment",
+            ),
+        ],
+    )
+    def test_absolute_url_request_target_strips_fragment(
+        self, target_url: str, expected_url: str
+    ) -> None:
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool, "_make_request", return_value=HTTPResponse(status=200)
+            ) as mock_request:
+                pool.urlopen("GET", target_url)
+
+            actual_url = mock_request.call_args[0][2]
+            assert actual_url == expected_url
+
+    def test_absolute_redirect_request_target_strips_fragment(self) -> None:
+        redirect_response = HTTPResponse(
+            status=302,
+            headers={"location": "http://localhost/next?x=1#marker=value"},
+        )
+        final_response = HTTPResponse(status=200)
+
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                side_effect=[redirect_response, final_response],
+            ) as mock_request:
+                response = pool.urlopen("GET", "/", retries=1)
+
+            requested_urls = [call.args[2] for call in mock_request.call_args_list]
+
+        assert response.status == 200
+        assert requested_urls == ["/", "http://localhost/next?x=1"]

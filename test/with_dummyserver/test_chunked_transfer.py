@@ -46,7 +46,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
     def test_chunks(self, chunks: list[bytes | str]) -> None:
         self.start_chunked_handler()
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
-            pool.urlopen("GET", "/", body=chunks, headers=dict(DNT="1"), chunked=True)  # type: ignore[arg-type]
+            pool.urlopen("GET", "/", body=chunks, headers=dict(DNT="1"), chunked=True)
 
             assert b"Transfer-Encoding" in self.buffer
             body = self.buffer.split(b"\r\n\r\n", 1)[1]
@@ -61,18 +61,20 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def _test_body(
         self,
-        data: bytes
-        | str
-        | io.BytesIO
-        | io.StringIO
-        | typing.Iterable[bytes]
-        | typing.Iterable[str]
-        | None,
+        data: (
+            bytes
+            | str
+            | io.BytesIO
+            | io.StringIO
+            | typing.Iterable[bytes]
+            | typing.Iterable[str]
+            | None
+        ),
         expected_data: bytes | None = None,
     ) -> None:
         self.start_chunked_handler()
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
-            pool.urlopen("GET", "/", body=data, chunked=True)  # type: ignore[arg-type]
+            pool.urlopen("GET", "/", body=data, chunked=True)
             header, body = self.buffer.split(b"\r\n\r\n", 1)
 
             assert b"Transfer-Encoding: chunked" in header.split(b"\r\n")
@@ -96,7 +98,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_unicode_body(self) -> None:
         self._test_body(
-            "thisshouldbeonechunk\r\näöüß\xFF",
+            "thisshouldbeonechunk\r\näöüß\xff",
             expected_data=b"thisshouldbeonechunk\r\n\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\xc3\xbf",
         )
 
@@ -112,7 +114,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_unicode_body_fileio(self) -> None:
         self._test_body(
-            io.StringIO("thisshouldbeonechunk\r\näöüß\xFF"),
+            io.StringIO("thisshouldbeonechunk\r\näöüß\xff"),
             expected_data=b"thisshouldbeonechunk\r\n\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\xc3\xbf",
         )
 
@@ -131,7 +133,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_unicode_body_iterable(self) -> None:
         def send_body() -> typing.Iterable[str]:
-            yield "thisshouldbeonechunk\r\näöüß\xFF"
+            yield "thisshouldbeonechunk\r\näöüß\xff"
 
         self._test_body(
             send_body(),

@@ -1,4 +1,4 @@
-# These helpers are copied from test/support/socket_helper.py in the Python 3.9 standard
+# These helpers are copied from test/support/socket_helper.py in the Python 3.14 standard
 # library test suite.
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ def find_unused_port(
     http://bugs.python.org/issue2550 for more info.  The following site also
     has a very thorough description about the implications of both REUSEADDR
     and EXCLUSIVEADDRUSE on Windows:
-    http://msdn2.microsoft.com/en-us/library/ms740621(VS.85).aspx)
+    https://learn.microsoft.com/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse)
 
     XXX: although this approach is a vast improvement on previous attempts to
     elicit unused ports, it rests heavily on the assumption that the ephemeral

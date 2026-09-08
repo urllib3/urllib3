@@ -247,6 +247,19 @@ class TestPoolManager:
         assert pool.assert_hostname
         assert fingerprint == pool.assert_fingerprint
 
+    def test_ssl_keywords_filtered_on_http(self) -> None:
+        """Assert SSL-specific kwargs are filtered when creating HTTP pools."""
+        fingerprint = "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
+        p = PoolManager(assert_hostname=True, assert_fingerprint=fingerprint)
+        pool = p.connection_from_url("http://example.com/")
+        assert 1 == len(p.pools)
+        assert not isinstance(pool, HTTPSConnectionPool)
+        # HTTP pool should not receive SSL_KEYWORDS kwargs
+        with pytest.raises(AttributeError):
+            _ = pool.assert_hostname  # type: ignore[attr-defined]
+        with pytest.raises(AttributeError):
+            _ = pool.assert_fingerprint  # type: ignore[attr-defined]
+
     def test_http_connection_from_context_case_insensitive(self) -> None:
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
@@ -261,23 +274,23 @@ class TestPoolManager:
 
     @patch("urllib3.poolmanager.PoolManager.connection_from_host")
     def test_deprecated_no_scheme(self, connection_from_host: mock.MagicMock) -> None:
-        # Don't actually make a network connection, just verify the DeprecationWarning
+        # Don't actually make a network connection, just verify the FutureWarning
         connection_from_host.side_effect = ConnectionError("Not attempting connection")
         p = PoolManager()
 
-        with pytest.warns(DeprecationWarning) as records:
+        with pytest.warns(FutureWarning) as records:
             with pytest.raises(ConnectionError):
                 p.request(method="GET", url="evil.com://good.com")
 
         msg = (
             "URLs without a scheme (ie 'https://') are deprecated and will raise an error "
-            "in a future version of urllib3. To avoid this DeprecationWarning ensure all URLs "
+            "in urllib3 v3.0. To avoid this FutureWarning ensure all URLs "
             "start with 'https://' or 'http://'. Read more in this issue: "
             "https://github.com/urllib3/urllib3/issues/2920"
         )
 
         assert len(records) == 1
-        assert isinstance(records[0].message, DeprecationWarning)
+        assert isinstance(records[0].message, FutureWarning)
         assert records[0].message.args[0] == msg
 
     @patch("urllib3.poolmanager.PoolManager.connection_from_pool_key")
@@ -291,12 +304,12 @@ class TestPoolManager:
             "port": 8080,
             "strict": True,
         }
-        with pytest.warns(DeprecationWarning) as records:
+        with pytest.warns(FutureWarning) as records:
             p.connection_from_context(context)
 
         msg = (
             "The 'strict' parameter is no longer needed on Python 3+. "
-            "This will raise an error in urllib3 v2.1.0."
+            "This will raise an error in urllib3 v3.0."
         )
         record = records[0]
         assert isinstance(record.message, Warning)
@@ -379,9 +392,10 @@ class TestPoolManager:
 
     def test_merge_pool_kwargs(self) -> None:
         """Assert _merge_pool_kwargs works in the happy case"""
-        p = PoolManager(retries=100)
+        retries = retry.Retry(total=100)
+        p = PoolManager(retries=retries)
         merged = p._merge_pool_kwargs({"new_key": "value"})
-        assert {"retries": 100, "new_key": "value"} == merged
+        assert {"retries": retries, "new_key": "value"} == merged
 
     def test_merge_pool_kwargs_none(self) -> None:
         """Assert false-y values to _merge_pool_kwargs result in defaults"""
@@ -468,6 +482,11 @@ class TestPoolManager:
         conn.connect()
 
         assert ssl_wrap_socket.call_args[1]["server_hostname"] == "a::b"
+
+    def test_connection_from_host_port_zero(self) -> None:
+        p = PoolManager()
+        pool = p.connection_from_host("example.com", port=0, scheme="http")
+        assert pool.port == 0
 
     def test_thread_safty(self) -> None:
         pool_manager = PoolManager(num_pools=2)

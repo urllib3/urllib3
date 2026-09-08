@@ -1,0 +1,1 @@
+Fixed ``urllib3.contrib.pyopenssl`` to use cryptography APIs when reading a certificate subject and loading encrypted private keys, avoiding ``DeprecationWarning`` raised by pyOpenSSL 26.3.0+.
