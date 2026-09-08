@@ -1,0 +1,1 @@
+Fixed decoding of a comma-separated ``Content-Encoding`` response header so that an ``identity`` or otherwise unhandled coding is treated as a pass-through instead of being run through a fallback DEFLATE decoder, which previously raised ``DecodeError`` on an otherwise valid body (e.g. ``Content-Encoding: gzip, identity``).

@@ -967,6 +967,24 @@ class TestResponse:
 
         assert r.data == b"foo"
 
+    @pytest.mark.parametrize(
+        "content_encoding",
+        ["gzip, identity", "identity, gzip", "gzip, x-unknown-coding"],
+    )
+    def test_multi_decoding_ignores_unhandled_codings(
+        self, content_encoding: str
+    ) -> None:
+        # A comma-separated content-encoding whose only decodable coding is
+        # gzip must decode with gzip. Unhandled codings such as identity or
+        # an unknown token were previously passed to a fallback DEFLATE
+        # decoder, which made a valid gzip body fail to decode.
+        data = gzip.compress(b"foo")
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={"content-encoding": content_encoding})
+
+        assert r.data == b"foo"
+
     def test_read_multi_decoding_deflate_deflate(self) -> None:
         msg = b"foobarbaz" * 42
         data = zlib.compress(zlib.compress(msg))

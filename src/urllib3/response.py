@@ -300,6 +300,20 @@ else:
             return b""
 
 
+class IdentityDecoder(ContentDecoder):
+    """A no-op decoder for the "identity" and other unhandled content codings."""
+
+    def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+        return data
+
+    @property
+    def has_unconsumed_tail(self) -> bool:
+        return False
+
+    def flush(self) -> bytes:
+        return b""
+
+
 class MultiDecoder(ContentDecoder):
     """
     From RFC7231:
@@ -371,7 +385,15 @@ def _get_decoder(mode: str) -> ContentDecoder:
     if HAS_ZSTD and mode == "zstd":
         return ZstdDecoder()
 
-    return DeflateDecoder()
+    if mode == "deflate":
+        return DeflateDecoder()
+
+    # A coding we can't handle (e.g. "identity" or an unknown token) is left
+    # untouched. A single such coding never reaches here because
+    # `_init_decoder` only builds a decoder for known codings, but one can
+    # appear alongside a known coding in a comma-separated list, where it must
+    # be a pass-through rather than a spurious DEFLATE decode.
+    return IdentityDecoder()
 
 
 class BytesQueueBuffer:
