@@ -1,0 +1,1 @@
+Add support for ``BaseHTTPResponse`` to be used as a context-manager.
