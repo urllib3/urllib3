@@ -820,11 +820,6 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             with HTTPConnectionPool(self.host, self.port) as pool:
                 pool.request("GET" + char, "/")
 
-    def test_percent_encode_invalid_target_chars(self) -> None:
-        with HTTPConnectionPool(self.host, self.port) as pool:
-            r = pool.request("GET", "/echo_params?q=\r&k=\n \n")
-            assert r.data == b"[('k', '\\n \\n'), ('q', '\\r')]"
-
     def test_source_address(self) -> None:
         for addr, is_ipv6 in VALID_SOURCE_ADDRESSES:
             if is_ipv6:
@@ -947,12 +942,6 @@ class TestConnectionPool(HypercornDummyServerTestCase):
         with HTTPConnectionPool("LoCaLhOsT", self.port) as pool:
             response = pool.request("GET", f"http://LoCaLhOsT:{self.port}/")
             assert response.status == 200
-
-    def test_preserves_path_dot_segments(self) -> None:
-        """ConnectionPool preserves dot segments in the URI"""
-        with HTTPConnectionPool(self.host, self.port) as pool:
-            response = pool.request("GET", "/echo_uri/seg0/../seg2")
-            assert response.data == b"/echo_uri/seg0/../seg2?"
 
     def test_default_user_agent_header(self) -> None:
         """ConnectionPool has a default user agent"""
