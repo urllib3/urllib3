@@ -1599,7 +1599,10 @@ class TestResponse:
             (False, 10 * 2**20, "read1"),
         ],
     )
-    @pytest.mark.limit_memory("10.5 MB", current_thread_only=True)
+    # The body is 10 MiB and reading it must not buffer a second copy, which
+    # would take the peak to 20 MiB. Leaving only 0.5 MiB of headroom to catch
+    # that made the test fail intermittently on CI at 11.0 MiB.
+    @pytest.mark.limit_memory("13 MB", current_thread_only=True)
     def test_buffer_memory_usage_no_decoding(
         self, preload_content: bool, amt: int, read_meth: str
     ) -> None:
