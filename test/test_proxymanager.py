@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest import mock
+
 import pytest
 
 from urllib3.exceptions import (
@@ -17,6 +19,46 @@ from .port_helpers import find_unused_port
 
 
 class TestProxyManager:
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    def test_origin_and_proxy_credentials_stay_separate(
+        self, proxy_scheme: str
+    ) -> None:
+        response = mock.Mock(status=200, retries=Retry())
+        response.get_redirect_location.return_value = None
+        pool = mock.Mock()
+        pool.urlopen.return_value = response
+
+        with ProxyManager(
+            f"{proxy_scheme}://proxy-user:proxy-pass@proxy.example"
+        ) as manager:
+            manager.connection_from_host = mock.Mock(return_value=pool)
+            manager.urlopen("GET", "http://origin-user:origin-pass@example/target")
+
+            sent_headers = pool.urlopen.call_args.kwargs["headers"]
+            assert sent_headers["Authorization"] == (
+                "Basic b3JpZ2luLXVzZXI6b3JpZ2luLXBhc3M="
+            )
+            assert "Proxy-Authorization" not in sent_headers
+            assert manager.proxy_headers["Proxy-Authorization"] == (
+                "Basic cHJveHktdXNlcjpwcm94eS1wYXNz"
+            )
+
+    def test_proxy_url_credentials_are_stored_as_proxy_authorization(self) -> None:
+        headers = {"X-Test": "value"}
+        with ProxyManager(
+            "http://user:p%40ss@proxy.example", proxy_headers=headers
+        ) as p:
+            assert p.proxy.auth is None
+            assert p.proxy_headers["Proxy-Authorization"] == "Basic dXNlcjpwQHNz"
+            assert headers == {"X-Test": "value"}
+
+    def test_proxy_url_credentials_conflict_with_explicit_header(self) -> None:
+        with pytest.raises(ValueError, match="Proxy-Authorization header conflicts"):
+            ProxyManager(
+                "http://user:pass@proxy.example",
+                proxy_headers={"Proxy-Authorization": "Basic different"},
+            )
+
     @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
     def test_proxy_headers(self, proxy_scheme: str) -> None:
         url = "http://pypi.org/project/urllib3/"

@@ -22,6 +22,126 @@ from urllib3.util.url import Url
 
 
 class TestPoolManager:
+    def test_url_credentials_are_added_without_mutating_headers(self) -> None:
+        headers = {"X-Test": "value"}
+        manager = PoolManager()
+        response = mock.Mock(get_redirect_location=lambda: None)
+        response.status = 200
+        response.retries = retry.Retry()
+        pool = mock.Mock()
+        pool.urlopen.return_value = response
+        manager.connection_from_host = mock.Mock(return_value=pool)
+
+        manager.urlopen("GET", "http://user:p%40ss@example.com/path", headers=headers)
+
+        assert headers == {"X-Test": "value"}
+        sent_headers = pool.urlopen.call_args.kwargs["headers"]
+        assert sent_headers["Authorization"] == "Basic dXNlcjpwQHNz"
+        assert pool.urlopen.call_args.args[1] == "/path"
+
+    def test_url_credentials_conflict_with_explicit_header(self) -> None:
+        manager = PoolManager()
+        with pytest.raises(ValueError, match="Authorization header conflicts"):
+            manager.urlopen(
+                "GET",
+                "http://user:pass@example.com/",
+                headers={"Authorization": "Basic different"},
+            )
+
+    def test_connection_from_url_adds_url_credentials(self) -> None:
+        headers = {"X-Test": "value"}
+        pool = connection_from_url("http://user:p%40ss@example.com/", headers=headers)
+
+        assert pool.headers["Authorization"] == "Basic dXNlcjpwQHNz"
+        assert headers == {"X-Test": "value"}
+
+    def test_connection_from_url_credentials_are_pool_scoped(self) -> None:
+        manager = PoolManager()
+
+        first = manager.connection_from_url("http://alice:one@example.com/")
+        second = manager.connection_from_url("http://bob:two@example.com/")
+        plain = manager.connection_from_url("http://example.com/")
+
+        assert first is not second
+        assert first is not plain
+        assert second is not plain
+        assert first.headers["Authorization"] != second.headers["Authorization"]
+        assert "Authorization" not in plain.headers
+
+    def test_connection_from_url_pool_kwargs_conflict_and_immutability(self) -> None:
+        headers = {"X-Test": "value", "Authorization": "Basic different"}
+        manager = PoolManager()
+        with pytest.raises(ValueError, match="Authorization header conflicts"):
+            manager.connection_from_url(
+                "http://user:pass@example.com/", pool_kwargs={"headers": headers}
+            )
+        assert headers == {
+            "X-Test": "value",
+            "Authorization": "Basic different",
+        }
+
+    def test_connection_from_url_accepts_matching_bytes_header(self) -> None:
+        manager = PoolManager()
+        pool = manager.connection_from_url(
+            "http://user:pass@example.com/",
+            pool_kwargs={"headers": {"Authorization": b"Basic dXNlcjpwYXNz"}},
+        )
+
+        assert pool.headers["Authorization"] == "Basic dXNlcjpwYXNz"
+
+    def test_redirect_to_other_host_removes_generated_credentials(self) -> None:
+        first = mock.Mock(status=302, retries=retry.Retry())
+        first.get_redirect_location.return_value = "http://other.example/next"
+        second = mock.Mock(status=200, retries=retry.Retry())
+        second.get_redirect_location.return_value = None
+        pool = mock.Mock()
+        pool.urlopen.side_effect = [first, second]
+        pool.is_same_host.return_value = False
+        manager = PoolManager()
+        manager.connection_from_host = mock.Mock(return_value=pool)
+
+        manager.urlopen("GET", "http://user:pass@example.com/start")
+
+        assert "Authorization" in pool.urlopen.call_args_list[0].kwargs["headers"]
+        assert "Authorization" not in pool.urlopen.call_args_list[1].kwargs["headers"]
+
+    def test_relative_redirect_keeps_same_origin_generated_credentials(self) -> None:
+        first = mock.Mock(status=302, retries=retry.Retry())
+        first.get_redirect_location.return_value = "/next"
+        second = mock.Mock(status=200, retries=retry.Retry())
+        second.get_redirect_location.return_value = None
+        pool = mock.Mock()
+        pool.urlopen.side_effect = [first, second]
+        pool.is_same_host.return_value = True
+        manager = PoolManager()
+        manager.connection_from_host = mock.Mock(return_value=pool)
+
+        manager.urlopen("GET", "http://user:pass@example.com/start")
+
+        assert pool.urlopen.call_args_list[1].kwargs["headers"]["Authorization"] == (
+            "Basic dXNlcjpwYXNz"
+        )
+
+    def test_same_origin_redirect_replaces_generated_credentials(self) -> None:
+        first = mock.Mock(status=302, retries=retry.Retry())
+        first.get_redirect_location.return_value = "http://bob:two@example.com/next"
+        second = mock.Mock(status=200, retries=retry.Retry())
+        second.get_redirect_location.return_value = None
+        pool = mock.Mock()
+        pool.urlopen.side_effect = [first, second]
+        pool.is_same_host.return_value = True
+        manager = PoolManager()
+        manager.connection_from_host = mock.Mock(return_value=pool)
+
+        manager.urlopen("GET", "http://alice:one@example.com/start")
+
+        assert pool.urlopen.call_args_list[0].kwargs["headers"]["Authorization"] == (
+            "Basic YWxpY2U6b25l"
+        )
+        assert pool.urlopen.call_args_list[1].kwargs["headers"]["Authorization"] == (
+            "Basic Ym9iOnR3bw=="
+        )
+
     @resolvesLocalhostFQDN()
     def test_same_url(self) -> None:
         # Convince ourselves that normally we don't get the same object
