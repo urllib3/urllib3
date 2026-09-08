@@ -1,1 +1,1 @@
-Fixed a memory-limited response test that failed intermittently on allocation noise.
+Fixed memory-limited response tests that failed intermittently on allocation noise.
