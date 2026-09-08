@@ -79,6 +79,14 @@ class TestBodyPart(unittest.TestCase):
         assert len(part_3.headers) == 0
         assert part_3.content == b"No headers\r\nTwo lines"
 
+    def test_repeated_headers(self) -> None:
+        part = BodyPart(
+            b"X-Test: first\r\nX-Test: second\r\nx-test: third\r\n\r\nbody",
+            "utf-8",
+        )
+        assert part.headers.getlist("X-Test") == ["first", "second", "third"]
+        assert part.content == b"body"
+
     def test_no_crlf_crlf_in_content(self) -> None:
         content = b"no CRLF CRLF here!\r\n"
         with pytest.raises(ImproperBodyPartContentError):
@@ -86,6 +94,19 @@ class TestBodyPart(unittest.TestCase):
 
 
 class TestMultipartDecoder(unittest.TestCase):
+    def test_repeated_headers_in_each_part(self) -> None:
+        content = (
+            b"--test\r\nX-Test: first\r\nX-Test: second\r\n\r\none"
+            b"\r\n--test\r\nX-Test: third\r\nx-test: fourth\r\n\r\ntwo"
+            b"\r\n--test--\r\n"
+        )
+        decoder = MultipartDecoder(content, "multipart/mixed; boundary=test")
+        assert [part.headers.getlist("X-Test") for part in decoder.parts] == [
+            ["first", "second"],
+            ["third", "fourth"],
+        ]
+        assert [part.content for part in decoder.parts] == [b"one", b"two"]
+
     def setUp(self) -> None:
         self.sample_1 = (
             ("field 1", "value 1"),

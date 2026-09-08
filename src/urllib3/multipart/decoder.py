@@ -39,9 +39,9 @@ class BodyPart:
         #: The headers associated with this part
         if headerbytes != b"":
             headerstring = headerbytes.decode(encoding)
-            headers = dict(email.parser.HeaderParser().parsestr(headerstring))
+            headers = email.parser.HeaderParser().parsestr(headerstring).items()
         else:
-            headers = {}
+            headers = []
         self.headers = _collections.HTTPHeaderDict(headers)
 
     @property
@@ -114,6 +114,10 @@ class MultipartDecoder:
 
         def body_part(part: bytes) -> BodyPart:
             fixed = MultipartDecoder._fix_first_part(part, boundary)
+            # The split leaves the delimiter line's CRLF before the headers.
+            # Keep the empty-header separator expected by BodyPart intact.
+            if fixed.startswith(b"\r\n") and not fixed.startswith(b"\r\n\r\n"):
+                fixed = fixed[2:]
             return BodyPart(fixed, self.encoding)
 
         def test_part(part: bytes) -> bool:
