@@ -1,53 +1,55 @@
 """Logic for parsing and decomposing a multipart response body."""
+
 from __future__ import annotations
 
+import email.message
 import email.parser
+import re
 
 from .. import _collections
 from .. import response as _response
-from .encoder import encode_with
+from ..exceptions import HTTPError
 
 
-class ImproperBodyPartContentError(Exception):
+class ImproperBodyPartContentError(HTTPError):
     pass
 
 
-class NonMultipartContentTypeError(Exception):
+class NonMultipartContentTypeError(HTTPError):
     pass
 
 
 class BodyPart:
     """This provides an easy way to interact with a single part of the body.
 
-    BodyParts include the headers in the part of the body as well as the body
-    content as bytes and optional converted to text based on the provided
-    encoding.
-
-    The encoding may be overridden by specifying ``part.encoding = '...'``.
+    BodyParts expose ``headers`` and raw body bytes in ``data``, like
+    :class:`~urllib3.response.HTTPResponse`. Decode ``data`` explicitly when
+    text is needed. The encoding argument applies only to header values.
     """
 
-    def __init__(self, content: bytes, encoding: str):
-        #: Encoding used for the body part to decode body and headers
-        self.encoding = encoding
+    def __init__(self, content: bytes, *, encoding: str = "utf-8"):
         # Split into header section (if any) and the content
-        headerbytes, separator, bodybytes = content.partition(b"\r\n\r\n")
-        if b"\r\n\r\n" != separator:
-            raise ImproperBodyPartContentError("content does not contain CR-LF-CR-LF")
+        if content.startswith(b"\r\n"):
+            headerbytes, bodybytes = b"", content[2:]
+        else:
+            headerbytes, separator, bodybytes = content.partition(b"\r\n\r\n")
+            if not separator:
+                raise ImproperBodyPartContentError(
+                    "content does not contain CR-LF-CR-LF"
+                )
 
         #: The bytes containing the body of this part
-        self.content = bodybytes
-        #: The headers associated with this part
+        self.data = bodybytes
         if headerbytes != b"":
-            headerstring = headerbytes.decode(encoding)
-            headers = email.parser.HeaderParser().parsestr(headerstring).items()
+            parsed = email.parser.BytesHeaderParser().parsebytes(headerbytes)
+            headers = [
+                (name, value.encode("ascii", "surrogateescape").decode(encoding))
+                for name, value in parsed.raw_items()
+            ]
         else:
             headers = []
+        #: The headers associated with this part
         self.headers = _collections.HTTPHeaderDict(headers)
-
-    @property
-    def text(self) -> str:
-        """Content of the ``BodyPart`` in unicode."""
-        return self.content.decode(self.encoding)
 
 
 class MultipartDecoder:
@@ -70,7 +72,7 @@ class MultipartDecoder:
 
         from urllib3.multipart import MultipartDecoder
 
-        decoder = MultipartDecoder(content, content_type)
+        decoder = MultipartDecoder(content, content_type=content_type)
         for part in decoder.parts:
             print(part.headers['content-type'])
 
@@ -79,7 +81,7 @@ class MultipartDecoder:
     ``'utf-8'``).
     """
 
-    def __init__(self, content: bytes, content_type: str, encoding: str = "utf-8"):
+    def __init__(self, content: bytes, *, content_type: str, encoding: str = "utf-8"):
         #: Original Content-Type header
         self.content_type = content_type
         #: Response body encoding
@@ -90,55 +92,45 @@ class MultipartDecoder:
         self._parse_body(content)
 
     def _find_boundary(self) -> None:
-        ct_info = tuple(x.strip() for x in self.content_type.split(";"))
-        mimetype = ct_info[0]
-        if mimetype.split("/")[0].lower() != "multipart":
+        message = email.message.Message()
+        message["Content-Type"] = self.content_type
+        if message.get_content_maintype() != "multipart":
             raise NonMultipartContentTypeError(
-                f"Unexpected mimetype in content-type: {mimetype!r}"
+                f"Unexpected MIME type in Content-Type: {self.content_type!r}"
             )
-        for item in ct_info[1:]:
-            attr, _, value = item.partition("=")
-            if attr.lower() == "boundary":
-                self.boundary = encode_with(value.strip('"'), self.encoding)
-
-    @staticmethod
-    def _fix_first_part(part: bytes, boundary_marker: bytes) -> bytes:
-        bm_len = len(boundary_marker)
-        if boundary_marker == part[:bm_len]:
-            return part[bm_len:]
-        else:
-            return part
+        boundary = message.get_boundary()
+        if not boundary:
+            raise ImproperBodyPartContentError("Missing multipart boundary")
+        self.boundary = boundary.encode(self.encoding)
 
     def _parse_body(self, content: bytes) -> None:
-        boundary = b"--" + self.boundary
-
-        def body_part(part: bytes) -> BodyPart:
-            fixed = MultipartDecoder._fix_first_part(part, boundary)
-            # The split leaves the delimiter line's CRLF before the headers.
-            # Keep the empty-header separator expected by BodyPart intact.
-            if fixed.startswith(b"\r\n") and not fixed.startswith(b"\r\n\r\n"):
-                fixed = fixed[2:]
-            return BodyPart(fixed, self.encoding)
-
-        def test_part(part: bytes) -> bool:
-            return (
-                part != b""
-                and part != b"\r\n"
-                and part[:4] != b"--\r\n"
-                and part != b"--"
-            )
-
-        parts = content.split(b"\r\n" + boundary)
-        self.parts = tuple(body_part(x) for x in parts if test_part(x))
+        delimiter = re.compile(
+            rb"(?:\A|\r\n)--"
+            + re.escape(self.boundary)
+            + rb"(?P<closing>--)?[ \t]*(?:\r\n|\Z)"
+        )
+        parts: list[BodyPart] = []
+        start = None
+        for match in delimiter.finditer(content):
+            if start is not None:
+                parts.append(
+                    BodyPart(content[start : match.start()], encoding=self.encoding)
+                )
+            if match.group("closing"):
+                self.parts = tuple(parts)
+                return
+            start = match.end()
+        raise ImproperBodyPartContentError("Missing closing multipart boundary")
 
     @classmethod
     def from_response(
         cls,
         response: _response.HTTPResponse,
+        *,
         encoding: str = "utf-8",
     ) -> MultipartDecoder:
         content = response.data
         content_type = response.headers.get("content-type", None)
         if content_type is None:
             raise ValueError("Cannot determine content-type header from response")
-        return cls(content, content_type, encoding)
+        return cls(content, content_type=content_type, encoding=encoding)

@@ -329,19 +329,21 @@ memory.
     import urllib3
     import urllib3.multipart
 
-    encoder = urllib3.multipart.MultipartEncoder({
-      "field": "value",
-      "myfile": ("filename.txt", open("filename.txt", "rb"), "text/plain"),
-    })
-    resp = urllib3.request(
-        "POST",
-        "https://httpbin.org/post",
-        body=encoder,
-        headers=encoder.headers,
-    )
+    with open("filename.txt", "rb") as upload:
+        encoder = urllib3.multipart.MultipartEncoder({
+            "field": "value",
+            "myfile": ("filename.txt", upload, "text/plain"),
+        })
+        resp = urllib3.request(
+            "POST",
+            "https://httpbin.org/post",
+            body=encoder,
+            headers=encoder.headers,
+        )
 
     print(resp.json()["form"])
-    # {"field": "value", "myfile": "..."}
+    # {"field": "value"}
+
 
 .. _json:
 
