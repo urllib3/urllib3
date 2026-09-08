@@ -12,6 +12,7 @@ import select
 import shutil
 import socket
 import ssl
+import struct
 import tempfile
 import threading
 import time
@@ -1147,6 +1148,43 @@ class TestSocketClosing(SocketDummyServerTestCase):
         timed_out.set()
 
 
+def client_hello_alpn_protocols(data: bytes) -> list[bytes]:
+    """Return the ALPN protocols offered by the ClientHello in ``data``.
+
+    Looking for a protocol name in the record as a whole is not reliable:
+    the random bytes, the session id and the key shares spell one out by
+    accident often enough to make a test flaky.
+    """
+    if len(data) < 5 or data[0] != 0x16:
+        raise ValueError("not a TLS handshake record")
+    if len(data) < 5 + struct.unpack_from("!H", data, 3)[0]:
+        raise ValueError("truncated TLS record")
+    pos = 5
+    if data[pos] != 0x01:
+        raise ValueError("not a ClientHello")
+    pos += 4  # handshake type and length
+    pos += 2 + 32  # legacy_version and random
+    pos += 1 + data[pos]  # legacy_session_id
+    pos += 2 + struct.unpack_from("!H", data, pos)[0]  # cipher_suites
+    pos += 1 + data[pos]  # legacy_compression_methods
+    end = pos + 2 + struct.unpack_from("!H", data, pos)[0]
+    pos += 2
+    while pos < end:
+        extension_type, extension_length = struct.unpack_from("!HH", data, pos)
+        pos += 4
+        if extension_type != 16:  # application_layer_protocol_negotiation
+            pos += extension_length
+            continue
+        stop = pos + 2 + struct.unpack_from("!H", data, pos)[0]
+        pos += 2
+        protocols = []
+        while pos < stop:
+            protocols.append(data[pos + 1 : pos + 1 + data[pos]])
+            pos += 1 + data[pos]
+        return protocols
+    return []
+
+
 class TestProxyManager(SocketDummyServerTestCase):
     @pytest.mark.parametrize(
         ("target_url", "expected_request_line", "expected_host"),
@@ -1314,7 +1352,15 @@ class TestProxyManager(SocketDummyServerTestCase):
         def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
-            self.buf = sock.recv(65536)  # We only accept one packet
+            # A ClientHello does not necessarily arrive in a single packet,
+            # so read until the record announced by its header is complete.
+            buf = b""
+            while len(buf) < 5 or len(buf) < 5 + struct.unpack_from("!H", buf, 3)[0]:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                buf += chunk
+            self.buf = buf
             done_receiving.set()  # let the test know it can proceed
             sock.close()
 
@@ -1325,8 +1371,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                 proxy.request("GET", "https://localhost/")
 
         done_receiving.wait()
-        assert b"http/1.1" in self.buf
-        assert b"h2" not in self.buf
+        assert client_hello_alpn_protocols(self.buf) == [b"http/1.1"]
 
     def test_connect_reconn(self) -> None:
         def proxy_ssl_one(listener: socket.socket) -> None:
