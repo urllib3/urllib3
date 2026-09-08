@@ -1413,7 +1413,7 @@ class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
         headers = body.headers
         headers["test-name"] = "test_status_retry_streaming_multipart"
         with (
-            HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool,
+            HTTPConnectionPool(self.host, self.port, timeout=2) as pool,
             mock.patch.object(body, "seek", wraps=body.seek) as seek,
         ):
             response = pool.request(
@@ -1421,7 +1421,7 @@ class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
                 "/successful_retry",
                 body=body,
                 headers=headers,
-                retries=Retry(total=1, status_forcelist=[418]),
+                retries=Retry(total=1, read=0, status_forcelist=[418]),
             )
         assert response.status == 200
         seek.assert_called_once_with(0)
