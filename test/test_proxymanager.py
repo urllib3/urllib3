@@ -31,8 +31,8 @@ class TestProxyManager:
         with ProxyManager(
             f"{proxy_scheme}://proxy-user:proxy-pass@proxy.example"
         ) as manager:
-            manager.connection_from_host = mock.Mock(return_value=pool)
-            manager.urlopen("GET", "http://origin-user:origin-pass@example/target")
+            with mock.patch.object(manager, "connection_from_host", return_value=pool):
+                manager.urlopen("GET", "http://origin-user:origin-pass@example/target")
 
             sent_headers = pool.urlopen.call_args.kwargs["headers"]
             assert sent_headers["Authorization"] == (
@@ -48,6 +48,7 @@ class TestProxyManager:
         with ProxyManager(
             "http://user:p%40ss@proxy.example", proxy_headers=headers
         ) as p:
+            assert p.proxy is not None
             assert p.proxy.auth is None
             assert p.proxy_headers["Proxy-Authorization"] == "Basic dXNlcjpwQHNz"
             assert headers == {"X-Test": "value"}

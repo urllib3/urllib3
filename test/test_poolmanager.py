@@ -30,9 +30,10 @@ class TestPoolManager:
         response.retries = retry.Retry()
         pool = mock.Mock()
         pool.urlopen.return_value = response
-        manager.connection_from_host = mock.Mock(return_value=pool)
-
-        manager.urlopen("GET", "http://user:p%40ss@example.com/path", headers=headers)
+        with mock.patch.object(manager, "connection_from_host", return_value=pool):
+            manager.urlopen(
+                "GET", "http://user:p%40ss@example.com/path", headers=headers
+            )
 
         assert headers == {"X-Test": "value"}
         sent_headers = pool.urlopen.call_args.kwargs["headers"]
@@ -98,9 +99,8 @@ class TestPoolManager:
         pool.urlopen.side_effect = [first, second]
         pool.is_same_host.return_value = False
         manager = PoolManager()
-        manager.connection_from_host = mock.Mock(return_value=pool)
-
-        manager.urlopen("GET", "http://user:pass@example.com/start")
+        with mock.patch.object(manager, "connection_from_host", return_value=pool):
+            manager.urlopen("GET", "http://user:pass@example.com/start")
 
         assert "Authorization" in pool.urlopen.call_args_list[0].kwargs["headers"]
         assert "Authorization" not in pool.urlopen.call_args_list[1].kwargs["headers"]
@@ -114,9 +114,8 @@ class TestPoolManager:
         pool.urlopen.side_effect = [first, second]
         pool.is_same_host.return_value = True
         manager = PoolManager()
-        manager.connection_from_host = mock.Mock(return_value=pool)
-
-        manager.urlopen("GET", "http://user:pass@example.com/start")
+        with mock.patch.object(manager, "connection_from_host", return_value=pool):
+            manager.urlopen("GET", "http://user:pass@example.com/start")
 
         assert pool.urlopen.call_args_list[1].kwargs["headers"]["Authorization"] == (
             "Basic dXNlcjpwYXNz"
@@ -131,9 +130,8 @@ class TestPoolManager:
         pool.urlopen.side_effect = [first, second]
         pool.is_same_host.return_value = True
         manager = PoolManager()
-        manager.connection_from_host = mock.Mock(return_value=pool)
-
-        manager.urlopen("GET", "http://alice:one@example.com/start")
+        with mock.patch.object(manager, "connection_from_host", return_value=pool):
+            manager.urlopen("GET", "http://alice:one@example.com/start")
 
         assert pool.urlopen.call_args_list[0].kwargs["headers"]["Authorization"] == (
             "Basic YWxpY2U6b25l"
