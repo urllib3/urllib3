@@ -909,6 +909,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 method = "GET"
                 # And lose the body not to transfer anything sensitive.
                 body = None
+                # The body is gone, so the state that describes it has to go
+                # too: there is nothing left to frame with chunked transfer
+                # encoding, and nothing left to rewind.
+                chunked = False
+                body_pos = None
                 headers = HTTPHeaderDict(headers)._prepare_for_method_change()
 
             # Strip headers marked as unsafe to forward to the redirected location.
