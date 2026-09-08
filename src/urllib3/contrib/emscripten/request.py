@@ -15,7 +15,11 @@ class EmscriptenRequest:
     timeout: float = 0
     decode_content: bool = True
 
-    def set_header(self, name: str, value: str) -> None:
+    def set_header(self, name: str, value: str | bytes) -> None:
+        # Fetch and XMLHttpRequest accept Web IDL ByteStrings, represented by
+        # JavaScript strings with code points in the range 0-255.
+        if isinstance(value, bytes):
+            value = value.decode("latin-1")
         self.headers[name.capitalize()] = value
 
     def set_body(self, body: _TYPE_BODY | None) -> None:
