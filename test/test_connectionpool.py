@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.client as httplib
+import logging
 import queue
 import ssl
 import typing
@@ -821,3 +822,27 @@ class TestConnectionPool:
 
         assert response.status == 200
         assert requested_urls == ["/", "http://localhost/next?x=1"]
+
+
+class TestRetryWarningIncludesHost:
+    def test_retry_warning_includes_host(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """
+        The "Retrying" warning should include the host so the full URL of the
+        failed request is visible, not just the (usually relative) path.
+        """
+        caplog.set_level(logging.WARNING, logger="urllib3.connectionpool")
+        with HTTPConnectionPool(host="example.com", port=80) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                side_effect=[
+                    ProtocolError("Connection aborted.", OSError("boom")),
+                    HTTPResponse(status=200),
+                ],
+            ):
+                response = pool.urlopen("GET", "/", retries=1)
+        assert response.status == 200
+        assert "Retrying" in caplog.text
+        assert "http://example.com/" in caplog.text
