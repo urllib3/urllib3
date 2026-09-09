@@ -230,6 +230,9 @@ async def encodingrequest() -> ResponseReturnValue:
 @pyodide_testing_app.route("/redirect", methods=["GET", "POST", "PUT"])
 async def redirect() -> ResponseReturnValue:
     "Perform a redirect to ``target``"
+    # Read the body even when it is not a form, so that it does not linger in
+    # the socket and desynchronize the next request on a reused connection.
+    await request.get_data(parse_form_data=True)
     values = await request.values
     target = values.get("target", "/")
     status = values.get("status", "303 See Other")

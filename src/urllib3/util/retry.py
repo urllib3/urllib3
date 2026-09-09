@@ -6,6 +6,8 @@ import random
 import re
 import time
 import typing
+import warnings
+from collections.abc import Collection
 from itertools import takewhile
 from types import TracebackType
 
@@ -251,6 +253,15 @@ class Retry:
 
         self.redirect = redirect
         self.status_forcelist = status_forcelist or set()
+        if not allowed_methods and isinstance(allowed_methods, Collection):
+            warnings.warn(
+                "Using an empty collection for 'allowed_methods' option to "
+                "retry on any verb is deprecated and will skip retries for "
+                "all verbs in urllib3 v3.0. Instead use "
+                "Retry(..., allowed_methods=None).",
+                FutureWarning,
+                stacklevel=2,
+            )
         self.allowed_methods = allowed_methods
         self.backoff_factor = backoff_factor
         self.backoff_max = backoff_max
