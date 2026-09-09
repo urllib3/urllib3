@@ -677,6 +677,42 @@ class TestConnectionPool(HypercornDummyServerTestCase):
                 b"--boundary--\r\n",
             ]
 
+    @pytest.mark.parametrize(
+        "method,url",
+        [
+            ("GET", "/echo"),
+            ("POST", "/echo"),
+            ("POST", "/headers"),
+            ("POST", "/multi_headers"),
+            ("POST", "/redirect?target=/"),
+            ("POST", "/specific_method?method=POST"),
+            ("PUT", "/successful_retry"),
+            ("POST", "/upload"),
+        ],
+    )
+    def test_handler_reads_the_request_body(self, method: str, url: str) -> None:
+        """A body the handler has no use for still has to leave the socket.
+
+        Anything left behind is read as the start of the next request made on
+        that connection, which then never gets a response. The body has to be
+        larger than the socket buffers for that to happen.
+        """
+        with HTTPConnectionPool(self.host, self.port, maxsize=1) as pool:
+            pool.request(
+                method,
+                url,
+                body=b"x" * (2 * 1024 * 1024),
+                headers={"test-name": "test_handler_reads_the_request_body"},
+                redirect=False,
+                retries=False,
+            )
+
+            # A generous timeout, so that a handler that stops reading the
+            # body fails the test instead of hanging it.
+            response = pool.request("GET", "/", timeout=10, retries=False)
+            assert response.status == 200
+            assert pool.num_connections == 1, "the connection was not reused"
+
     def test_check_gzip(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request(
