@@ -148,6 +148,7 @@ class TestBytesQueueBuffer:
     )
     # Copying the chunk instead of handing it back would take this to 20 MiB;
     # the peak is 10 MiB and the identity assertion below is the real check.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
     @pytest.mark.limit_memory("12 MB", current_thread_only=True)
     def test_memory_usage_single_chunk(
         self, get_func: typing.Callable[[BytesQueueBuffer], bytes]
@@ -164,6 +165,7 @@ class TestBytesQueueBuffer:
     )
     # Duplicating the chunk while splitting it would take this to 20 MiB;
     # the peak is 11 MiB.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
     @pytest.mark.limit_memory("13 MB", current_thread_only=True)
     def test_memory_usage_splitting_chunk(self, finish_with_get_all: bool) -> None:
         # Allocate a single 10MiB chunk, then read it in two parts.
@@ -1604,8 +1606,8 @@ class TestResponse:
         ],
     )
     # The body is 10 MiB and reading it must not buffer a second copy, which
-    # would take the peak to 20 MiB. Leaving only 0.5 MiB of headroom to catch
-    # that made the test fail intermittently on CI at 11.0 MiB.
+    # would take the peak to 20 MiB.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
     @pytest.mark.limit_memory("13 MB", current_thread_only=True)
     def test_buffer_memory_usage_no_decoding(
         self, preload_content: bool, amt: int, read_meth: str
