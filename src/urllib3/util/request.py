@@ -6,6 +6,7 @@ import typing
 from base64 import b64encode
 from enum import Enum
 
+from .._collections import HTTPHeaderDict
 from ..exceptions import UnrewindableBodyError
 from .util import to_bytes
 
@@ -171,6 +172,35 @@ def make_headers(
         headers["cache-control"] = "no-cache"
 
     return headers
+
+
+def _set_header_from_auth(
+    auth: str | None, headers: typing.Mapping[str, str], header_name: str
+) -> typing.Mapping[str, str]:
+    """Set a Basic auth header from URL userinfo without mutating ``headers``."""
+    if auth is None:
+        return headers
+
+    if header_name == "authorization":
+        auth_header = make_headers(basic_auth=auth)["authorization"]
+    else:
+        auth_header = make_headers(proxy_basic_auth=auth)["proxy-authorization"]
+
+    found_header = False
+    for header, value in headers.items():
+        if header.lower() == header_name:
+            found_header = True
+            if value != auth_header:
+                raise ValueError(
+                    f"URL credentials do not match the provided {header_name} header"
+                )
+
+    if found_header:
+        return headers
+
+    new_headers = HTTPHeaderDict(headers)
+    new_headers[header_name] = auth_header
+    return new_headers
 
 
 def set_file_position(

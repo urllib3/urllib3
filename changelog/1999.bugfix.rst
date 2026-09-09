@@ -1,0 +1,2 @@
+Constructed ``Authorization`` and ``Proxy-Authorization`` headers from URL
+userinfo credentials, including percent-decoded credentials.

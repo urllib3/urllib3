@@ -17,6 +17,7 @@ from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
+from urllib3.util.request import make_headers
 from urllib3.util.retry import Retry
 
 
@@ -26,6 +27,44 @@ class TestPoolManager(HypercornDummyServerTestCase):
         super().setup_class()
         cls.base_url = f"http://{cls.host}:{cls.port}"
         cls.base_url_alt = f"http://{cls.host_alt}:{cls.port}"
+
+    @pytest.mark.parametrize(
+        "userinfo,decoded",
+        [
+            ("user:pass", "user:pass"),
+            ("user%40name:pass%3Aword", "user@name:pass:word"),
+            ("user", "user:"),
+            (":pass", ":pass"),
+            (":", ":"),
+            ("us%C3%A9r:pass", "usér:pass"),
+        ],
+    )
+    def test_url_credentials(self, userinfo: str, decoded: str) -> None:
+        with PoolManager() as http:
+            response = http.request(
+                "GET",
+                f"http://{userinfo}@{self.host}:{self.port}/headers",
+                headers=None,
+            )
+        assert (
+            response.json()["Authorization"]
+            == make_headers(basic_auth=decoded)["authorization"]
+        )
+
+    @pytest.mark.parametrize("cross_host", [False, True])
+    def test_url_credentials_redirect(self, cross_host: bool) -> None:
+        target = self.base_url_alt if cross_host else self.base_url
+        with PoolManager() as http:
+            response = http.request(
+                "GET",
+                f"http://user:pass@{self.host}:{self.port}/redirect",
+                fields={"target": f"{target}/headers"},
+            )
+        headers = response.json()
+        if cross_host:
+            assert "Authorization" not in headers
+        else:
+            assert headers["Authorization"] == "Basic dXNlcjpwYXNz"
 
     @pytest.mark.parametrize(
         "pool_manager_kwargs",
