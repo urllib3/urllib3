@@ -108,7 +108,7 @@ class Part(io.BufferedReader):
                 raise ValueError("Invalid multipart header name")
             if "\r" in value or "\n" in value:
                 raise ValueError("Invalid multipart header value")
-            lines.append(f"{name}: {value}\r\n".encode("utf-8"))
+            lines.append(f"{name}: {value}\r\n".encode())
         return b"".join(lines) + b"\r\n"
 
 
