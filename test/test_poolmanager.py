@@ -105,6 +105,32 @@ class TestPoolManager:
         assert "Authorization" in pool.urlopen.call_args_list[0].kwargs["headers"]
         assert "Authorization" not in pool.urlopen.call_args_list[1].kwargs["headers"]
 
+    def test_303_redirect_drops_body_state_and_generated_credentials(self) -> None:
+        first = mock.Mock(status=303, retries=retry.Retry())
+        first.get_redirect_location.return_value = "http://other.example/next"
+        second = mock.Mock(status=200, retries=retry.Retry())
+        second.get_redirect_location.return_value = None
+        pool = mock.Mock()
+        pool.urlopen.side_effect = [first, second]
+        pool.is_same_host.return_value = False
+        manager = PoolManager()
+
+        with mock.patch.object(manager, "connection_from_host", return_value=pool):
+            manager.urlopen(
+                "POST",
+                "http://user:pass@example.com/start",
+                body=iter([b"the data"]),
+                chunked=True,
+            )
+
+        first_call, second_call = pool.urlopen.call_args_list
+        assert first_call.kwargs["headers"]["Authorization"] == "Basic dXNlcjpwYXNz"
+        assert "Authorization" not in second_call.kwargs["headers"]
+        assert second_call.args[0] == "GET"
+        assert second_call.kwargs["body"] is None
+        assert second_call.kwargs["chunked"] is False
+        assert second_call.kwargs["body_pos"] is None
+
     def test_relative_redirect_keeps_same_origin_generated_credentials(self) -> None:
         first = mock.Mock(status=302, retries=retry.Retry())
         first.get_redirect_location.return_value = "/next"
