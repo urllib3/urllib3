@@ -1,0 +1,1 @@
+Fixed an issue where concurrent threads waiting on an HTTP/2 probe in ``_HTTP2ProbeCache.acquire_and_get()`` could remain blocked indefinitely after the probe result was published.

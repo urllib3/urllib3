@@ -36,7 +36,7 @@ class _HTTP2ProbeCache:
         key_lock = self._cache_locks[key]
         key_lock.acquire()
         try:
-            # If the by the time we get the lock the value has been
+            # If by the time we get the lock the value has been
             # updated we want to return the updated value.
             value = self._cache_values[key]
 
@@ -45,6 +45,12 @@ class _HTTP2ProbeCache:
             assert not isinstance(e, KeyError)  # KeyError shouldn't be possible.
             key_lock.release()
             raise
+
+        # If another thread already completed the probe while we were waiting,
+        # release the lock so other waiting threads can also read the result.
+        # Only the thread that receives None keeps the lock to perform the probe.
+        if value is not None:
+            key_lock.release()
 
         return value
 
