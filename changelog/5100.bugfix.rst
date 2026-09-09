@@ -1,0 +1,1 @@
+Fixed ``Url.url`` dropping the ``//`` that introduces an authority when the ``Url`` has a host but no scheme, so a scheme-less authority such as ``Url(host="localhost", port=8080)`` now serializes as ``//localhost:8080`` and round-trips through ``parse_url`` instead of being misread as ``scheme:path``.
