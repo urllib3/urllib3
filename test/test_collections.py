@@ -158,6 +158,8 @@ class TestHTTPHeaderDict:
     def test_byte_values(self) -> None:
         headers = HTTPHeaderDict({"X-Value": b"\xff"})
         assert headers["x-value"] == b"\xff"
+        assert ("x-value", b"\xff") in headers.items()
+        assert ("x-value", b"missing") not in headers.items()
         headers.add("x-VALUE", b"\x80")
         headers.add("X-value", b"end", combine=True)
         assert headers["X-VALUE"] == b"\xff, \x80, end"
