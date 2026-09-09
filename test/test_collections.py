@@ -3,10 +3,12 @@ from __future__ import annotations
 import typing
 
 import pytest
-from typing_extensions import assert_type
 
 from urllib3._collections import HTTPHeaderDict
 from urllib3._collections import RecentlyUsedContainer as Container
+
+if typing.TYPE_CHECKING:
+    from typing_extensions import assert_type
 
 
 class TestLRUContainer:
@@ -174,14 +176,17 @@ class TestHTTPHeaderDict:
         text = HTTPHeaderDict({"X-Text": "value"})
         binary = HTTPHeaderDict({"X-Bytes": b"value"})
         mixed = HTTPHeaderDict[str | bytes]({"X-Text": "value", "X-Bytes": b"value"})
-        assert_type(text["X-Text"], str)
-        assert_type(text.setdefault("default"), str)
-        assert_type(binary["X-Bytes"], bytes)
-        assert_type(binary.getlist("X-Bytes"), list[bytes])
-        assert_type(binary.copy(), HTTPHeaderDict[bytes])
-        assert_type(mixed["X-Text"], str | bytes)
-        assert_type(mixed.setdefault("default"), str | bytes)
-        assert mixed["default"] == ""
+        if typing.TYPE_CHECKING:
+            assert_type(text["X-Text"], str)
+            assert_type(text.setdefault("default"), str)
+            assert_type(binary["X-Bytes"], bytes)
+            assert_type(binary.getlist("X-Bytes"), list[bytes])
+            assert_type(binary.copy(), HTTPHeaderDict[bytes])
+            assert_type(mixed["X-Text"], str | bytes)
+            assert_type(mixed.setdefault("default"), str | bytes)
+        assert text["X-Text"] == "value"
+        assert binary["X-Bytes"] == b"value"
+        assert mixed.setdefault("default") == ""
 
     @pytest.mark.parametrize("combine", [False, True])
     @pytest.mark.parametrize("first, second", [("one", b"two"), (b"one", "two")])
