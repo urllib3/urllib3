@@ -42,13 +42,18 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
-from .util.request import _TYPE_BODY_POSITION, set_file_position
+from .util.request import (
+    _TYPE_BODY_POSITION,
+    _add_url_auth,
+    _check_auth_header,
+    set_file_position,
+)
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
 from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
-from .util.url import parse_url
+from .util.url import _url_origin, parse_url
 from .util.util import to_str
 
 if typing.TYPE_CHECKING:
@@ -708,6 +713,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
         """
+        url_auth = None
         # Ensure that the URL we're connecting to is properly encoded
         if url.startswith("/"):
             # URLs starting with / are inherently schemeless.
@@ -716,10 +722,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         else:
             parsed_url = parse_url(url)
             destination_scheme = parsed_url.scheme
-            url = to_str(parsed_url._replace(fragment=None).url)
+            url_auth = parsed_url.auth_decoded_joined
+            url = to_str(parsed_url._replace(auth=None, fragment=None).url)
 
         if headers is None:
             headers = self.headers
+        headers = _add_url_auth(url_auth, headers)
 
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
@@ -751,8 +759,19 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Merge the proxy headers. Only done when not using HTTP CONNECT. We
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
+        for key, value in self.proxy_headers.items():
+            if to_str(key).lower() == "proxy-authorization":
+                matched = _check_auth_header(
+                    headers, "Proxy-Authorization", to_str(value)
+                )
+                if http_tunnel_required and matched:
+                    headers = HTTPHeaderDict(headers)
+                    headers.discard("Proxy-Authorization")
         if not http_tunnel_required:
-            headers = headers.copy()  # type: ignore[attr-defined]
+            if self.proxy_headers:
+                headers = HTTPHeaderDict(headers)
+            else:
+                headers = headers.copy()  # type: ignore[attr-defined]
             headers.update(self.proxy_headers)  # type: ignore[union-attr]
 
         # Must keep the exception bound to a separate variable or else Python 3
@@ -917,11 +936,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 headers = HTTPHeaderDict(headers)._prepare_for_method_change()
 
             # Strip headers marked as unsafe to forward to the redirected location.
-            # Check remove_headers_on_redirect to avoid a potential network call within
-            # self.is_same_host() which may use socket.gethostbyname() in the future.
-            if retries.remove_headers_on_redirect and not self.is_same_host(
-                redirect_location
-            ):
+            # A forwarding proxy's connection host is not the target origin.
+            same_origin = (
+                _url_origin(parse_url(url)) == _url_origin(parse_url(redirect_location))
+                if self.proxy is not None and not redirect_location.startswith("/")
+                else self.is_same_host(redirect_location)
+            )
+            if retries.remove_headers_on_redirect and not same_origin:
                 new_headers = headers.copy()  # type: ignore[union-attr]
                 for header in headers:
                     if header.lower() in retries.remove_headers_on_redirect:
@@ -938,7 +959,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             response.drain_conn()
             retries.sleep_for_retry(response)
-            log.debug("Redirecting %s -> %s", url, redirect_location)
+            log.debug(
+                "Redirecting %s -> %s",
+                url,
+                parse_url(redirect_location)._replace(auth=None).url,
+            )
             return self.urlopen(
                 method,
                 redirect_location,
