@@ -479,7 +479,7 @@ class BaseHTTPResponse(io.IOBase):
         retries: Retry | None = None,
     ) -> None:
         if isinstance(headers, HTTPHeaderDict):
-            self.headers = headers
+            self.headers: HTTPHeaderDict[str] = headers
         else:
             self.headers = HTTPHeaderDict(headers)  # type: ignore[arg-type]
         self.status = status
@@ -682,14 +682,14 @@ class BaseHTTPResponse(io.IOBase):
             return len(temp)
 
     # Methods used by dependent libraries
-    def getheaders(self) -> HTTPHeaderDict:
+    def getheaders(self) -> HTTPHeaderDict[str]:
         return self.headers
 
     def getheader(self, name: str, default: str | None = None) -> str | None:
         return self.headers.get(name, default)
 
     # Compatibility method for http.cookiejar
-    def info(self) -> HTTPHeaderDict:
+    def info(self) -> HTTPHeaderDict[str]:
         return self.headers
 
     def geturl(self) -> str | None:

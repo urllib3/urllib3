@@ -2058,6 +2058,38 @@ class TestErrorWrapping(SocketDummyServerTestCase):
 
 
 class TestHeaders(SocketDummyServerTestCase):
+    @pytest.mark.parametrize("method", ["GET", "POST"])
+    @pytest.mark.parametrize("combine", [False, True])
+    def test_byte_header_values_sent_unchanged(
+        self, method: str, combine: bool
+    ) -> None:
+        buffer = b""
+
+        def socket_handler(listener: socket.socket) -> None:
+            nonlocal buffer
+            with listener.accept()[0] as sock:
+                while b"\r\n\r\n" not in buffer:
+                    data = sock.recv(65536)
+                    if not data:
+                        break
+                    buffer += data
+                sock.sendall(b"HTTP/1.1 204 No Content\r\nX-Reply: text\r\n\r\n")
+
+        self._start_server(socket_handler)
+        headers = HTTPHeaderDict[str | bytes]({"X-Octets": b"\xff\x80"})
+        headers.add("x-octets", b"\xfe", combine=combine)
+        headers["X-Text"] = "normal"
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            response = pool.request(method, "/", headers=headers)
+            assert response.headers["X-Reply"] == "text"
+        expected = (
+            b"X-Octets: \xff\x80, \xfe\r\n"
+            if combine
+            else b"X-Octets: \xff\x80\r\nX-Octets: \xfe\r\n"
+        )
+        assert expected in buffer
+        assert b"X-Text: normal\r\n" in buffer
+
     def test_httplib_headers_case_insensitive(self) -> None:
         self.start_response_handler(
             b"HTTP/1.1 200 OK\r\n"
@@ -2242,7 +2274,7 @@ class TestHeaders(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-        headers = HTTPHeaderDict()
+        headers = HTTPHeaderDict[str]()
         headers.add("A", "1")
         headers.add("C", "3")
         headers.add("B", "2")

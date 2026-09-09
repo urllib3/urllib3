@@ -237,7 +237,7 @@ class HTTP2Connection(HTTPSConnection):
                     events = conn.receive_data(received_data)
                     for event in events:
                         if isinstance(event, h2.events.ResponseReceived):
-                            headers = HTTPHeaderDict()
+                            headers = HTTPHeaderDict[str]()
                             for header, value in event.headers:
                                 if header == b":status":
                                     status = int(value.decode())
@@ -271,7 +271,7 @@ class HTTP2Connection(HTTPSConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         *,
         preload_content: bool = True,
         decode_content: bool = True,
@@ -327,7 +327,7 @@ class HTTP2Response(BaseHTTPResponse):
     def __init__(
         self,
         status: int,
-        headers: HTTPHeaderDict,
+        headers: HTTPHeaderDict[str],
         request_url: str,
         data: bytes,
         decode_content: bool = False,  # TODO: support decoding

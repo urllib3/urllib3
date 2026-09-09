@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing
 
 import pytest
+from typing_extensions import assert_type
 
 from urllib3._collections import HTTPHeaderDict
 from urllib3._collections import RecentlyUsedContainer as Container
@@ -145,13 +146,91 @@ class NonMappingHeaderContainer:
 
 
 @pytest.fixture()
-def d() -> HTTPHeaderDict:
+def d() -> HTTPHeaderDict[str]:
     header_dict = HTTPHeaderDict(Cookie="foo")
     header_dict.add("cookie", "bar")
     return header_dict
 
 
 class TestHTTPHeaderDict:
+    def test_byte_values(self) -> None:
+        headers = HTTPHeaderDict({"X-Value": b"\xff"})
+        assert headers["x-value"] == b"\xff"
+        headers.add("x-VALUE", b"\x80")
+        headers.add("X-value", b"end", combine=True)
+        assert headers["X-VALUE"] == b"\xff, \x80, end"
+        assert headers.getlist("x-value") == [b"\xff", b"\x80, end"]
+        assert list(headers.items()) == [
+            ("X-Value", b"\xff"),
+            ("X-Value", b"\x80, end"),
+        ]
+        assert list(headers.itermerged()) == [("X-Value", b"\xff, \x80, end")]
+        assert ("x-value", b"\xff") in headers.items()
+        assert ("x-value", "\xff") not in headers.items()  # type: ignore[comparison-overlap]
+        assert headers == {"x-value": b"\xff, \x80, end"}
+        assert headers != {"x-value": "\xff, \x80, end"}
+
+    def test_header_value_types(self) -> None:
+        text = HTTPHeaderDict({"X-Text": "value"})
+        binary = HTTPHeaderDict({"X-Bytes": b"value"})
+        mixed = HTTPHeaderDict[str | bytes]({"X-Text": "value", "X-Bytes": b"value"})
+        assert_type(text["X-Text"], str)
+        assert_type(text.setdefault("default"), str)
+        assert_type(binary["X-Bytes"], bytes)
+        assert_type(binary.getlist("X-Bytes"), list[bytes])
+        assert_type(binary.copy(), HTTPHeaderDict[bytes])
+        assert_type(mixed["X-Text"], str | bytes)
+        assert_type(mixed.setdefault("default"), str | bytes)
+        assert mixed["default"] == ""
+
+    @pytest.mark.parametrize("combine", [False, True])
+    @pytest.mark.parametrize("first, second", [("one", b"two"), (b"one", "two")])
+    def test_mixed_value_types_rejected(
+        self, first: str | bytes, second: str | bytes, combine: bool
+    ) -> None:
+        headers = HTTPHeaderDict({"X-Value": first})
+        with pytest.raises(TypeError, match="Cannot mix str and bytes"):
+            headers.add("x-value", second, combine=combine)
+        assert headers.getlist("X-VALUE") == [first]
+        headers["x-value"] = second
+        assert headers.getlist("X-VALUE") == [second]
+        headers["Other"] = first
+        assert list(headers) == ["x-value", "Other"]
+
+    def test_byte_values_copy_and_extend(self) -> None:
+        headers = HTTPHeaderDict({"X-Value": b"one"})
+        headers.add("x-value", b"two")
+        for clone in [headers.copy(), HTTPHeaderDict(headers)]:
+            clone.add("x-value", b"three")
+            assert clone.getlist("x-value") == [b"one", b"two", b"three"]
+        values = headers.getlist("x-value")
+        values.append(b"four")
+        assert headers.getlist("x-value") == [b"one", b"two"]
+        extended = HTTPHeaderDict[bytes]()
+        extended.extend(headers)
+        assert list(extended.items()) == list(headers.items())
+        assert extended.setdefault("New", b"default") == b"default"
+        assert extended.setdefault("NEW", b"unused") == b"default"
+        assert extended.getlist("missing") == []
+        assert extended.getlist("missing", None) is None
+
+    def test_byte_values_union(self) -> None:
+        headers = HTTPHeaderDict({"X-Value": b"one"})
+        assert (headers | {"x-value": b"two"})["x-value"] == b"one, two"
+        assert ({"x-value": b"zero"} | headers)["x-value"] == b"zero, one"
+        headers |= {"x-value": b"two"}
+        assert headers.pop("X-VALUE") == b"one, two"
+        assert not headers
+
+    @pytest.mark.parametrize("value", [1, None, bytearray(b"value")])
+    def test_invalid_value_type_rejected(self, value: object) -> None:
+        headers = HTTPHeaderDict({"X-Value": "original"})
+        with pytest.raises(TypeError, match="Header values must be str or bytes"):
+            headers["x-value"] = value  # type: ignore[assignment]
+        with pytest.raises(TypeError, match="Header values must be str or bytes"):
+            headers.add("new", value)  # type: ignore[arg-type]
+        assert headers == {"X-Value": "original"}
+
     def test_create_from_kwargs(self) -> None:
         h = HTTPHeaderDict(ab="1", cd="2", ef="3", gh="4")
         assert len(h) == 4
@@ -210,7 +289,7 @@ class TestHTTPHeaderDict:
         assert h is not org
         assert h == org
 
-    def test_setitem(self, d: HTTPHeaderDict) -> None:
+    def test_setitem(self, d: HTTPHeaderDict[str]) -> None:
         d["Cookie"] = "foo"
         # The bytes value gets converted to str. The API is typed for str only,
         # but the implementation continues supports bytes.
@@ -219,27 +298,27 @@ class TestHTTPHeaderDict:
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
 
-    def test_update(self, d: HTTPHeaderDict) -> None:
+    def test_update(self, d: HTTPHeaderDict[str]) -> None:
         d.update(dict(Cookie="foo"))
         assert d["cookie"] == "foo"
         d.update(dict(cookie="with, comma"))
         assert d.getlist("cookie") == ["with, comma"]
 
-    def test_delitem(self, d: HTTPHeaderDict) -> None:
+    def test_delitem(self, d: HTTPHeaderDict[str]) -> None:
         del d["cookie"]
         assert "cookie" not in d
         assert "COOKIE" not in d
 
-    def test_delitem_with_bytes_key(self, d: HTTPHeaderDict) -> None:
+    def test_delitem_with_bytes_key(self, d: HTTPHeaderDict[str]) -> None:
         del d[b"cookie"]  # type: ignore[arg-type]
         assert "cookie" not in d
 
-    def test_add_well_known_multiheader(self, d: HTTPHeaderDict) -> None:
+    def test_add_well_known_multiheader(self, d: HTTPHeaderDict[str]) -> None:
         d.add("COOKIE", "asdf")
         assert d.getlist("cookie") == ["foo", "bar", "asdf"]
         assert d["cookie"] == "foo, bar, asdf"
 
-    def test_add_comma_separated_multiheader(self, d: HTTPHeaderDict) -> None:
+    def test_add_comma_separated_multiheader(self, d: HTTPHeaderDict[str]) -> None:
         d.add("bar", "foo")
         # The bytes value gets converted to str. The API is typed for str only,
         # but the implementation continues supports bytes.
@@ -248,25 +327,25 @@ class TestHTTPHeaderDict:
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
         assert d["bar"] == "foo, bar, asdf"
 
-    def test_extend_from_list(self, d: HTTPHeaderDict) -> None:
+    def test_extend_from_list(self, d: HTTPHeaderDict[str]) -> None:
         d.extend([("set-cookie", "100"), ("set-cookie", "200"), ("set-cookie", "300")])
         assert d["set-cookie"] == "100, 200, 300"
 
-    def test_extend_from_dict(self, d: HTTPHeaderDict) -> None:
+    def test_extend_from_dict(self, d: HTTPHeaderDict[str]) -> None:
         d.extend(dict(cookie="asdf"), b="100")
         assert d["cookie"] == "foo, bar, asdf"
         assert d["b"] == "100"
         d.add("cookie", "with, comma")
         assert d.getlist("cookie") == ["foo", "bar", "asdf", "with, comma"]
 
-    def test_extend_from_container(self, d: HTTPHeaderDict) -> None:
+    def test_extend_from_container(self, d: HTTPHeaderDict[str]) -> None:
         h = NonMappingHeaderContainer(Cookie="foo", e="foofoo")
         d.extend(h)
         assert d["cookie"] == "foo, bar, foo"
         assert d["e"] == "foofoo"
         assert len(d) == 2
 
-    def test_header_repeat(self, d: HTTPHeaderDict) -> None:
+    def test_header_repeat(self, d: HTTPHeaderDict[str]) -> None:
         d["other-header"] = "hello"
         d.add("other-header", "world")
 
@@ -289,12 +368,12 @@ class TestHTTPHeaderDict:
         # make sure the values persist over copies
         assert list(d.copy().items()) == expected_results
 
-        other_dict = HTTPHeaderDict()
+        other_dict = HTTPHeaderDict[str]()
         # we also need for extensions to properly maintain results
         other_dict.extend(d)
         assert list(other_dict.items()) == expected_results
 
-    def test_extend_from_headerdict(self, d: HTTPHeaderDict) -> None:
+    def test_extend_from_headerdict(self, d: HTTPHeaderDict[str]) -> None:
         h = HTTPHeaderDict(Cookie="foo", e="foofoo")
         d.extend(h)
         assert d["cookie"] == "foo, bar, foo"
@@ -303,43 +382,43 @@ class TestHTTPHeaderDict:
 
     @pytest.mark.parametrize("args", [(1, 2), (1, 2, 3, 4, 5)])
     def test_extend_with_wrong_number_of_args_is_typeerror(
-        self, d: HTTPHeaderDict, args: tuple[int, ...]
+        self, d: HTTPHeaderDict[str], args: tuple[int, ...]
     ) -> None:
         with pytest.raises(
             TypeError, match=r"extend\(\) takes at most 1 positional arguments"
         ):
             d.extend(*args)  # type: ignore[arg-type]
 
-    def test_copy(self, d: HTTPHeaderDict) -> None:
+    def test_copy(self, d: HTTPHeaderDict[str]) -> None:
         h = d.copy()
         assert d is not h
         assert d == h
 
-    def test_getlist(self, d: HTTPHeaderDict) -> None:
+    def test_getlist(self, d: HTTPHeaderDict[str]) -> None:
         assert d.getlist("cookie") == ["foo", "bar"]
         assert d.getlist("Cookie") == ["foo", "bar"]
         assert d.getlist("b") == []
         d.add("b", "asdf")
         assert d.getlist("b") == ["asdf"]
 
-    def test_getlist_with_bytes_key(self, d: HTTPHeaderDict) -> None:
+    def test_getlist_with_bytes_key(self, d: HTTPHeaderDict[str]) -> None:
         assert d.getlist(b"cookie") == ["foo", "bar"]  # type: ignore[call-overload]
 
-    def test_getitem_with_bytes(self, d: HTTPHeaderDict) -> None:
+    def test_getitem_with_bytes(self, d: HTTPHeaderDict[str]) -> None:
         d["Content-Type"] = "application/json"
         d.add("Content-Type", "charset=utf-8")
         result = d[b"Content-Type"]  # type: ignore[index]
         assert result == "application/json, charset=utf-8"
 
-    def test_contains_with_bytes(self, d: HTTPHeaderDict) -> None:
+    def test_contains_with_bytes(self, d: HTTPHeaderDict[str]) -> None:
         d["Content-Type"] = "application/json"
         assert b"Content-Type" in d  # type: ignore[comparison-overlap]
         assert b"X-Not-There" not in d  # type: ignore[comparison-overlap]
 
-    def test_getlist_after_copy(self, d: HTTPHeaderDict) -> None:
+    def test_getlist_after_copy(self, d: HTTPHeaderDict[str]) -> None:
         assert d.getlist("cookie") == HTTPHeaderDict(d).getlist("cookie")
 
-    def test_equal(self, d: HTTPHeaderDict) -> None:
+    def test_equal(self, d: HTTPHeaderDict[str]) -> None:
         b = HTTPHeaderDict(cookie="foo, bar")
         c = NonMappingHeaderContainer(cookie="foo, bar")
         e = [("cookie", "foo, bar")]
@@ -348,7 +427,7 @@ class TestHTTPHeaderDict:
         assert d == e
         assert d != 2
 
-    def test_not_equal(self, d: HTTPHeaderDict) -> None:
+    def test_not_equal(self, d: HTTPHeaderDict[str]) -> None:
         b = HTTPHeaderDict(cookie="foo, bar")
         c = NonMappingHeaderContainer(cookie="foo, bar")
         e = [("cookie", "foo, bar")]
@@ -357,7 +436,7 @@ class TestHTTPHeaderDict:
         assert not (d != e)
         assert d != 2
 
-    def test_pop(self, d: HTTPHeaderDict) -> None:
+    def test_pop(self, d: HTTPHeaderDict[str]) -> None:
         key = "Cookie"
         a = d[key]
         b = d.pop(key)
@@ -368,23 +447,23 @@ class TestHTTPHeaderDict:
         dummy = object()
         assert dummy is d.pop(key, dummy)
 
-    def test_discard(self, d: HTTPHeaderDict) -> None:
+    def test_discard(self, d: HTTPHeaderDict[str]) -> None:
         d.discard("cookie")
         assert "cookie" not in d
         d.discard("cookie")
 
-    def test_len(self, d: HTTPHeaderDict) -> None:
+    def test_len(self, d: HTTPHeaderDict[str]) -> None:
         assert len(d) == 1
         d.add("cookie", "bla")
         d.add("asdf", "foo")
         # len determined by unique fieldnames
         assert len(d) == 2
 
-    def test_repr(self, d: HTTPHeaderDict) -> None:
+    def test_repr(self, d: HTTPHeaderDict[str]) -> None:
         rep = "HTTPHeaderDict({'Cookie': 'foo, bar'})"
         assert repr(d) == rep
 
-    def test_items(self, d: HTTPHeaderDict) -> None:
+    def test_items(self, d: HTTPHeaderDict[str]) -> None:
         items = d.items()
         assert len(items) == 2
         assert list(items) == [
@@ -398,7 +477,7 @@ class TestHTTPHeaderDict:
         assert ("Cookie", 1) not in items  # type: ignore[comparison-overlap]
         assert "Cookie" not in items  # type: ignore[comparison-overlap]
 
-    def test_dict_conversion(self, d: HTTPHeaderDict) -> None:
+    def test_dict_conversion(self, d: HTTPHeaderDict[str]) -> None:
         # Also tested in connectionpool, needs to preserve case
         hdict = {
             "Content-Length": "0",
@@ -409,7 +488,7 @@ class TestHTTPHeaderDict:
         assert hdict == h
         assert hdict == dict(HTTPHeaderDict(hdict))
 
-    def test_string_enforcement(self, d: HTTPHeaderDict) -> None:
+    def test_string_enforcement(self, d: HTTPHeaderDict[str]) -> None:
         # This currently throws AttributeError on key.lower(), should
         # probably be something nicer
         with pytest.raises(Exception):
@@ -419,9 +498,9 @@ class TestHTTPHeaderDict:
         with pytest.raises(Exception):
             del d[3]  # type: ignore[arg-type]
         with pytest.raises(Exception):
-            HTTPHeaderDict({3: 3})  # type: ignore[arg-type]
+            HTTPHeaderDict({3: 3})  # type: ignore[type-var, dict-item]
 
-    def test_dunder_contains(self, d: HTTPHeaderDict) -> None:
+    def test_dunder_contains(self, d: HTTPHeaderDict[str]) -> None:
         """
         Test:
 
@@ -438,35 +517,35 @@ class TestHTTPHeaderDict:
         assert "Not a cookie" not in d
 
         marker = object()
-        d._container[marker] = ["some", "strings"]  # type: ignore[index]
+        d._container[marker] = ("some", ["strings"])  # type: ignore[index]
         assert marker not in d
         assert marker in d._container
 
-    def test_union(self, d: HTTPHeaderDict) -> None:
+    def test_union(self, d: HTTPHeaderDict[str]) -> None:
         to_merge = {"Cookie": "tim-tam"}
         result = d | to_merge
         assert result == HTTPHeaderDict({"Cookie": "foo, bar, tim-tam"})
         assert to_merge == {"Cookie": "tim-tam"}
         assert d == HTTPHeaderDict({"Cookie": "foo, bar"})
 
-    def test_union_rhs(self, d: HTTPHeaderDict) -> None:
+    def test_union_rhs(self, d: HTTPHeaderDict[str]) -> None:
         to_merge = {"Cookie": "tim-tam"}
         result = to_merge | d
         assert result == HTTPHeaderDict({"Cookie": "tim-tam, foo, bar"})
         assert to_merge == {"Cookie": "tim-tam"}
         assert d == HTTPHeaderDict({"Cookie": "foo, bar"})
 
-    def test_inplace_union(self, d: HTTPHeaderDict) -> None:
+    def test_inplace_union(self, d: HTTPHeaderDict[str]) -> None:
         to_merge = {"Cookie": "tim-tam"}
         d |= to_merge
         assert d == HTTPHeaderDict({"Cookie": "foo, bar, tim-tam"})
 
-    def test_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
+    def test_union_with_unsupported_type(self, d: HTTPHeaderDict[str]) -> None:
         with pytest.raises(TypeError, match="unsupported operand type.*'int'"):
-            d | 42
+            d | 42  # type: ignore[operator]
         with pytest.raises(TypeError, match="unsupported operand type.*'float'"):
-            3.14 | d
+            3.14 | d  # type: ignore[operator]
 
-    def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
+    def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict[str]) -> None:
         with pytest.raises(TypeError, match="unsupported operand type.*'NoneType'"):
-            d |= None
+            d |= None  # type: ignore[arg-type]

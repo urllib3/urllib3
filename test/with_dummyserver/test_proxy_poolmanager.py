@@ -575,7 +575,7 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
 
     def test_headerdict(self) -> None:
         default_headers = HTTPHeaderDict(a="b")
-        proxy_headers = HTTPHeaderDict()
+        proxy_headers = HTTPHeaderDict[str]()
         proxy_headers.add("foo", "bar")
 
         with proxy_from_url(

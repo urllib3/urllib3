@@ -5,6 +5,11 @@ from collections import OrderedDict
 from enum import Enum, auto
 from threading import RLock
 
+_HeaderValueT = typing.TypeVar("_HeaderValueT", bound="str | bytes")
+_HeaderValueT_co = typing.TypeVar(
+    "_HeaderValueT_co", bound="str | bytes", covariant=True
+)
+
 if typing.TYPE_CHECKING:
     # We can only import Protocol if TYPE_CHECKING because it's a development
     # dependency, and is not available at runtime.
@@ -12,10 +17,10 @@ if typing.TYPE_CHECKING:
 
     from typing_extensions import Self
 
-    class HasGettableStringKeys(Protocol):
+    class HasGettableStringKeys(Protocol[_HeaderValueT_co]):
         def keys(self) -> typing.Iterator[str]: ...
 
-        def __getitem__(self, key: str) -> str: ...
+        def __getitem__(self, key: str) -> _HeaderValueT_co: ...
 
 
 __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
@@ -29,10 +34,10 @@ _VT = typing.TypeVar("_VT")
 _DT = typing.TypeVar("_DT")
 
 ValidHTTPHeaderSource = typing.Union[
-    "HTTPHeaderDict",
-    typing.Mapping[str, str],
-    typing.Iterable[tuple[str, str]],
-    "HasGettableStringKeys",
+    "HTTPHeaderDict[_HeaderValueT]",
+    typing.Mapping[str, _HeaderValueT],
+    typing.Iterable[tuple[str, _HeaderValueT]],
+    "HasGettableStringKeys[_HeaderValueT]",
 ]
 
 
@@ -42,20 +47,20 @@ class _Sentinel(Enum):
 
 def ensure_can_construct_http_header_dict(
     potential: object,
-) -> ValidHTTPHeaderSource | None:
+) -> ValidHTTPHeaderSource[str | bytes] | None:
     if isinstance(potential, HTTPHeaderDict):
         return potential
     elif isinstance(potential, typing.Mapping):
         # Full runtime checking of the contents of a Mapping is expensive, so for the
         # purposes of typechecking, we assume that any Mapping is the right shape.
-        return typing.cast(typing.Mapping[str, str], potential)
+        return typing.cast(typing.Mapping[str, str | bytes], potential)
     elif isinstance(potential, typing.Iterable):
         # Similarly to Mapping, full runtime checking of the contents of an Iterable is
         # expensive, so for the purposes of typechecking, we assume that any Iterable
         # is the right shape.
-        return typing.cast(typing.Iterable[tuple[str, str]], potential)
+        return typing.cast(typing.Iterable[tuple[str, str | bytes]], potential)
     elif hasattr(potential, "keys") and hasattr(potential, "__getitem__"):
-        return typing.cast("HasGettableStringKeys", potential)
+        return typing.cast("HasGettableStringKeys[str | bytes]", potential)
     else:
         return None
 
@@ -153,7 +158,7 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
             return set(self._container.keys())
 
 
-class HTTPHeaderDictItemView(set[tuple[str, str]]):
+class HTTPHeaderDictItemView(set[tuple[str, _HeaderValueT]]):
     """
     HTTPHeaderDict is unusual for a Mapping[str, str] in that it has two modes of
     address.
@@ -182,26 +187,26 @@ class HTTPHeaderDictItemView(set[tuple[str, str]]):
     keys, ordered by time of first insertion.
     """
 
-    _headers: HTTPHeaderDict
+    _headers: HTTPHeaderDict[_HeaderValueT]
 
-    def __init__(self, headers: HTTPHeaderDict) -> None:
+    def __init__(self, headers: HTTPHeaderDict[_HeaderValueT]) -> None:
         self._headers = headers
 
     def __len__(self) -> int:
         return len(list(self._headers.iteritems()))
 
-    def __iter__(self) -> typing.Iterator[tuple[str, str]]:
+    def __iter__(self) -> typing.Iterator[tuple[str, _HeaderValueT]]:
         return self._headers.iteritems()
 
     def __contains__(self, item: object) -> bool:
         if isinstance(item, tuple) and len(item) == 2:
             passed_key, passed_val = item
-            if isinstance(passed_key, str) and isinstance(passed_val, str):
+            if isinstance(passed_key, str) and isinstance(passed_val, (str, bytes)):
                 return self._headers._has_value_for_header(passed_key, passed_val)
         return False
 
 
-class HTTPHeaderDict(typing.MutableMapping[str, str]):
+class HTTPHeaderDict(typing.MutableMapping[str, _HeaderValueT]):
     """
     :param headers:
         An iterable of field-value pairs. Must not contain multiple field names
@@ -211,6 +216,12 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         Additional field-value pairs to pass in to ``dict.update``.
 
     A ``dict`` like container for storing HTTP Headers.
+
+    Values may be strings or bytes. Byte values retain their original octets.
+    Repeated values of a field must all have the same type; adding bytes to a
+    string-valued field, or strings to a byte-valued field, raises ``TypeError``.
+    Use ``HTTPHeaderDict[str]`` for text-only headers or
+    ``HTTPHeaderDict[str | bytes]`` for request headers of either type.
 
     Field names are stored and compared case-insensitively in compliance with
     RFC 7230. Iteration provides the first case-sensitive key seen for each
@@ -235,9 +246,26 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
     '7'
     """
 
-    _container: typing.MutableMapping[str, list[str]]
+    # Single values are stored directly; repeated fields own a list of values.
+    _container: dict[str, tuple[str, _HeaderValueT | list[_HeaderValueT]]]
 
-    def __init__(self, headers: ValidHTTPHeaderSource | None = None, **kwargs: str):
+    @typing.overload
+    def __init__(
+        self, headers: typing.Mapping[str, _HeaderValueT], **kwargs: _HeaderValueT
+    ) -> None: ...
+
+    @typing.overload
+    def __init__(
+        self,
+        headers: ValidHTTPHeaderSource[_HeaderValueT] | None = None,
+        **kwargs: _HeaderValueT,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        headers: ValidHTTPHeaderSource[_HeaderValueT] | None = None,
+        **kwargs: _HeaderValueT,
+    ) -> None:
         super().__init__()
         self._container = {}  # 'dict' is insert-ordered
         if headers is not None:
@@ -248,17 +276,30 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         if kwargs:
             self.extend(kwargs)
 
-    def __setitem__(self, key: str, val: str) -> None:
+    def __setitem__(self, key: str, val: _HeaderValueT) -> None:
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
-        self._container[key.lower()] = [key, val]
+        if not isinstance(val, (str, bytes)):
+            raise TypeError("Header values must be str or bytes")
+        self._container[key.lower()] = (key, val)
 
-    def __getitem__(self, key: str) -> str:
+    @staticmethod
+    def _join_values(values: _HeaderValueT | list[_HeaderValueT]) -> _HeaderValueT:
+        if not isinstance(values, list):
+            return values
+        # Insertion enforces a single value type for each field.
+        if isinstance(values[0], bytes):
+            return typing.cast(
+                _HeaderValueT, b", ".join(typing.cast("list[bytes]", values))
+            )
+        return typing.cast(_HeaderValueT, ", ".join(typing.cast("list[str]", values)))
+
+    def __getitem__(self, key: str) -> _HeaderValueT:
         if isinstance(key, bytes):
             key = key.decode("latin-1")
-        val = self._container[key.lower()]
-        return ", ".join(val[1:])
+        _, values = self._container[key.lower()]
+        return self._join_values(values)
 
     def __delitem__(self, key: str) -> None:
         if isinstance(key, bytes):
@@ -272,18 +313,35 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             return key.lower() in self._container
         return False
 
-    def setdefault(self, key: str, default: str = "") -> str:
-        return super().setdefault(key, default)
+    @typing.overload
+    def setdefault(
+        self: HTTPHeaderDict[str] | HTTPHeaderDict[str | bytes], key: str
+    ) -> str | _HeaderValueT: ...
+
+    @typing.overload
+    def setdefault(self, key: str, default: _HeaderValueT) -> _HeaderValueT: ...
+
+    def setdefault(
+        self, key: str, default: _HeaderValueT | str = ""
+    ) -> _HeaderValueT | str:
+        try:
+            return self[key]
+        except KeyError:
+            # The overload permits an omitted default when str is a valid value.
+            self[key] = typing.cast(_HeaderValueT, default)
+            return default
 
     def __eq__(self, other: object) -> bool:
         maybe_constructable = ensure_can_construct_http_header_dict(other)
         if maybe_constructable is None:
             return False
         else:
-            other_as_http_header_dict = type(self)(maybe_constructable)
+            other_as_http_header_dict = HTTPHeaderDict[str | bytes](maybe_constructable)
 
-        return {k.lower(): v for k, v in self.itermerged()} == {
-            k.lower(): v for k, v in other_as_http_header_dict.itermerged()
+        # Compare value kinds before values to avoid text/bytes comparisons.
+        return {k.lower(): (isinstance(v, bytes), v) for k, v in self.itermerged()} == {
+            k.lower(): (isinstance(v, bytes), v)
+            for k, v in other_as_http_header_dict.itermerged()
         }
 
     def __ne__(self, other: object) -> bool:
@@ -294,8 +352,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
 
     def __iter__(self) -> typing.Iterator[str]:
         # Only provide the originally cased names
-        for vals in self._container.values():
-            yield vals[0]
+        for key, _ in self._container.values():
+            yield key
 
     def discard(self, key: str) -> None:
         try:
@@ -303,7 +361,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         except KeyError:
             pass
 
-    def add(self, key: str, val: str, *, combine: bool = False) -> None:
+    def add(self, key: str, val: _HeaderValueT, *, combine: bool = False) -> None:
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
@@ -326,19 +384,32 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         if isinstance(key, bytes):
             key = key.decode("latin-1")
         key_lower = key.lower()
-        new_vals = [key, val]
+        if not isinstance(val, (str, bytes)):
+            raise TypeError("Header values must be str or bytes")
+        new_vals = (key, val)
         # Keep the common case aka no item present as fast as possible
-        vals = self._container.setdefault(key_lower, new_vals)
-        if new_vals is not vals:
-            # if there are values here, then there is at least the initial
-            # key/value pair
-            assert len(vals) >= 2
-            if combine:
-                vals[-1] = vals[-1] + ", " + val
+        entry = self._container.setdefault(key_lower, new_vals)
+        if new_vals is not entry:
+            original_key, vals = entry
+            first = vals[0] if isinstance(vals, list) else vals
+            if isinstance(first, bytes) != isinstance(val, bytes):
+                raise TypeError("Cannot mix str and bytes values for the same header")
+            if isinstance(vals, list):
+                if combine:
+                    vals[-1] = self._join_values([vals[-1], val])
+                else:
+                    vals.append(val)
             else:
-                vals.append(val)
+                self._container[key_lower] = (
+                    original_key,
+                    self._join_values([vals, val]) if combine else [vals, val],
+                )
 
-    def extend(self, *args: ValidHTTPHeaderSource, **kwargs: str) -> None:
+    def extend(
+        self,
+        *args: ValidHTTPHeaderSource[_HeaderValueT],
+        **kwargs: _HeaderValueT,
+    ) -> None:
         """Generic import function for any type of header-like object.
         Adapted version of MutableMapping.update in order to insert items
         with self.add instead of self.__setitem__
@@ -371,30 +442,26 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             self.add(key, value)
 
     @typing.overload
-    def getlist(self, key: str) -> list[str]: ...
+    def getlist(self, key: str) -> list[_HeaderValueT]: ...
 
     @typing.overload
-    def getlist(self, key: str, default: _DT) -> list[str] | _DT: ...
+    def getlist(self, key: str, default: _DT) -> list[_HeaderValueT] | _DT: ...
 
     def getlist(
         self, key: str, default: _Sentinel | _DT = _Sentinel.not_passed
-    ) -> list[str] | _DT:
+    ) -> list[_HeaderValueT] | _DT:
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
         if isinstance(key, bytes):
             key = key.decode("latin-1")
         try:
-            vals = self._container[key.lower()]
+            _, vals = self._container[key.lower()]
         except KeyError:
             if default is _Sentinel.not_passed:
-                # _DT is unbound; empty list is instance of List[str]
                 return []
-            # _DT is bound; default is instance of _DT
             return default
         else:
-            # _DT may or may not be bound; vals[1:] is instance of List[str], which
-            # meets our external interface requirement of `Union[List[str], _DT]`.
-            return vals[1:]
+            return vals.copy() if isinstance(vals, list) else [vals]
 
     def _prepare_for_method_change(self) -> Self:
         """
@@ -429,62 +496,72 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({dict(self.itermerged())})"
 
-    def _copy_from(self, other: HTTPHeaderDict) -> None:
-        for key in other:
-            val = other.getlist(key)
-            self._container[key.lower()] = [key, *val]
+    def _copy_from(self, other: HTTPHeaderDict[_HeaderValueT]) -> None:
+        self._container = {
+            lower: (key, values.copy() if isinstance(values, list) else values)
+            for lower, (key, values) in other._container.items()
+        }
 
     def copy(self) -> Self:
-        clone = type(self)()
+        clone: Self = type(self)()
         clone._copy_from(self)
         return clone
 
-    def iteritems(self) -> typing.Iterator[tuple[str, str]]:
+    def iteritems(self) -> typing.Iterator[tuple[str, _HeaderValueT]]:
         """Iterate over all header lines, including duplicate ones."""
-        for key in self:
-            vals = self._container[key.lower()]
-            for val in vals[1:]:
-                yield vals[0], val
+        for key, values in self._container.values():
+            if isinstance(values, list):
+                for val in values:
+                    yield key, val
+            else:
+                yield key, values
 
-    def itermerged(self) -> typing.Iterator[tuple[str, str]]:
+    def itermerged(self) -> typing.Iterator[tuple[str, _HeaderValueT]]:
         """Iterate over all headers, merging duplicate ones together."""
-        for key in self:
-            val = self._container[key.lower()]
-            yield val[0], ", ".join(val[1:])
+        for key, values in self._container.values():
+            yield key, self._join_values(values)
 
-    def items(self) -> HTTPHeaderDictItemView:  # type: ignore[override]
+    def items(self) -> HTTPHeaderDictItemView[_HeaderValueT]:  # type: ignore[override]
         return HTTPHeaderDictItemView(self)
 
-    def _has_value_for_header(self, header_name: str, potential_value: str) -> bool:
+    def _has_value_for_header(
+        self, header_name: str, potential_value: str | bytes
+    ) -> bool:
         if header_name in self:
-            return potential_value in self._container[header_name.lower()][1:]
+            _, values = self._container[header_name.lower()]
+            first = values[0] if isinstance(values, list) else values
+            if isinstance(first, bytes) != isinstance(potential_value, bytes):
+                return False
+            if isinstance(values, list):
+                return potential_value in values
+            return potential_value == values
         return False
 
-    def __ior__(self, other: object) -> HTTPHeaderDict:
+    def __ior__(self, other: ValidHTTPHeaderSource[_HeaderValueT]) -> Self:
         # Supports extending a header dict in-place using operator |=
         # combining items with add instead of __setitem__
         maybe_constructable = ensure_can_construct_http_header_dict(other)
         if maybe_constructable is None:
             return NotImplemented
-        self.extend(maybe_constructable)
+        self.extend(other)
         return self
 
-    def __or__(self, other: object) -> Self:
+    def __or__(self, other: ValidHTTPHeaderSource[_HeaderValueT]) -> Self:
         # Supports merging header dicts using operator |
         # combining items with add instead of __setitem__
         maybe_constructable = ensure_can_construct_http_header_dict(other)
         if maybe_constructable is None:
             return NotImplemented
         result = self.copy()
-        result.extend(maybe_constructable)
+        result.extend(other)
         return result
 
-    def __ror__(self, other: object) -> Self:
+    def __ror__(self, other: ValidHTTPHeaderSource[_HeaderValueT]) -> Self:
         # Supports merging header dicts using operator | when other is on left side
         # combining items with add instead of __setitem__
         maybe_constructable = ensure_can_construct_http_header_dict(other)
         if maybe_constructable is None:
             return NotImplemented
-        result = type(self)(maybe_constructable)
+        result = type(self)(other)
         result.extend(self)
         return result
