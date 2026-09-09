@@ -538,6 +538,30 @@ class TestConnectionPool(HypercornDummyServerTestCase):
         assert data["params"] == {}
         assert "Content-Type" not in HTTPHeaderDict(data["headers"])
 
+    @pytest.mark.parametrize("chunked_via", ["kwarg", "header"])
+    def test_303_redirect_makes_request_lose_body_framing(
+        self, chunked_via: str
+    ) -> None:
+        # The body is dropped, so the redirected GET must not keep announcing
+        # a chunked body that it is never going to send.
+        request_headers: dict[str, str] = {}
+        kw: dict[str, typing.Any] = {}
+        if chunked_via == "kwarg":
+            kw["chunked"] = True
+        else:
+            request_headers["Transfer-Encoding"] = "chunked"
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request(
+                "POST",
+                "/redirect?target=/headers_and_params",
+                body=iter([b"xxxxxxxx"]),
+                headers=request_headers,
+                **kw,
+            )
+        headers = HTTPHeaderDict(response.json()["headers"])
+        assert "Transfer-Encoding" not in headers
+        assert "Content-Length" not in headers
+
     def test_bad_connect(self) -> None:
         with HTTPConnectionPool("badhost.invalid", self.port) as pool:
             with pytest.raises(MaxRetryError) as e:
@@ -1500,19 +1524,6 @@ class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
 
         assert response.data == expected
 
-    def test_303_redirect_with_failed_tell(self) -> None:
-        """A 303 redirect must not rewind a discarded body."""
-
-        body = self.BadTellObject(b"the data")
-        url = "/redirect?target=/"
-        # httplib uses fileno if Content-Length isn't supplied,
-        # which is unsupported by BytesIO.
-        headers = {"Content-Length": "8"}
-        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
-            response = pool.urlopen("PUT", url, headers=headers, body=body)
-
-        assert response.status == 200
-
     def test_307_redirect_with_failed_tell(self) -> None:
         body = self.BadTellObject(b"the data")
         headers = {"Content-Length": "8"}
@@ -1526,6 +1537,19 @@ class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
                     headers=headers,
                     body=body,
                 )
+
+    def test_303_redirect_with_failed_tell(self) -> None:
+        """A 303 drops the body, so it never needs to be rewound."""
+
+        body = self.BadTellObject(b"the data")
+        url = "/redirect?target=/echo"
+        # httplib uses fileno if Content-Length isn't supplied,
+        # which is unsupported by BytesIO.
+        headers = {"Content-Length": "8"}
+        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
+            response = pool.urlopen("PUT", url, headers=headers, body=body)
+        assert response.status == 200
+        assert response.data == b""
 
 
 class TestRetryPoolSize(HypercornDummyServerTestCase):
