@@ -1,0 +1,1 @@
+Added streaming multipart encoding and decoding with buffered parts and support for rewinding file bodies.

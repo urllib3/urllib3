@@ -30,6 +30,7 @@ from urllib3.exceptions import (
     UnrewindableBodyError,
 )
 from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
+from urllib3.multipart import MultipartEncoder
 from urllib3.util import SKIP_HEADER, SKIPPABLE_HEADERS
 from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import _TYPE_TIMEOUT, Timeout
@@ -265,6 +266,29 @@ class TestConnectionPool(HypercornDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200, r.data
+
+    @pytest.mark.parametrize("redirect", [False, True])
+    def test_streaming_multipart_upload(self, redirect: bool) -> None:
+        source = io.BytesIO(b"skip" + b"data" * 16384)
+        source.seek(4)
+        encoder = MultipartEncoder.from_fields(
+            {
+                "upload_param": "filefield",
+                "upload_filename": "stream.bin",
+                "upload_size": str(65536),
+                "filefield": ("stream.bin", source),
+            }
+        )
+        url = "/redirect?target=/upload&status=307" if redirect else "/upload"
+        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
+            response = pool.request(
+                "POST",
+                url,
+                body=encoder,
+                headers={"Content-Type": encoder.content_type},
+            )
+        assert response.status == 200, response.data
+        assert not source.closed
 
     def test_one_name_multiple_values(self) -> None:
         fields = [("foo", "a"), ("foo", "b")]
