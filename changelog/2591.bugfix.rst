@@ -1,0 +1,1 @@
+Fixed TLS handshake timeouts being incorrectly raised as ``ReadTimeoutError`` instead of ``ConnectTimeoutError``.

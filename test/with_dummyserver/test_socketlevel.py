@@ -46,6 +46,7 @@ from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.connectionpool import _url_from_pool
 from urllib3.exceptions import (
+    ConnectTimeoutError,
     InsecureRequestWarning,
     MaxRetryError,
     ProtocolError,
@@ -554,8 +555,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
             finally:
                 timed_out.set()
 
-    def test_https_connection_read_timeout(self) -> None:
-        """Handshake timeouts should fail with a Timeout"""
+    def test_https_connection_timeout_classification(self) -> None:
+        """Handshake timeouts are connect timeouts; response timeouts are reads."""
         timed_out = Event()
 
         def socket_handler(listener: socket.socket) -> None:
@@ -566,19 +567,22 @@ class TestSocketClosing(SocketDummyServerTestCase):
             timed_out.wait()
             sock.close()
 
-        # first ReadTimeoutError due to SocketTimeout
         self._start_server(socket_handler)
+        timeout = Timeout(connect=SHORT_TIMEOUT, read=LONG_TIMEOUT)
         with HTTPSConnectionPool(
-            self.host, self.port, timeout=LONG_TIMEOUT, retries=False
+            self.host, self.port, timeout=timeout, retries=False
         ) as pool:
             try:
-                with pytest.raises(ReadTimeoutError):
+                with pytest.raises(
+                    ConnectTimeoutError,
+                    match=rf"connect timeout={SHORT_TIMEOUT}",
+                ):
                     pool.request("GET", "/")
             finally:
                 timed_out.set()
 
-        # second ReadTimeoutError due to errno
-        with HTTPSConnectionPool(host=self.host):
+        # A timeout detected while reading remains a ReadTimeoutError.
+        with HTTPSConnectionPool(host=self.host) as pool:
             err = OSError()
             err.errno = errno.EAGAIN
             with pytest.raises(ReadTimeoutError):
