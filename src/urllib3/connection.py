@@ -1039,8 +1039,6 @@ def _ssl_wrap_socket_and_match_hostname(
     else:
         context = ssl_context
 
-    context.verify_mode = resolve_cert_reqs(cert_reqs)
-
     # In some cases, we want to verify hostnames ourselves
     if (
         # `ssl` can't verify fingerprints or alternate hostnames
@@ -1085,6 +1083,7 @@ def _ssl_wrap_socket_and_match_hostname(
         ca_certs=ca_certs,
         ca_cert_dir=ca_cert_dir,
         ca_cert_data=ca_cert_data,
+        cert_reqs=resolve_cert_reqs(cert_reqs),
         server_hostname=server_hostname,
         ssl_context=context,
         tls_in_tls=tls_in_tls,

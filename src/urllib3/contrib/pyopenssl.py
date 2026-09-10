@@ -55,6 +55,7 @@ except ImportError:
 
 import logging
 import ssl
+import threading
 import typing
 from socket import socket as socket_cls
 
@@ -89,6 +90,13 @@ _stdlib_to_openssl_verify = {
     + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
 }
 _openssl_to_stdlib_verify = {v: k for k, v in _stdlib_to_openssl_verify.items()}
+
+_PYOPENSSL_VERSION = tuple(
+    int(part) for part in OpenSSL.__version__.split(".", maxsplit=2)[:2]
+)
+
+# pyOpenSSL 26.2.0+ rejects every Context mutation after first use.
+_PYOPENSSL_CONTEXT_IS_IMMUTABLE = _PYOPENSSL_VERSION >= (26, 2)
 
 # The SSLvX values are the most likely to be missing in the future
 # but we check them all just to be sure.
@@ -436,6 +444,8 @@ class PyOpenSSLContext:
     to calls into PyOpenSSL.
     """
 
+    _urllib3_context_is_immutable = _PYOPENSSL_CONTEXT_IS_IMMUTABLE
+
     def __init__(self, protocol: int) -> None:
         self.protocol = _openssl_versions[protocol]
         self._ctx = OpenSSL.SSL.Context(self.protocol)
@@ -444,6 +454,10 @@ class PyOpenSSLContext:
         self._minimum_version: int = ssl.TLSVersion.MINIMUM_SUPPORTED
         self._maximum_version: int = ssl.TLSVersion.MAXIMUM_SUPPORTED
         self._verify_flags: int = ssl.VERIFY_X509_TRUSTED_FIRST
+        # Serialize urllib3's one-time setup with first Connection creation and
+        # remember its inputs so later connections can avoid mutating the context.
+        self._urllib3_lock = threading.RLock()
+        self._urllib3_configuration: util.ssl_._SSLContextConfig | None = None
 
     @property
     def options(self) -> int:
@@ -508,9 +522,9 @@ class PyOpenSSLContext:
                 if not isinstance(password, bytes):
                     password = password.encode("utf-8")
                 # pyOpenSSL added cryptography-key support in 24.3.0.
-                # Keep using the older password-callback path until 2026's
-                # versions because set_passwd_cb() became deprecated in 26.3.0.
-                if int(OpenSSL.__version__.split(".")[0]) >= 26:
+                # Keep using the older password-callback path until
+                # set_passwd_cb() became deprecated in 26.3.0.
+                if _PYOPENSSL_VERSION >= (26, 3):
                     with open(keyfile or certfile, "rb") as key_file:
                         private_key = load_pem_private_key(key_file.read(), password)
                     # cryptography's loader returns a wider private-key union
@@ -537,6 +551,53 @@ class PyOpenSSLContext:
         server_hostname: bytes | str | None = None,
     ) -> WrappedSocket:
         cnx = OpenSSL.SSL.Connection(self._ctx, sock)
+        return self._wrap_socket(cnx, sock, server_hostname)
+
+    def _urllib3_wrap_socket(
+        self,
+        sock: socket_cls,
+        server_hostname: bytes | str | None,
+        configuration: util.ssl_._SSLContextConfig,
+    ) -> WrappedSocket:
+        """
+        Configure an immutable context and create a Connection atomically.
+
+        pyOpenSSL 26.2.0+ freezes a Context as soon as a Connection is created.
+        Holding the lock across both operations prevents another thread from
+        freezing a partially configured context. Identical later configurations
+        skip setup; incompatible reuse is rejected explicitly.
+        """
+        with self._urllib3_lock:
+            if self._urllib3_configuration is None:
+                if getattr(self._ctx, "_used", False):
+                    raise ValueError(
+                        "Cannot configure a pyOpenSSL context that was already used "
+                        "outside urllib3"
+                    )
+                util.ssl_._configure_context(
+                    typing.cast("ssl.SSLContext", self), configuration
+                )
+            elif self._urllib3_configuration != configuration:
+                raise ValueError(
+                    "Cannot reuse a pyOpenSSL context with a different urllib3 "
+                    "TLS configuration"
+                )
+
+            try:
+                cnx = OpenSSL.SSL.Connection(self._ctx, sock)
+            finally:
+                if getattr(self._ctx, "_used", False):
+                    self._urllib3_configuration = configuration
+
+        # Handshakes don't mutate the Context and can proceed concurrently.
+        return self._wrap_socket(cnx, sock, server_hostname)
+
+    def _wrap_socket(
+        self,
+        cnx: OpenSSL.SSL.Connection,
+        sock: socket_cls,
+        server_hostname: bytes | str | None,
+    ) -> WrappedSocket:
 
         # If server_hostname is an IP, don't use it for SNI, per RFC6066 Section 3
         if server_hostname and not util.ssl_.is_ipaddress(server_hostname):
