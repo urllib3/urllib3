@@ -1309,20 +1309,19 @@ class TestProxyManager(SocketDummyServerTestCase):
 
     def test_tunnel_sets_http_11_alpn(self) -> None:
         done_receiving = Event()
-        self.alpn_protocol: str | None = None
+        alpn_protocol: str | None = None
 
         def socket_handler(listener: socket.socket) -> None:
+            nonlocal alpn_protocol
             sock = listener.accept()[0]
 
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])
-            # The server picks the first protocol it prefers that the client
-            # also offered, so http/1.1 is negotiated only when the client
-            # offered nothing else.
-            context.set_alpn_protocols(DEFAULT_CERTS["alpn_protocols"])
+            # Prefer h2 so the assertion fails if the client offers it.
+            context.set_alpn_protocols(["h2", "http/1.1"])
             try:
                 with context.wrap_socket(sock, server_side=True) as ssl_sock:
-                    self.alpn_protocol = ssl_sock.selected_alpn_protocol()
+                    alpn_protocol = ssl_sock.selected_alpn_protocol()
             finally:
                 done_receiving.set()  # let the test know it can proceed
 
@@ -1333,7 +1332,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                 proxy.request("GET", "https://localhost/")
 
         done_receiving.wait()
-        assert self.alpn_protocol == "http/1.1"
+        assert alpn_protocol == "http/1.1"
 
     def test_connect_reconn(self) -> None:
         def proxy_ssl_one(listener: socket.socket) -> None:
