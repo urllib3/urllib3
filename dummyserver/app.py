@@ -303,6 +303,9 @@ async def successful_retry() -> ResponseReturnValue:
     if not test_name:
         return await make_response("test-name header not set", 400)
 
+    # Consume uploads before responding so body backpressure cannot stall retries.
+    await request.get_data()
+
     RETRY_TEST_NAMES[test_name] += 1
 
     if RETRY_TEST_NAMES[test_name] >= 2:

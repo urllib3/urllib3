@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import logging
+import os
 import platform
 import socket
 import time
@@ -30,6 +31,7 @@ from urllib3.exceptions import (
     UnrewindableBodyError,
 )
 from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
+from urllib3.multipart import MultipartEncoder
 from urllib3.util import SKIP_HEADER, SKIPPABLE_HEADERS
 from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import _TYPE_TIMEOUT, Timeout
@@ -303,6 +305,25 @@ class TestConnectionPool(HypercornDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200, r.data
+
+    def test_streaming_multipart_upload(self) -> None:
+        with open(__file__, "rb") as fd:
+            upload_size = os.fstat(fd.fileno()).st_size
+            body = MultipartEncoder(
+                {
+                    "upload_param": "myfile",
+                    "upload_filename": "test.py",
+                    "myfile": (
+                        "test.py",
+                        fd,
+                        "text/plain",
+                    ),
+                    "upload_size": f"{upload_size}",
+                }
+            )
+            with HTTPConnectionPool(self.host, self.port) as pool:
+                r = pool.request("POST", "/upload", headers=body.headers, body=body)
+                assert r.status == 200, r.data
 
     def test_nagle(self) -> None:
         """Test that connections have TCP_NODELAY turned on"""
@@ -1411,6 +1432,45 @@ class TestRetryAfter(HypercornDummyServerTestCase):
 
 
 class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
+    def test_status_retry_streaming_multipart(self) -> None:
+        body = MultipartEncoder({"file": ("upload.bin", io.BytesIO(b"data" * 20000))})
+        headers = body.headers
+        headers["test-name"] = "test_status_retry_streaming_multipart"
+        with (
+            HTTPConnectionPool(self.host, self.port, timeout=2) as pool,
+            mock.patch.object(body, "seek", wraps=body.seek) as seek,
+        ):
+            response = pool.request(
+                "PUT",
+                "/successful_retry",
+                body=body,
+                headers=headers,
+                retries=Retry(total=1, read=0, status_forcelist=[418]),
+            )
+        assert response.status == 200
+        seek.assert_called_once_with(0)
+        assert body.tell() == len(body)
+
+    @pytest.mark.parametrize("status", [307, 308])
+    def test_redirect_streaming_multipart(self, status: int) -> None:
+        payload = b"payload\x00\xff" * 10000
+        body = MultipartEncoder(
+            {"file": ("upload.bin", io.BytesIO(payload))}, boundary="test"
+        )
+        expected = encode_multipart_formdata(
+            {"file": ("upload.bin", payload)}, boundary="test"
+        )[0]
+        with HTTPConnectionPool(self.host, self.port, timeout=2) as pool:
+            response = pool.request(
+                "PUT",
+                f"/redirect?target=/echo&status={status}",
+                body=body,
+                headers=body.headers,
+                retries=Retry(total=1, read=0),
+            )
+        assert response.status == 200
+        assert response.data == expected
+
     def test_retries_put_filehandle(self) -> None:
         """HTTP PUT retry with a file-like object should not timeout"""
         with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
