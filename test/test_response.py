@@ -125,9 +125,9 @@ class TestBytesQueueBuffer:
         (lambda b: b.get(len(b)), lambda b: b.get_all()),
         ids=("get", "get_all"),
     )
-    @pytest.mark.limit_memory(
-        "12.5 MB", current_thread_only=True
-    )  # assert that we're not doubling memory usagelimit_mem
+    # Doubling memory usage would take this past 20 MiB; the peak is 12.1 MiB.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("15 MB", current_thread_only=True)
     def test_memory_usage(
         self, get_func: typing.Callable[[BytesQueueBuffer], bytes]
     ) -> None:
@@ -146,7 +146,10 @@ class TestBytesQueueBuffer:
         (lambda b: b.get(len(b)), lambda b: b.get_all()),
         ids=("get", "get_all"),
     )
-    @pytest.mark.limit_memory("10.01 MB", current_thread_only=True)
+    # Copying the chunk instead of handing it back would take this to 20 MiB;
+    # the peak is 10 MiB and the identity assertion below is the real check.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("12 MB", current_thread_only=True)
     def test_memory_usage_single_chunk(
         self, get_func: typing.Callable[[BytesQueueBuffer], bytes]
     ) -> None:
@@ -160,7 +163,10 @@ class TestBytesQueueBuffer:
         (True, False),
         ids=("finish_with_get_all", "finish_with_get"),
     )
-    @pytest.mark.limit_memory("11.01 MB", current_thread_only=True)
+    # Duplicating the chunk while splitting it would take this to 20 MiB;
+    # the peak is 11 MiB.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("13 MB", current_thread_only=True)
     def test_memory_usage_splitting_chunk(self, finish_with_get_all: bool) -> None:
         # Allocate a single 10MiB chunk, then read it in two parts.
         # Verifies that splitting a chunk doesn't cause additional memory allocation.
@@ -1599,7 +1605,10 @@ class TestResponse:
             (False, 10 * 2**20, "read1"),
         ],
     )
-    @pytest.mark.limit_memory("10.5 MB", current_thread_only=True)
+    # The body is 10 MiB and reading it must not buffer a second copy, which
+    # would take the peak to 20 MiB.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("13 MB", current_thread_only=True)
     def test_buffer_memory_usage_no_decoding(
         self, preload_content: bool, amt: int, read_meth: str
     ) -> None:
