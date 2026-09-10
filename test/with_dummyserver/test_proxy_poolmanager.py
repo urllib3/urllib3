@@ -450,6 +450,21 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             assert r._pool is not None
             assert r._pool.host == self.https_host
 
+    @pytest.mark.parametrize("secure_proxy", [False, True])
+    @pytest.mark.parametrize("secure_origin", [False, True])
+    def test_url_credentials(self, secure_proxy: bool, secure_origin: bool) -> None:
+        proxy_url = self.https_proxy_url if secure_proxy else self.proxy_url
+        origin_url = self.https_url if secure_origin else self.http_url
+        proxy_url = proxy_url.replace("://", "://proxy:secret@", 1)
+        origin_url = origin_url.replace("://", "://user:pass@", 1)
+        with proxy_from_url(proxy_url, ca_certs=DEFAULT_CA) as http:
+            response = http.request("GET", f"{origin_url}/headers")
+            headers = response.json()
+            assert headers["Authorization"] == "Basic dXNlcjpwYXNz"
+            assert http.proxy_headers["proxy-authorization"] == "Basic cHJveHk6c2VjcmV0"
+            if secure_origin:
+                assert "Proxy-Authorization" not in headers
+
     def test_headers(self) -> None:
         with proxy_from_url(
             self.proxy_url,

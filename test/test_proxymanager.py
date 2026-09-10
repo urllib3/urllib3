@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from urllib3.exceptions import (
@@ -10,6 +12,7 @@ from urllib3.exceptions import (
 )
 from urllib3.poolmanager import ProxyManager
 from urllib3.response import HTTPResponse
+from urllib3.util.request import make_headers
 from urllib3.util.retry import Retry
 from urllib3.util.url import parse_url
 
@@ -17,6 +20,54 @@ from .port_helpers import find_unused_port
 
 
 class TestProxyManager:
+    def test_proxy_url_auth_sets_proxy_authorization_without_leaking_to_origin(
+        self,
+    ) -> None:
+        pool = MagicMock()
+        response = MagicMock()
+        response.get_redirect_location.return_value = False
+        pool.urlopen.return_value = response
+        manager = ProxyManager("http://proxy-user:proxy-pass@proxy.example")
+        manager.connection_from_host = MagicMock(return_value=pool)  # type: ignore[method-assign]
+
+        manager.urlopen("GET", "http://origin-user:origin-pass@example.com/path")
+
+        call_url = pool.urlopen.call_args.args[1]
+        call_headers = pool.urlopen.call_args.kwargs["headers"]
+        assert call_url == "http://example.com/path"
+        assert (
+            call_headers["authorization"]
+            == make_headers(basic_auth="origin-user:origin-pass")["authorization"]
+        )
+        assert "proxy-authorization" not in call_headers
+        assert (
+            manager.proxy_headers["proxy-authorization"]
+            == make_headers(proxy_basic_auth="proxy-user:proxy-pass")[
+                "proxy-authorization"
+            ]
+        )
+
+    @pytest.mark.parametrize(
+        "header_name", ["Proxy-Authorization", "proxy-authorization"]
+    )
+    @pytest.mark.parametrize("scheme", ["http", "https"])
+    def test_proxy_url_auth_accepts_matching_proxy_header(
+        self, header_name: str, scheme: str
+    ) -> None:
+        auth = make_headers(proxy_basic_auth="user:pass")["proxy-authorization"]
+        manager = ProxyManager(
+            f"{scheme}://user:pass@proxy.example", proxy_headers={header_name: auth}
+        )
+
+        assert manager.proxy_headers[header_name] == auth
+
+    def test_proxy_url_auth_rejects_mismatched_proxy_header(self) -> None:
+        with pytest.raises(ValueError, match="do not match"):
+            ProxyManager(
+                "http://user:pass@proxy.example",
+                proxy_headers={"Proxy-Authorization": "Basic wrong"},
+            )
+
     @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
     def test_proxy_headers(self, proxy_scheme: str) -> None:
         url = "http://pypi.org/project/urllib3/"
