@@ -19,6 +19,7 @@ from ..exceptions import (
     ProxyError,
     ReadTimeoutError,
     ResponseError,
+    RetryAfterError,
 )
 from .util import reraise
 
@@ -192,7 +193,13 @@ class Retry:
     :param int retry_after_max: Number of seconds to allow as the maximum for
         Retry-After headers. Defaults to :attr:`Retry.DEFAULT_RETRY_AFTER_MAX`.
         Any Retry-After headers larger than this value will be limited to this
-        value.
+        value unless ``raise_on_retry_after`` is enabled.
+
+    :param bool raise_on_retry_after:
+        If True, raise :class:`~urllib3.exceptions.RetryAfterError` when parsing
+        a Retry-After header whose delay exceeds ``retry_after_max``. The
+        exception contains the uncapped delay so callers can schedule a later
+        attempt. If False (the default), the delay is capped instead.
     """
 
     #: Default methods to be used for ``allowed_methods``
@@ -240,6 +247,7 @@ class Retry:
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
         backoff_jitter: float = 0.0,
         retry_after_max: int = DEFAULT_RETRY_AFTER_MAX,
+        raise_on_retry_after: bool = False,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -266,6 +274,7 @@ class Retry:
         self.backoff_factor = backoff_factor
         self.backoff_max = backoff_max
         self.retry_after_max = retry_after_max
+        self.raise_on_retry_after = raise_on_retry_after
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
         self.history = history or ()
@@ -288,6 +297,7 @@ class Retry:
             backoff_factor=self.backoff_factor,
             backoff_max=self.backoff_max,
             retry_after_max=self.retry_after_max,
+            raise_on_retry_after=self.raise_on_retry_after,
             raise_on_redirect=self.raise_on_redirect,
             raise_on_status=self.raise_on_status,
             history=self.history,
@@ -354,6 +364,8 @@ class Retry:
 
         # Check the seconds do not exceed the specified maximum
         if seconds > self.retry_after_max:
+            if self.raise_on_retry_after:
+                raise RetryAfterError(seconds, self.retry_after_max)
             seconds = self.retry_after_max
 
         return seconds
