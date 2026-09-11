@@ -510,6 +510,12 @@ be resolved in different ways.
     verification enabled. Follow the :ref:`certificate verification <ssl>`
     guide to resolve this warning.
 
+* :class:`~exceptions.InsecureProxyWarning`
+    This happens when a request is made to an HTTPS Proxy without certificate
+    verification enabled or the proxy connection is not verified.
+    Follow the :ref:`certificate verification <ssl>` guide to
+    resolve this warning.
+
 .. _disable_ssl_warnings:
 
 Making unverified HTTPS requests is **strongly** discouraged, however, if you
