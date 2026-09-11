@@ -714,7 +714,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             url = to_str(_encode_target(url))
             destination_scheme = None
         else:
-            parsed_url = parse_url(url)
+            # normalize_path=False: this url is going straight onto the
+            # wire as an absolute-form request target (the proxy branch),
+            # so it must match what the caller asked for byte for byte,
+            # the same as the schemeless branch above leaves a path alone.
+            # Collapsing ".."/"." here would silently change which
+            # resource gets requested.
+            parsed_url = parse_url(url, normalize_path=False)
             destination_scheme = parsed_url.scheme
             url = to_str(parsed_url._replace(fragment=None).url)
 
