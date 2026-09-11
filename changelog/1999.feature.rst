@@ -1,0 +1,4 @@
+Added HTTP Basic authentication from percent-encoded credentials in request and
+HTTP/HTTPS proxy URLs. Conflicting explicit authentication headers raise
+``ValueError``. URL credentials are removed from request targets and stored proxy
+URLs.
