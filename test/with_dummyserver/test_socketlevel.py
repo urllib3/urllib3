@@ -1309,24 +1309,30 @@ class TestProxyManager(SocketDummyServerTestCase):
 
     def test_tunnel_sets_http_11_alpn(self) -> None:
         done_receiving = Event()
-        self.buf = b""
+        alpn_protocol: str | None = None
 
         def socket_handler(listener: socket.socket) -> None:
+            nonlocal alpn_protocol
             sock = listener.accept()[0]
 
-            self.buf = sock.recv(65536)  # We only accept one packet
-            done_receiving.set()  # let the test know it can proceed
-            sock.close()
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])
+            # Prefer h2 so the assertion fails if the client offers it.
+            context.set_alpn_protocols(["h2", "http/1.1"])
+            try:
+                with context.wrap_socket(sock, server_side=True) as ssl_sock:
+                    alpn_protocol = ssl_sock.selected_alpn_protocol()
+            finally:
+                done_receiving.set()  # let the test know it can proceed
 
         self._start_server(socket_handler)
         base_url = f"https://{self.host}:{self.port}"
-        with proxy_from_url(base_url) as proxy:
+        with proxy_from_url(base_url, ca_certs=DEFAULT_CA) as proxy:
             with pytest.raises(MaxRetryError):
                 proxy.request("GET", "https://localhost/")
 
         done_receiving.wait()
-        assert b"http/1.1" in self.buf
-        assert b"h2" not in self.buf
+        assert alpn_protocol == "http/1.1"
 
     def test_connect_reconn(self) -> None:
         def proxy_ssl_one(listener: socket.socket) -> None:
