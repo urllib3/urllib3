@@ -4,6 +4,7 @@ import errno
 import logging
 import queue
 import sys
+import threading
 import typing
 import warnings
 import weakref
@@ -206,6 +207,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         self.pool: queue.LifoQueue[typing.Any] | None = self._new_pool_queue(maxsize)
         self.block = block
+        self._pool_full_warning_lock = threading.Lock()
+        self._pool_full_warning_emitted = False
 
         self.proxy = _proxy
         self.proxy_headers = _proxy_headers or {}
@@ -297,6 +300,21 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         return conn or self._new_conn()
 
+    def _log_connection_pool_full(self, pool_size: int) -> None:
+        should_warn = False
+        if not self._pool_full_warning_emitted:
+            with self._pool_full_warning_lock:
+                if not self._pool_full_warning_emitted:
+                    self._pool_full_warning_emitted = True
+                    should_warn = True
+
+        log_method = log.warning if should_warn else log.debug
+        log_method(
+            "Connection pool is full, discarding connection: %s. Connection pool size: %s",
+            self.host,
+            pool_size,
+        )
+
     def _put_conn(self, conn: BaseHTTPConnection | None) -> None:
         """
         Put a connection back into the pool.
@@ -330,11 +348,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                         "Pool reached maximum size and no more connections are allowed.",
                     ) from None
 
-                log.warning(
-                    "Connection pool is full, discarding connection: %s. Connection pool size: %s",
-                    self.host,
-                    self.pool.qsize(),
-                )
+                self._log_connection_pool_full(self.pool.qsize())
 
         # Connection never got put back into the pool, close it.
         if conn:
