@@ -1,7 +1,10 @@
 Fixed URL parsing to more strictly enforce RFC 3986 host syntax, rejecting
-invalid host input such as raw spaces and control characters, malformed
-percent-encodings, and percent-encoded control characters in HTTP(S) hosts and
-IPv6 zone identifiers, including proxy CONNECT tunnel targets. Host
+invalid host input such as characters outside the registered-name grammar,
+raw spaces and control characters, malformed percent-encodings, and
+percent-encoded control characters in HTTP(S) hosts and IPv6 zone identifiers,
+including proxy CONNECT tunnel targets. Host
 normalization now also follows RFC 3986 normalization rules for percent-encoded
 octets by decoding percent-encoded unreserved characters and uppercasing the
 hexadecimal case of retained percent-encoded octets.
+
+TODO: mention both PRs #5095 and #5143 in the final changelog.
