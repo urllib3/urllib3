@@ -1,0 +1,4 @@
+Fixed a hang when an HTTP/2 server closed the connection before sending a
+complete response. This now raises ``urllib3.exceptions.ProtocolError``, as do
+``h2`` errors raised while parsing a response, which previously escaped
+uncaught.
