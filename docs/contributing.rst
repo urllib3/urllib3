@@ -9,6 +9,12 @@ If you wish to add a new feature or fix a bug:
    a fresh issue to start a discussion around a feature idea or a bug. There is
    a *Contributor Friendly* tag for issues that should be ideal for people who
    are not very familiar with the codebase yet.
+#. Check for `open pull requests <https://github.com/urllib3/urllib3/pulls>`_
+   addressing the same issue before starting work. We encourage you to share
+   feedback and suggestions in the existing pull request and issue. Duplicate
+   pull requests for the same issue, including alternative solutions, will be
+   rejected without review unless a maintainer has approved opening an
+   alternative pull request in advance.
 #. Fork the `urllib3 repository on Github <https://github.com/urllib3/urllib3>`_
    to start making your changes.
 #. Write a test which shows that the bug was fixed or that the feature works
