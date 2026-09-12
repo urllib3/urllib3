@@ -88,7 +88,9 @@ To report a security vulnerability, please use the
 [Tidelift security contact](https://tidelift.com/security).
 Tidelift will coordinate the fix and disclosure with maintainers.
 
-See the repository [Security Policy](.github/SECURITY.md) for more details.
+See the repository
+[Security Policy](https://urllib3.readthedocs.io/en/latest/security.html)
+for more details.
 
 
 ## Maintainers
