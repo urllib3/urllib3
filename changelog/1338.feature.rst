@@ -1,0 +1,3 @@
+Added an opt-in ``Retry.raise_on_retry_after_max`` option that raises
+``RetryAfterMaxExceededError`` with the requested delay and configured maximum
+when a Retry-After interval exceeds the limit.
