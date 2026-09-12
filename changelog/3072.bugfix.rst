@@ -1,0 +1,1 @@
+Fixed ``HTTPHeaderDict`` to decode bytes header values with latin-1 so they can be stored and retrieved without raising ``TypeError``.
