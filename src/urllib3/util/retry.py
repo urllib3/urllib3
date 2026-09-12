@@ -361,7 +361,7 @@ class Retry:
     def get_retry_after(self, response: BaseHTTPResponse) -> float | None:
         """Get the value of Retry-After in seconds."""
 
-        retry_after = response.headers.get("Retry-After")
+        retry_after = response.getheader("Retry-After")
 
         if retry_after is None:
             return None

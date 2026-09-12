@@ -263,14 +263,26 @@ class HTTPConnection(_HTTPConnection):
         self,
         host: str,
         port: int | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         scheme: str = "http",
     ) -> None:
         if scheme not in ("http", "https"):
             raise ValueError(
                 f"Invalid proxy scheme for tunneling: {scheme!r}, must be either 'http' or 'https'"
             )
-        super().set_tunnel(host, port=port, headers=headers)
+        tunnel_headers = headers
+        if headers is not None and any(isinstance(v, bytes) for v in headers.values()):
+            # http.client serializes CONNECT values as Latin-1 text. Preserve
+            # duplicate fields while adapting bytes to that interface.
+            tunnel_headers = HTTPHeaderDict(
+                (name, value.decode("latin-1") if isinstance(value, bytes) else value)
+                for name, value in headers.items()
+            )
+        super().set_tunnel(
+            host,
+            port=port,
+            headers=typing.cast("typing.Mapping[str, str] | None", tunnel_headers),
+        )
         self._tunnel_scheme = scheme
 
     if sys.version_info < (3, 11, 16) or ((3, 12) <= sys.version_info < (3, 12, 14)):
@@ -474,7 +486,7 @@ class HTTPConnection(_HTTPConnection):
             method, url, skip_host=skip_host, skip_accept_encoding=skip_accept_encoding
         )
 
-    def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
+    def putheader(self, header: str, *values: str | bytes) -> None:  # type: ignore[override]
         """"""
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
@@ -493,7 +505,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         *,
         chunked: bool = False,
         preload_content: bool = True,
@@ -590,7 +602,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
     ) -> None:
         """
         Alternative to the common request method, which sends the

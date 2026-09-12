@@ -1,0 +1,3 @@
+Added support for byte-valued ``HTTPHeaderDict`` fields, preserving their bytes
+when accessing, combining, copying, and sending headers. Mixing string and bytes
+values for the same field now raises ``TypeError`` before changing that field.
