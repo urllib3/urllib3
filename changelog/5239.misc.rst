@@ -1,0 +1,1 @@
+Fixed dummyserver handlers that left an unread request body in the socket.

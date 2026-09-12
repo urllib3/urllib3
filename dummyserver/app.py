@@ -60,6 +60,7 @@ async def certificate() -> ResponseReturnValue:
 @pyodide_testing_app.route("/specific_method", methods=["GET", "POST", "PUT"])
 async def specific_method() -> ResponseReturnValue:
     "Confirm that the request matches the desired method type"
+    await request.get_data(parse_form_data=True)
     method_param = (await request.values).get("method", "")
 
     if request.method.upper() == method_param.upper():
@@ -73,6 +74,7 @@ async def specific_method() -> ResponseReturnValue:
 @hypercorn_app.route("/upload", methods=["POST"])
 async def upload() -> ResponseReturnValue:
     "Confirm that the uploaded file conforms to specification"
+    await request.get_data(parse_form_data=True)
     params = await request.form
     param = params.get("upload_param")
     filename_param = params.get("upload_filename")
@@ -135,10 +137,11 @@ async def keepalive() -> ResponseReturnValue:
 @hypercorn_app.route("/echo", methods=["GET", "POST", "PUT"])
 async def echo() -> ResponseReturnValue:
     "Echo back the params"
+    data = await request.get_data()
     if request.method == "GET":
         return await make_response(request.query_string)
 
-    return await make_response(await request.get_data())
+    return await make_response(data)
 
 
 @hypercorn_app.route("/echo_json", methods=["POST"])
@@ -169,6 +172,7 @@ async def echo_params() -> ResponseReturnValue:
 
 @hypercorn_app.route("/headers", methods=["GET", "POST"])
 async def headers() -> ResponseReturnValue:
+    await request.get_data()
     return await make_response(dict(request.headers.items()))
 
 
@@ -184,6 +188,7 @@ async def headers_and_params() -> ResponseReturnValue:
 
 @hypercorn_app.route("/multi_headers", methods=["GET", "POST"])
 async def multi_headers() -> ResponseReturnValue:
+    await request.get_data()
     return await make_response({"headers": list(request.headers)})
 
 
@@ -299,6 +304,7 @@ async def successful_retry() -> ResponseReturnValue:
 
     It's not currently very flexible as the number of retries is hard-coded.
     """
+    await request.get_data()
     test_name = request.headers.get("test-name", None)
     if not test_name:
         return await make_response("test-name header not set", 400)
