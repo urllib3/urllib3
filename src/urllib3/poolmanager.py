@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import _add_url_auth
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -453,6 +454,14 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        kw["headers"] = _add_url_auth(
+            kw["headers"] if kw["headers"] is not None else self.headers,
+            u.auth_decoded_joined,
+        )
+        if u.auth is not None:
+            u = u._replace(auth=None)
+            url = u.url
+
         if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
         else:
@@ -610,8 +619,10 @@ class ProxyManager(PoolManager):
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
-        self.proxy = proxy
-        self.proxy_headers = proxy_headers or {}
+        self.proxy_headers = _add_url_auth(
+            proxy_headers or {}, proxy.auth_decoded_joined, "Proxy-Authorization"
+        )
+        self.proxy = proxy._replace(auth=None)
         self.proxy_config = ProxyConfig(
             proxy_ssl_context,
             use_forwarding_for_https,
