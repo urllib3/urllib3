@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import _add_url_auth, make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -124,7 +125,9 @@ def _default_key_normalizer(
     # These are both dictionaries and need to be transformed into frozensets
     for key in ("headers", "_proxy_headers", "_socks_options"):
         if key in context and context[key] is not None:
-            context[key] = frozenset(context[key].items())
+            # Force iteration: HTTPHeaderDict's item view subclasses set but
+            # stores its values in the header mapping, not the underlying set.
+            context[key] = frozenset(item for item in context[key].items())
 
     # The socket_options key may be a list and needs to be transformed into a
     # tuple.
@@ -383,6 +386,11 @@ class PoolManager(RequestMethods):
         not used.
         """
         u = parse_url(url)
+        if u.auth_decoded_joined is not None:
+            pool_kwargs = self._merge_pool_kwargs(pool_kwargs)
+            pool_kwargs["headers"] = _add_url_auth(
+                pool_kwargs.get("headers") or {}, u.auth_decoded_joined
+            )
         return self.connection_from_host(
             u.host, port=u.port, scheme=u.scheme, pool_kwargs=pool_kwargs
         )
@@ -445,6 +453,7 @@ class PoolManager(RequestMethods):
                 stacklevel=2,
             )
 
+        generated_auth = kw.pop("_url_auth_generated", None)
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
         kw["assert_same_host"] = False
@@ -453,10 +462,30 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        if generated_auth is not None and u.auth_decoded_joined is not None:
+            headers = HTTPHeaderDict(kw["headers"])
+            if headers.get("Authorization") == generated_auth:
+                headers.pop("Authorization", None)
+            kw["headers"] = headers
+        had_authorization = bool(HTTPHeaderDict(kw["headers"]).getlist("Authorization"))
+        kw["headers"] = _add_url_auth(kw["headers"], u.auth_decoded_joined)
+        if u.auth_decoded_joined is not None and not had_authorization:
+            generated_auth = make_headers(basic_auth=u.auth_decoded_joined)[
+                "authorization"
+            ]
+        if generated_auth is not None:
+            kw["_url_auth_generated"] = generated_auth
+
         if self._proxy_requires_url_absolute_form(u):
-            response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
+            call_kw = kw.copy()
+            call_kw.pop("_url_auth_generated", None)
+            response = conn.urlopen(
+                method, u._replace(auth=None, fragment=None).url, **call_kw
+            )
         else:
-            response = conn.urlopen(method, u.request_uri, **kw)
+            call_kw = kw.copy()
+            call_kw.pop("_url_auth_generated", None)
+            response = conn.urlopen(method, u.request_uri, **call_kw)
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:
@@ -507,6 +536,8 @@ class PoolManager(RequestMethods):
         log.info("Redirecting %s -> %s", url, redirect_location)
 
         response.drain_conn()
+        if generated_auth is not None:
+            kw["_url_auth_generated"] = generated_auth
         return self.urlopen(method, redirect_location, **kw)
 
 
@@ -610,8 +641,10 @@ class ProxyManager(PoolManager):
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
-        self.proxy = proxy
-        self.proxy_headers = proxy_headers or {}
+        self.proxy = proxy._replace(auth=None)
+        self.proxy_headers = _add_url_auth(
+            proxy_headers or {}, proxy.auth_decoded_joined, "Proxy-Authorization"
+        )
         self.proxy_config = ProxyConfig(
             proxy_ssl_context,
             use_forwarding_for_https,

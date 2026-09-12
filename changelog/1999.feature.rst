@@ -1,0 +1,2 @@
+Add Basic authentication from userinfo in HTTP and HTTPS URLs and proxy URLs.
+Explicit conflicting authorization headers now raise ``ValueError``.
