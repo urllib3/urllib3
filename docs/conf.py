@@ -31,12 +31,15 @@ import urllib3
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
+    "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx_copybutton",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinxext.opengraph",
 ]
+
+myst_enable_extensions = ["alert"]
 
 # Open Graph metadata
 ogp_title = "urllib3 documentation"

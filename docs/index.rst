@@ -12,6 +12,7 @@ urllib3
    advanced-usage
    reference/index
    contributing
+   security
    changelog
    v2-migration-guide
 
