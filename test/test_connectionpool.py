@@ -821,3 +821,18 @@ class TestConnectionPool:
 
         assert response.status == 200
         assert requested_urls == ["/", "http://localhost/next?x=1"]
+
+    def test_retry_warning_does_not_keep_error_traceback(self) -> None:
+        error = OSError("boom")
+        response = HTTPResponse(status=200)
+
+        with (
+            HTTPConnectionPool(host="localhost", port=80) as pool,
+            patch.object(pool, "_make_request", side_effect=[error, response]),
+            patch("urllib3.connectionpool.log.warning") as warning,
+        ):
+            pool.urlopen("GET", "/", retries=1)
+
+        warning_error = warning.call_args.args[2]
+        assert warning_error is error
+        assert warning_error.__traceback__ is None
