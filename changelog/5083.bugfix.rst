@@ -1,0 +1,1 @@
+Tightened response framing parsing to reject ``Content-Length`` and chunked transfer ``chunk-size`` values that are not valid per RFC 9112 (for example ``Content-Length: 1_000`` or a ``0x``-prefixed chunk size), which ``int()`` would otherwise accept.
