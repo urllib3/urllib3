@@ -77,9 +77,15 @@ collaborating with other contributors. Drop by and say hello 👋
 
 ## Contributing
 
-urllib3 happily accepts contributions. Please see our
+urllib3 welcomes contributions. Please read our
 [contributing documentation](https://urllib3.readthedocs.io/en/latest/contributing.html)
-for some tips on getting started.
+before starting work.
+
+Check for existing pull requests addressing the same issue, and share feedback
+and suggestions in the existing pull request and issue. Duplicate pull
+requests, including alternative solutions, will be rejected without review
+unless a maintainer has approved opening an alternative pull request in
+advance.
 
 
 ## Security Disclosures
