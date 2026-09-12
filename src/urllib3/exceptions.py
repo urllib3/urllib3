@@ -213,6 +213,25 @@ class URLSchemeUnknown(LocationValueError):
         self.scheme = scheme
 
 
+class RetryAfterError(HTTPError):
+    """A server requested a delay exceeding the configured Retry-After limit.
+
+    :param float retry_after: The requested delay in seconds, before capping.
+    :param int retry_after_max: The configured maximum delay in seconds.
+    """
+
+    def __init__(self, retry_after: float, retry_after_max: int) -> None:
+        self.retry_after = retry_after
+        self.retry_after_max = retry_after_max
+        super().__init__(
+            f"Retry-After delay of {retry_after} seconds exceeds "
+            f"the maximum of {retry_after_max} seconds"
+        )
+
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        return self.__class__, (self.retry_after, self.retry_after_max)
+
+
 class ResponseError(HTTPError):
     """Used as a container for an error reason supplied in a MaxRetryError."""
 
