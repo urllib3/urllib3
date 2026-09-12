@@ -362,3 +362,63 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    @pytest.mark.parametrize(
+        "transfer_encoding",
+        [
+            "gzip",
+            "GZip",
+            "deflate",
+            "compress",
+            "gzip, deflate",
+            "gzip; foo=bar",
+        ],
+    )
+    def test_request_rejects_non_chunked_transfer_encoding(
+        self, transfer_encoding: str
+    ) -> None:
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch(
+                "urllib3.connection._HTTPConnection.putrequest"
+            ) as putrequest,
+        ):
+            conn = HTTPConnection("")
+            with pytest.raises(ValueError, match="final.*must be 'chunked'"):
+                conn.request(
+                    "POST", "/", headers={"Transfer-Encoding": transfer_encoding}
+                )
+            putrequest.assert_not_called()
+
+    def test_request_rejects_non_chunked_te_with_chunked_arg(self) -> None:
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch(
+                "urllib3.connection._HTTPConnection.putrequest"
+            ) as putrequest,
+        ):
+            conn = HTTPConnection("")
+            with pytest.raises(ValueError, match="final.*must be 'chunked'"):
+                conn.request(
+                    "POST",
+                    "/",
+                    headers={"Transfer-Encoding": "gzip"},
+                    chunked=True,
+                )
+            putrequest.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "transfer_encoding",
+        ["chunked", "Chunked", "CHUNKED", "gzip, chunked", "gzip, Chunked"],
+    )
+    def test_request_allows_chunked_final_coding(
+        self, transfer_encoding: str
+    ) -> None:
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch("urllib3.connection._HTTPConnection.putheader"),
+        ):
+            conn = HTTPConnection("")
+            conn.request(
+                "POST", "/", headers={"Transfer-Encoding": transfer_encoding}
+            )
