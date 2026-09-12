@@ -152,6 +152,72 @@ def d() -> HTTPHeaderDict:
 
 
 class TestHTTPHeaderDict:
+    @pytest.mark.parametrize(
+        "value", [b"", b"plain", b"Sch\xf6nefeld/1.18.0", bytes(range(256))]
+    )
+    def test_bytes_values_are_preserved(self, value: bytes) -> None:
+        h = HTTPHeaderDict({"User-Agent": value})
+        assert h["user-agent"] == value
+        assert h.getlist("user-agent") == [value]
+        assert list(h.items()) == [("User-Agent", value)]
+        assert list(h.itermerged()) == [("User-Agent", value)]
+        assert h.copy() == h
+        assert h.setdefault("USER-agent", b"unused") == value
+        assert h.setdefault("Other", value) == value
+
+    @pytest.mark.parametrize("combine", [False, True])
+    def test_bytes_duplicates(self, combine: bool) -> None:
+        h = HTTPHeaderDict[str | bytes]({"X-Text": "text", "X-Raw": b"\xff"})
+        h.add("x-raw", b"\xfe", combine=combine)
+        assert h["X-Raw"] == b"\xff, \xfe"
+        assert h.getlist("x-raw") == (
+            [b"\xff, \xfe"] if combine else [b"\xff", b"\xfe"]
+        )
+        assert h["x-text"] == "text"
+
+    @pytest.mark.parametrize("combine", [False, True])
+    @pytest.mark.parametrize("first,second", [("text", b"bytes"), (b"bytes", "text")])
+    def test_mixed_duplicate_types_leave_field_unchanged(
+        self, combine: bool, first: str | bytes, second: str | bytes
+    ) -> None:
+        h = HTTPHeaderDict({"X-Raw": first})
+        with pytest.raises(TypeError, match="Cannot mix strings and bytes"):
+            h.add("x-raw", second, combine=combine)
+        assert h.getlist("X-Raw") == [first]
+        h["x-raw"] = second
+        assert h["X-Raw"] == second
+
+    def test_bytes_import_and_union_paths(self) -> None:
+        h = HTTPHeaderDict([("X-Raw", b"a"), ("x-raw", b"b")])
+        h.extend({"X-Other": b"c"}, Another=b"d")
+        h.update({"X-Other": b"e"})
+        clone = h.copy()
+        clone |= {"X-Raw": b"f"}
+        assert h["x-raw"] == b"a, b"
+        assert clone["x-raw"] == b"a, b, f"
+        assert (h | {"X-Raw": b"f"}) == clone
+        assert ({"X-Raw": b"f"} | h)["x-raw"] == b"f, a, b"
+        assert h["x-other"] == b"e"
+        assert h["another"] == b"d"
+        assert HTTPHeaderDict(h) == h
+
+    def test_bytes_comparisons_do_not_coerce(self) -> None:
+        raw = HTTPHeaderDict[str | bytes]({"X": b"value"})
+        text = HTTPHeaderDict[str | bytes]({"X": "value"})
+        assert raw != text
+        assert text != raw
+        assert ("X", b"value") in raw.items()
+        assert ("X", "value") not in raw.items()
+        assert ("X", b"value") not in text.items()
+
+    def test_byte_subclasses_can_be_combined(self) -> None:
+        class ByteValue(bytes):
+            pass
+
+        h = HTTPHeaderDict({"X": b"a"})
+        h.add("X", ByteValue(b"b"), combine=True)
+        assert h["x"] == b"a, b"
+
     def test_create_from_kwargs(self) -> None:
         h = HTTPHeaderDict(ab="1", cd="2", ef="3", gh="4")
         assert len(h) == 4
@@ -419,7 +485,7 @@ class TestHTTPHeaderDict:
         with pytest.raises(Exception):
             del d[3]  # type: ignore[arg-type]
         with pytest.raises(Exception):
-            HTTPHeaderDict({3: 3})  # type: ignore[arg-type]
+            HTTPHeaderDict({3: 3})  # type: ignore[type-var,dict-item]
 
     def test_dunder_contains(self, d: HTTPHeaderDict) -> None:
         """
@@ -463,10 +529,10 @@ class TestHTTPHeaderDict:
 
     def test_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
         with pytest.raises(TypeError, match="unsupported operand type.*'int'"):
-            d | 42
+            d | 42  # type: ignore[operator]
         with pytest.raises(TypeError, match="unsupported operand type.*'float'"):
-            3.14 | d
+            3.14 | d  # type: ignore[operator]
 
     def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
         with pytest.raises(TypeError, match="unsupported operand type.*'NoneType'"):
-            d |= None
+            d |= None  # type: ignore[arg-type]

@@ -478,6 +478,7 @@ class BaseHTTPResponse(io.IOBase):
         request_url: str | None,
         retries: Retry | None = None,
     ) -> None:
+        self.headers: HTTPHeaderDict[str]
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
         else:

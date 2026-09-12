@@ -2267,6 +2267,30 @@ class TestHeaders(SocketDummyServerTestCase):
             assert r.status == 200
             assert b"A: 1\r\nA: 4\r\nC: 3, 5\r\nC: 6\r\nB: 2\r\nB: 3" in buffer
 
+    @pytest.mark.parametrize("value", [b"Sch\xf6nefeld", b"Sch\xc3\xb6nefeld", b"\xff"])
+    def test_header_dict_preserves_bytes_on_wire(self, value: bytes) -> None:
+        def socket_handler(listener: socket.socket) -> None:
+            with listener.accept()[0] as sock:
+                request = b""
+                while not request.endswith(b"\r\n\r\n"):
+                    request += sock.recv(65536)
+                sock.sendall(
+                    b"HTTP/1.1 200 OK\r\nContent-Length: "
+                    + str(len(request)).encode("ascii")
+                    + b"\r\n\r\n"
+                    + request
+                )
+
+        self._start_server(socket_handler)
+        headers = HTTPHeaderDict({"X-Raw": value})
+        headers.add("x-raw", value, combine=True)
+        headers.add("x-raw", b"last")
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            response = pool.request("GET", "/", headers=headers)
+        assert (
+            b"X-Raw: " + value + b", " + value + b"\r\nX-Raw: last\r\n" in response.data
+        )
+
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
     def _test_broken_header_parsing(

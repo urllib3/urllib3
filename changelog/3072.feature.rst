@@ -1,0 +1,2 @@
+Added support for byte values in ``HTTPHeaderDict`` without decoding them.
+Repeated values in one field must all be strings or all be bytes.
