@@ -524,6 +524,28 @@ class HTTPConnection(_HTTPConnection):
         if headers is None:
             headers = {}
         header_keys = frozenset(to_str(k.lower()) for k in headers)
+        # A caller-supplied Transfer-Encoding is sent verbatim while the
+        # body is always sent chunk-framed (see the `chunked = True` branch
+        # below), so a final coding other than chunked would misdescribe
+        # the framing on the wire. Fail closed instead (eg `gzip` alone).
+        # Values ending in chunked (eg `gzip, chunked`) keep working.
+        if "transfer-encoding" in header_keys:
+            te_values = [
+                to_str(v)
+                for k, v in headers.items()
+                if to_str(k.lower()) == "transfer-encoding"
+                and not (isinstance(v, str) and v == SKIP_HEADER)
+            ]
+            for te_value in te_values:
+                final_coding = (
+                    te_value.split(",")[-1].split(";")[0].strip().lower()
+                )
+                if final_coding != "chunked":
+                    raise ValueError(
+                        f"Transfer-Encoding {te_value!r} is not supported: "
+                        "urllib3 sends the body chunk-framed, so the final "
+                        "transfer coding must be 'chunked'."
+                    )
         skip_accept_encoding = "accept-encoding" in header_keys
         skip_host = "host" in header_keys
         self.putrequest(
