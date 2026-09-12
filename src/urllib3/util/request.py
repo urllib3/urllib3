@@ -6,6 +6,7 @@ import typing
 from base64 import b64encode
 from enum import Enum
 
+from .._collections import HTTPHeaderDict
 from ..exceptions import UnrewindableBodyError
 from .util import to_bytes
 
@@ -171,6 +172,46 @@ def make_headers(
         headers["cache-control"] = "no-cache"
 
     return headers
+
+
+def _check_auth_header(
+    headers: typing.Mapping[str, str], header_name: str, expected: str
+) -> bool:
+    found = False
+    expected_scheme, _, expected_token = expected.partition(" ")
+    for key, value in headers.items():
+        if isinstance(key, bytes):
+            key = key.decode("latin-1")
+        if key.lower() != header_name.lower():
+            continue
+        if isinstance(value, bytes):
+            value = value.decode("latin-1")
+        scheme, _, token = value.partition(" ")
+        if scheme.lower() != expected_scheme.lower() or token.strip() != expected_token:
+            raise ValueError(f"URL userinfo conflicts with {header_name} header")
+        found = True
+    return found
+
+
+def _add_url_auth(
+    auth: str | None,
+    headers: typing.Mapping[str, str],
+    header_name: str = "Authorization",
+) -> typing.Mapping[str, str]:
+    """Add URL credentials without mutating or overriding caller headers."""
+    if auth is None:
+        return headers
+    try:
+        generated = make_headers(basic_auth=auth)["authorization"]
+    except UnicodeEncodeError:
+        raise ValueError("URL credentials must be encodable as Latin-1") from None
+
+    found = _check_auth_header(headers, header_name, generated)
+    if found:
+        return headers
+    updated = HTTPHeaderDict(headers)
+    updated[header_name] = generated
+    return updated
 
 
 def set_file_position(

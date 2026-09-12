@@ -1,0 +1,3 @@
+Added Basic authentication from request and HTTP(S) proxy URL userinfo,
+with percent decoding, conflicting-header checks, and removal of credentials
+from request targets and stored proxy URLs.
