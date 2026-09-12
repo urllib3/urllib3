@@ -88,6 +88,34 @@ class TestHTTPProxyManager(HypercornDummyProxyTestCase):
             r = http.request("GET", f"{self.https_url}/")
             assert r.status == 200
 
+    def test_request_and_proxy_url_auth(self) -> None:
+        proxy_url = (
+            f"http://proxy-user:proxy-password@{self.proxy_host}:"
+            f"{int(self.proxy_port)}"
+        )
+
+        with proxy_from_url(proxy_url, ca_certs=DEFAULT_CA) as http:
+            forwarded = http.request(
+                "GET",
+                f"http://user:password@{self.http_host}:"
+                f"{int(self.http_port)}/headers",
+            )
+            tunneled = http.request(
+                "GET",
+                f"https://user:password@{self.https_host}:"
+                f"{int(self.https_port)}/headers",
+            )
+
+        assert forwarded.status == 200
+        assert forwarded.json()["Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
+        assert (
+            forwarded.json()["Proxy-Authorization"]
+            == "Basic cHJveHktdXNlcjpwcm94eS1wYXNzd29yZA=="
+        )
+        assert tunneled.status == 200
+        assert tunneled.json()["Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
+        assert "Proxy-Authorization" not in tunneled.json()
+
     def test_https_proxy(self) -> None:
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", f"{self.https_url}/")

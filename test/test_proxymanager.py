@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import typing
+
 import pytest
 
 from urllib3.exceptions import (
+    InvalidHeader,
     LocationParseError,
     MaxRetryError,
     NewConnectionError,
@@ -60,6 +63,59 @@ class TestProxyManager:
             assert p.proxy is not None
             assert p.proxy.port == 0
 
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    def test_proxy_url_auth_sets_proxy_authorization_header(
+        self, proxy_scheme: str
+    ) -> None:
+        with ProxyManager(
+            f"{proxy_scheme}://user%40example.com:p%40ss@proxy:8080"
+        ) as p:
+            assert p.proxy is not None
+            assert p.proxy.auth is None
+            assert (
+                p.proxy_headers["Proxy-Authorization"]
+                == "Basic dXNlckBleGFtcGxlLmNvbTpwQHNz"
+            )
+
+    def test_proxy_url_auth_allows_matching_proxy_header(self) -> None:
+        proxy_headers = {"proxy-authorization": "Basic dXNlcjpwYXNzd29yZA=="}
+
+        with ProxyManager(
+            "http://user:password@proxy:8080", proxy_headers=proxy_headers
+        ) as p:
+            assert (
+                p.proxy_headers["Proxy-Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
+            )
+        assert proxy_headers == {"proxy-authorization": "Basic dXNlcjpwYXNzd29yZA=="}
+
+    def test_proxy_url_auth_rejects_conflicting_proxy_header(self) -> None:
+        with pytest.raises(InvalidHeader, match="Proxy-Authorization"):
+            ProxyManager(
+                "http://user:password@proxy:8080",
+                proxy_headers={"Proxy-Authorization": "Basic ZGlmZmVyZW50"},
+            )
+
+    @pytest.mark.parametrize(
+        ("manager_headers", "request_headers"),
+        [
+            ({"Proxy-Authorization": "Basic ZGlmZmVyZW50"}, None),
+            (None, {"Proxy-Authorization": "Basic ZGlmZmVyZW50"}),
+        ],
+    )
+    def test_proxy_url_auth_rejects_conflicting_http_request_header(
+        self,
+        manager_headers: dict[str, str] | None,
+        request_headers: dict[str, str] | None,
+    ) -> None:
+        with ProxyManager(
+            "http://user:password@proxy:8080", headers=manager_headers
+        ) as p:
+            with pytest.raises(InvalidHeader, match="Proxy-Authorization"):
+                if request_headers is None:
+                    p.urlopen("GET", "http://example.com/")
+                else:
+                    p.urlopen("GET", "http://example.com/", headers=request_headers)
+
     def test_invalid_scheme(self) -> None:
         with pytest.raises(AssertionError):
             ProxyManager("invalid://host/p")
@@ -82,17 +138,21 @@ class TestProxyManager:
             assert p._proxy_requires_url_absolute_form(https_url)
 
     @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
-    def test_absolute_form_request_target_strips_fragment_for_custom_pool(
+    def test_absolute_form_request_target_strips_fragment_and_userinfo(
         self, proxy_scheme: str
     ) -> None:
         class CustomConnectionPool:
             requested_urls: list[str] = []
+            requested_headers: list[typing.Mapping[str, str]] = []
 
             def __init__(self, host: str, port: int | None = None, **kw: object):
                 pass
 
             def urlopen(self, method: str, url: str, **kw: object) -> HTTPResponse:
                 self.requested_urls.append(url)
+                self.requested_headers.append(
+                    typing.cast(typing.Mapping[str, str], kw["headers"])
+                )
                 return HTTPResponse(status=200)
 
         with ProxyManager(f"{proxy_scheme}://proxy:8080") as p:
@@ -100,11 +160,15 @@ class TestProxyManager:
             p.pool_classes_by_scheme[proxy_scheme] = CustomConnectionPool
             response = p.urlopen(
                 "GET",
-                "http://example.com/path?x=1#marker=value",
+                "http://user:password@example.com/path?x=1#marker=value",
             )
 
         assert response.status == 200
         assert CustomConnectionPool.requested_urls == ["http://example.com/path?x=1"]
+        assert (
+            CustomConnectionPool.requested_headers[0]["Authorization"]
+            == "Basic dXNlcjpwYXNzd29yZA=="
+        )
 
     @pytest.mark.parametrize(
         "url",
