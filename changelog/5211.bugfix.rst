@@ -1,0 +1,1 @@
+Fixed ``assert_fingerprint()`` to raise ``SSLError`` instead of ``binascii.Error`` when a fingerprint has a supported length but contains non-hexadecimal characters.

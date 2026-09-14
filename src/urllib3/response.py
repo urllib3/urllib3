@@ -499,6 +499,8 @@ class BaseHTTPResponse(io.IOBase):
             self.chunked = True
 
         self._decoder: ContentDecoder | None = None
+        # Distinguish an uninitialized decoder from a response needing no decoder.
+        self._decoder_initialized = False
         self.length_remaining: int | None
 
     def get_redirect_location(self) -> str | None | typing.Literal[False]:
@@ -604,10 +606,13 @@ class BaseHTTPResponse(io.IOBase):
         """
         Set-up the _decoder attribute if necessary.
         """
-        # Note: content-encoding value should be case-insensitive, per RFC 7230
-        # Section 3.2
-        content_encoding = self.headers.get("content-encoding", "").lower()
+        if self._decoder_initialized:
+            return
+
         if self._decoder is None:
+            # Note: content-encoding value should be case-insensitive, per RFC 7230
+            # Section 3.2
+            content_encoding = self.headers.get("content-encoding", "").lower()
             if content_encoding in self.CONTENT_DECODERS:
                 self._decoder = _get_decoder(content_encoding)
             elif "," in content_encoding:
@@ -618,6 +623,8 @@ class BaseHTTPResponse(io.IOBase):
                 ]
                 if encodings:
                     self._decoder = _get_decoder(content_encoding)
+
+        self._decoder_initialized = True
 
     def _decode(
         self,

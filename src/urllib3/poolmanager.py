@@ -470,6 +470,11 @@ class PoolManager(RequestMethods):
             method = "GET"
             # And lose the body not to transfer anything sensitive.
             kw["body"] = None
+            # The body is gone, so the state that describes it has to go too:
+            # there is nothing left to frame with chunked transfer encoding,
+            # and nothing left to rewind.
+            kw["chunked"] = False
+            kw["body_pos"] = None
             kw["headers"] = HTTPHeaderDict(kw["headers"])._prepare_for_method_change()
 
         retries = kw.get("retries", response.retries)

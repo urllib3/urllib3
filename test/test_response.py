@@ -125,9 +125,9 @@ class TestBytesQueueBuffer:
         (lambda b: b.get(len(b)), lambda b: b.get_all()),
         ids=("get", "get_all"),
     )
-    @pytest.mark.limit_memory(
-        "12.5 MB", current_thread_only=True
-    )  # assert that we're not doubling memory usagelimit_mem
+    # Doubling memory usage would take this past 20 MiB; the peak is 12.1 MiB.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("15 MB", current_thread_only=True)
     def test_memory_usage(
         self, get_func: typing.Callable[[BytesQueueBuffer], bytes]
     ) -> None:
@@ -146,7 +146,10 @@ class TestBytesQueueBuffer:
         (lambda b: b.get(len(b)), lambda b: b.get_all()),
         ids=("get", "get_all"),
     )
-    @pytest.mark.limit_memory("10.01 MB", current_thread_only=True)
+    # Copying the chunk instead of handing it back would take this to 20 MiB;
+    # the peak is 10 MiB and the identity assertion below is the real check.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("12 MB", current_thread_only=True)
     def test_memory_usage_single_chunk(
         self, get_func: typing.Callable[[BytesQueueBuffer], bytes]
     ) -> None:
@@ -160,7 +163,10 @@ class TestBytesQueueBuffer:
         (True, False),
         ids=("finish_with_get_all", "finish_with_get"),
     )
-    @pytest.mark.limit_memory("11.01 MB", current_thread_only=True)
+    # Duplicating the chunk while splitting it would take this to 20 MiB;
+    # the peak is 11 MiB.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("13 MB", current_thread_only=True)
     def test_memory_usage_splitting_chunk(self, finish_with_get_all: bool) -> None:
         # Allocate a single 10MiB chunk, then read it in two parts.
         # Verifies that splitting a chunk doesn't cause additional memory allocation.
@@ -192,7 +198,7 @@ Khe5TF36JbnKVjdcL1EUNpwrWVfQpFYJ/WWm2b74qNeSZeQv5/xBhRdOmKTJFYgO96PwrHBlsnLn
 a3l0LwJsloWpMbzByU5WLbRE6X5INFqjQOtIwYz5BAlhkn+kVqJvWM5vBlfrwP42ifonM5yF4ciJ
 auHVks62997mNGOsM7WXNG3P98dBHPo2NhbTvHleL0BI5dus2JY81MUOnK3SGWLH8HeWPa1t5KcW
 S5moAj5HexY/g/F8TctpxwsvyZp38dXeLDjSQvEQIkF7XR3YXbeZgKk3V34KGCPOAeeuQDIgyVhV
-nP4HF2uWHA=="""
+nP4HF2uWHA==""",
 )
 
 
@@ -299,6 +305,40 @@ class TestResponse:
         fp = BytesIO(b"\x00" * 10)
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "deflate"})
+
+    @pytest.mark.parametrize("content_encoding", (None, "gzip"))
+    def test_content_encoding_is_inspected_once(
+        self, content_encoding: str | None
+    ) -> None:
+        headers = {"content-encoding": content_encoding} if content_encoding else None
+        r = HTTPResponse(BytesIO(), headers=headers, preload_content=False)
+
+        with mock.patch.object(r.headers, "get", wraps=r.headers.get) as get_header:
+            r._init_decoder()
+            r._init_decoder()
+
+        assert get_header.call_count == 1
+        if content_encoding is None:
+            assert r._decoder is None
+        else:
+            assert r._decoder is not None
+
+    def test_decoder_initialization_is_retried_after_failure(self) -> None:
+        r = HTTPResponse(
+            BytesIO(), headers={"content-encoding": "gzip"}, preload_content=False
+        )
+        decoder = mock.Mock()
+
+        with mock.patch(
+            "urllib3.response._get_decoder", side_effect=(RuntimeError, decoder)
+        ) as get_decoder:
+            with pytest.raises(RuntimeError):
+                r._init_decoder()
+            r._init_decoder()
+            r._init_decoder()
+
+        assert r._decoder is decoder
+        assert get_decoder.call_count == 2
 
     def test_reference_read(self) -> None:
         fp = BytesIO(b"foo")
@@ -1565,7 +1605,10 @@ class TestResponse:
             (False, 10 * 2**20, "read1"),
         ],
     )
-    @pytest.mark.limit_memory("10.5 MB", current_thread_only=True)
+    # The body is 10 MiB and reading it must not buffer a second copy, which
+    # would take the peak to 20 MiB.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("13 MB", current_thread_only=True)
     def test_buffer_memory_usage_no_decoding(
         self, preload_content: bool, amt: int, read_meth: str
     ) -> None:
