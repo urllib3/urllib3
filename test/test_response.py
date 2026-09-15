@@ -831,6 +831,8 @@ class TestResponse:
         # while trailing data remains in the decoder's input buffer.
         original_data = b"A" * 100
         content_encoding, compress_func = data
+        if content_encoding == "br" and brotli.__name__ == "brotlicffi":
+            pytest.skip("This case is not supported by brotlicffi")
         compressed_data = compress_func(original_data) + b"tail"
         httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
         httplib_r.fp = MockChunkedEncodingResponse([compressed_data])  # type: ignore[assignment]
