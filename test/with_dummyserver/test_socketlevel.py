@@ -439,14 +439,35 @@ class TestClientCerts(SocketDummyServerTestCase):
 
             assert len(client_certs) == 1
 
-    def test_load_keyfile_with_invalid_password(self) -> None:
+    @pytest.mark.parametrize("password", [None, "", b"", "secret", b"secret"])
+    @pytest.mark.parametrize("combined", [False, True])
+    def test_load_unencrypted_keyfile_with_password(
+        self, password: str | bytes | None, combined: bool
+    ) -> None:
+        """
+        Test that unencrypted keys ignore unused passwords in separate or
+        combined PEM files.
+        """
+        assert ssl_.SSLContext is not None
+        context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
+        context.load_cert_chain(
+            certfile=self.cert_combined_path if combined else self.cert_path,
+            keyfile=None if combined else self.key_path,
+            password=password,
+        )
+
+    @pytest.mark.parametrize("password", ["", b"", "letmei", b"letmei"])
+    def test_load_keyfile_with_invalid_password(self, password: str | bytes) -> None:
+        """
+        Test that encrypted keys reject empty or incorrect passwords.
+        """
         assert ssl_.SSLContext is not None
         context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
         with pytest.raises(ssl.SSLError):
             context.load_cert_chain(
                 certfile=self.cert_path,
                 keyfile=self.password_key_path,
-                password=b"letmei",
+                password=password,
             )
 
     def test_load_invalid_cert_file(self) -> None:
