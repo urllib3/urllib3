@@ -53,6 +53,13 @@ log = logging.getLogger(__name__)
 # Read in 64 KiB chunks
 _READ_CHUNK_SIZE = 2**16
 
+# Maximum length of a chunk-size line (and the trailing CRLF line) when reading a
+# chunked-transfer-encoded response. Matches ``http.client._MAXLINE`` so urllib3's
+# streaming path bounds these reads exactly like the stdlib ``.read()`` path does,
+# preventing a malicious server from forcing unbounded buffering (memory exhaustion)
+# via an unterminated chunk-size line.
+_MAX_CHUNK_LINE_LENGTH = 2**16
+
 
 class ContentDecoder:
     def decompress(self, data: bytes, max_length: int = -1) -> bytes:
@@ -1357,7 +1364,12 @@ class HTTPResponse(BaseHTTPResponse):
         # we'll try to read it from socket.
         if self.chunk_left is not None:
             return None
-        line = self._fp.fp.readline()  # type: ignore[union-attr]
+        line = self._fp.fp.readline(_MAX_CHUNK_LINE_LENGTH + 1)  # type: ignore[union-attr]
+        if len(line) > _MAX_CHUNK_LINE_LENGTH:
+            self.close()
+            raise ProtocolError(
+                "Response chunk size line exceeded maximum allowed length"
+            ) from None
         line = line.split(b";", 1)[0]
         try:
             self.chunk_left = int(line, 16)
@@ -1468,7 +1480,11 @@ class HTTPResponse(BaseHTTPResponse):
 
             # Chunk content ends with \r\n: discard it.
             while self._fp is not None:
-                line = self._fp.fp.readline()
+                line = self._fp.fp.readline(_MAX_CHUNK_LINE_LENGTH + 1)
+                if len(line) > _MAX_CHUNK_LINE_LENGTH:
+                    raise ProtocolError(
+                        "Response chunk trailer line exceeded maximum allowed length"
+                    )
                 if not line:
                     # Some sites may not end with '\r\n'.
                     break

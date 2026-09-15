@@ -2410,6 +2410,40 @@ class TestStream(SocketDummyServerTestCase):
 
             done_event.set()
 
+    def test_chunked_size_line_too_long_does_not_buffer(self) -> None:
+        # A malicious server can advertise chunked encoding and then send an
+        # unterminated chunk-size line (no newline). The streaming path must
+        # reject it with a bounded read instead of buffering the whole run,
+        # which would exhaust memory.
+        done_event = Event()
+        # Well above the 65536-byte cap, but small enough for a fast test.
+        run_length = 512 * 1024
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+
+            sock.sendall(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n")
+            # A chunk-size line that never terminates with a newline.
+            with contextlib.suppress(OSError):
+                sock.sendall(b"f" * run_length)
+
+            done_event.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            r = pool.request("GET", "/", timeout=LONG_TIMEOUT, preload_content=False)
+            with pytest.raises(ProtocolError) as ctx:
+                next(r.stream(65536))
+            assert "chunk size line exceeded maximum allowed length" in str(ctx.value)
+
+            done_event.set()
+
     def test_large_compressed_stream(self) -> None:
         done_event = Event()
         expected_total_length = 296085
