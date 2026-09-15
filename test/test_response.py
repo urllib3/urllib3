@@ -11,7 +11,7 @@ import zlib
 from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
 from io import BufferedReader, BytesIO, TextIOWrapper
-from test import onlyBrotli, onlyZstd
+from test import LONG_TIMEOUT, onlyBrotli, onlyZstd
 from unittest import mock
 
 import pytest
@@ -812,6 +812,42 @@ class TestResponse:
             assert all(len(chunk) == 10240 for chunk in result[:-1])
             assert len(result[-1]) == len(original_data) % 10240
         assert b"".join(result) == original_data
+
+    @pytest.mark.timeout(LONG_TIMEOUT)
+    @pytest.mark.parametrize(
+        "data",
+        [d[1] for d in _test_compressor_params],
+        ids=[d[0] for d in _test_compressor_params],
+    )
+    def test_read_chunked_with_trailing_data_does_not_hang(
+        self,
+        request: pytest.FixtureRequest,
+        data: tuple[str, typing.Callable[[bytes], bytes]] | None,
+    ) -> None:
+        if data is None:
+            pytest.skip(f"Proper {request.node.callspec.id} decoder is not available")
+        # The decoded body must fill multiple bounded reads so EOF is reached
+        # while trailing data remains in the decoder's input buffer.
+        original_data = b"A" * 100
+        content_encoding, compress_func = data
+        compressed_data = compress_func(original_data) + b"tail"
+        httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        httplib_r.fp = MockChunkedEncodingResponse([compressed_data])  # type: ignore[assignment]
+        r = HTTPResponse(
+            httplib_r,
+            preload_content=False,
+            headers={
+                "transfer-encoding": "chunked",
+                "content-encoding": content_encoding,
+            },
+        )
+
+        stream = r.stream(len(original_data) // 2, decode_content=True)
+        if content_encoding in ("br", "zstd"):
+            with pytest.raises(DecodeError):
+                list(stream)
+        else:
+            assert b"".join(stream) == original_data
 
     @pytest.mark.parametrize(
         "delta",

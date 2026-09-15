@@ -76,6 +76,10 @@ class DeflateDecoder(ContentDecoder):
     def decompress(self, data: bytes, max_length: int = -1) -> bytes:
         data = self._unfed_data + data
         self._unfed_data = b""
+        # Data received after EOF cannot produce more output from this
+        # Deflate stream.
+        if self._obj.eof:
+            return b""
         if not data and not self._obj.unconsumed_tail:
             return data
         original_max_length = max_length
@@ -118,7 +122,9 @@ class DeflateDecoder(ContentDecoder):
     @property
     def has_unconsumed_tail(self) -> bool:
         return bool(self._unfed_data) or (
-            bool(self._obj.unconsumed_tail) and not self._first_try
+            bool(self._obj.unconsumed_tail)
+            and not self._first_try
+            and not self._obj.eof
         )
 
     def flush(self) -> bytes:
