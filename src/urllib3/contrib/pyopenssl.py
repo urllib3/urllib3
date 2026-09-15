@@ -512,7 +512,13 @@ class PyOpenSSLContext:
                 # versions because set_passwd_cb() became deprecated in 26.3.0.
                 if int(OpenSSL.__version__.split(".")[0]) >= 26:
                     with open(keyfile or certfile, "rb") as key_file:
-                        private_key = load_pem_private_key(key_file.read(), password)
+                        key_data = key_file.read()
+                    try:
+                        private_key = load_pem_private_key(key_data, password)
+                    except TypeError:
+                        # Match SSLContext: ignore unused passwords.
+                        # Incorrect passwords raise ValueError instead.
+                        private_key = load_pem_private_key(key_data, None)
                     # cryptography's loader returns a wider private-key union
                     # than pyOpenSSL accepts, so we add `type: ignore` here.
                     self._ctx.use_privatekey(private_key)  # type: ignore[arg-type]
