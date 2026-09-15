@@ -516,8 +516,10 @@ class PyOpenSSLContext:
                     try:
                         private_key = load_pem_private_key(key_data, password)
                     except TypeError:
-                        # Match SSLContext: ignore unused passwords.
-                        # Incorrect passwords raise ValueError instead.
+                        # Match SSLContext by ignoring passwords supplied
+                        # for unencrypted keys.
+                        # Incorrect passwords for encrypted keys raise
+                        # ValueError instead.
                         private_key = load_pem_private_key(key_data, None)
                     # cryptography's loader returns a wider private-key union
                     # than pyOpenSSL accepts, so we add `type: ignore` here.
