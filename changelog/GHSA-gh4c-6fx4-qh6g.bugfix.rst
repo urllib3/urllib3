@@ -1,1 +1,0 @@
-Fixed an infinite loop in ``HTTPResponse.stream()`` and ``HTTPResponse.read_chunked()`` when decoding chunked responses with ``Content-Encoding: deflate`` and trailing data after the compressed stream.
