@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import _set_header_from_auth
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -450,11 +451,20 @@ class PoolManager(RequestMethods):
         kw["assert_same_host"] = False
         kw["redirect"] = False
 
-        if "headers" not in kw:
-            kw["headers"] = self.headers
+        headers = kw.get("headers", self.headers)
+        if headers is None:
+            headers = self.headers
+        if u.auth is not None:
+            headers = _set_header_from_auth(
+                u.auth_decoded_joined, headers, "authorization"
+            )
+        kw["headers"] = headers
 
         if self._proxy_requires_url_absolute_form(u):
-            response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
+            # Userinfo is used to construct the Authorization header and must
+            # not be sent in the absolute-form request target to a proxy.
+            request_url = u._replace(auth=None, fragment=None).url
+            response = conn.urlopen(method, request_url, **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 
@@ -611,7 +621,11 @@ class ProxyManager(PoolManager):
             proxy = proxy._replace(port=port)
 
         self.proxy = proxy
-        self.proxy_headers = proxy_headers or {}
+        self.proxy_headers = _set_header_from_auth(
+            proxy.auth_decoded_joined,
+            HTTPHeaderDict(proxy_headers or {}),
+            "proxy-authorization",
+        )
         self.proxy_config = ProxyConfig(
             proxy_ssl_context,
             use_forwarding_for_https,

@@ -42,7 +42,11 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
-from .util.request import _TYPE_BODY_POSITION, set_file_position
+from .util.request import (
+    _TYPE_BODY_POSITION,
+    _set_header_from_auth,
+    set_file_position,
+)
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
@@ -709,6 +713,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             auto-populate the value when needed.
         """
         # Ensure that the URL we're connecting to is properly encoded
+        parsed_url: Url | None = None
         if url.startswith("/"):
             # URLs starting with / are inherently schemeless.
             url = to_str(_encode_target(url))
@@ -716,10 +721,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         else:
             parsed_url = parse_url(url)
             destination_scheme = parsed_url.scheme
-            url = to_str(parsed_url._replace(fragment=None).url)
+            url = to_str(parsed_url._replace(auth=None, fragment=None).url)
 
         if headers is None:
             headers = self.headers
+
+        if parsed_url is not None and parsed_url.auth is not None:
+            headers = _set_header_from_auth(
+                parsed_url.auth_decoded_joined, headers, "authorization"
+            )
 
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect, default=self.retries)

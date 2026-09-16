@@ -18,10 +18,111 @@ from urllib3.poolmanager import (
     key_fn_by_scheme,
 )
 from urllib3.util import retry, timeout
+from urllib3.util.request import make_headers
 from urllib3.util.url import Url
 
 
 class TestPoolManager:
+    def test_url_auth_sets_authorization_without_mutating_headers(self) -> None:
+        pool = MagicMock()
+        response = MagicMock()
+        response.get_redirect_location.return_value = False
+        pool.urlopen.return_value = response
+        manager = PoolManager()
+        manager.connection_from_host = MagicMock(return_value=pool)  # type: ignore[method-assign]
+        headers = {"X-Test": "value"}
+
+        manager.urlopen(
+            "GET", "http://user%40name:pass%3Aword@example.com/path", headers=headers
+        )
+
+        assert headers == {"X-Test": "value"}
+        call_headers = pool.urlopen.call_args.kwargs["headers"]
+        assert (
+            call_headers["authorization"]
+            == make_headers(basic_auth="user@name:pass:word")["authorization"]
+        )
+        assert pool.urlopen.call_args.args[1] == "/path"
+
+    @pytest.mark.parametrize("header_name", ["Authorization", "authorization"])
+    def test_url_auth_accepts_matching_authorization_header(
+        self, header_name: str
+    ) -> None:
+        pool = MagicMock()
+        response = MagicMock()
+        response.get_redirect_location.return_value = False
+        pool.urlopen.return_value = response
+        manager = PoolManager()
+        manager.connection_from_host = MagicMock(return_value=pool)  # type: ignore[method-assign]
+        auth = make_headers(basic_auth="user:pass")["authorization"]
+
+        manager.urlopen(
+            "GET",
+            "http://user:pass@example.com/path",
+            headers={header_name: auth},
+        )
+
+        assert pool.urlopen.call_args.kwargs["headers"][header_name] == auth
+
+    def test_url_auth_rejects_mismatched_authorization_header(self) -> None:
+        manager = PoolManager()
+
+        with pytest.raises(ValueError, match="do not match"):
+            manager.urlopen(
+                "GET",
+                "http://user:pass@example.com/path",
+                headers={"Authorization": "Basic wrong"},
+            )
+
+        with pytest.raises(ValueError, match="do not match"):
+            manager.urlopen(
+                "GET",
+                "http://user:pass@example.com/path",
+                headers={
+                    "Authorization": make_headers(basic_auth="user:pass")[
+                        "authorization"
+                    ],
+                    "authorization": "Basic wrong",
+                },
+            )
+
+    def test_url_auth_does_not_persist_in_manager_headers(self) -> None:
+        pool = MagicMock()
+        pool.urlopen.return_value.get_redirect_location.return_value = False
+        defaults = {"X-Test": "value"}
+        manager = PoolManager(headers=defaults)
+        manager.connection_from_host = MagicMock(return_value=pool)  # type: ignore[method-assign]
+        manager.urlopen("GET", "http://user:pass@example.com/", headers=None)
+        manager.urlopen("GET", "http://example.com/")
+        assert defaults == {"X-Test": "value"}
+        assert "authorization" not in pool.urlopen.call_args.kwargs["headers"]
+
+    def test_url_auth_is_not_forwarded_to_cross_host_redirect(self) -> None:
+        pool = MagicMock()
+        redirect = MagicMock()
+        redirect.get_redirect_location.return_value = "http://new:pass@other.example/"
+        redirect.status = 302
+        redirect.retries = retry.Retry(total=1)
+        final = MagicMock()
+        final.get_redirect_location.return_value = False
+        pool.urlopen.side_effect = [redirect, final]
+        pool.is_same_host.return_value = False
+        manager = PoolManager()
+        manager.connection_from_host = MagicMock(return_value=pool)  # type: ignore[method-assign]
+
+        manager.urlopen("GET", "http://old:pass@example.com/")
+
+        first_headers = pool.urlopen.call_args_list[0].kwargs["headers"]
+        second_headers = pool.urlopen.call_args_list[1].kwargs["headers"]
+        assert (
+            first_headers["authorization"]
+            == make_headers(basic_auth="old:pass")["authorization"]
+        )
+        assert (
+            second_headers["authorization"]
+            == make_headers(basic_auth="new:pass")["authorization"]
+        )
+
     @resolvesLocalhostFQDN()
     def test_same_url(self) -> None:
         # Convince ourselves that normally we don't get the same object
