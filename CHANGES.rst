@@ -1,3 +1,156 @@
+2.8.0 (2026-09-15)
+==================
+
+Security
+--------
+
+Fixed the following security issues:
+
+- The TLS configuration for HTTPS proxies could be ignored or overridden.
+  (High severity, `GHSA-8988-9cw3-xx77 <https://github.com/urllib3/urllib3/security/advisories/GHSA-8988-9cw3-xx77>`__)
+- ``HTTPResponse.stream()`` and ``read_chunked()`` could buffer a chunk-size
+  line of unbounded length in memory. (High severity,
+  `GHSA-vxq7-64xx-v4gw <https://github.com/urllib3/urllib3/security/advisories/GHSA-vxq7-64xx-v4gw>`__)
+- Chunked Deflate streaming could enter an infinite loop. (Medium severity,
+  `GHSA-gh4c-6fx4-qh6g <https://github.com/urllib3/urllib3/security/advisories/GHSA-gh4c-6fx4-qh6g>`__)
+
+.. caution::
+
+    urllib3 2.8.0 fixes HTTPS proxy TLS configuration being ignored or
+    overridden by destination settings. Configurations relying on that
+    behavior may require changes.
+
+    Configure proxy CA certificates and client certificates in
+    ``proxy_ssl_context``, and proxy identity checks with
+    ``proxy_assert_hostname`` or ``proxy_assert_fingerprint``.
+    Destination client certificates and identity overrides no longer
+    apply to HTTPS forwarding proxy connections.
+
+
+Deprecations & Removals
+-----------------------
+
+- Deprecated using an empty collection as the ``Retry`` option
+  ``allowed_methods`` to retry any verb.
+  (`#5044 <https://github.com/urllib3/urllib3/issues/5044>`__)
+
+
+Features
+--------
+
+- Added ``Url.auth_decoded`` and ``Url.auth_decoded_joined`` convenience
+  properties to the result of ``parse_url()``.
+  (`#4945 <https://github.com/urllib3/urllib3/issues/4945>`__)
+- Added ``basic_auth_encoding`` and ``proxy_basic_auth_encoding`` parameters to
+  ``urllib3.util.make_headers()``.
+  (`#5092 <https://github.com/urllib3/urllib3/issues/5092>`__)
+
+
+Bugfixes
+--------
+
+- Fixed response header handling to replace obsolete folded header lines
+  (`obs-fold`) with spaces in accordance with RFC 9112, preventing raw CRLF
+  sequences from appearing in header values such as ``Set-Cookie``.
+  (`#1362 <https://github.com/urllib3/urllib3/issues/1362>`__)
+- Fixed usage of ``proxy_ssl_context`` with ``ProxyManager`` when
+  ``use_forwarding_for_https=True``. Passing ``ssl_context`` instead of
+  ``proxy_ssl_context`` for HTTPS proxies in this configuration now emits a
+  ``FutureWarning`` and will raise an error in v3.0.
+  (`#2577 <https://github.com/urllib3/urllib3/issues/2577>`__)
+- Changed behavior of the default ``ConnectionPool.pool`` initialization.
+  ``LifoQueue`` is now resolved from the ``queue`` module after the
+  ``ConnectionPool`` is instantiated instead of using the default cached
+  ``QueueCls`` class property. This is done because sometimes the
+  ``queue.LifoQueue`` is monkey-patched late in the program, such as by gevent.
+  (`#3289 <https://github.com/urllib3/urllib3/issues/3289>`__)
+- Raised ``UnrewindableBodyError`` instead of ``ValueError`` when retrying a
+  request whose body had ``tell()`` but not ``seek()``.
+  (`#3779 <https://github.com/urllib3/urllib3/issues/3779>`__)
+- Decoded percent-encoded SOCKS proxy credentials before authenticating with
+  the proxy server.
+  (`#3785 <https://github.com/urllib3/urllib3/issues/3785>`__)
+- Fixed ``HTTPResponse.drain_conn()`` to discard unread response data in 64 KiB
+  chunks (same as the default ``amt`` when doing ``HTTPResponse.stream(...)``).
+  (`#5019 <https://github.com/urllib3/urllib3/issues/5019>`__)
+- Fixed ``is_ipaddress()`` to detect non-standard IPv4 forms accepted by
+  ``socket.connect``, such as hex (``0x7f000001``), octal (``0177.0.0.1``), and
+  decimal integers (``2130706433``), ensuring SSL certificate verification uses
+  the correct mode for these addresses.
+  (`#5029 <https://github.com/urllib3/urllib3/issues/5029>`__)
+- Fixed ``HTTPConnectionPool.urlopen`` raising a misleading ``FullPoolError``
+  instead of ``ValueError`` when called with an invalid ``timeout`` argument on
+  a pool created with ``block=True``.
+  (`#5059 <https://github.com/urllib3/urllib3/issues/5059>`__)
+- Fixed port-zero handling to preserve explicit ``:0`` values instead of
+  substituting the default ports 80 or 443 in URL parsing, pool selection,
+  proxy configuration, ``connection_from_url()``, and HTTP/2 request authority.
+  (`#5071 <https://github.com/urllib3/urllib3/issues/5071>`__,
+  `#5101 <https://github.com/urllib3/urllib3/issues/5101>`__)
+- Fixed a bug where ``PoolManager`` passed the ``assert_hostname`` and
+  ``assert_fingerprint`` parameters to HTTP connection pools.
+  (`#5077 <https://github.com/urllib3/urllib3/issues/5077>`__)
+- Fixed ``HTTPConnectionPool.urlopen()`` and HTTP proxy forwarding to strip URL
+  fragments from absolute request targets before sending requests.
+  (`#5079 <https://github.com/urllib3/urllib3/issues/5079>`__)
+- Added safeguards to the proxy tunneling code to prevent potential security
+  issues when handling invalid characters in the proxy host and HTTP headers.
+  This change affects users of Python 3.10, Python 3.11, and Python 3.12 when
+  the standard library does not contain the fix; those on newer Python versions
+  should upgrade to 3.13.14+ or 3.14.5+ to get the same security fixes.
+  (`#5091 <https://github.com/urllib3/urllib3/issues/5091>`__)
+- Fixed ``HTTPSConnection.connect()`` overriding ``ProxyConfig.ssl_context``'s
+  certificate policy and proxy identity checks with the target connection's TLS
+  settings when forwarding through an HTTPS proxy.
+
+  ``HTTPSConnection`` no longer applies target SNI, assertions, or client
+  credentials to forwarding proxy handshakes and continues to use its
+  ``ssl_context`` as a fallback when an HTTPS proxy forwards an HTTP target.
+  (`#5093 <https://github.com/urllib3/urllib3/issues/5093>`__)
+- Fixed URL parsing to more strictly enforce RFC 3986 host syntax, rejecting
+  invalid host input such as raw spaces and control characters, malformed
+  percent-encodings, and percent-encoded control characters in HTTP(S) hosts
+  and IPv6 zone identifiers, including proxy CONNECT tunnel targets. Host
+  normalization now also follows RFC 3986 normalization rules for
+  percent-encoded octets by decoding percent-encoded unreserved characters and
+  uppercasing the hexadecimal digits of retained percent-encoded octets.
+  (`#5095 <https://github.com/urllib3/urllib3/issues/5095>`__)
+- Fixed an ``AttributeError`` on Python built with OpenSSL 4+, where
+  ``ssl.PROTOCOL_TLSv1`` no longer exists.
+  (`#5097 <https://github.com/urllib3/urllib3/issues/5097>`__)
+- Fixed ``urllib3.contrib.pyopenssl`` to use cryptography APIs when reading a
+  certificate subject and loading encrypted private keys, avoiding
+  ``DeprecationWarning`` raised by pyOpenSSL 26.3.0+.
+  (`#5103 <https://github.com/urllib3/urllib3/issues/5103>`__)
+- Fixed handling of HTTP 303 redirects for requests with chunked or file-like
+  bodies.
+  (`#5161 <https://github.com/urllib3/urllib3/issues/5161>`__)
+- Fixed ``assert_fingerprint()`` to raise ``SSLError`` instead of
+  ``binascii.Error`` when a fingerprint has a supported length but contains
+  non-hexadecimal characters.
+  (`#5211 <https://github.com/urllib3/urllib3/issues/5211>`__)
+
+
+Misc
+----
+
+- Added a ``test`` dependency group containing the minimum dependencies needed
+  to run the test suite, intended for downstream packagers. The ``dev-base``
+  and ``mypy`` groups now include this new group via ``include-group``,
+  removing duplication.
+  (`#3594 <https://github.com/urllib3/urllib3/issues/3594>`__)
+- Fixed test failures with pytest >= 9.1.
+  (`#5094 <https://github.com/urllib3/urllib3/issues/5094>`__)
+- Enabled JSPI tests with Firefox in the Emscripten test suite.
+  (`#5166 <https://github.com/urllib3/urllib3/issues/5166>`__)
+- Improved streamed response decoding performance.
+  (`#5209 <https://github.com/urllib3/urllib3/issues/5209>`__)
+- Fixed flaky tests.
+  (`#5232 <https://github.com/urllib3/urllib3/issues/5232>`__,
+  `#5234 <https://github.com/urllib3/urllib3/issues/5234>`__,
+  `#5239 <https://github.com/urllib3/urllib3/issues/5239>`__)
+
+
 2.7.0 (2026-05-07)
 =======================
 
