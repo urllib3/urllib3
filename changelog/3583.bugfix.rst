@@ -1,0 +1,3 @@
+The "Retrying" warning raised by connection pools now includes the scheme and
+host of the failed request, so the full URL is visible without additional
+debugging.
