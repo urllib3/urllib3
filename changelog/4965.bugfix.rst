@@ -1,0 +1,1 @@
+Fixed ``HTTPConnectionPool.urlopen()`` collapsing ``.``/``..`` path segments when given an absolute-form URL (the proxy request path), which sent a different resource than the one requested. The non-absolute-form path already left such segments alone; the two now agree.

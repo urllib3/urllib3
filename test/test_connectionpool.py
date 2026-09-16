@@ -802,6 +802,40 @@ class TestConnectionPool:
             actual_url = mock_request.call_args[0][2]
             assert actual_url == expected_url
 
+    @pytest.mark.parametrize(
+        ("target_url", "expected_url"),
+        [
+            pytest.param(
+                "http://localhost/../secret",
+                "http://localhost/../secret",
+                id="parent-dir-segment",
+            ),
+            pytest.param(
+                "http://localhost/a/./b/../c",
+                "http://localhost/a/./b/../c",
+                id="current-and-parent-dir-segments",
+            ),
+        ],
+    )
+    def test_absolute_url_request_target_preserves_dot_segments(
+        self, target_url: str, expected_url: str
+    ) -> None:
+        """See https://github.com/urllib3/urllib3/issues/4965.
+
+        The non-absolute-form branch above never collapses ../. segments
+        in a path, so the absolute-form branch used for proxied requests
+        must not either, since otherwise the request sent on the wire no
+        longer matches the URL the caller asked for.
+        """
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool, "_make_request", return_value=HTTPResponse(status=200)
+            ) as mock_request:
+                pool.urlopen("GET", target_url)
+
+            actual_url = mock_request.call_args[0][2]
+            assert actual_url == expected_url
+
     def test_absolute_redirect_request_target_strips_fragment(self) -> None:
         redirect_response = HTTPResponse(
             status=302,
