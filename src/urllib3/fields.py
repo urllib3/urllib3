@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import email.utils
 import mimetypes
+import re
 import typing
 
 _TYPE_FIELD_VALUE = typing.Union[str, bytes]
@@ -10,6 +11,10 @@ _TYPE_FIELD_VALUE_TUPLE = typing.Union[
     tuple[str, _TYPE_FIELD_VALUE],
     tuple[str, _TYPE_FIELD_VALUE, str],
 ]
+
+# Carriage return, line feed and null are not allowed in a multipart part
+# header value; otherwise they could inject extra headers into the body.
+_HEADER_VALUE_FORBIDDEN_RE = re.compile(r"[\r\n\x00]")
 
 
 def guess_content_type(
@@ -327,6 +332,15 @@ class RequestField:
             The 'Content-Location' of the request body.
 
         """
+        for header_value in (content_disposition, content_type, content_location):
+            if header_value is not None and _HEADER_VALUE_FORBIDDEN_RE.search(
+                header_value
+            ):
+                raise ValueError(
+                    f"Multipart header value {header_value!r} contains a carriage "
+                    "return, line feed, or null character"
+                )
+
         content_disposition = (content_disposition or "form-data") + "; ".join(
             [
                 "",
