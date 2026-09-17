@@ -454,7 +454,9 @@ class PoolManager(RequestMethods):
             kw["headers"] = self.headers
 
         if self._proxy_requires_url_absolute_form(u):
-            response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
+            # The connection pool normalizes the URL. Rebuilding it here would
+            # decode IPv6 zone identifiers a second time.
+            response = conn.urlopen(method, url.split("#", 1)[0], **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 

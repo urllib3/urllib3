@@ -164,6 +164,9 @@ class TestConnectionPool:
             "127.0.0.1 ",
             "::1\n",
             "[::1]\n",
+            "::1%eth\n0",
+            "::1%eth 0",
+            "::1%eth\x7f0",
         ],
     )
     def test_control_characters_in_host_raise(self, host: str) -> None:
@@ -174,6 +177,42 @@ class TestConnectionPool:
     def test_malformed_percent_escapes_in_host_raise(self, host: str) -> None:
         with pytest.raises(LocationParseError):
             HTTPConnectionPool(host)
+
+    @pytest.mark.parametrize("pool_cls", [HTTPConnectionPool, HTTPSConnectionPool])
+    @pytest.mark.parametrize(
+        "zone, expected_zone",
+        [
+            ("", ""),
+            ("1", "1"),
+            ("25", "25"),
+            ("31", "31"),
+            ("251", "251"),
+            ("0d", "0d"),
+            ("AB", "ab"),
+            ("FF", "ff"),
+            ("eth0", "eth0"),
+            ("etH0", "eth0"),
+            ("et%61", "et%61"),
+            ("eth%0d", "eth%0d"),
+            ("eth%7F", "eth%7f"),
+            ("et%FF", "et%ff"),
+            ("25eth+foo", "25eth+foo"),
+            ("l\u00ado0", None),
+            ("l\u200co0", None),
+            ("eté", None),
+        ],
+    )
+    def test_unbracketed_scoped_ipv6(
+        self, pool_cls: type[HTTPConnectionPool], zone: str, expected_zone: str | None
+    ) -> None:
+        if expected_zone is None:
+            with pytest.raises(LocationParseError):
+                pool_cls(f"FE80::1%{zone}", port=8080)
+            return
+        with pool_cls(f"FE80::1%{zone}", port=8080) as pool:
+            assert pool.host == f"fe80::1%{expected_zone}"
+            assert pool._tunnel_host == f"fe80::1%{expected_zone}"
+            assert pool._new_conn().host == f"fe80::1%{expected_zone}"
 
     @pytest.mark.parametrize(
         "host, expected_host, expected_tunnel_host",

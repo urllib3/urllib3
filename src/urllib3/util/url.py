@@ -391,6 +391,13 @@ def _normalize_host(host: str | None, scheme: str | None) -> str | None:
                     return host.lower()
             elif not _IPV4_RE.match(host):
                 if "%" in host:
+                    if (
+                        ":" in host
+                        and host.isascii()
+                        and _IPV6_RE.match(host.partition("%")[0])
+                    ):
+                        # Native IPv6 zones contain literal percent signs.
+                        return host.lower()
                     host = _HOST_PERCENT_RE.sub(_normalize_host_percent_encoding, host)
                 return to_str(
                     b".".join([_idna_encode(label) for label in host.split(".")]),
