@@ -20,9 +20,10 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import _add_url_auth
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.url import Url, parse_url
+from .util.url import Url, _url_origin, parse_url
 
 if typing.TYPE_CHECKING:
     import ssl
@@ -434,6 +435,12 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
+        if u.auth is not None:
+            kw["headers"] = _add_url_auth(
+                u.auth_decoded_joined, kw.get("headers", self.headers) or {}
+            )
+            u = u._replace(auth=None)
+            url = u.url
 
         if u.scheme is None:
             warnings.warn(
@@ -482,10 +489,9 @@ class PoolManager(RequestMethods):
             retries = Retry.from_int(retries, redirect=redirect)
 
         # Strip headers marked as unsafe to forward to the redirected location.
-        # Check remove_headers_on_redirect to avoid a potential network call within
-        # conn.is_same_host() which may use socket.gethostbyname() in the future.
-        if retries.remove_headers_on_redirect and not conn.is_same_host(
-            redirect_location
+        # Compare target origins, not the proxy connection's host.
+        if retries.remove_headers_on_redirect and _url_origin(u) != _url_origin(
+            parse_url(redirect_location)
         ):
             new_headers = kw["headers"].copy()
             for header in kw["headers"]:
@@ -504,7 +510,11 @@ class PoolManager(RequestMethods):
         kw["retries"] = retries
         kw["redirect"] = redirect
 
-        log.info("Redirecting %s -> %s", url, redirect_location)
+        log.info(
+            "Redirecting %s -> %s",
+            url,
+            parse_url(redirect_location)._replace(auth=None).url,
+        )
 
         response.drain_conn()
         return self.urlopen(method, redirect_location, **kw)
@@ -516,7 +526,10 @@ class ProxyManager(PoolManager):
     the defined proxy, using the CONNECT method for HTTPS URLs.
 
     :param proxy_url:
-        The URL of the proxy to be used.
+        The URL of the proxy to be used. URL userinfo is percent-decoded and
+        converted to a Basic Proxy-Authorization header using Latin-1, then
+        removed from the stored proxy URL. Conflicting explicit authentication
+        headers raise ValueError.
 
     :param proxy_headers:
         A dictionary containing headers that will be sent to the proxy. In case
@@ -610,8 +623,10 @@ class ProxyManager(PoolManager):
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
-        self.proxy = proxy
-        self.proxy_headers = proxy_headers or {}
+        self.proxy_headers = _add_url_auth(
+            proxy.auth_decoded_joined, proxy_headers or {}, "Proxy-Authorization"
+        )
+        self.proxy = proxy._replace(auth=None)
         self.proxy_config = ProxyConfig(
             proxy_ssl_context,
             use_forwarding_for_https,

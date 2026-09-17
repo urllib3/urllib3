@@ -657,3 +657,29 @@ standard logger interface to change the log level for urllib3's logger:
 .. code-block:: python
 
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
+Authentication in URLs
+----------------------
+
+Request URLs may contain ``username:password`` userinfo::
+
+    http.request("GET", "https://username:password@example.com/private")
+
+urllib3 percent-decodes the userinfo and generates a Basic ``Authorization``
+header using Latin-1, matching :func:`urllib3.util.make_headers`. A username
+without a password is treated as having an empty password. Credentials that
+cannot be represented in Latin-1 raise ``ValueError``. To choose another
+encoding or authentication scheme, omit URL userinfo and supply an explicit
+header instead.
+
+The userinfo is removed from the request target. Headers supplied by the
+caller are not mutated: matching authentication headers are accepted, while
+conflicting values raise ``ValueError`` before the request is sent. Generated
+origin authentication follows the configured redirect-header removal policy;
+by default it is removed when the target origin changes.
+
+HTTP and HTTPS proxy URLs accept userinfo in the same way, generating
+``Proxy-Authorization`` and removing userinfo from the stored proxy URL.
+For HTTPS tunneling the proxy authentication is sent on CONNECT, separately
+from the origin authentication inside the TLS tunnel.
