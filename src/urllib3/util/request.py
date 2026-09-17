@@ -6,6 +6,7 @@ import typing
 from base64 import b64encode
 from enum import Enum
 
+from .._collections import HTTPHeaderDict
 from ..exceptions import UnrewindableBodyError
 from .util import to_bytes
 
@@ -55,6 +56,22 @@ _TYPE_BODY_POSITION = typing.Union[int, _TYPE_FAILEDTELL]
 # which 'should' have a body is because unknown methods should be
 # treated as if they were 'POST' which *does* expect a body.
 _METHODS_NOT_EXPECTING_BODY = {"GET", "HEAD", "DELETE", "TRACE", "OPTIONS", "CONNECT"}
+
+
+def _add_url_auth(
+    headers: typing.Mapping[str, str],
+    auth: str | None,
+    header: str = "Authorization",
+) -> typing.Mapping[str, str]:
+    """Add decoded URL credentials without mutating caller-owned headers."""
+    if auth is None:
+        return headers
+    value = make_headers(basic_auth=auth)["authorization"]
+    result = HTTPHeaderDict(headers)
+    if any(existing != value for existing in result.getlist(header)):
+        raise ValueError(f"{header} header conflicts with URL credentials")
+    result[header] = value
+    return result
 
 
 def make_headers(

@@ -76,6 +76,26 @@ including JSON, files, and binary data.
     In addition, the method does not accept the low-level ``**urlopen_kw`` keyword arguments.
     System CA certificates are loaded on default.
 
+Basic authentication from URLs
+------------------------------
+
+Credentials in request URLs generate an ``Authorization`` header. Credentials
+in an HTTP or HTTPS :class:`~urllib3.ProxyManager` URL generate a
+``Proxy-Authorization`` header instead. Percent escapes are decoded before
+encoding credentials as Latin-1, as with :func:`urllib3.util.make_headers`.
+An explicit authentication header must match the generated header; otherwise
+the request raises ``ValueError``. Caller-owned header dictionaries are not
+modified.
+
+.. code-block:: python
+
+    http = urllib3.PoolManager()
+    resp = http.request("GET", "https://user:password@example.com/private")
+
+The default redirect policy removes ``Authorization`` when redirecting to a
+different host, port, or scheme. For other credential encodings, pass a header
+generated with :func:`urllib3.util.make_headers` and omit credentials from the URL.
+
 .. _response_content:
 
 Response Content
