@@ -78,7 +78,9 @@ dev-base = [
     {include-group = "test"},
     "build>=1.2.2.post1",
     "coverage>=7.8.0",
+    "pytest-cov>=7.1.0",
     "pytest-memray==1.8.0 ; python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'",
+    "pytest-xdist>=3.8.0",
     "towncrier>=24.8.0",
 ]
 dev = [
@@ -170,9 +172,12 @@ markers = [
 log_level = "DEBUG"
 filterwarnings = [
     "error",
+    # Match urllib3 warnings by message to avoid importing urllib3 before
+    # pytest-cov starts.
     '''default:urllib3 v2 only supports OpenSSL 1.1.1+.*''',
-    '''default:No IPv6 support. Falling back to IPv4:urllib3.exceptions.HTTPWarning''',
-    '''default:No IPv6 support. skipping:urllib3.exceptions.HTTPWarning''',
+    '''default:No IPv6 support. Falling back to IPv4''',
+    '''default:No IPv6 support. skipping''',
+    '''default:Brotli >= 1.2.0 is required to prevent decompression bombs\.''',
     '''default:ssl\.TLSVersion\.TLSv1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLS is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1 is deprecated:DeprecationWarning''',
@@ -180,7 +185,6 @@ filterwarnings = [
     '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
-    '''default:Brotli >= 1.2.0 is required to prevent decompression bombs\.:urllib3.exceptions.DependencyWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/13328
     '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/14686
