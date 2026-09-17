@@ -30,6 +30,7 @@ from .exceptions import (
     FullPoolError,
     HostChangedError,
     InsecureRequestWarning,
+    LocationParseError,
     LocationValueError,
     MaxRetryError,
     NewConnectionError,
@@ -46,9 +47,17 @@ from .util.request import _TYPE_BODY_POSITION, set_file_position
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
-from .util.url import Url, _encode_target
+from .util.url import (
+    _IPV6_ADDRZ_RE,
+    _IPV6_RE,
+    _NORMALIZABLE_SCHEMES,
+    _PERCENT_RE,
+    Url,
+    _decode_percent_encoding,
+    _encode_target,
+)
 from .util.url import _normalize_host as normalize_host
-from .util.url import parse_url
+from .util.url import _validate_host_characters, parse_url
 from .util.util import to_str
 
 if typing.TYPE_CHECKING:
@@ -86,11 +95,12 @@ class ConnectionPool:
         self.host = _normalize_host(host, scheme=self.scheme)
         self.port = port
 
-        # This property uses 'normalize_host()' (not '_normalize_host()')
-        # to avoid removing square braces around IPv6 addresses.
-        # This value is sent to `HTTPConnection.set_tunnel()` if called
-        # because square braces are required for HTTP CONNECT tunneling.
-        self._tunnel_host = normalize_host(host, scheme=self.scheme).lower()
+        # HTTP CONNECT needs brackets around IPv6 addresses.
+        self._tunnel_host = (
+            f"[{self.host}]"
+            if host.startswith("[") and host.endswith("]")
+            else self.host
+        )
 
     def __str__(self) -> str:
         return f"{type(self).__name__}(host={self.host!r}, port={self.port!r})"
@@ -1093,7 +1103,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         actual_host: str = self.host
         actual_port = self.port
         if self.proxy is not None and self.proxy.host is not None:
-            actual_host = self.proxy.host
+            actual_host = _normalize_host(self.proxy.host, self.proxy.scheme)
             actual_port = self.proxy.port
 
         return self.ConnectionCls(
@@ -1180,6 +1190,24 @@ def _normalize_host(host: str | None, scheme: str | None) -> str | None:
     Normalize hosts for comparisons and use with sockets.
     """
 
+    # Normalize unbracketed IPv6 addresses
+    if (
+        host
+        and scheme in _NORMALIZABLE_SCHEMES
+        and ":" in host
+        and "%" in host
+        and not _IPV6_ADDRZ_RE.match(host)
+    ):
+        _validate_host_characters(host)
+        address, _, zone_id = host.partition("%")
+        if not _IPV6_RE.match(address) or not zone_id:
+            raise LocationParseError(f"{host!r} is not a valid host")
+        for match in _PERCENT_RE.finditer(zone_id):
+            _decode_percent_encoding(match, error_host=host)
+        # Do not lowercase zone id since depending on the operating system,
+        # they can be case sensitive
+        return f"{address.lower()}%{zone_id}"
+
     host = normalize_host(host, scheme)
 
     # httplib doesn't like it when we include brackets in IPv6 addresses
@@ -1190,6 +1218,9 @@ def _normalize_host(host: str | None, scheme: str | None) -> str | None:
     # *assert* that.  See http://bugs.python.org/issue28539
     if host and host.startswith("[") and host.endswith("]"):
         host = host[1:-1]
+        if scheme in _NORMALIZABLE_SCHEMES:
+            # Decode only the zone separator for socket use.
+            host = host.replace("%25", "%", 1)
     return host
 
 

@@ -1,0 +1,8 @@
+Fixed a regression where unbracketed scoped IPv6 addresses passed to
+``HTTPConnectionPool`` or ``HTTPSConnectionPool`` were rejected or incorrectly
+normalized.
+Fixed a regression where repeated normalization of IPv6 zone identifiers in
+``ProxyManager`` caused the forwarded request target to disagree with the
+``Host`` header.
+Fixed a bug where IPv6 zone identifiers were incorrectly lowercased in
+connection-pool keys and CONNECT targets.

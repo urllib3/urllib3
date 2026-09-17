@@ -100,7 +100,8 @@ class Url(
     """
     Data structure for representing an HTTP URL. Used as a return value for
     :func:`parse_url`. Both the scheme and host are normalized as they are
-    both case-insensitive according to RFC 3986.
+    both case-insensitive according to RFC 3986. IPv6 zone identifiers retain
+    their case and encoded ``%25`` separator, with unreserved characters decoded.
 
     :param auth: User information as defined in RFC 3986 3.2.1. This
         component is kept percent-encoded. Use :attr:`auth_decoded` or
@@ -350,6 +351,15 @@ def _remove_path_dot_segments(path: str) -> str:
     return "/".join(output)
 
 
+def _validate_host_characters(host: str) -> None:
+    invalid_host_char = _HOST_INVALID_CHAR_RE.search(host)
+    if invalid_host_char:
+        raise LocationParseError(
+            f"Host {host!r} contains invalid character "
+            f"{invalid_host_char.group()!r}"
+        )
+
+
 @typing.overload
 def _normalize_host(host: None, scheme: str | None) -> None: ...
 
@@ -360,18 +370,10 @@ def _normalize_host(host: str, scheme: str | None) -> str: ...
 
 def _normalize_host(host: str | None, scheme: str | None) -> str | None:
     if host:
-        invalid_host_char = _HOST_INVALID_CHAR_RE.search(host)
-        if invalid_host_char:
-            raise LocationParseError(
-                f"Host {host!r} contains invalid character "
-                f"{invalid_host_char.group()!r}"
-            )
+        _validate_host_characters(host)
         if scheme in _NORMALIZABLE_SCHEMES:
             is_ipv6 = _IPV6_ADDRZ_RE.match(host)
             if is_ipv6:
-                # IPv6 hosts of the form 'a::b%zone' are encoded in a URL as
-                # such per RFC 6874: 'a::b%25zone'. Unquote the ZoneID
-                # separator as necessary to return a valid RFC 4007 scoped IP.
                 match = _ZONE_ID_RE.search(host)
                 if match:
                     start, end = match.span(1)
@@ -382,11 +384,11 @@ def _normalize_host(host: str | None, scheme: str | None) -> str | None:
                     else:
                         zone_id = zone_id[1:]
                     zone_id = _PERCENT_RE.sub(
-                        partial(_normalize_zone_id_percent_encoding, error_host=host),
+                        partial(_normalize_host_percent_encoding, error_host=host),
                         zone_id,
                     )
-                    zone_id = _encode_invalid_chars(zone_id, _UNRESERVED_CHARS)
-                    return f"{host[:start].lower()}%{zone_id}{host[end:]}"
+                    # Keep the zone separator encoded across repeated URL parsing.
+                    return f"{host[:start].lower()}%25{zone_id}{host[end:]}"
                 else:
                     return host.lower()
             elif not _IPV4_RE.match(host):
@@ -412,20 +414,16 @@ def _decode_percent_encoding(match: re.Match[str], *, error_host: str) -> str:
     return decoded_octet
 
 
-def _normalize_host_percent_encoding(match: re.Match[str]) -> str:
+def _normalize_host_percent_encoding(
+    match: re.Match[str], *, error_host: str | None = None
+) -> str:
+    error_host = error_host or match.string
     # Reject invalid percent encodings
     if match.group(0) == "%":
-        raise LocationParseError(f"{match.string!r} is not a valid host")
-    decoded_octet = _decode_percent_encoding(match, error_host=match.string)
+        raise LocationParseError(f"{error_host!r} is not a valid host")
+    decoded_octet = _decode_percent_encoding(match, error_host=error_host)
     if decoded_octet in _UNRESERVED_CHARS:
         return decoded_octet
-    return match.group(0).upper()
-
-
-def _normalize_zone_id_percent_encoding(
-    match: re.Match[str], *, error_host: str
-) -> str:
-    _decode_percent_encoding(match, error_host=error_host)
     return match.group(0).upper()
 
 
@@ -472,7 +470,7 @@ def parse_url(url: str) -> Url:
     """
     Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
     performed to parse incomplete urls. Fields not provided will be None.
-    This parser is RFC 3986 and RFC 6874 compliant.
+    This parser supports RFC 3986 and the legacy RFC 6874 zone identifier syntax.
 
     The parser logic and helper functions are based heavily on
     work done in the ``rfc3986`` module.
