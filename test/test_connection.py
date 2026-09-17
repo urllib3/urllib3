@@ -215,6 +215,14 @@ class TestConnection:
             ("before \t\r\n\t  after", "before after"),
             ("one\r\n two\t\r\n\tthree", "one two three"),
             ("one\r\n \r\n\tthree", "one  three"),
+            # Bare-LF folding, as produced by http.client for a server that
+            # terminates header lines with \n instead of \r\n.
+            ("before \n\t  after", "before after"),
+            ("one\n two\n\tthree", "one two three"),
+            # A residual bare CR/LF not part of an obs-fold is neutralized.
+            ("value\ninjected", "value injected"),
+            ("value\rinjected", "value injected"),
+            ("one\r\n\ttwo\n three", "one two three"),
         ],
     )
     def test_normalize_header_value(self, value: str, expected: str) -> None:
