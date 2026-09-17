@@ -108,8 +108,8 @@ class TestUtil:
             ("http", "[2010:836b:4179::836b:4179]", None),
         ),
         # Scoped IPv6 (with ZoneID), both RFC 6874 compliant and not.
-        ("http://[a::b%25zone]", ("http", "[a::b%zone]", None)),
-        ("http://[a::b%zone]", ("http", "[a::b%zone]", None)),
+        ("http://[a::b%25zone]", ("http", "[a::b%25zone]", None)),
+        ("http://[a::b%zone]", ("http", "[a::b%25zone]", None)),
         # Hosts
         ("HTTP://GOOGLE.COM/mail/", ("http", "google.com", None)),
         ("GOogle.COM/mail", ("http", "google.com", None)),
@@ -239,14 +239,21 @@ class TestUtil:
             ("Https://Example.Com/#Fragment", "https://example.com/#Fragment"),
             # IPv6 addresses with zone IDs. Both RFC 6874 (%25) as well as
             # non-standard (unquoted %) variants.
-            ("[::1%zone]", "[::1%zone]"),
-            ("[::1%25zone]", "[::1%zone]"),
-            ("[::1%0d]", "[::1%0d]"),
-            ("[::1%25]", "[::1%25]"),
-            ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%etH0%FF]/%AB%AF"),
+            ("[::1%zone]", "[::1%25zone]"),
+            ("[::1%25zone]", "[::1%25zone]"),
+            ("[::1%0d]", "[::1%250d]"),
+            ("[::1%25]", "[::1%2525]"),
+            ("[::1%25251]", "[::1%25251]"),
+            ("[::1%2525ethA]", "[::1%2525ethA]"),
+            ("[FE80::1%et%61]", "[fe80::1%25eta]"),
+            ("[FE80::1%25et%61]", "[fe80::1%25eta]"),
+            ("[FE80::1%et%41]", "[fe80::1%25etA]"),
+            ("[FE80::1%25et%41]", "[fe80::1%25etA]"),
+            ("[fe80::1%25et%2541]", "[fe80::1%25et%2541]"),
+            ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%25etH0%FF]/%AB%AF"),
             (
                 "http://user:pass@[AaAa::Ff%25etH0%Ff]/%ab%Af",
-                "http://user:pass@[aaaa::ff%etH0%FF]/%AB%AF",
+                "http://user:pass@[aaaa::ff%25etH0%FF]/%AB%AF",
             ),
             # Invalid characters for the query/fragment getting encoded
             (
@@ -267,6 +274,7 @@ class TestUtil:
         """Assert parse_url normalizes the scheme/host, and only the scheme/host"""
         actual_normalized_url = parse_url(url).url
         assert actual_normalized_url == expected_normalized_url
+        assert parse_url(actual_normalized_url).url == actual_normalized_url
 
     @pytest.mark.parametrize("char", [chr(i) for i in range(0x00, 0x21)] + ["\x7f"])
     def test_control_characters_are_percent_encoded(self, char: str) -> None:

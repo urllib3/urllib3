@@ -102,7 +102,7 @@ def _default_key_normalizer(
 
     According to RFC 3986, both the scheme and host are case-insensitive.
     Therefore, this function normalizes both before constructing the pool
-    key for an HTTPS request. If you wish to change this behaviour, provide
+    key, preserving IPv6 zone IDs. If you wish to change this behaviour, provide
     alternate callables to ``key_fn_by_scheme``.
 
     :param key_class:
@@ -119,7 +119,12 @@ def _default_key_normalizer(
     # Since we mutate the dictionary, make a copy first
     context = request_context.copy()
     context["scheme"] = context["scheme"].lower()
-    context["host"] = context["host"].lower()
+    if ":" in context["host"]:
+        host, separator, zone_id = context["host"].partition("%")
+        # Do not lowercase normalize the zone id since these are case sensitive
+        context["host"] = f"{host.lower()}{separator}{zone_id}"
+    else:
+        context["host"] = context["host"].lower()
 
     # These are both dictionaries and need to be transformed into frozensets
     for key in ("headers", "_proxy_headers", "_socks_options"):

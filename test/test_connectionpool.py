@@ -84,6 +84,8 @@ class TestConnectionPool:
                 "https://[2607:f8b0:4005:805::200e%eth0]:443/",
             ),
             ("http://[::1]/", "http://[::1]"),
+            ("http://[FE80::AB%25251]/", "http://[fe80::ab%25251]/"),
+            ("https://[FE80::AB%2525ethA]/", "https://[fe80::ab%2525ethA]/"),
             (
                 "http://[2001:558:fc00:200:f816:3eff:fef9:b954%lo]/",
                 "http://[2001:558:fc00:200:f816:3eff:fef9:b954%25lo]",
@@ -114,6 +116,8 @@ class TestConnectionPool:
             # Zone identifiers are unique connection end points and should
             # never be equivalent.
             ("http://[dead::beef]", "https://[dead::beef%en5]/"),
+            ("http://[::1%25251]/", "http://[::1%251]/"),
+            ("https://[::1%2525ethA]/", "https://[::1%25ethA]/"),
         ],
     )
     def test_not_same_host(self, a: str, b: str) -> None:
@@ -164,6 +168,11 @@ class TestConnectionPool:
             "127.0.0.1 ",
             "::1\n",
             "[::1]\n",
+            "::1%eth\n0",
+            "::1%eth 0",
+            "::1%eth\x7f0",
+            "::1%eth%0d",
+            "[::1%25eth%0d]",
         ],
     )
     def test_control_characters_in_host_raise(self, host: str) -> None:
@@ -176,9 +185,30 @@ class TestConnectionPool:
             HTTPConnectionPool(host)
 
     @pytest.mark.parametrize(
+        "host", ["::1%", "[fe80::1%25eth+Foo]", "fe80::bad::1%25ethA"]
+    )
+    def test_invalid_scoped_ipv6_hosts_raise(self, host: str) -> None:
+        with pytest.raises(LocationParseError):
+            HTTPConnectionPool(host)
+
+    @pytest.mark.parametrize(
         "host, expected_host, expected_tunnel_host",
         [
             ("EXAMPLE%2Ecom%2E", "example.com.", "example.com."),
+            ("::1%1", "::1%1", "::1%1"),
+            ("::1%25", "::1%25", "::1%25"),
+            ("::1%31", "::1%31", "::1%31"),
+            ("::1%251", "::1%251", "::1%251"),
+            ("[::1%251]", "::1%1", "[::1%1]"),
+            ("[::1%25251]", "::1%251", "[::1%251]"),
+            ("[::1%2525ethA]", "::1%25ethA", "[::1%25ethA]"),
+            ("[::1%31]", "::1%31", "[::1%31]"),
+            ("FE80::1%etH0%Ff", "fe80::1%etH0%Ff", "fe80::1%etH0%Ff"),
+            ("[FE80::1%25etH0%Ff]", "fe80::1%etH0%FF", "[fe80::1%etH0%FF]"),
+            ("[fe80::1%25et%61]", "fe80::1%eta", "[fe80::1%eta]"),
+            ("[fe80::1%25et%41]", "fe80::1%etA", "[fe80::1%etA]"),
+            ("[fe80::1%25et%2541]", "fe80::1%et%2541", "[fe80::1%et%2541]"),
+            ("FE80::1%25eth+Foo", "fe80::1%25eth+Foo", "fe80::1%25eth+Foo"),
             (
                 "[2607:f8b0:4005:805::200e%25eth0]",
                 "2607:f8b0:4005:805::200e%eth0",

@@ -9,12 +9,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from urllib3 import connection_from_url
+from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import HTTPSConnectionPool
 from urllib3.exceptions import LocationValueError
 from urllib3.poolmanager import (
     _DEFAULT_BLOCKSIZE,
     PoolKey,
     PoolManager,
+    ProxyManager,
     key_fn_by_scheme,
 )
 from urllib3.util import retry, timeout
@@ -444,17 +446,23 @@ class TestPoolManager:
         assert pool_blocksize._get_conn().blocksize == expected_blocksize
 
     @pytest.mark.parametrize(
-        "url",
+        "url, host",
         [
-            "[a::b%zone]",
-            "[a::b%25zone]",
-            "http://[a::b%zone]",
-            "http://[a::b%25zone]",
+            ("[a::b%zone]", "a::b%zone"),
+            ("[a::b%25zone]", "a::b%zone"),
+            ("http://[a::b%zone]", "a::b%zone"),
+            ("http://[a::b%25zone]", "a::b%zone"),
+            ("http://[a::b%25251]", "a::b%251"),
+            ("http://[a::b%2525ethA]", "a::b%25ethA"),
+            ("http://[fe80::1%et%61]", "fe80::1%eta"),
+            ("http://[fe80::1%25et%61]", "fe80::1%eta"),
+            ("http://[fe80::1%et%41]", "fe80::1%etA"),
+            ("http://[fe80::1%25et%41]", "fe80::1%etA"),
         ],
     )
     @patch("urllib3.util.connection.create_connection")
     def test_e2e_connect_to_ipv6_scoped(
-        self, create_connection: MagicMock, url: str
+        self, create_connection: MagicMock, url: str, host: str
     ) -> None:
         """Checks that IPv6 scoped addresses are properly handled end-to-end.
 
@@ -467,7 +475,7 @@ class TestPoolManager:
         conn = conn_pool._get_conn()
         conn.connect()
 
-        assert create_connection.call_args[0][0] == ("a::b%zone", 80)
+        assert create_connection.call_args[0][0] == (host, 80)
 
     @patch("urllib3.connection.ssl_wrap_socket")
     @patch("urllib3.util.connection.create_connection")
@@ -482,6 +490,94 @@ class TestPoolManager:
         conn.connect()
 
         assert ssl_wrap_socket.call_args[1]["server_hostname"] == "a::b"
+
+    @pytest.mark.parametrize(
+        "host", ["a::b%31", "fe80::1%25eth+Foo", "fe80::1%et%61", "fe80::1%et%41"]
+    )
+    @patch("urllib3.util.connection.create_connection")
+    def test_e2e_connect_to_ipv6_scoped_from_host(
+        self, create_connection: MagicMock, host: str
+    ) -> None:
+        with PoolManager() as p:
+            conn_pool = p.connection_from_host(host)
+            conn = conn_pool._get_conn()
+            conn.connect()
+
+            assert create_connection.call_args[0][0] == (host, 80)
+
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    @pytest.mark.parametrize("scheme", ["http", "https"])
+    @pytest.mark.parametrize(
+        "zone, expected_zone",
+        [("25ethA", "25ethA"), ("et%61", "eta"), ("et%41", "etA")],
+    )
+    @patch("urllib3.util.connection.create_connection")
+    def test_scoped_ipv6_proxy_decoded_once(
+        self,
+        create_connection: MagicMock,
+        scheme: str,
+        proxy_scheme: str,
+        zone: str,
+        expected_zone: str,
+    ) -> None:
+        with ProxyManager(f"{proxy_scheme}://[fe80::ab%25{zone}]:8080") as manager:
+            pool = manager.connection_from_url(f"{scheme}://example.com/")
+            conn = pool._get_conn()
+            assert isinstance(conn, HTTPConnection)
+            conn._new_conn()
+            assert create_connection.call_args.args[0] == (
+                f"fe80::ab%{expected_zone}",
+                8080,
+            )
+            conn.close()
+
+    @pytest.mark.parametrize("scheme", ["http", "https"])
+    @pytest.mark.parametrize(
+        "zone, expected_zone", [("et%61", "eta"), ("et%41", "etA")]
+    )
+    def test_scoped_ipv6_pool_normalizes_zone_escapes(
+        self, scheme: str, zone: str, expected_zone: str
+    ) -> None:
+        with PoolManager() as manager:
+            assert manager.connection_from_url(
+                f"{scheme}://[fe80::1%25{zone}]/"
+            ) is manager.connection_from_url(f"{scheme}://[fe80::1%25{expected_zone}]/")
+
+    @pytest.mark.parametrize("scheme", ["http", "https"])
+    @pytest.mark.parametrize(
+        "host, host_with_different_zone",
+        [
+            # The %25 separator is followed by zone ID 251 or 1.
+            ("[fe80::AB%25251]", "[fe80::AB%251]"),
+            ("[fe80::AB%251]", "[fe80::AB%25251]"),
+            # Zone IDs are case-sensitive.
+            ("[fe80::AB%25ethA]", "[fe80::AB%25etha]"),
+            ("[fe80::AB%25etha]", "[fe80::AB%25ethA]"),
+        ],
+    )
+    def test_connection_pool_for_ipv6_zone_ids(
+        self, scheme: str, host: str, host_with_different_zone: str
+    ) -> None:
+        with PoolManager() as manager:
+            pool = manager.connection_from_url(f"{scheme}://{host}/")
+            pool_for_different_zone = manager.connection_from_url(
+                f"{scheme}://{host_with_different_zone}/"
+            )
+
+            assert pool is not pool_for_different_zone
+            assert pool.host != pool_for_different_zone.host
+            assert manager.connection_from_host(host, scheme=scheme) is pool
+            assert (
+                manager.connection_from_host(host_with_different_zone, scheme=scheme)
+                is pool_for_different_zone
+            )
+
+            # Raw socket hosts must also keep the two zones in separate pools.
+            assert manager.connection_from_host(
+                pool.host, scheme=scheme
+            ) is not manager.connection_from_host(
+                pool_for_different_zone.host, scheme=scheme
+            )
 
     def test_connection_from_host_port_zero(self) -> None:
         p = PoolManager()
