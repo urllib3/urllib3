@@ -73,6 +73,8 @@ test = [
     "quart>=0.20.0",
     "quart-trio>=0.12.0",
     "trio>=0.27.0",
+    # The last version of trustme to support cryptography < 3.1.
+    "trustme>=0.9",
 ]
 dev-base = [
     {include-group = "test"},
