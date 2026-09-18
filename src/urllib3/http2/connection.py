@@ -271,7 +271,7 @@ class HTTP2Connection(HTTPSConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         *,
         preload_content: bool = True,
         decode_content: bool = True,
