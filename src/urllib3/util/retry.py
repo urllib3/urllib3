@@ -19,6 +19,7 @@ from ..exceptions import (
     ProxyError,
     ReadTimeoutError,
     ResponseError,
+    RetryAfterMaxExceededError,
 )
 from .util import reraise
 
@@ -192,7 +193,14 @@ class Retry:
     :param int retry_after_max: Number of seconds to allow as the maximum for
         Retry-After headers. Defaults to :attr:`Retry.DEFAULT_RETRY_AFTER_MAX`.
         Any Retry-After headers larger than this value will be limited to this
-        value.
+        value unless ``raise_on_retry_after_max`` is enabled.
+
+    :param bool raise_on_retry_after_max:
+        If True, raise :class:`~urllib3.exceptions.RetryAfterMaxExceededError`
+        when a Retry-After interval exceeds ``retry_after_max``, instead of
+        shortening the wait. The exception exposes the requested interval and
+        configured maximum so callers can schedule a later attempt. Defaults
+        to False. This does not change connection/read timeout semantics.
     """
 
     #: Default methods to be used for ``allowed_methods``
@@ -240,6 +248,7 @@ class Retry:
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
         backoff_jitter: float = 0.0,
         retry_after_max: int = DEFAULT_RETRY_AFTER_MAX,
+        raise_on_retry_after_max: bool = False,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -266,6 +275,7 @@ class Retry:
         self.backoff_factor = backoff_factor
         self.backoff_max = backoff_max
         self.retry_after_max = retry_after_max
+        self.raise_on_retry_after_max = raise_on_retry_after_max
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
         self.history = history or ()
@@ -288,6 +298,7 @@ class Retry:
             backoff_factor=self.backoff_factor,
             backoff_max=self.backoff_max,
             retry_after_max=self.retry_after_max,
+            raise_on_retry_after_max=self.raise_on_retry_after_max,
             raise_on_redirect=self.raise_on_redirect,
             raise_on_status=self.raise_on_status,
             history=self.history,
@@ -354,6 +365,8 @@ class Retry:
 
         # Check the seconds do not exceed the specified maximum
         if seconds > self.retry_after_max:
+            if self.raise_on_retry_after_max:
+                raise RetryAfterMaxExceededError(seconds, self.retry_after_max)
             seconds = self.retry_after_max
 
         return seconds
