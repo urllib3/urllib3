@@ -629,6 +629,40 @@ specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
 You still override this pool-level retry policy by specifying ``retries`` to
 :meth:`~urllib3.PoolManager.request`.
 
+Limiting Retry-After delays
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A server can request a delay between attempts using the ``Retry-After`` header.
+Connect and read timeouts do not limit this delay. By default, urllib3 caps it
+at ``Retry.retry_after_max`` (six hours).
+
+To stop instead of waiting when a server requests more time than you allow,
+enable ``raise_on_retry_after``:
+
+.. code-block:: python
+
+    import urllib3
+    from urllib3.exceptions import RetryAfterError
+
+    retries = urllib3.Retry(retry_after_max=60, raise_on_retry_after=True)
+    try:
+        response = urllib3.request("GET", "https://example.com/", retries=retries)
+    except RetryAfterError as error:
+        print(f"Server requested {error.retry_after} seconds; limit is {error.retry_after_max}")
+        # Schedule another attempt in your application instead of waiting here.
+
+``RetryAfterError.retry_after`` contains the server-requested delay before
+capping. For an HTTP-date header, it is the remaining duration when the header
+was parsed. The exception preserves these attributes when pickled. A delay
+equal to the limit is allowed; a limit of zero rejects every positive delay.
+
+This option applies when urllib3 processes a Retry-After header for a retry,
+and to redirects handled directly by a connection pool. Redirects handled by
+``PoolManager`` currently do not process Retry-After headers. Disabling retries
+or disabling header handling with ``respect_retry_after_header=False`` in
+``Retry.sleep()`` does not enable a new delay check. This is not an overall
+request deadline and does not limit exponential backoff.
+
 Errors & Exceptions
 -------------------
 

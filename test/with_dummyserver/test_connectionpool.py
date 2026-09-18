@@ -16,7 +16,7 @@ import pytest
 
 from dummyserver.socketserver import NoIPv6Warning
 from dummyserver.testcase import HypercornDummyServerTestCase, SocketDummyServerTestCase
-from urllib3 import HTTPConnectionPool, encode_multipart_formdata
+from urllib3 import HTTPConnectionPool, PoolManager, encode_multipart_formdata
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import (
@@ -27,6 +27,7 @@ from urllib3.exceptions import (
     NameResolutionError,
     NewConnectionError,
     ReadTimeoutError,
+    RetryAfterError,
     UnrewindableBodyError,
 )
 from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
@@ -1324,6 +1325,80 @@ class TestRetry(HypercornDummyServerTestCase):
 
 
 class TestRetryAfter(HypercornDummyServerTestCase):
+    @pytest.mark.parametrize("use_manager", [False, True])
+    @pytest.mark.parametrize("preload_content", [False, True])
+    def test_excessive_delay_aborts_status_retry(
+        self, use_manager: bool, preload_content: bool
+    ) -> None:
+        retry = Retry(retry_after_max=0, raise_on_retry_after=True)
+        with PoolManager(maxsize=1, block=True) as manager:
+            pool = manager.connection_from_host(self.host, self.port)
+            client = manager if use_manager else pool
+            prefix = f"http://{self.host}:{self.port}" if use_manager else ""
+            with mock.patch("time.sleep") as sleep:
+                with pytest.raises(RetryAfterError) as exc:
+                    client.request(
+                        "GET",
+                        f"{prefix}/redirect_after?status=503&body=retry-later",
+                        retries=retry,
+                        preload_content=preload_content,
+                        timeout=LONG_TIMEOUT,
+                    )
+            assert exc.value.retry_after == 1
+            assert exc.value.retry_after_max == 0
+            sleep.assert_not_called()
+            assert pool.num_requests == 1
+
+            # The rejected response's body must be drained and the sole pool
+            # connection returned, including when preload_content=False.
+            response = client.request("GET", f"{prefix}/", pool_timeout=SHORT_TIMEOUT)
+            assert response.status == 200
+            assert response.data == b"Dummy server!"
+            assert pool.num_requests == 2
+            assert pool.num_connections == 1
+
+    @pytest.mark.parametrize("preload_content", [False, True])
+    def test_excessive_delay_aborts_redirect(self, preload_content: bool) -> None:
+        with HTTPConnectionPool(self.host, self.port, maxsize=1, block=True) as pool:
+            with mock.patch("time.sleep") as sleep:
+                with pytest.raises(RetryAfterError):
+                    pool.request(
+                        "GET",
+                        "/redirect_after?body=retry-later",
+                        retries=Retry(retry_after_max=0, raise_on_retry_after=True),
+                        preload_content=preload_content,
+                    )
+            sleep.assert_not_called()
+            assert pool.num_requests == 1
+            assert pool.request("GET", "/", pool_timeout=SHORT_TIMEOUT).status == 200
+            assert pool.num_connections == 1
+
+    @pytest.mark.parametrize(
+        "retry",
+        [
+            Retry(retry_after_max=0),
+            Retry(retry_after_max=0, raise_on_retry_after=False),
+        ],
+    )
+    def test_retry_after_default_still_caps(self, retry: Retry) -> None:
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            with mock.patch("time.sleep") as sleep:
+                response = pool.request("GET", "/redirect_after", retries=retry)
+            assert response.status == 200
+            assert pool.num_requests == 2
+            sleep.assert_not_called()
+
+    def test_excessive_delay_ignored_when_headers_disabled(self) -> None:
+        retry = Retry(
+            retry_after_max=0,
+            raise_on_retry_after=True,
+            respect_retry_after_header=False,
+        )
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request("GET", "/redirect_after?status=503", retries=retry)
+            assert response.status == 503
+            assert pool.num_requests == 1
+
     def test_retry_after(self) -> None:
         # Request twice in a second to get a 429 response.
         with HTTPConnectionPool(self.host, self.port) as pool:

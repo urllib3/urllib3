@@ -12,6 +12,7 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
     ResponseError,
+    RetryAfterError,
     SSLError,
 )
 from urllib3.response import HTTPResponse
@@ -192,6 +193,74 @@ class TestRetry:
         retry = Retry(retry_after_max=1)
         assert retry.parse_retry_after(str(1)) == 1
         assert retry.parse_retry_after(str(2)) == 1
+
+    @pytest.mark.parametrize("delay", [61, 3600, 10**100])
+    def test_raise_on_retry_after(self, delay: int) -> None:
+        retry = Retry(retry_after_max=60, raise_on_retry_after=True)
+        response = HTTPResponse(status=503, headers={"Retry-After": str(delay)})
+        with mock.patch("time.sleep") as sleep:
+            with pytest.raises(RetryAfterError) as exc:
+                retry.sleep(response)
+        assert exc.value.retry_after == delay
+        assert exc.value.retry_after_max == 60
+        sleep.assert_not_called()
+
+    @pytest.mark.parametrize("limit, delay", [(0, 0), (60, 0), (60, 1), (60, 60)])
+    def test_raise_on_retry_after_within_limit(self, limit: int, delay: int) -> None:
+        retry = Retry(retry_after_max=limit, raise_on_retry_after=True)
+        with mock.patch("time.sleep") as sleep:
+            retry.sleep(HTTPResponse(status=503, headers={"Retry-After": str(delay)}))
+        if delay:
+            sleep.assert_called_once_with(delay)
+        else:
+            sleep.assert_not_called()
+
+    def test_raise_on_retry_after_zero_limit(self) -> None:
+        with pytest.raises(RetryAfterError) as exc:
+            Retry(retry_after_max=0, raise_on_retry_after=True).parse_retry_after("1")
+        assert exc.value.retry_after == 1
+        assert exc.value.retry_after_max == 0
+
+    def test_raise_on_retry_after_date(self) -> None:
+        retry = Retry(retry_after_max=60, raise_on_retry_after=True)
+        with mock.patch("time.time", return_value=0.5):
+            with pytest.raises(RetryAfterError) as exc:
+                retry.parse_retry_after("Thu, 01 Jan 1970 01:00:00 GMT")
+            assert retry.parse_retry_after("Thu, 01 Jan 1970 00:00:00 GMT") == 0
+        assert exc.value.retry_after == 3599.5
+        assert exc.value.retry_after_max == 60
+
+    def test_raise_on_retry_after_propagated(self) -> None:
+        class CustomRetry(Retry):
+            pass
+
+        retry = CustomRetry(retry_after_max=60, raise_on_retry_after=True)
+        updated = retry.increment(method="GET", response=HTTPResponse(status=503))
+        assert isinstance(updated, CustomRetry)
+        with pytest.raises(RetryAfterError):
+            updated.parse_retry_after("61")
+        assert updated.new(raise_on_retry_after=False).parse_retry_after("61") == 60
+
+    @pytest.mark.parametrize("headers", [{}, {"Retry-After": "3600"}])
+    def test_raise_on_retry_after_backoff(self, headers: dict[str, str]) -> None:
+        retry = (
+            Retry(
+                retry_after_max=60,
+                raise_on_retry_after=True,
+                respect_retry_after_header=False,
+                backoff_factor=1,
+            )
+            .increment()
+            .increment()
+        )
+        with mock.patch("time.sleep") as sleep:
+            retry.sleep(HTTPResponse(status=503, headers=headers))
+        sleep.assert_called_once_with(2)
+
+    @pytest.mark.parametrize("raise_on_retry_after", [False, True])
+    def test_retry_after_missing_header(self, raise_on_retry_after: bool) -> None:
+        retry = Retry(raise_on_retry_after=raise_on_retry_after)
+        assert retry.get_retry_after(HTTPResponse(status=503)) is None
 
     def test_backoff_jitter(self) -> None:
         """Backoff with jitter is computed correctly"""
@@ -376,8 +445,11 @@ class TestRetry:
         assert retry.remove_headers_on_redirect == {"x-api-secret"}
 
     @pytest.mark.parametrize("value", ["-1", "+1", "1.0", "\xb2"])  # \xb2 = ^2
-    def test_parse_retry_after_invalid(self, value: str) -> None:
-        retry = Retry()
+    @pytest.mark.parametrize("raise_on_retry_after", [False, True])
+    def test_parse_retry_after_invalid(
+        self, value: str, raise_on_retry_after: bool
+    ) -> None:
+        retry = Retry(raise_on_retry_after=raise_on_retry_after)
         with pytest.raises(InvalidHeader):
             retry.parse_retry_after(value)
 

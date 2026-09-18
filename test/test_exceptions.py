@@ -23,11 +23,23 @@ from urllib3.exceptions import (
     NameResolutionError,
     NewConnectionError,
     ReadTimeoutError,
+    RetryAfterError,
 )
 from urllib3.response import HTTPResponse
 
 
 class TestPickle:
+    @pytest.mark.parametrize("delay", [3600, 3599.5, 10**100])
+    def test_retry_after_error(self, delay: float) -> None:
+        exception = RetryAfterError(delay, 60)
+        restored = pickle.loads(pickle.dumps(exception))
+        assert isinstance(restored, RetryAfterError)
+        assert restored.retry_after == delay
+        assert restored.retry_after_max == 60
+        assert str(restored) == str(exception)
+        assert str(delay) in str(restored)
+        assert "60" in str(restored)
+
     @pytest.mark.parametrize(
         "exception",
         [
