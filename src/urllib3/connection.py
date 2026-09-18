@@ -419,6 +419,11 @@ class HTTPConnection(_HTTPConnection):
     def is_connected(self) -> bool:
         if self.sock is None:
             return False
+        if self.sock.fileno() == -1:
+            # The socket was closed without going through
+            # HTTPConnection.close(), so self.sock is stale. Polling it would
+            # raise ValueError because its file descriptor is -1.
+            return False
         return not wait_for_read(self.sock, timeout=0.0)
 
     @property
