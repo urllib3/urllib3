@@ -42,7 +42,12 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
-from .util.request import _TYPE_BODY_POSITION, set_file_position
+from .util.request import (
+    _TYPE_BODY_POSITION,
+    _add_url_auth,
+    make_headers,
+    set_file_position,
+)
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
@@ -611,6 +616,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         body_pos: _TYPE_BODY_POSITION | None = None,
         preload_content: bool = True,
         decode_content: bool = True,
+        _url_auth_generated: str | None = None,
         **response_kw: typing.Any,
     ) -> BaseHTTPResponse:
         """
@@ -709,6 +715,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             auto-populate the value when needed.
         """
         # Ensure that the URL we're connecting to is properly encoded
+        parsed_url = None
         if url.startswith("/"):
             # URLs starting with / are inherently schemeless.
             url = to_str(_encode_target(url))
@@ -716,10 +723,27 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         else:
             parsed_url = parse_url(url)
             destination_scheme = parsed_url.scheme
-            url = to_str(parsed_url._replace(fragment=None).url)
+            url = to_str(parsed_url._replace(auth=None, fragment=None).url)
 
         if headers is None:
             headers = self.headers
+
+        generated_auth = _url_auth_generated
+        if (
+            generated_auth is not None
+            and parsed_url is not None
+            and parsed_url.auth is not None
+        ):
+            headers = HTTPHeaderDict(headers)
+            if headers.get("Authorization") == generated_auth:
+                headers.pop("Authorization", None)
+        had_authorization = bool(HTTPHeaderDict(headers).getlist("Authorization"))
+        if parsed_url is not None:
+            headers = _add_url_auth(headers, parsed_url.auth_decoded_joined)
+            if parsed_url.auth_decoded_joined is not None and not had_authorization:
+                generated_auth = make_headers(
+                    basic_auth=parsed_url.auth_decoded_joined
+                )["authorization"]
 
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
@@ -896,6 +920,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
+                _url_auth_generated=generated_auth,
                 preload_content=preload_content,
                 decode_content=decode_content,
                 **response_kw,
@@ -952,6 +977,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
+                _url_auth_generated=generated_auth,
                 preload_content=preload_content,
                 decode_content=decode_content,
                 **response_kw,
@@ -984,6 +1010,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
+                _url_auth_generated=generated_auth,
                 preload_content=preload_content,
                 decode_content=decode_content,
                 **response_kw,
@@ -1157,10 +1184,16 @@ def connection_from_url(url: str, **kw: typing.Any) -> HTTPConnectionPool:
         >>> conn = connection_from_url('http://google.com/')
         >>> r = conn.request('GET', '/')
     """
-    scheme, _, host, port, *_ = parse_url(url)
+    parsed_url = parse_url(url)
+    scheme, _, host, port, *_ = parsed_url
     scheme = scheme or "http"
     if port is None:
         port = port_by_scheme.get(scheme, 80)
+    if parsed_url.auth_decoded_joined is not None:
+        headers = kw.get("headers")
+        kw["headers"] = _add_url_auth(
+            headers if headers is not None else {}, parsed_url.auth_decoded_joined
+        )
     if scheme == "https":
         return HTTPSConnectionPool(host, port=port, **kw)  # type: ignore[arg-type]
     else:
