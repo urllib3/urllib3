@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import set_file_position
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -450,6 +451,12 @@ class PoolManager(RequestMethods):
         kw["assert_same_host"] = False
         kw["redirect"] = False
 
+        # HTTPConnectionPool records where a file-like body starts so that it can
+        # rewind it before a redirect. Its redirect handling is turned off just
+        # above, so record the position here as well, while the body is still
+        # unread, and hand it to the hops below.
+        body_pos = set_file_position(kw.get("body"), kw.get("body_pos"))
+
         if "headers" not in kw:
             kw["headers"] = self.headers
 
@@ -464,6 +471,10 @@ class PoolManager(RequestMethods):
 
         # Support relative URLs for redirecting.
         redirect_location = urljoin(url, redirect_location)
+
+        # The body has to be rewound before it is sent again, back to where it
+        # started rather than to wherever the hop just made left it.
+        kw["body_pos"] = body_pos
 
         if response.status == 303:
             # Change the method according to RFC 9110, Section 15.4.4.
