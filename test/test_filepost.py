@@ -7,6 +7,7 @@ from urllib3.filepost import _TYPE_FIELDS, encode_multipart_formdata
 
 BOUNDARY = "!! test boundary !!"
 BOUNDARY_BYTES = BOUNDARY.encode()
+CONTENT_TYPE = f'multipart/form-data; boundary="{BOUNDARY}"'
 
 
 class TestMultipartEncoding:
@@ -41,7 +42,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == CONTENT_TYPE
 
     def test_filename(self) -> None:
         fields = [("k", ("somename", b"v"))]
@@ -58,7 +59,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == CONTENT_TYPE
 
     def test_textplain(self) -> None:
         fields = [("k", ("somefile.txt", b"v"))]
@@ -75,7 +76,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == CONTENT_TYPE
 
     def test_explicit(self) -> None:
         fields = [("k", ("somefile.txt", b"v", "image/jpeg"))]
@@ -92,7 +93,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == CONTENT_TYPE
 
     def test_request_fields(self) -> None:
         fields = [

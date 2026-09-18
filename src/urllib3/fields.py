@@ -5,10 +5,11 @@ import mimetypes
 import typing
 
 _TYPE_FIELD_VALUE = typing.Union[str, bytes]
+_TYPE_FIELD_BODY = typing.Union[str, bytes, bytearray, memoryview, typing.BinaryIO, int]
 _TYPE_FIELD_VALUE_TUPLE = typing.Union[
-    _TYPE_FIELD_VALUE,
-    tuple[str, _TYPE_FIELD_VALUE],
-    tuple[str, _TYPE_FIELD_VALUE, str],
+    _TYPE_FIELD_BODY,
+    tuple[str, _TYPE_FIELD_BODY],
+    tuple[str, _TYPE_FIELD_BODY, str],
 ]
 
 
@@ -171,7 +172,7 @@ class RequestField:
     def __init__(
         self,
         name: str,
-        data: _TYPE_FIELD_VALUE,
+        data: _TYPE_FIELD_BODY,
         filename: str | None = None,
         headers: typing.Mapping[str, str] | None = None,
         header_formatter: typing.Callable[[str, _TYPE_FIELD_VALUE], str] | None = None,
@@ -221,7 +222,7 @@ class RequestField:
         """
         filename: str | None
         content_type: str | None
-        data: _TYPE_FIELD_VALUE
+        data: _TYPE_FIELD_BODY
 
         if isinstance(value, tuple):
             if len(value) == 3:
