@@ -1,0 +1,1 @@
+Fixed concurrent HTTP/2 probes leaving waiting connection threads blocked after the probe result was cached.

@@ -46,6 +46,11 @@ class _HTTP2ProbeCache:
             key_lock.release()
             raise
 
+        # Only the thread responsible for probing keeps the lock until
+        # set_and_release(). Waiters returning a cached result must release it.
+        if value is not None:
+            key_lock.release()
+
         return value
 
     def set_and_release(
