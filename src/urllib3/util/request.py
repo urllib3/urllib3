@@ -245,6 +245,11 @@ def body_to_chunks(
     chunks: typing.Iterable[bytes] | None
     content_length: int | None
 
+    # file.read(0) always returns b"" in Python, which would silently
+    # drop a file-like body while still advertising chunked transfer.
+    if blocksize <= 0:
+        raise ValueError(f"blocksize must be greater than 0, not {blocksize!r}")
+
     # No body, we need to make a recommendation on 'Content-Length'
     # based on whether that request method is expected to have
     # a body or not.

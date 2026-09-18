@@ -362,3 +362,8 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+
+def test_httpconnection_rejects_nonpositive_blocksize() -> None:
+    with pytest.raises(ValueError, match="blocksize must be greater than 0"):
+        HTTPConnection("example.com", blocksize=0)

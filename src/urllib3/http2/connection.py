@@ -181,6 +181,10 @@ class HTTP2Connection(HTTPSConnection):
                 self.sock.sendall(data_to_send)
 
             if hasattr(data, "read"):  # file-like objects
+                if self.blocksize <= 0:
+                    raise ValueError(
+                        f"blocksize must be greater than 0, not {self.blocksize!r}"
+                    )
                 while True:
                     chunk = data.read(self.blocksize)
                     if not chunk:

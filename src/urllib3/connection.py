@@ -178,6 +178,8 @@ class HTTPConnection(_HTTPConnection):
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
     ) -> None:
+        if blocksize <= 0:
+            raise ValueError(f"blocksize must be greater than 0, not {blocksize!r}")
         super().__init__(
             host=host,
             port=port,

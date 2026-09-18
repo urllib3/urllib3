@@ -25,7 +25,7 @@ from urllib3.exceptions import (
 from urllib3.util import is_fp_closed
 from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
 from urllib3.util.proxy import connection_requires_http_tunnel
-from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
+from urllib3.util.request import _FAILEDTELL, body_to_chunks, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.ssl_ import (
     _is_has_never_check_common_name_reliable,
@@ -1443,3 +1443,16 @@ class TestUtilWithoutIdna:
         self, url: str, expected_host: str
     ) -> None:
         assert parse_url(url).host == expected_host
+
+
+class TestBodyToChunks:
+    def test_blocksize_must_be_positive(self) -> None:
+        with pytest.raises(ValueError, match="blocksize must be greater than 0"):
+            body_to_chunks(io.BytesIO(b"data"), method="POST", blocksize=0)
+
+    def test_positive_blocksize_reads_file(self) -> None:
+        chunks, content_length = body_to_chunks(
+            io.BytesIO(b"SECRET"), method="POST", blocksize=2
+        )
+        assert content_length is None
+        assert b"".join(chunks) == b"SECRET"
