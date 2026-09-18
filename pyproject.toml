@@ -120,6 +120,7 @@ emscripten = [
 ]
 docs = [
     "furo>=2024.8.6",
+    "myst-parser>=5.1.0",
     "requests>=2.32.3",
     "sphinx>=7.2.6",
     "sphinx-copybutton>=0.5.2",
@@ -131,6 +132,7 @@ docs = [
 "Documentation" = "https://urllib3.readthedocs.io"
 "Code" = "https://github.com/urllib3/urllib3"
 "Issue tracker" = "https://github.com/urllib3/urllib3/issues"
+"Security policy" = "https://urllib3.readthedocs.io/en/latest/security.html"
 
 [tool.hatch.version]
 source = "vcs"
@@ -148,6 +150,7 @@ include = [
   "/uv.lock",
   "/CHANGES.rst",
   "/README.md",
+  "/SECURITY.md",
   "/LICENSE.txt",
 ]
 
@@ -221,6 +224,11 @@ conflicts = [
     {group = "mypy"},
   ],
 ]
+
+[tool.uv.dependency-groups]
+# MyST 5.1+ supports GitHub-style alerts in the shared security policy and
+# requires Python 3.11+.
+docs = { requires-python = ">=3.11" }
 
 [tool.uv.sources]
 hypercorn = { git = "https://github.com/urllib3/hypercorn", rev = "urllib3-changes" }

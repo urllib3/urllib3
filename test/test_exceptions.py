@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import pickle
 import socket
 from email.errors import MessageDefect
@@ -16,6 +17,7 @@ from urllib3.exceptions import (
     HeaderParsingError,
     HostChangedError,
     HTTPError,
+    InvalidChunkLength,
     LocationParseError,
     MaxRetryError,
     NameResolutionError,
@@ -23,6 +25,7 @@ from urllib3.exceptions import (
     ReadTimeoutError,
     RetryAfterError,
 )
+from urllib3.response import HTTPResponse
 
 
 class TestPickle:
@@ -76,6 +79,24 @@ class TestPickle:
         if hasattr(exception, "_reason"):
             # reason is likely an exception so do string comparison instead
             assert str(exception._reason) == str(result._reason)  # type: ignore[attr-defined]
+
+    def test_invalid_chunk_length(self) -> None:
+        response = HTTPResponse(
+            body=io.BytesIO(b"abcdef"),
+            headers={"Content-Length": "10"},
+            preload_content=False,
+        )
+        response.read(3)
+        exception = InvalidChunkLength(response, b"zz")
+        assert exception.partial == 3
+        assert exception.expected == 7
+
+        result = pickle.loads(pickle.dumps(exception))
+        assert isinstance(result, InvalidChunkLength)
+        assert result.partial == exception.partial
+        assert result.expected == exception.expected
+        assert result.length == exception.length
+        assert repr(result) == repr(exception)
 
 
 class TestFormat:
