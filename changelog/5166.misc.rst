@@ -1,1 +1,0 @@
-Enabled JSPI tests with Firefox in the Emscripten test suite.
