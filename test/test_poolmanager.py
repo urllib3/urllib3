@@ -159,7 +159,7 @@ class TestPoolManager:
     def test_default_pool_key_funcs_copy(self) -> None:
         """Assert each PoolManager gets a copy of ``pool_keys_by_scheme``."""
         p = PoolManager()
-        assert p.key_fn_by_scheme == p.key_fn_by_scheme
+        assert p.key_fn_by_scheme == key_fn_by_scheme
         assert p.key_fn_by_scheme is not key_fn_by_scheme
 
     def test_pools_keyed_with_from_host(self) -> None:

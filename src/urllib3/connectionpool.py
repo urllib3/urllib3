@@ -61,6 +61,7 @@ if typing.TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 _TYPE_TIMEOUT = typing.Union[Timeout, float, _TYPE_DEFAULT, None]
+_DEFAULT_QUEUE_CLASS = queue.LifoQueue
 
 
 # Pool objects
@@ -76,7 +77,7 @@ class ConnectionPool:
     """
 
     scheme: str | None = None
-    QueueCls = queue.LifoQueue
+    QueueCls = _DEFAULT_QUEUE_CLASS
 
     def __init__(self, host: str, port: int | None = None) -> None:
         if not host:
@@ -111,6 +112,11 @@ class ConnectionPool:
         """
         Close all pooled connections and disable the pool.
         """
+
+    def _new_pool_queue(self, maxsize: int) -> queue.LifoQueue[typing.Any]:
+        if self.QueueCls is _DEFAULT_QUEUE_CLASS:
+            return queue.LifoQueue(maxsize)
+        return self.QueueCls(maxsize)
 
 
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
@@ -198,7 +204,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.timeout = timeout
         self.retries = retries
 
-        self.pool: queue.LifoQueue[typing.Any] | None = self.QueueCls(maxsize)
+        self.pool: queue.LifoQueue[typing.Any] | None = self._new_pool_queue(maxsize)
         self.block = block
 
         self.proxy = _proxy
@@ -866,7 +872,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not conn:
             # Try again
             log.warning(
-                "Retrying (%r) after connection broken by '%r': %s", retries, err, url
+                "Retrying (%r) after connection broken by '%r': %s",
+                retries,
+                err,
+                url,
+                # Provide an unique attribute with the host needed by pip to
+                # rewrite this warning. Ideally, we'd go with a better solution,
+                # but backwards compatibility and other constraints make those
+                # unfeasible, so this is the least bad option.
+                # See also: https://github.com/urllib3/urllib3/issues/2580.
+                extra={"__urllib3-retry-warning": {"host": self.host}},
             )
             return self.urlopen(
                 method,
@@ -894,6 +909,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 method = "GET"
                 # And lose the body not to transfer anything sensitive.
                 body = None
+                # The body is gone, so the state that describes it has to go
+                # too: there is nothing left to frame with chunked transfer
+                # encoding, and nothing left to rewind.
+                chunked = False
+                body_pos = None
                 headers = HTTPHeaderDict(headers)._prepare_for_method_change()
 
             # Strip headers marked as unsafe to forward to the redirected location.
@@ -1139,7 +1159,8 @@ def connection_from_url(url: str, **kw: typing.Any) -> HTTPConnectionPool:
     """
     scheme, _, host, port, *_ = parse_url(url)
     scheme = scheme or "http"
-    port = port or port_by_scheme.get(scheme, 80)
+    if port is None:
+        port = port_by_scheme.get(scheme, 80)
     if scheme == "https":
         return HTTPSConnectionPool(host, port=port, **kw)  # type: ignore[arg-type]
     else:

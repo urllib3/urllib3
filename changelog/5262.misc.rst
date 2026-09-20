@@ -1,0 +1,1 @@
+Fixed a socket leak in the dummyserver when retrying a bind after ``EADDRINUSE``. Sockets from the failed attempt are now closed before retrying.

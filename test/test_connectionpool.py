@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.client as httplib
+import queue
 import ssl
 import typing
 from http.client import HTTPException
@@ -33,6 +34,7 @@ from urllib3.exceptions import (
     ReadTimeoutError,
     SSLError,
     TimeoutError,
+    UnrewindableBodyError,
 )
 from urllib3.response import HTTPResponse
 from urllib3.util.ssl_match_hostname import CertificateError
@@ -261,6 +263,22 @@ class TestConnectionPool:
             assert not c.is_same_host("https://example.com/")
             assert not c.is_same_host("http://example.com:80/")
             assert not c.is_same_host("https://example.com:443/")
+
+    @pytest.mark.parametrize(
+        "url, expected_port",
+        [
+            ("http://example.com:0/", 0),
+            ("https://example.com:0/", 0),
+            ("http://example.com/", 80),
+            ("https://example.com/", 443),
+            ("http://example.com:8080/", 8080),
+        ],
+    )
+    def test_connection_from_url_preserves_port_zero(
+        self, url: str, expected_port: int
+    ) -> None:
+        with connection_from_url(url) as c:
+            assert c.port == expected_port
 
     def test_max_connections(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
@@ -636,6 +654,53 @@ class TestConnectionPool:
         _test(SocketError)
         _test(ProtocolError)
 
+    def test_retry_with_body_that_has_tell_but_no_seek(self) -> None:
+        """
+        This is a regression test for issue #3779 [1] where, if
+        seek is missing from body and we retried, we previously raised
+        a confusing error.
+
+        [1] <https://github.com/urllib3/urllib3/issues/3779>
+        """
+
+        class TellableStream:
+            """A stream-like object with tell() and read() but no seek()."""
+
+            def __init__(self, data: bytes) -> None:
+                self._data = data
+                self._pos = 0
+
+            def read(self, n: int = -1) -> bytes:
+                if n == -1:
+                    chunk = self._data[self._pos :]
+                    self._pos = len(self._data)
+                else:
+                    chunk = self._data[self._pos : self._pos + n]
+                    self._pos += len(chunk)
+                return chunk
+
+            def tell(self) -> int:
+                return self._pos
+
+        body = TellableStream(b"hello world")
+
+        with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                side_effect=OSError("connection reset"),
+            ):
+                with pytest.raises(
+                    UnrewindableBodyError, match="body does not implement seek"
+                ):
+                    pool.urlopen(
+                        "POST",
+                        "/",
+                        body=body,  # type: ignore[arg-type]
+                        retries=Retry(total=2, allowed_methods=["POST"]),
+                        body_pos=None,
+                    )
+
     def test_read_timeout_0_does_not_raise_bad_status_line_error(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
             conn = Mock(spec=HTTPConnection)
@@ -645,6 +710,38 @@ class TestConnectionPool:
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout=timeout)
+
+    def test_default_queuecls_uses_current_lifoqueue(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        original_queue_cls = HTTPConnectionPool.QueueCls
+
+        class PatchedLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        monkeypatch.setattr(queue, "LifoQueue", PatchedLifoQueue)
+
+        assert HTTPConnectionPool.QueueCls is original_queue_cls
+
+        with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+            assert isinstance(pool.pool, PatchedLifoQueue)
+
+    def test_queuecls_override_is_preserved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class CustomLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        class PatchedLifoQueue(queue.LifoQueue[typing.Any]):
+            pass
+
+        class CustomQueueConnectionPool(HTTPConnectionPool):
+            QueueCls = CustomLifoQueue
+
+        monkeypatch.setattr(queue, "LifoQueue", PatchedLifoQueue)
+
+        with CustomQueueConnectionPool(host="localhost", maxsize=1) as pool:
+            assert isinstance(pool.pool, CustomLifoQueue)
 
     @pytest.mark.parametrize(
         "path",
