@@ -1,0 +1,1 @@
+Added guidance on streaming file uploads and tuning ``blocksize`` for upload performance.
