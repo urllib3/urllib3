@@ -193,7 +193,7 @@ def downstream_botocore(session: nox.Session) -> None:
     session.cd(f"{tmp_dir}/botocore")
 
     session.run("python", "-c", "import urllib3; print(urllib3.__version__)")
-    session.run("python", "scripts/ci/run-tests")
+    session.run("python", "scripts/ci/run-tests", "--with-xdist")
 
 
 @nox.session()

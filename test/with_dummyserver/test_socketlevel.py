@@ -1961,6 +1961,8 @@ class TestSSL(SocketDummyServerTestCase):
                     ca_certs=DEFAULT_CA,
                 )
             except ConnectionResetError:
+                # A reset from the client also terminates the connection.
+                server_closed.set()
                 return
             except ssl.SSLError as e:
                 assert "alert unknown ca" in str(e)
