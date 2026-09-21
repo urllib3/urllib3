@@ -1981,7 +1981,7 @@ class TestSSL(SocketDummyServerTestCase):
         ) as pool:
             with pytest.raises(SSLError):
                 pool.request("GET", "/", retries=False, timeout=LONG_TIMEOUT)
-        assert server_closed.wait(5), "The socket was not terminated"
+        assert server_closed.wait(LONG_TIMEOUT), "The socket was not terminated"
 
     def _run_preload(self, pool: HTTPSConnectionPool, content_length: int) -> None:
         response = pool.request("GET", "/")
