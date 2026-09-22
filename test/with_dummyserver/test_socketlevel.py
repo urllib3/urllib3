@@ -1726,7 +1726,12 @@ class TestSSL(SocketDummyServerTestCase):
                                 b"Content-Length: 5\r\n\r\n"
                                 b"Hello"
                             )
-                        except (ssl.SSLEOFError, ConnectionResetError, BrokenPipeError):
+                        except (
+                            ssl.SSLEOFError,
+                            ConnectionResetError,
+                            ConnectionAbortedError,
+                            BrokenPipeError,
+                        ):
                             pass
 
                 sock.close()
