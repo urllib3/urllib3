@@ -637,11 +637,22 @@ Configuring Exponential Backoff
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 By default, :class:`~urllib3.util.Retry` does not sleep between retry attempts
-(``backoff_factor=0``). In production systems, retrying immediately can overwhelm
-a recovering server or quickly exhaust API rate limits.
+(``backoff_factor=0``), though it will still respect delays requested by the
+server when a response includes a ``Retry-After`` header (see
+:attr:`~urllib3.util.Retry.respect_retry_after_header`). In production systems,
+retrying immediately without backoff can overwhelm a recovering server or
+quickly exhaust API rate limits.
 
-It is recommended to set a non-zero ``backoff_factor`` (typically between ``0.5``
-and ``1.0`` seconds) to introduce exponential delays between retries:
+When a ``Retry-After`` header is not present, you can set a non-zero
+``backoff_factor`` to introduce exponential delays between retries. The sleep
+delay is calculated using the formula::
+
+    {backoff factor} * (2 ** ({number of previous retries}))
+
+seconds, with no delay before the second attempt (the first retry) because
+most transient errors resolve immediately. For example, a ``backoff_factor`` of
+``0.5`` yields retry sleeps of ``0.0s``, ``1.0s``, ``2.0s``, etc., up to
+:attr:`~urllib3.util.Retry.backoff_max`:
 
 .. code-block:: python
 
