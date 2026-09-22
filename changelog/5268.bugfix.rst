@@ -1,0 +1,2 @@
+Prevented :class:`GzipDecoder` from flushing invalid trailing data after it had
+already been classified as garbage.
