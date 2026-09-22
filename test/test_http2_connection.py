@@ -3,8 +3,12 @@ from __future__ import annotations
 import socket
 from unittest import mock
 
+import h2.config
+import h2.connection
+import h2.events
 import pytest
 
+from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import ConnectionError
 from urllib3.http2.connection import (
@@ -84,6 +88,30 @@ class TestHTTP2Connection:
         conn = HTTP2Connection("example.com")
         conn.putheader("foo", "bar")
         assert conn._headers == [(b"foo", b"bar")]
+
+    @pytest.mark.parametrize("value", [b"Sch\xf6nefeld", b"Sch\xc3\xb6nefeld", b"\xff"])
+    def test_header_dict_preserves_bytes_on_wire(self, value: bytes) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock()
+        with conn._h2_conn as h2_conn:
+            h2_conn.initiate_connection()
+        headers = HTTPHeaderDict({"X-Raw": value})
+        headers.add("x-raw", value, combine=True)
+        headers.add("x-raw", b"last")
+        conn.request("GET", "/", headers=headers)
+
+        server = h2.connection.H2Connection(
+            config=h2.config.H2Configuration(client_side=False, header_encoding=None)
+        )
+        wire = b"".join(call.args[0] for call in conn.sock.sendall.call_args_list)
+        events = server.receive_data(wire)
+        request = next(
+            event for event in events if isinstance(event, h2.events.RequestReceived)
+        )
+        assert [(key, val) for key, val in request.headers if key == b"x-raw"] == [
+            (b"x-raw", value + b", " + value),
+            (b"x-raw", b"last"),
+        ]
 
     def test_request_putheader(self) -> None:
         conn = HTTP2Connection("example.com")

@@ -1314,6 +1314,37 @@ def test_has_jspi_exception(
 
 
 @run_in_pyodide  # type: ignore[untyped-decorator]
+def test_byte_request_headers(selenium_coverage: typing.Any) -> None:
+    from unittest.mock import patch
+
+    from urllib3 import HTTPConnectionPool
+    from urllib3._collections import HTTPHeaderDict
+    from urllib3.contrib.emscripten.request import EmscriptenRequest
+    from urllib3.contrib.emscripten.response import EmscriptenResponse
+
+    def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
+        assert request.headers["X-latin1"] == "Sch\u00f6nefeld"
+        assert request.headers["X-utf8"].encode("latin-1") == b"Sch\xc3\xb6nefeld"
+        assert request.headers["X-raw"].encode("latin-1") == b"\xff"
+        assert request.headers["X-text"] == "unchanged"
+        return EmscriptenResponse(
+            status_code=200, headers={}, body=b"", request=request
+        )
+
+    headers = HTTPHeaderDict[str | bytes](
+        {
+            "X-Latin1": b"Sch\xf6nefeld",
+            "X-UTF8": b"Sch\xc3\xb6nefeld",
+            "X-Raw": b"\xff",
+            "X-Text": "unchanged",
+        }
+    )
+    with patch("urllib3.contrib.emscripten.connection.send_request", new=send_request):
+        pool = HTTPConnectionPool("example.com")
+        assert pool.request("GET", "/", headers=headers).status == 200
+
+
+@run_in_pyodide  # type: ignore[untyped-decorator]
 def test_pool_no_port(selenium_coverage: typing.Any) -> None:
     from unittest.mock import patch
 
