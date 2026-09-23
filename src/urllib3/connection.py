@@ -8,6 +8,7 @@ import re
 import socket
 import sys
 import threading
+import types
 import typing
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
@@ -16,7 +17,8 @@ from http.client import ResponseNotReady
 from socket import timeout as SocketTimeout
 
 if typing.TYPE_CHECKING:
-    from .response import HTTPResponse
+    from ._base_connection import BaseHTTPConnection
+    from .response import BaseHTTPResponse, HTTPResponse
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
 
@@ -110,6 +112,30 @@ def _normalize_header_values(
     return header_items
 
 
+class Stream:
+    def __init__(self, conn: BaseHTTPConnection):
+        self.conn: BaseHTTPConnection = conn
+        self.stream_id: int | None = None
+        self.request_data: dict[str, typing.Any] = {}
+
+    def __enter__(self) -> Stream:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: types.TracebackType | None,
+    ) -> None:
+        if self.stream_id:
+            self.conn.close_stream(self)
+
+    def getresponse(self) -> BaseHTTPResponse:
+        if self.stream_id is None:
+            raise ValueError("Must call `request` first.")
+        return self.conn.getresponse(self)
+
+
 class BaseProtocolHelper:
     """This is a base helper class dedicated to the protocol specific logic
     associated with a connection. Putting these actions into helper classes
@@ -118,8 +144,9 @@ class BaseProtocolHelper:
 
     name = "unknown"
 
-    def __init__(self, conn: HTTPConnection):
+    def __init__(self, conn: HTTPConnection, is_multistream: bool = False):
         self.conn = conn
+        self.is_multistream = is_multistream
 
     def request(
         self,
@@ -132,10 +159,10 @@ class BaseProtocolHelper:
         preload_content: bool = True,
         decode_content: bool = True,
         enforce_content_length: bool = True,
-    ) -> None:
+    ) -> Stream:
         raise NotImplementedError("This method must be implemented in a subclass")
 
-    def getresponse(self) -> HTTPResponse:
+    def getresponse(self, stream: Stream | None = None) -> HTTPResponse:
         raise NotImplementedError("This method must be implemented in a subclass")
 
     def putrequest(
@@ -144,25 +171,33 @@ class BaseProtocolHelper:
         url: str,
         skip_host: bool = False,
         skip_accept_encoding: bool = False,
+        stream: Stream | None = None,
     ) -> bool:
         # subclasses must return True to indicate that they have implemented
         # this method
         return False
 
-    def putheader(self, header: str, *values: str) -> bool:
+    def putheader(
+        self, header: str, *values: str, stream: Stream | None = None
+    ) -> bool:
         # subclasses must return True to indicate that they have implemented
         # this method
         return False
 
-    def endheaders(self, message_body: typing.Any = None) -> bool:
+    def endheaders(
+        self, message_body: typing.Any = None, stream: Stream | None = None
+    ) -> bool:
         # subclasses must return True to indicate that they have implemented
         # this method
         return False
 
-    def send(self, data: typing.Any) -> bool:
+    def send(self, data: typing.Any, stream: Stream | None = None) -> bool:
         # subclasses must return True to indicate that they have implemented
         # this method
         return False
+
+    def close_stream(self, stream: Stream | None = None) -> None:
+        pass
 
     def close(self) -> None:
         pass
@@ -189,7 +224,7 @@ class HTTPProtocolHelper(BaseProtocolHelper):
         preload_content: bool = True,
         decode_content: bool = True,
         enforce_content_length: bool = True,
-    ) -> None:
+    ) -> Stream:
         # Update the inner socket's timeout value to send the request.
         # This only triggers if the connection is re-used.
         if self.conn.sock is not None:
@@ -277,7 +312,9 @@ class HTTPProtocolHelper(BaseProtocolHelper):
         if chunked:
             self.conn.send(b"0\r\n\r\n")
 
-    def getresponse(self) -> HTTPResponse:
+        return Stream(self.conn)
+
+    def getresponse(self, stream: Stream | None = None) -> HTTPResponse:
         # Raise the same error as http.client.HTTPConnection
         if self._response_options is None:
             raise ResponseNotReady()
@@ -425,10 +462,14 @@ class HTTPConnection(_HTTPConnection):
         self._tunnel_scheme: str | None = None
 
         # here we start with a conservative choice of HTTP/1.1
-        # if the chosen protocol is HTTP/2 and we determine that the server
-        # supports it during the connection handshake, then this will be
-        # changed to a HTTP2ProtocolHelper
+        # if HTTP/2 is enabled and we determine that the server supports it
+        # during the connection handshake, then this will be changed to a
+        # HTTP2ProtocolHelper
         self._protocol_helper: BaseProtocolHelper = HTTPProtocolHelper(self)
+
+        # we keep track of the stream for the first request issued, to use as
+        # a default when a stream isn't given explicitly
+        self._first_stream: Stream | None = None
 
     def __str__(self) -> str:
         return f"{type(self).__name__}(host={self.host!r}, port={self.port!r})"
@@ -689,6 +730,15 @@ class HTTPConnection(_HTTPConnection):
         """
         return self._tunnel_host is not None
 
+    def is_multistream(self) -> bool:
+        """
+        Return True if this connection can handle multiple streams
+        """
+        return self._protocol_helper.is_multistream
+
+    def close_stream(self, stream: Stream | None = None) -> None:
+        self._protocol_helper.close_stream(stream=stream)
+
     def close(self) -> None:
         try:
             self._protocol_helper.close()
@@ -711,6 +761,7 @@ class HTTPConnection(_HTTPConnection):
         url: str,
         skip_host: bool = False,
         skip_accept_encoding: bool = False,
+        stream: Stream | None = None,
     ) -> None:
         """"""
         # Empty docstring because the indentation of CPython's implementation
@@ -722,7 +773,11 @@ class HTTPConnection(_HTTPConnection):
             )
 
         if not self._protocol_helper.putrequest(
-            method, url, skip_host, skip_accept_encoding
+            method,
+            url,
+            skip_host,
+            skip_accept_encoding,
+            stream=stream,
         ):
             # if the helper class does not implement this method we call
             # the base class
@@ -733,10 +788,10 @@ class HTTPConnection(_HTTPConnection):
                 skip_accept_encoding=skip_accept_encoding,
             )
 
-    def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
+    def putheader(self, header: str, *values: str, stream: Stream | None = None) -> None:  # type: ignore[override]
         """"""
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
-            if not self._protocol_helper.putheader(header, *values):
+            if not self._protocol_helper.putheader(header, *values, stream=stream):
                 # if the helper class does not implement this method we call
                 # the base class
                 super().putheader(header, *values)
@@ -748,8 +803,8 @@ class HTTPConnection(_HTTPConnection):
                 f"urllib3.util.SKIP_HEADER only supports '{skippable_headers}'"
             )
 
-    def endheaders(self, message_body: typing.Any = None) -> None:  # type: ignore[override]
-        if not self._protocol_helper.endheaders(message_body):
+    def endheaders(self, message_body: typing.Any = None, stream: Stream | None = None) -> None:  # type: ignore[override]
+        if not self._protocol_helper.endheaders(message_body, stream=stream):
             # if the helper class does not implement this method we call
             # the base class
             super().endheaders(message_body)
@@ -767,8 +822,8 @@ class HTTPConnection(_HTTPConnection):
         preload_content: bool = True,
         decode_content: bool = True,
         enforce_content_length: bool = True,
-    ) -> None:
-        self._protocol_helper.request(
+    ) -> Stream:
+        stream = self._protocol_helper.request(
             method,
             url,
             body,
@@ -778,6 +833,9 @@ class HTTPConnection(_HTTPConnection):
             decode_content=decode_content,
             enforce_content_length=enforce_content_length,
         )
+        if self._first_stream is None:
+            self._first_stream = stream
+        return stream
 
     def request_chunked(
         self,
@@ -785,7 +843,7 @@ class HTTPConnection(_HTTPConnection):
         url: str,
         body: _TYPE_BODY | None = None,
         headers: typing.Mapping[str, str] | None = None,
-    ) -> None:
+    ) -> Stream:
         """
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
@@ -796,17 +854,15 @@ class HTTPConnection(_HTTPConnection):
             category=FutureWarning,
             stacklevel=2,
         )
-        self.request(method, url, body=body, headers=headers, chunked=True)
+        return self.request(method, url, body=body, headers=headers, chunked=True)
 
-    def send(self, data: typing.Any) -> None:
-        if not self._protocol_helper.send(data):
+    def send(self, data: typing.Any, stream: Stream | None = None) -> None:
+        if not self._protocol_helper.send(data, stream=stream):
             # if the helper class does not implement this method we call
             # the base class
             super().send(data)
 
-    def getresponse(  # type: ignore[override]
-        self,
-    ) -> HTTPResponse:
+    def getresponse(self, stream: Stream | None = None) -> HTTPResponse:  # type: ignore[override]
         """
         Get the response from the server.
 
@@ -814,7 +870,7 @@ class HTTPConnection(_HTTPConnection):
 
         If a request has not been sent or if a previous response has not be handled, ResponseNotReady is raised. If the HTTP response indicates that the connection should be closed, then it will be closed before the response is returned. When the connection is closed, the underlying socket is closed.
         """
-        return self._protocol_helper.getresponse()
+        return self._protocol_helper.getresponse(stream=stream or self._first_stream)
 
 
 class HTTPSConnection(HTTPConnection):
