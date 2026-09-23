@@ -1,0 +1,1 @@
+Fixed a tautological assertion in the test suite so that ``PoolManager`` is verified to receive a copy of the default pool key functions.
