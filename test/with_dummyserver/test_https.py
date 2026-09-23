@@ -986,7 +986,6 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 http2=(http_version == "h2"),
             )
             assert r.status == 200
-            # assert r.data.decode("utf-8") == util.ALPN_PROTOCOLS[0]
             assert (
                 r.data.decode("utf-8") == {"h11": "http/1.1", "h2": "h2"}[http_version]
             )
