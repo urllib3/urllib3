@@ -96,6 +96,9 @@ class RetryAfterMaxExceededError(HTTPError):
             f"the configured maximum of {max_wait} seconds"
         )
 
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        return self.__class__, (self.retry_after, self.max_wait)
+
 
 class MaxRetryError(RequestError):
     """Raised when the maximum number of retries is exceeded.
