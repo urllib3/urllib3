@@ -13,7 +13,7 @@ from dummyserver.app import hypercorn_app
 from dummyserver.asgi_proxy import ProxyApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.socketserver import DEFAULT_CERTS, HAS_IPV6, SocketServerThread
-from urllib3.connection import HTTPConnection
+from urllib3.connection import HTTPConnection, Stream
 from urllib3.util.ssltransport import SSLTransport
 
 
@@ -314,7 +314,7 @@ class ConnectionMarker:
         orig_request = HTTPConnection.request
 
         def call_and_mark(
-            target: typing.Callable[..., None],
+            target: typing.Callable[..., Stream],
         ) -> typing.Callable[..., None]:
             def part(
                 self: HTTPConnection, *args: typing.Any, **kwargs: typing.Any
