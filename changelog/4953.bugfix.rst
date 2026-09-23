@@ -1,0 +1,1 @@
+Fixed no response body (e.g. from HEAD requests) handling on Emscripten.
