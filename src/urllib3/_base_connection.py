@@ -32,6 +32,7 @@ if typing.TYPE_CHECKING:
     import ssl
     from typing import Protocol
 
+    from .connection import Stream
     from .response import BaseHTTPResponse
 
     class BaseHTTPConnection(Protocol):
@@ -95,9 +96,11 @@ if typing.TYPE_CHECKING:
             preload_content: bool = True,
             decode_content: bool = True,
             enforce_content_length: bool = True,
-        ) -> None: ...
+        ) -> Stream: ...
 
-        def getresponse(self) -> BaseHTTPResponse: ...
+        def getresponse(self, stream: Stream | None = None) -> BaseHTTPResponse: ...
+
+        def close_stream(self, stream: Stream | None = None) -> None: ...
 
         def close(self) -> None: ...
 
