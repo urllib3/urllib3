@@ -22,6 +22,21 @@ TYPE_SOCKET_PAIR = tuple[socket, socket]
 TYPE_WAIT_FOR = typing.Callable[..., bool]
 
 
+@pytest.fixture(scope="module", autouse=True)
+def ignore_sigalrm() -> typing.Generator[None]:
+    """Never let a stray SIGALRM reach the default handler and kill the run.
+
+    The tests below install their own SIGALRM handler and restore the previous
+    one afterwards; with this fixture "the previous one" ignores the signal
+    instead of terminating the process.
+    """
+    if not hasattr(signal, "setitimer"):
+        yield
+        return
+    signal.signal(signal.SIGALRM, signal.SIG_IGN)
+    yield
+
+
 @pytest.fixture
 def spair() -> typing.Generator[TYPE_SOCKET_PAIR]:
     a, b = socketpair()
