@@ -575,3 +575,9 @@ def parse_url(url: str) -> Url:
         query=query,
         fragment=fragment,
     )
+
+
+def _url_origin(url: Url) -> tuple[str, str | None, int | None]:
+    scheme = url.scheme or "http"
+    port = url.port if url.port is not None else {"http": 80, "https": 443}.get(scheme)
+    return scheme, url.host, port
