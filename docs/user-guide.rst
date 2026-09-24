@@ -372,6 +372,19 @@ approach as :ref:`form_data` and specify the file field as a tuple of
     print(resp.json()["files"])
     # {"filefield": "..."}
 
+File objects can be passed directly to ``fields``. urllib3 streams multipart
+uploads instead of building the complete request body in memory. Seekable files
+also provide a ``Content-Length`` and can be replayed for retries or redirects:
+
+.. code-block:: python
+
+    with open("example.bin", "rb") as file_data:
+        resp = urllib3.request(
+            "POST",
+            "https://httpbin.org/post",
+            fields={"filefield": ("example.bin", file_data)},
+        )
+
 While specifying the filename is not strictly required, it's recommended in
 order to match browser behavior. You can also pass a third item in the tuple
 to specify the file's MIME type explicitly:

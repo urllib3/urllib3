@@ -260,7 +260,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             "upload_filename": "lolcat.txt",
             "filefield": ("lolcat.txt", data),
         }
-        fields["upload_size"] = len(data)  # type: ignore[assignment]
+        fields["upload_size"] = len(data)
 
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
@@ -299,7 +299,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
             "upload_filename": filename,
             fieldname: (filename, data),
         }
-        fields["upload_size"] = size  # type: ignore[assignment]
+        fields["upload_size"] = size
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200, r.data
@@ -676,6 +676,52 @@ class TestConnectionPool(HypercornDummyServerTestCase):
                 b"world\r\n",
                 b"--boundary--\r\n",
             ]
+
+    def test_post_with_multipart_streaming_body(self) -> None:
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            payload = b"multipart streaming payload"
+            response = pool.request(
+                "POST",
+                "/echo",
+                fields={"file": ("payload.bin", io.BytesIO(payload))},
+                multipart_boundary="boundary",
+            )
+
+            expected = encode_multipart_formdata(
+                {"file": ("payload.bin", payload)}, boundary="boundary"
+            )[0]
+            assert response.data == expected
+
+    def test_post_with_multipart_one_shot_stream(self) -> None:
+        class OneShot:
+            def __init__(self, data: bytes) -> None:
+                self.data = data
+                self.position = 0
+
+            def read(self, size: int) -> bytes:
+                result = self.data[self.position : self.position + size]
+                self.position += len(result)
+                return result
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request(
+                "POST",
+                "/echo",
+                fields={
+                    "file": (
+                        "payload.bin",
+                        typing.cast(typing.BinaryIO, OneShot(b"one shot")),
+                    )
+                },
+                multipart_boundary="boundary",
+            )
+
+            assert (
+                response.data
+                == encode_multipart_formdata(
+                    {"file": ("payload.bin", b"one shot")}, boundary="boundary"
+                )[0]
+            )
 
     def test_check_gzip(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
@@ -1411,6 +1457,10 @@ class TestRetryAfter(HypercornDummyServerTestCase):
 
 
 class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
+    class BadTellObject(io.BytesIO):
+        def tell(self) -> typing.NoReturn:
+            raise OSError
+
     def test_retries_put_filehandle(self) -> None:
         """HTTP PUT retry with a file-like object should not timeout"""
         with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
@@ -1459,41 +1509,47 @@ class TestFileBodiesOnRetryOrRedirect(HypercornDummyServerTestCase):
             assert resp.status == 200
             assert resp.data == data
 
-    def test_redirect_with_failed_tell(self) -> None:
-        """Abort request if failed to get a position from tell()"""
+    def test_redirect_multipart_seekable_stream(self) -> None:
+        payload = b"multipart redirect payload"
+        expected = encode_multipart_formdata(
+            {"file": ("payload.bin", payload)}, boundary="boundary"
+        )[0]
+        with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
+            response = pool.request(
+                "POST",
+                "/redirect?target=/echo&status=307",
+                fields={"file": ("payload.bin", io.BytesIO(payload))},
+                multipart_boundary="boundary",
+            )
 
-        class BadTellObject(io.BytesIO):
-            def tell(self) -> typing.NoReturn:
-                raise OSError
+        assert response.data == expected
 
-        body = BadTellObject(b"the data")
-        # A 307 keeps the body, so it has to be rewound for the redirect.
-        url = "/redirect?target=/successful_retry&status=307"
-        # httplib uses fileno if Content-Length isn't supplied,
-        # which is unsupported by BytesIO.
+    def test_307_redirect_with_failed_tell(self) -> None:
+        body = self.BadTellObject(b"the data")
         headers = {"Content-Length": "8"}
         with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
             with pytest.raises(
                 UnrewindableBodyError, match="Unable to record file position for"
             ):
-                pool.urlopen("PUT", url, headers=headers, body=body)
+                pool.urlopen(
+                    "PUT",
+                    "/redirect?target=/&status=307",
+                    headers=headers,
+                    body=body,
+                )
 
     def test_303_redirect_with_failed_tell(self) -> None:
-        """A 303 drops the body, so it never needs to be rewound"""
+        """A 303 drops the body, so it never needs to be rewound."""
 
-        class BadTellObject(io.BytesIO):
-            def tell(self) -> typing.NoReturn:
-                raise OSError
-
-        body = BadTellObject(b"the data")
+        body = self.BadTellObject(b"the data")
         url = "/redirect?target=/echo"
         # httplib uses fileno if Content-Length isn't supplied,
         # which is unsupported by BytesIO.
         headers = {"Content-Length": "8"}
         with HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
-            resp = pool.urlopen("PUT", url, headers=headers, body=body)
-        assert resp.status == 200
-        assert resp.data == b""
+            response = pool.urlopen("PUT", url, headers=headers, body=body)
+        assert response.status == 200
+        assert response.data == b""
 
 
 class TestRetryPoolSize(HypercornDummyServerTestCase):
