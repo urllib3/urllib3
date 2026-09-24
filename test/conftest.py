@@ -3,8 +3,11 @@ from __future__ import annotations
 import contextlib
 import socket
 import ssl
+import sys
 import typing
 from pathlib import Path
+from test import ModuleStash
+from unittest.mock import patch
 
 import pytest
 import trustme
@@ -288,6 +291,18 @@ def stub_timezone(request: pytest.FixtureRequest) -> typing.Generator[None]:
     """
     with stub_timezone_ctx(request.param):
         yield
+
+
+@pytest.fixture
+def without_ssl() -> typing.Generator[None]:
+    """Allow a fresh urllib3 import without SSL, then restore the modules."""
+    with patch.dict(sys.modules, {"ssl": None, "_ssl": None}):
+        module_stash = ModuleStash("urllib3")
+        module_stash.stash()
+        try:
+            yield
+        finally:
+            module_stash.pop()
 
 
 @pytest.fixture(scope="session")

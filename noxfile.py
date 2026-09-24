@@ -5,6 +5,7 @@ import re
 import shutil
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 import nox
 
@@ -23,6 +24,7 @@ def tests_impl(
     pytest_extra_args: list[str] = [],
     dependency_group: str = "dev",
     no_default_groups: bool = False,
+    parallel: bool = True,
 ) -> None:
     # Retrieve sys info from the Python implementation under test
     # to avoid enabling memray when nox runs under CPython but tests PyPy
@@ -74,22 +76,21 @@ def tests_impl(
     pytest_session_envvars = {
         "PYTHONWARNINGS": "always::FutureWarning",
         "COVERAGE_CORE": "sysmon",
+        "COVERAGE_FILE": f".coverage.{uuid4().hex}",
     }
 
-    # Inspired from https://hynek.me/articles/ditch-codecov-python/
-    # We use parallel mode and then combine in a later CI step
+    # Keep coverage data from each session to combine in a later CI step.
     session.run(
         "python",
         *(("-bb",) if byte_string_comparisons else ()),
         "-m",
-        "coverage",
-        "run",
-        "--parallel-mode",
-        "-m",
         "pytest",
         *("--memray", "--hide-memray-summary") if memray_supported else (),
+        "--cov=urllib3",
+        "--cov-report=",
         "-v",
         "-ra",
+        *(("-n", "auto") if parallel else ()),
         *(("--integration",) if integration else ()),
         "--tb=native",
         "--durations=10",
@@ -316,6 +317,8 @@ def emscripten(session: nox.Session, runner: str) -> None:
             "-v",
         ],
         dependency_group="emscripten",
+        # Tests in Chrome and Firefox do not succeed when run in parallel.
+        parallel=runner == "node",
     )
 
 
