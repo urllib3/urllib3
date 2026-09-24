@@ -266,7 +266,9 @@ async def redirect_after() -> ResponseReturnValue:
         retry_after = "1"
     target = params.get("target", "/")
     headers = [("Location", target), ("Retry-After", retry_after)]
-    return await make_response("", 303, headers)
+    return await make_response(
+        params.get("body", ""), params.get("status", "303"), headers
+    )
 
 
 @hypercorn_app.route("/retry_after")
