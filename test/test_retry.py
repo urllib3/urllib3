@@ -355,6 +355,23 @@ class TestRetry:
         )
         assert retry.history == test_history3
 
+    def test_max_retry_error_exposes_retries_and_history(self) -> None:
+        """MaxRetryError should carry the exhausted Retry object and its history"""
+        error = ConnectTimeoutError("conntimeout")
+        retry = Retry(total=2)
+        retry = retry.increment(method="GET", url="/test1", error=error)
+        retry = retry.increment(method="GET", url="/test2", error=error)
+        with pytest.raises(MaxRetryError) as e:
+            retry.increment(method="GET", url="/test3", error=error)
+
+        assert e.value.retries is not None
+        assert e.value.retries.is_exhausted()
+        assert e.value.retries.history == (
+            RequestHistory("GET", "/test1", error, None, None),
+            RequestHistory("GET", "/test2", error, None, None),
+            RequestHistory("GET", "/test3", error, None, None),
+        )
+
     def test_retry_method_not_allowed(self) -> None:
         error = ReadTimeoutError(DUMMY_POOL, "/", "read timed out")
         retry = Retry()
