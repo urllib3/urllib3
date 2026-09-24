@@ -802,6 +802,22 @@ class TestConnectionPool:
             actual_url = mock_request.call_args[0][2]
             assert actual_url == expected_url
 
+    def test_absolute_url_credentials_are_added_and_removed_from_target(self) -> None:
+        headers = {"X-Test": "value"}
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool, "_make_request", return_value=HTTPResponse(status=200)
+            ) as mock_request:
+                pool.urlopen(
+                    "GET", "http://user:p%40ss@localhost/private", headers=headers
+                )
+
+            assert mock_request.call_args.args[2] == "http://localhost/private"
+            assert mock_request.call_args.kwargs["headers"]["Authorization"] == (
+                "Basic dXNlcjpwQHNz"
+            )
+            assert headers == {"X-Test": "value"}
+
     def test_absolute_redirect_request_target_strips_fragment(self) -> None:
         redirect_response = HTTPResponse(
             status=302,
@@ -821,3 +837,35 @@ class TestConnectionPool:
 
         assert response.status == 200
         assert requested_urls == ["/", "http://localhost/next?x=1"]
+
+    def test_redirect_url_credentials_replace_generated_credentials(self) -> None:
+        redirect_response = HTTPResponse(
+            status=302,
+            headers={"location": "http://bob:two@localhost/next"},
+        )
+        final_response = HTTPResponse(status=200)
+
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                side_effect=[redirect_response, final_response],
+            ) as mock_request:
+                response = pool.urlopen(
+                    "GET", "http://alice:one@localhost/start", retries=1
+                )
+
+        assert response.status == 200
+        assert [
+            call.kwargs["headers"]["Authorization"]
+            for call in mock_request.call_args_list
+        ] == ["Basic YWxpY2U6b25l", "Basic Ym9iOnR3bw=="]
+
+    def test_absolute_url_credentials_conflict_with_explicit_header(self) -> None:
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with pytest.raises(ValueError, match="Authorization header conflicts"):
+                pool.urlopen(
+                    "GET",
+                    "http://alice:one@localhost/start",
+                    headers={"Authorization": "Basic different"},
+                )
