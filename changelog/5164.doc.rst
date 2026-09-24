@@ -1,0 +1,1 @@
+Documented closing :class:~urllib3.response.HTTPResponse objects to avoid `ResourceWarning` and exception-cycle leaks.
