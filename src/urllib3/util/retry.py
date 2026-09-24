@@ -252,6 +252,16 @@ class Retry:
             raise_on_redirect = False
 
         self.redirect = redirect
+        for name, value in (
+            ("status_forcelist", status_forcelist),
+            ("allowed_methods", allowed_methods),
+            ("remove_headers_on_redirect", remove_headers_on_redirect),
+        ):
+            if isinstance(value, str):
+                raise TypeError(
+                    f"'{name}' must be a collection of values, not a string. "
+                    f"Did you mean [{value!r}]?"
+                )
         self.status_forcelist = status_forcelist or set()
         if not allowed_methods and isinstance(allowed_methods, Collection):
             warnings.warn(
