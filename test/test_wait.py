@@ -24,17 +24,21 @@ TYPE_WAIT_FOR = typing.Callable[..., bool]
 
 @pytest.fixture(scope="module", autouse=True)
 def ignore_sigalrm() -> typing.Generator[None]:
-    """Never let a stray SIGALRM reach the default handler and kill the run.
+    """Keep a stray SIGALRM from killing the whole run.
 
     The tests below install their own SIGALRM handler and restore the previous
-    one afterwards; with this fixture "the previous one" ignores the signal
-    instead of terminating the process.
+    one when they are done; with this fixture "the previous one" ignores the
+    signal instead of terminating the process. The previous action is put back
+    when this module is finished, so nothing leaks into other tests.
     """
     if not hasattr(signal, "setitimer"):
         yield
         return
-    signal.signal(signal.SIGALRM, signal.SIG_IGN)
-    yield
+    old_handler = signal.signal(signal.SIGALRM, signal.SIG_IGN)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGALRM, old_handler)
 
 
 @pytest.fixture
