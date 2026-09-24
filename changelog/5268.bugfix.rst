@@ -1,2 +1,2 @@
-Prevented :class:`GzipDecoder` from flushing invalid trailing data after it had
-already been classified as garbage.
+Prevented a suppressed :class:`GzipDecoder` decompression error caused by invalid
+trailing data from resurfacing during ``flush()`` on newer Python versions.
