@@ -4,3 +4,5 @@ normalized.
 Fixed a regression where repeated normalization of IPv6 zone identifiers in
 ``ProxyManager`` caused the forwarded request target to disagree with the
 ``Host`` header.
+Fixed repeated normalization of IPv6 zone identifiers when retrying requests
+after connection errors or retryable responses.

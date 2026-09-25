@@ -708,6 +708,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
         """
+        # Preserve the input for retries so that IPv6 zone identifiers aren't
+        # decoded again when urlopen() normalizes the URL on the next attempt.
+        original_url = url
+
         # Ensure that the URL we're connecting to is properly encoded
         if url.startswith("/"):
             # URLs starting with / are inherently schemeless.
@@ -885,7 +889,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             )
             return self.urlopen(
                 method,
-                url,
+                original_url,
                 body,
                 headers,
                 retries,
@@ -973,7 +977,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             log.debug("Retry: %s", url)
             return self.urlopen(
                 method,
-                url,
+                original_url,
                 body,
                 headers,
                 retries=retries,

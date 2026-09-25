@@ -860,3 +860,41 @@ class TestConnectionPool:
 
         assert response.status == 200
         assert requested_urls == ["/", "http://localhost/next?x=1"]
+
+    @pytest.mark.parametrize("retry_kind", ["status", "connection"])
+    def test_scoped_ipv6_redirect_target_preserved_on_retry(
+        self, retry_kind: str
+    ) -> None:
+        redirect_response = HTTPResponse(
+            status=302,
+            headers={"location": "http://[FE80::1%25251]:8080/next?x=%23#fragment"},
+        )
+        retry_response: HTTPResponse | Exception
+        if retry_kind == "status":
+            retry_response = HTTPResponse(status=503)
+        else:
+            retry_response = OSError("connection reset")
+
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                side_effect=[
+                    redirect_response,
+                    retry_response,
+                    HTTPResponse(status=200),
+                ],
+            ) as request:
+                response = pool.urlopen(
+                    "GET",
+                    "/",
+                    assert_same_host=False,
+                    retries=Retry(total=2, status_forcelist=[503]),
+                )
+
+        assert response.status == 200
+        assert [call.args[2] for call in request.call_args_list] == [
+            "/",
+            "http://[fe80::1%251]:8080/next?x=%23",
+            "http://[fe80::1%251]:8080/next?x=%23",
+        ]
