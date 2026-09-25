@@ -1,0 +1,1 @@
+Rejected outgoing HTTP header names containing characters outside the RFC token grammar.
