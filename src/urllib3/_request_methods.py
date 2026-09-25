@@ -177,7 +177,9 @@ class RequestMethods:
         extra_kw.update(urlopen_kw)
 
         if fields:
-            url += "?" + urlencode(fields)
+            base, fragment_sep, fragment = url.partition("#")
+            separator = "&" if "?" in base else "?"
+            url = f"{base}{separator}{urlencode(fields)}{fragment_sep}{fragment}"
 
         return self.urlopen(method, url, **extra_kw)
 
