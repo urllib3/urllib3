@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import _headers_from_userinfo
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -453,6 +454,13 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        if u.auth is not None:
+            kw["headers"] = _headers_from_userinfo(u.auth, kw["headers"])
+            u = u._replace(auth=None)
+            # Resolve redirects against the sanitized URL, so relative redirects
+            # cannot reintroduce credentials which were removed from headers.
+            url = u.url
+
         if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
         else:
@@ -609,6 +617,12 @@ class ProxyManager(PoolManager):
         if proxy.port is None:
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
+
+        if proxy.auth is not None:
+            proxy_headers = _headers_from_userinfo(
+                proxy.auth, proxy_headers, "Proxy-Authorization"
+            )
+            proxy = proxy._replace(auth=None)
 
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
