@@ -240,7 +240,13 @@ class Url(
 
         # We use "is not None" we want things to happen with empty strings (or 0 port)
         if scheme is not None:
-            url += scheme + "://"
+            url += scheme + ":"
+        # An authority (host, plus optional userinfo/port) is introduced by "//"
+        # per RFC 3986, independently of the scheme. Without this, a scheme-less
+        # authority such as "//host:port" would serialize as "host:port" and be
+        # misread as "scheme:path" when parsed again.
+        if auth is not None or host is not None or port is not None:
+            url += "//"
         if auth is not None:
             url += auth + "@"
         if host is not None:
