@@ -331,5 +331,23 @@ class HeaderParsingError(HTTPError):
         super().__init__(message)
 
 
+class MaxRetryAfterWaitError(HTTPError):
+    """Raised when a Retry-After header exceeds the configured maximum wait time
+    and ``retry_after_max_strict`` is enabled.
+
+    :param float retry_after: The Retry-After value from the server, in seconds.
+    :param int max_wait: The configured maximum wait time, in seconds.
+    """
+
+    def __init__(self, retry_after: float, max_wait: int) -> None:
+        self.retry_after = retry_after
+        self.max_wait = max_wait
+        message = (
+            f"Retry-After header value ({retry_after}s) exceeds "
+            f"configured maximum ({max_wait}s)"
+        )
+        super().__init__(message)
+
+
 class UnrewindableBodyError(HTTPError):
     """urllib3 encountered an error when trying to rewind a body"""
