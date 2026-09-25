@@ -90,7 +90,7 @@ class ConnectionPool:
         # to avoid removing square braces around IPv6 addresses.
         # This value is sent to `HTTPConnection.set_tunnel()` if called
         # because square braces are required for HTTP CONNECT tunneling.
-        self._tunnel_host = normalize_host(host, scheme=self.scheme).lower()
+        self._tunnel_host = normalize_host(host, scheme=self.scheme)
 
     def __str__(self) -> str:
         return f"{type(self).__name__}(host={self.host!r}, port={self.port!r})"

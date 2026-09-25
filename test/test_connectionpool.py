@@ -188,15 +188,15 @@ class TestConnectionPool:
             ("31", "31"),
             ("251", "251"),
             ("0d", "0d"),
-            ("AB", "ab"),
-            ("FF", "ff"),
+            ("AB", "AB"),
+            ("FF", "FF"),
             ("eth0", "eth0"),
-            ("etH0", "eth0"),
+            ("etH0", "etH0"),
             ("et%61", "et%61"),
             ("eth%0d", "eth%0d"),
-            ("eth%7F", "eth%7f"),
-            ("et%FF", "et%ff"),
-            ("25eth+foo", "25eth+foo"),
+            ("eth%7F", "eth%7F"),
+            ("et%FF", "et%FF"),
+            ("25eth+Foo", "25eth+Foo"),
             ("l\u00ado0", None),
             ("l\u200co0", None),
             ("eté", None),
@@ -213,6 +213,11 @@ class TestConnectionPool:
             assert pool.host == f"fe80::1%{expected_zone}"
             assert pool._tunnel_host == f"fe80::1%{expected_zone}"
             assert pool._new_conn().host == f"fe80::1%{expected_zone}"
+
+    def test_scoped_ipv6_zone_case_changes_host_identity(self) -> None:
+        with HTTPConnectionPool("FE80::1%ethA", port=8080) as pool:
+            assert pool.is_same_host("http://[fe80::1%25ethA]:8080/")
+            assert not pool.is_same_host("http://[fe80::1%25etha]:8080/")
 
     @pytest.mark.parametrize(
         "host, expected_host, expected_tunnel_host",

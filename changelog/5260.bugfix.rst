@@ -1,6 +1,7 @@
 Fixed a regression where unbracketed scoped IPv6 addresses passed to
 ``HTTPConnectionPool`` or ``HTTPSConnectionPool`` were rejected or incorrectly
-normalized.
+normalized. Preserved the case of IPv6 zone identifiers so distinct interface
+names use distinct connection pools and are compared as different hosts.
 Fixed a regression where repeated normalization of IPv6 zone identifiers in
 ``ProxyManager`` caused the forwarded request target to disagree with the
 ``Host`` header.
