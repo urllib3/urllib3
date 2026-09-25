@@ -386,6 +386,45 @@ to specify the file's MIME type explicitly:
         }
     )
 
+Streaming multipart uploads
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For large files, use :class:`~urllib3.multipart.MultipartEncoder` to stream the
+multipart body without reading the entire file into memory. Pass its ``headers``
+to send the known ``Content-Length`` along with the multipart ``Content-Type``:
+
+.. code-block:: python
+
+    from urllib3.multipart import MultipartEncoder
+
+    with open("archive.zip", "rb") as file:
+        body = MultipartEncoder({"file": ("archive.zip", file, "application/zip")})
+        resp = urllib3.request(
+            "POST", "https://httpbin.org/post", body=body, headers=body.headers
+        )
+
+Files and ``io.BytesIO`` inputs are read from their current positions. Keep
+inputs open and unchanged until the request, including any retries, completes.
+``body.seek(0)`` rewinds every part to its initial position, and ``body.tell()``
+reports the number of encoded bytes consumed. Only a complete rewind is
+supported; an input that cannot rewind causes retries to fail explicitly.
+Reading the encoder without a size, or calling ``encode_multipart_formdata()``,
+still returns the complete body in memory.
+
+For an HTTP response named ``multipart_response`` whose ``Content-Type`` is
+``multipart/*``, use :class:`~urllib3.multipart.MultipartDecoder`:
+
+.. code-block:: python
+
+    from urllib3.multipart import MultipartDecoder
+
+    decoded = MultipartDecoder.from_response(multipart_response)
+    for part in decoded.parts:
+        print(part.headers, part.data)
+
+The decoder keeps the complete response in memory. Each part exposes its raw
+bytes as ``data`` and preserves duplicate headers in an ``HTTPHeaderDict``.
+
 For sending raw binary data simply specify the ``body`` argument. It's also
 recommended to set the ``Content-Type`` header:
 
