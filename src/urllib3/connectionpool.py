@@ -42,7 +42,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
-from .util.request import _TYPE_BODY_POSITION, set_file_position
+from .util.request import _TYPE_BODY_POSITION, _add_url_auth, set_file_position
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
@@ -708,6 +708,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
         """
+        if headers is None:
+            headers = self.headers
+
         # Ensure that the URL we're connecting to is properly encoded
         if url.startswith("/"):
             # URLs starting with / are inherently schemeless.
@@ -716,10 +719,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         else:
             parsed_url = parse_url(url)
             destination_scheme = parsed_url.scheme
-            url = to_str(parsed_url._replace(fragment=None).url)
-
-        if headers is None:
-            headers = self.headers
+            headers = _add_url_auth(headers, parsed_url.auth_decoded_joined)
+            url = to_str(parsed_url._replace(auth=None, fragment=None).url)
 
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
