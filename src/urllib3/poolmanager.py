@@ -82,7 +82,7 @@ class PoolKey(typing.NamedTuple):
     key_ca_cert_dir: str | None
     key_ssl_context: ssl.SSLContext | None
     key_maxsize: int | None
-    key_headers: frozenset[tuple[str, str]] | None
+    key_headers: frozenset[tuple[str, str | bytes]] | None
     key__proxy: Url | None
     key__proxy_headers: frozenset[tuple[str, str]] | None
     key__proxy_config: ProxyConfig | None
@@ -201,7 +201,7 @@ class PoolManager(RequestMethods):
     def __init__(
         self,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         **connection_pool_kw: typing.Any,
     ) -> None:
         super().__init__(headers)
@@ -571,7 +571,7 @@ class ProxyManager(PoolManager):
         self,
         proxy_url: str,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         proxy_headers: typing.Mapping[str, str] | None = None,
         proxy_ssl_context: ssl.SSLContext | None = None,
         use_forwarding_for_https: bool = False,
@@ -642,13 +642,13 @@ class ProxyManager(PoolManager):
         )
 
     def _set_proxy_headers(
-        self, url: str, headers: typing.Mapping[str, str] | None = None
-    ) -> typing.Mapping[str, str]:
+        self, url: str, headers: typing.Mapping[str, str | bytes] | None = None
+    ) -> typing.Mapping[str, str | bytes]:
         """
         Sets headers needed by proxies: specifically, the Accept and Host
         headers. Only sets headers not provided by the user.
         """
-        headers_ = {"Accept": "*/*"}
+        headers_: dict[str, str | bytes] = {"Accept": "*/*"}
 
         netloc = parse_url(url).netloc
         if netloc:

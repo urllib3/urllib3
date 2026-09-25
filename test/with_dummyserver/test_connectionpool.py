@@ -1084,7 +1084,7 @@ class TestConnectionPool(HypercornDummyServerTestCase):
         self,
         chunked: bool,
         pool_request: bool,
-        header_type: type[dict[str, str] | HTTPHeaderDict],
+        header_type: type[dict[str, str] | HTTPHeaderDict[str]],
     ) -> None:
         # Test that the .request*() methods of ConnectionPool and HTTPConnection
         # don't modify the given 'headers' structure, instead they should
