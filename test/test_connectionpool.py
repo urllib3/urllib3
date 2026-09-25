@@ -37,6 +37,7 @@ from urllib3.exceptions import (
     UnrewindableBodyError,
 )
 from urllib3.response import HTTPResponse
+from urllib3.util.request import make_headers
 from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import _DEFAULT_TIMEOUT, Timeout
 
@@ -801,6 +802,20 @@ class TestConnectionPool:
 
             actual_url = mock_request.call_args[0][2]
             assert actual_url == expected_url
+
+    def test_absolute_url_userinfo_sets_authorization_and_is_removed_from_target(
+        self,
+    ) -> None:
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool, "_make_request", return_value=HTTPResponse(status=200)
+            ) as mock_request:
+                pool.urlopen("GET", "http://user%40name:pass%3Aword@localhost/path")
+
+        assert mock_request.call_args.args[2] == "http://localhost/path"
+        assert mock_request.call_args.kwargs["headers"]["authorization"] == (
+            make_headers(basic_auth="user@name:pass:word")["authorization"]
+        )
 
     def test_absolute_redirect_request_target_strips_fragment(self) -> None:
         redirect_response = HTTPResponse(
