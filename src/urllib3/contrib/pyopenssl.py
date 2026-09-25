@@ -133,7 +133,7 @@ _openssl_to_ssl_maximum_version: dict[int, int] = {
 SSL_WRITE_BLOCKSIZE = 16384
 
 orig_util_SSLContext = util.ssl_.SSLContext
-
+orig_ALPN_PROTOCOLS = util.ssl_.ALPN_PROTOCOLS
 
 log = logging.getLogger(__name__)
 
@@ -147,6 +147,8 @@ def inject_into_urllib3() -> None:
     util.ssl_.SSLContext = PyOpenSSLContext  # type: ignore[assignment]
     util.IS_PYOPENSSL = True
     util.ssl_.IS_PYOPENSSL = True
+    util.ssl_.ALPN_PROTOCOLS = ["http/1.1"]
+    util.ALPN_PROTOCOLS = ["http/1.1"]
 
 
 def extract_from_urllib3() -> None:
@@ -156,6 +158,8 @@ def extract_from_urllib3() -> None:
     util.ssl_.SSLContext = orig_util_SSLContext
     util.IS_PYOPENSSL = False
     util.ssl_.IS_PYOPENSSL = False
+    util.ssl_.ALPN_PROTOCOLS = orig_ALPN_PROTOCOLS
+    util.ALPN_PROTOCOLS = orig_ALPN_PROTOCOLS
 
 
 def _validate_dependencies_met() -> None:

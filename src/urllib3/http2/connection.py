@@ -12,9 +12,15 @@ import h2.events
 
 from .._base_connection import _TYPE_BODY
 from .._collections import HTTPHeaderDict
-from ..connection import HTTPSConnection, _get_default_user_agent
+from ..connection import (
+    BaseProtocolHelper,
+    HTTPConnection,
+    HTTPSConnection,
+    Stream,
+    _get_default_user_agent,
+)
 from ..exceptions import ConnectionError
-from ..response import BaseHTTPResponse
+from ..response import HTTPResponse
 
 orig_HTTPSConnection = HTTPSConnection
 
@@ -82,247 +88,303 @@ class _LockedObject(typing.Generic[T]):
         self.lock.release()
 
 
-class HTTP2Connection(HTTPSConnection):
-    def __init__(
-        self, host: str, port: int | None = None, **kwargs: typing.Any
-    ) -> None:
+class HTTP2ProtocolHelper(BaseProtocolHelper):
+    """Protocol helper class for HTTP/2."""
+
+    name = "http2"
+
+    def __init__(self, conn: HTTPConnection):
+        super().__init__(conn, is_multistream=True)
         self._h2_conn = self._new_h2_conn()
-        self._h2_stream: int | None = None
-        self._headers: list[tuple[bytes, bytes]] = []
-
-        if "proxy" in kwargs or "proxy_config" in kwargs:  # Defensive:
-            raise NotImplementedError("Proxies aren't supported with HTTP/2")
-
-        super().__init__(host, port, **kwargs)
-
-        if self._tunnel_host is not None:
-            raise NotImplementedError("Tunneling isn't supported with HTTP/2")
+        self._initiated = False
+        self._events: dict[int, list[h2.events.Event]] = {}
 
     def _new_h2_conn(self) -> _LockedObject[h2.connection.H2Connection]:
         config = h2.config.H2Configuration(client_side=True)
         return _LockedObject(h2.connection.H2Connection(config=config))
 
-    def connect(self) -> None:
-        super().connect()
-        with self._h2_conn as conn:
-            conn.initiate_connection()
-            if data_to_send := conn.data_to_send():
-                self.sock.sendall(data_to_send)
-
-    def putrequest(  # type: ignore[override]
+    def putrequest(
         self,
         method: str,
         url: str,
-        **kwargs: typing.Any,
-    ) -> None:
+        skip_host: bool = False,
+        skip_accept_encoding: bool = False,
+        stream: Stream | None = None,
+    ) -> bool:
         """putrequest
         This deviates from the HTTPConnection method signature since we never need to override
         sending accept-encoding headers or the host header.
         """
-        if "skip_host" in kwargs:
+        if skip_host:
             raise NotImplementedError("`skip_host` isn't supported")
-        if "skip_accept_encoding" in kwargs:
+        if skip_accept_encoding:
             raise NotImplementedError("`skip_accept_encoding` isn't supported")
+        if stream is None:
+            raise ConnectionError("`stream` cannot be None")
 
-        self._request_url = url or "/"
-        self._validate_path(url)  # type: ignore[attr-defined]
+        stream.request_data["url"] = url or "/"
+        self.conn._validate_path(url)  # type: ignore[attr-defined]
 
-        port = self.port if self.port is not None else 443
-        if ":" in self.host:
-            authority = f"[{self.host}]:{port}"
+        port = self.conn.port if self.conn.port is not None else 443
+        if ":" in self.conn.host:
+            authority = f"[{self.conn.host}]:{port}"
         else:
-            authority = f"{self.host}:{port}"
+            authority = f"{self.conn.host}:{port}"
 
-        self._headers.append((b":scheme", b"https"))
-        self._headers.append((b":method", method.encode()))
-        self._headers.append((b":authority", authority.encode()))
-        self._headers.append((b":path", url.encode()))
+        stream.request_data["headers"] = []
+        stream.request_data["headers"].append((b":scheme", b"https"))
+        stream.request_data["headers"].append((b":method", method.encode()))
+        stream.request_data["headers"].append((b":authority", authority.encode()))
+        stream.request_data["headers"].append((b":path", url.encode()))
 
-        with self._h2_conn as conn:
-            self._h2_stream = conn.get_next_available_stream_id()
+        return True
 
-    def putheader(self, header: str | bytes, *values: str | bytes) -> None:  # type: ignore[override]
+    def putheader(
+        self, header: str, *values: str, stream: Stream | None = None
+    ) -> bool:
         # TODO SKIPPABLE_HEADERS from urllib3 are ignored.
-        header = header.encode() if isinstance(header, str) else header
-        header = header.lower()  # A lot of upstream code uses capitalized headers.
-        if not _is_legal_header_name(header):
+        if stream is None:
+            raise ConnectionError("`stream` cannot be None")
+
+        encoded_header = header.encode() if isinstance(header, str) else header
+        encoded_header = (
+            encoded_header.lower()
+        )  # A lot of upstream code uses capitalized headers.
+        if not _is_legal_header_name(encoded_header):
             raise ValueError(f"Illegal header name {str(header)}")
 
         for value in values:
-            value = value.encode() if isinstance(value, str) else value
-            if _is_illegal_header_value(value):
+            encoded_value = value.encode() if isinstance(value, str) else value
+            if _is_illegal_header_value(encoded_value):
                 raise ValueError(f"Illegal header value {str(value)}")
-            self._headers.append((header, value))
+            stream.request_data["headers"].append((encoded_header, encoded_value))
+        return True
 
-    def endheaders(self, message_body: typing.Any = None) -> None:  # type: ignore[override]
-        if self._h2_stream is None:
-            raise ConnectionError("Must call `putrequest` first.")
+    def endheaders(
+        self, message_body: typing.Any = None, stream: Stream | None = None
+    ) -> bool:
+        if stream is None:
+            raise ConnectionError("`stream` cannot be None")
 
-        with self._h2_conn as conn:
-            conn.send_headers(
-                stream_id=self._h2_stream,
-                headers=self._headers,
+        with self._h2_conn as h2_conn:
+            stream.stream_id = h2_conn.get_next_available_stream_id()
+
+            if not self._initiated:
+                h2_conn.initiate_connection()
+                if data_to_send := h2_conn.data_to_send():
+                    if self.conn.sock is None:
+                        self.conn.connect()
+                    self.conn.sock.sendall(data_to_send)
+
+                if self.conn.sock is not None:
+                    self.conn.sock.settimeout(self.conn.timeout)
+                self._initiated = True
+
+            h2_conn.send_headers(
+                stream_id=stream.stream_id,
+                headers=stream.request_data["headers"],
                 end_stream=(message_body is None),
             )
-            if data_to_send := conn.data_to_send():
-                self.sock.sendall(data_to_send)
-        self._headers = []  # Reset headers for the next request.
+            if data_to_send := h2_conn.data_to_send():
+                self.conn.sock.sendall(data_to_send)
+        return True
 
-    def send(self, data: typing.Any) -> None:
-        """Send data to the server.
-        `data` can be: `str`, `bytes`, an iterable, or file-like objects
-        that support a .read() method.
-        """
-        if self._h2_stream is None:
-            raise ConnectionError("Must call `putrequest` first.")
-
-        with self._h2_conn as conn:
-            if data_to_send := conn.data_to_send():
-                self.sock.sendall(data_to_send)
-
-            if hasattr(data, "read"):  # file-like objects
-                while True:
-                    chunk = data.read(self.blocksize)
-                    if not chunk:
-                        break
-                    if isinstance(chunk, str):
-                        chunk = chunk.encode()
-                    conn.send_data(self._h2_stream, chunk, end_stream=False)
-                    if data_to_send := conn.data_to_send():
-                        self.sock.sendall(data_to_send)
-                conn.end_stream(self._h2_stream)
-                return
-
-            if isinstance(data, str):  # str -> bytes
-                data = data.encode()
-
-            try:
-                if isinstance(data, bytes):
-                    conn.send_data(self._h2_stream, data, end_stream=True)
-                    if data_to_send := conn.data_to_send():
-                        self.sock.sendall(data_to_send)
-                else:
-                    for chunk in data:
-                        conn.send_data(self._h2_stream, chunk, end_stream=False)
-                        if data_to_send := conn.data_to_send():
-                            self.sock.sendall(data_to_send)
-                    conn.end_stream(self._h2_stream)
-            except TypeError:
-                raise TypeError(
-                    "`data` should be str, bytes, iterable, or file. got %r"
-                    % type(data)
-                )
-
-    def set_tunnel(
-        self,
-        host: str,
-        port: int | None = None,
-        headers: typing.Mapping[str, str] | None = None,
-        scheme: str = "http",
-    ) -> None:
-        raise NotImplementedError(
-            "HTTP/2 does not support setting up a tunnel through a proxy"
-        )
-
-    def getresponse(  # type: ignore[override]
-        self,
-    ) -> HTTP2Response:
-        status = None
-        data = bytearray()
-        with self._h2_conn as conn:
-            end_stream = False
-            while not end_stream:
-                # TODO: Arbitrary read value.
-                if received_data := self.sock.recv(65535):
-                    events = conn.receive_data(received_data)
-                    for event in events:
-                        if isinstance(event, h2.events.ResponseReceived):
-                            headers = HTTPHeaderDict()
-                            for header, value in event.headers:
-                                if header == b":status":
-                                    status = int(value.decode())
-                                else:
-                                    headers.add(
-                                        header.decode("ascii"), value.decode("ascii")
-                                    )
-
-                        elif isinstance(event, h2.events.DataReceived):
-                            data += event.data
-                            conn.acknowledge_received_data(
-                                event.flow_controlled_length, event.stream_id
-                            )
-
-                        elif isinstance(event, h2.events.StreamEnded):
-                            end_stream = True
-
-                if data_to_send := conn.data_to_send():
-                    self.sock.sendall(data_to_send)
-
-        assert status is not None
-        return HTTP2Response(
-            status=status,
-            headers=headers,
-            request_url=self._request_url,
-            data=bytes(data),
-        )
-
-    def request(  # type: ignore[override]
+    def request(
         self,
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
         headers: typing.Mapping[str, str] | None = None,
         *,
+        chunked: bool = False,
         preload_content: bool = True,
         decode_content: bool = True,
         enforce_content_length: bool = True,
-        **kwargs: typing.Any,
-    ) -> None:
+    ) -> Stream:
         """Send an HTTP/2 request"""
-        if "chunked" in kwargs:
+        if chunked:
             # TODO this is often present from upstream.
             # raise NotImplementedError("`chunked` isn't supported with HTTP/2")
             pass
 
-        if self.sock is not None:
-            self.sock.settimeout(self.timeout)
-
-        self.putrequest(method, url)
+        stream = Stream(self.conn)
+        self.putrequest(method, url, stream=stream)
 
         headers = headers or {}
         for k, v in headers.items():
             if k.lower() == "transfer-encoding" and v == "chunked":
                 continue
             else:
-                self.putheader(k, v)
+                self.putheader(k, v, stream=stream)
 
-        if b"user-agent" not in dict(self._headers):
-            self.putheader(b"user-agent", _get_default_user_agent())
+        if b"user-agent" not in dict(stream.request_data["headers"]):
+            self.putheader("user-agent", _get_default_user_agent(), stream=stream)
 
         if body:
-            self.endheaders(message_body=body)
-            self.send(body)
+            self.endheaders(message_body=body, stream=stream)
+            self.send(body, stream=stream)
         else:
-            self.endheaders()
+            self.endheaders(stream=stream)
+        return stream
+
+    def _receive(self, stream: Stream) -> list[h2.events.Event]:
+        if stream is None:
+            raise ConnectionError("`stream` cannot be None")
+        if not stream.stream_id:
+            raise ConnectionError("Must call `request` to create a stream")
+
+        with self._h2_conn as h2_conn:
+            if stream.stream_id not in self._events:
+                # TODO: Arbitrary read value.
+                if received_data := self.conn.sock.recv(65535):
+                    for event in h2_conn.receive_data(received_data):
+                        if isinstance(
+                            event,
+                            (
+                                h2.events.ResponseReceived,
+                                h2.events.DataReceived,
+                                h2.events.StreamEnded,
+                            ),
+                        ):
+                            if event.stream_id not in self._events:
+                                self._events[event.stream_id] = []
+                            self._events[event.stream_id].append(event)
+            return self._events.pop(stream.stream_id, [])
+
+    def getresponse(self, stream: Stream | None = None) -> HTTPResponse:
+        if stream is None:
+            raise ConnectionError("`stream` cannot be None")
+        if not stream.stream_id:
+            raise ConnectionError("Must call `request` to create a stream")
+
+        status = None
+        data = bytearray()
+        with self._h2_conn as h2_conn:
+            end_stream = False
+            while not end_stream:
+                # TODO: Arbitrary read value.
+                events = self._receive(stream)
+                for event in events:
+                    if isinstance(event, h2.events.ResponseReceived):
+                        headers = HTTPHeaderDict()
+                        for header, value in event.headers:
+                            if header == b":status":
+                                status = int(value.decode())
+                            else:
+                                headers.add(
+                                    header.decode("ascii"), value.decode("ascii")
+                                )
+
+                    elif isinstance(event, h2.events.DataReceived):
+                        data += event.data
+                        h2_conn.acknowledge_received_data(
+                            event.flow_controlled_length, event.stream_id
+                        )
+
+                    elif isinstance(event, h2.events.StreamEnded):
+                        end_stream = True
+
+                if data_to_send := h2_conn.data_to_send():
+                    self.conn.sock.sendall(data_to_send)
+
+        assert status is not None
+        return HTTP2Response(
+            status=status,
+            headers=headers,
+            request_url=stream.request_data["url"],
+            data=bytes(data),
+            connection=self.conn,
+        )
+
+    def send(self, data: typing.Any, stream: Stream | None = None) -> bool:
+        if stream is None:
+            raise ConnectionError("`stream` cannot be None")
+        if not stream.stream_id:
+            raise ConnectionError("Must call `request` to create a stream")
+
+        with self._h2_conn as h2_conn:
+            if data_to_send := h2_conn.data_to_send():
+                self.conn.sock.sendall(data_to_send)
+
+        if hasattr(data, "read"):  # file-like objects
+            while True:
+                chunk = data.read(self.conn.blocksize)
+                if not chunk:
+                    break
+                if isinstance(chunk, str):
+                    chunk = chunk.encode()
+                with self._h2_conn as h2_conn:
+                    h2_conn.send_data(stream.stream_id, chunk, end_stream=False)
+                    if data_to_send := h2_conn.data_to_send():
+                        self.conn.sock.sendall(data_to_send)
+            with self._h2_conn as h2_conn:
+                h2_conn.end_stream(stream.stream_id)
+            return True
+
+        if isinstance(data, str):  # str -> bytes
+            data = data.encode()
+
+        try:
+            if isinstance(data, bytes):
+                with self._h2_conn as h2_conn:
+                    h2_conn.send_data(stream.stream_id, data, end_stream=True)
+                    if data_to_send := h2_conn.data_to_send():
+                        self.conn.sock.sendall(data_to_send)
+            else:
+                for chunk in data:
+                    with self._h2_conn as h2_conn:
+                        h2_conn.send_data(stream.stream_id, chunk, end_stream=False)
+                        if data_to_send := h2_conn.data_to_send():
+                            self.conn.sock.sendall(data_to_send)
+                with self._h2_conn as h2_conn:
+                    h2_conn.end_stream(stream.stream_id)
+        except TypeError:
+            raise TypeError(
+                "`data` should be str, bytes, iterable, or file. got %r" % type(data)
+            )
+        return True
 
     def close(self) -> None:
-        with self._h2_conn as conn:
+        with self._h2_conn as h2_conn:
             try:
-                conn.close_connection()
-                if data := conn.data_to_send():
-                    self.sock.sendall(data)
+                h2_conn.close_connection()
+                if data := h2_conn.data_to_send():
+                    self.conn.sock.sendall(data)
             except Exception:
                 pass
 
         # Reset all our HTTP/2 connection state.
         self._h2_conn = self._new_h2_conn()
-        self._h2_stream = None
-        self._headers = []
+        self._initiated = False
 
-        super().close()
+    def close_stream(self, stream: Stream | None = None) -> None:
+        if stream is None:
+            raise ValueError("`stream` cannot be None")
+        if not stream.stream_id:
+            raise ValueError("Must call `request` to create a stream")
+
+        with self._h2_conn as h2_conn:
+            try:
+                h2_conn.end_stream(stream.stream_id)
+                if data := h2_conn.data_to_send():
+                    self.conn.sock.sendall(data)
+            except Exception:
+                pass
+
+        if stream.stream_id in self._events:
+            del self._events[stream.stream_id]
 
 
-class HTTP2Response(BaseHTTPResponse):
+class HTTP2Connection(HTTPSConnection):
+    _protocol_helper: HTTP2ProtocolHelper
+
+    def __init__(
+        self, host: str, port: int | None = None, **kwargs: typing.Any
+    ) -> None:
+        super().__init__(host, port, **kwargs)
+
+
+class HTTP2Response(HTTPResponse):
     # TODO: This is a woefully incomplete response object, but works for non-streaming.
     def __init__(
         self,
@@ -331,6 +393,7 @@ class HTTP2Response(BaseHTTPResponse):
         request_url: str,
         data: bytes,
         decode_content: bool = False,  # TODO: support decoding
+        connection: HTTPConnection | None = None,
     ) -> None:
         super().__init__(
             status=status,
@@ -341,6 +404,7 @@ class HTTP2Response(BaseHTTPResponse):
             # No reason phrase in HTTP/2
             reason=None,
             decode_content=decode_content,
+            connection=connection,
             request_url=request_url,
         )
         self._data = data

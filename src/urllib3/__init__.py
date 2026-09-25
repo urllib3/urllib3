@@ -127,6 +127,8 @@ def request(
     retries: Retry | bool | int | None = None,
     timeout: Timeout | float | int | None = 3,
     json: typing.Any | None = None,
+    http1: bool = True,
+    http2: bool = False,
 ) -> BaseHTTPResponse:
     """
     A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.
@@ -188,6 +190,18 @@ def request(
         Data to encode and send as JSON with UTF-encoded in the request body.
         The ``"Content-Type"`` header will be set to ``"application/json"``
         unless specified otherwise.
+
+    :param http1:
+        Set to `False` to enable the HTTP/1.1 protocol. Note that at least one of `http1`
+        and `http2` must be set to `True`. For non-TLS connections, if `http1` is `True`
+        (the default) then the HTTP/1.1 protocol will be used regardless of the value of
+        `http2`.
+
+    :param http2:
+        Set to `True` to enable the HTTP/2 protocol. If `http1` and `http2` are both `True`
+        and the connection uses TLS, then the protocol to use is determined by the ALPN
+        negotiation. For non-TLS connections, set `http1` to `False` and `http2` to `True`
+        to use a HTTP/2 prior knowledge connection.
     """
 
     return _DEFAULT_POOL.request(
@@ -202,6 +216,8 @@ def request(
         retries=retries,
         timeout=timeout,
         json=json,
+        http1=http1,
+        http2=http2,
     )
 
 

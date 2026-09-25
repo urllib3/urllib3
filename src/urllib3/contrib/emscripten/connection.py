@@ -8,7 +8,7 @@ from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
 
 from ..._base_connection import _TYPE_BODY
-from ...connection import HTTPConnection, ProxyConfig, port_by_scheme
+from ...connection import HTTPConnection, ProxyConfig, Stream, port_by_scheme
 from ...exceptions import TimeoutError
 from ...response import BaseHTTPResponse
 from ...util.connection import _TYPE_SOCKET_OPTIONS
@@ -39,6 +39,9 @@ class EmscriptenHTTPConnection:
 
     is_verified: bool = False
     proxy_is_verified: bool | None = None
+
+    http1: bool
+    http2: bool
 
     response_class: type[BaseHTTPResponse] = EmscriptenHttpResponseWrapper
     _response: EmscriptenResponse | None
@@ -79,6 +82,9 @@ class EmscriptenHTTPConnection:
     ) -> None:
         pass
 
+    def set_protocol_options(self, http1: bool, http2: bool) -> None:
+        pass
+
     def connect(self) -> None:
         pass
 
@@ -96,7 +102,7 @@ class EmscriptenHTTPConnection:
         preload_content: bool = True,
         decode_content: bool = True,
         enforce_content_length: bool = True,
-    ) -> None:
+    ) -> Stream:
         self._closed = False
         if url.startswith("/"):
             if self.port is not None:
@@ -125,8 +131,9 @@ class EmscriptenHTTPConnection:
             raise TimeoutError(e.message) from e
         except _RequestError as e:
             raise HTTPException(e.message) from e
+        return Stream(self)
 
-    def getresponse(self) -> BaseHTTPResponse:
+    def getresponse(self, stream: Stream | None = None) -> BaseHTTPResponse:
         if self._response is not None:
             return EmscriptenHttpResponseWrapper(
                 internal_response=self._response,
@@ -135,6 +142,9 @@ class EmscriptenHTTPConnection:
             )
         else:
             raise ResponseNotReady()
+
+    def close_stream(self, stream: Stream | None = None) -> None:
+        pass
 
     def close(self) -> None:
         self._closed = True

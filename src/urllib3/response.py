@@ -517,6 +517,7 @@ class BaseHTTPResponse(io.IOBase):
         # Distinguish an uninitialized decoder from a response needing no decoder.
         self._decoder_initialized = False
         self.length_remaining: int | None
+        self.protocol: str | None = None
 
     def get_redirect_location(self) -> str | None | typing.Literal[False]:
         """
@@ -791,6 +792,11 @@ class HTTPResponse(BaseHTTPResponse):
 
         self._pool = pool
         self._connection = connection
+        self.protocol = (
+            connection._protocol_helper.name
+            if connection and hasattr(connection, "_protocol_helper")
+            else None
+        )
 
         if hasattr(body, "read"):
             self._fp = body  # type: ignore[assignment]

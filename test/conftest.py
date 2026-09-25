@@ -9,14 +9,15 @@ from pathlib import Path
 import pytest
 import trustme
 
-import urllib3.http2
 import urllib3.http2.probe as http2_probe
 from dummyserver.app import hypercorn_app
 from dummyserver.asgi_proxy import ProxyApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
 from dummyserver.socketserver import HAS_IPV6
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
+from urllib3 import util as urllib3_util
 from urllib3.util import ssl_
+from urllib3.util import ssl_ as urllib3_util_ssl
 
 from .tz_stub import stub_timezone_ctx
 
@@ -368,25 +369,18 @@ class ErroringHTTPConnection:
 
 @pytest.fixture(params=["h11", "h2"])
 def http_version(request: pytest.FixtureRequest) -> typing.Generator[str]:
-    orig_HTTPConnection: typing.Any = None
-
-    if request.param == "h2":
-        urllib3.http2.inject_into_urllib3()
-
-        from urllib3 import connection as urllib3_connection
-        from urllib3.connectionpool import HTTPConnectionPool
-
-        orig_HTTPConnection = urllib3_connection.HTTPConnection
-        urllib3_connection.HTTPConnection = ErroringHTTPConnection  # type: ignore[misc,assignment]
-        HTTPConnectionPool.ConnectionCls = ErroringHTTPConnection  # type: ignore[assignment]
+    orig_ALPN_PROTOCOLS = urllib3_util.ALPN_PROTOCOLS
+    if request.param == "h11":
+        urllib3_util.ALPN_PROTOCOLS = ["http/1.1"]
+        urllib3_util_ssl.ALPN_PROTOCOLS = ["http/1.1"]
+    elif request.param == "h2":
+        urllib3_util.ALPN_PROTOCOLS = ["h2"]
+        urllib3_util_ssl.ALPN_PROTOCOLS = ["h2"]
     try:
         yield request.param
     finally:
-        if request.param == "h2":
-            urllib3_connection.HTTPConnection = orig_HTTPConnection  # type: ignore[misc]
-            HTTPConnectionPool.ConnectionCls = orig_HTTPConnection
-
-            urllib3.http2.extract_from_urllib3()
+        urllib3_util.ALPN_PROTOCOLS = orig_ALPN_PROTOCOLS
+        urllib3_util_ssl.ALPN_PROTOCOLS = orig_ALPN_PROTOCOLS
 
 
 @pytest.fixture(autouse=True, scope="function")
