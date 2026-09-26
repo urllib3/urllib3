@@ -1,0 +1,2 @@
+Failed connections now report every address that was tried, so an IPv6
+refusal no longer hides an earlier IPv4 timeout or other error.
