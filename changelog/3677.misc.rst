@@ -1,0 +1,1 @@
+Documented that enabling a backoff (``backoff_factor``) is recommended when retrying requests.
