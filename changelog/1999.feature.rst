@@ -1,0 +1,6 @@
+Added support for constructing ``Authorization`` and ``Proxy-Authorization``
+headers from the ``username:password`` userinfo section of request and
+HTTP(S) proxy URLs. Conflicting explicitly-provided headers now raise
+``ValueError`` instead of silently sending the wrong credentials, and
+credentials are stripped from absolute-form request targets and the stored
+proxy URL.

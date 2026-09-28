@@ -13,6 +13,7 @@ from urllib3.exceptions import (
 )
 from urllib3.poolmanager import ProxyManager
 from urllib3.response import HTTPResponse
+from urllib3.util.request import make_headers
 from urllib3.util.retry import Retry
 from urllib3.util.url import parse_url
 
@@ -85,6 +86,79 @@ class TestProxyManager:
             headers = p._set_proxy_headers(url_with_port, provided_headers)
 
             assert headers == expected_headers
+
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    def test_proxy_url_userinfo_becomes_proxy_authorization(
+        self, proxy_scheme: str
+    ) -> None:
+        proxy_url = f"{proxy_scheme}://proxyuser:proxypass@proxy:8080"
+        expected = make_headers(proxy_basic_auth="proxyuser:proxypass")[
+            "proxy-authorization"
+        ]
+        with ProxyManager(proxy_url) as manager:
+            assert manager.proxy is not None
+            # Credentials are removed from the stored proxy URL.
+            assert manager.proxy.auth is None
+            assert manager.proxy_headers["proxy-authorization"] == expected
+
+            with patch.object(
+                HTTPConnectionPool,
+                "_make_request",
+                side_effect=[HTTPResponse(status=200)],
+            ) as request:
+                manager.urlopen("GET", "http://example.com/")
+
+            assert request.call_args.args[2] == "http://example.com/"
+            assert (
+                request.call_args.kwargs["headers"]["proxy-authorization"]
+                == expected
+            )
+
+    def test_proxy_url_userinfo_conflict_raises(self) -> None:
+        with pytest.raises(ValueError, match="proxy-authorization") as exc_info:
+            ProxyManager(
+                "http://proxyuser:proxypass@proxy:8080",
+                proxy_headers={"Proxy-Authorization": "Basic e30="},
+            )
+        # Credentials must never appear in the error message.
+        assert "proxypass" not in str(exc_info.value)
+
+    def test_proxy_url_userinfo_matching_header_accepted(self) -> None:
+        expected = make_headers(proxy_basic_auth="proxyuser:proxypass")[
+            "proxy-authorization"
+        ]
+        with ProxyManager(
+            "http://proxyuser:proxypass@proxy:8080",
+            proxy_headers={"Proxy-Authorization": expected},
+        ) as manager:
+            # Matching header is kept with its original casing.
+            assert manager.proxy_headers == {"Proxy-Authorization": expected}
+
+    def test_proxy_url_without_userinfo_leaves_headers_alone(self) -> None:
+        with ProxyManager(
+            "http://proxy:8080", proxy_headers={"X-Custom": "1"}
+        ) as manager:
+            assert manager.proxy_headers == {"X-Custom": "1"}
+
+    def test_request_url_userinfo_forwarding(self) -> None:
+        expected_auth = make_headers(basic_auth="user:s3cret")["authorization"]
+        with ProxyManager("http://proxy:8080") as manager:
+            with patch.object(
+                HTTPConnectionPool,
+                "_make_request",
+                side_effect=[HTTPResponse(status=200)],
+            ) as request:
+                manager.urlopen(
+                    "GET", "http://user:s3cret@example.com:80/path?q=1#fragment"
+                )
+
+            # Credentials must not appear in the absolute-form request target.
+            assert request.call_args.args[2] == "http://example.com:80/path?q=1"
+            headers = request.call_args.kwargs["headers"]
+            assert headers["authorization"] == expected_auth
+            assert "proxy-authorization" not in {
+                k.lower() for k in headers.keys()
+            }
 
     def test_default_port(self) -> None:
         with ProxyManager("http://something") as p:

@@ -9,15 +9,18 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from urllib3 import connection_from_url
-from urllib3.connectionpool import HTTPSConnectionPool
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.exceptions import LocationValueError
 from urllib3.poolmanager import (
     _DEFAULT_BLOCKSIZE,
     PoolKey,
     PoolManager,
+    _strip_userinfo,
     key_fn_by_scheme,
 )
+from urllib3.response import HTTPResponse
 from urllib3.util import retry, timeout
+from urllib3.util.request import make_headers
 from urllib3.util.url import Url
 
 
@@ -540,3 +543,89 @@ class TestPoolManager:
 
         # Connection should be closed, because reference to pool_1 is gone.
         assert conn_queue.qsize() == 0
+
+    def test_request_url_userinfo_becomes_authorization(self) -> None:
+        expected = make_headers(basic_auth="user:s3cret")["authorization"]
+        with PoolManager(headers={"X-Custom": "1"}) as manager:
+            with patch.object(
+                HTTPConnectionPool,
+                "_make_request",
+                side_effect=[HTTPResponse(status=200)],
+            ) as request:
+                manager.urlopen("GET", "http://user:s3cret@example.com/path?q=1")
+
+            assert request.call_args.args[2] == "/path?q=1"
+            headers = request.call_args.kwargs["headers"]
+            assert headers["authorization"] == expected
+            assert headers["X-Custom"] == "1"
+            # The manager's headers must not be mutated.
+            assert manager.headers == {"X-Custom": "1"}
+
+    def test_request_url_percent_encoded_userinfo(self) -> None:
+        expected = make_headers(basic_auth="us@er:p:ss")["authorization"]
+        with PoolManager() as manager:
+            with patch.object(
+                HTTPConnectionPool,
+                "_make_request",
+                side_effect=[HTTPResponse(status=200)],
+            ) as request:
+                manager.urlopen("GET", "http://us%40er:p%3Ass@example.com/")
+
+            assert (
+                request.call_args.kwargs["headers"]["authorization"] == expected
+            )
+
+    def test_request_url_userinfo_conflict_raises(self) -> None:
+        with PoolManager() as manager:
+            with pytest.raises(ValueError, match="authorization") as exc_info:
+                manager.urlopen(
+                    "GET",
+                    "http://user:s3cret@example.com/",
+                    headers={"Authorization": "Basic e30="},
+                )
+        # Credentials must never appear in the error message.
+        assert "s3cret" not in str(exc_info.value)
+
+    def test_request_url_userinfo_matching_header_accepted(self) -> None:
+        expected = make_headers(basic_auth="user:s3cret")["authorization"]
+        with PoolManager() as manager:
+            with patch.object(
+                HTTPConnectionPool,
+                "_make_request",
+                side_effect=[HTTPResponse(status=200)],
+            ) as request:
+                manager.urlopen(
+                    "GET",
+                    "http://user:s3cret@example.com/",
+                    headers={"Authorization": expected},
+                )
+            assert (
+                request.call_args.kwargs["headers"]["Authorization"] == expected
+            )
+
+    def test_request_url_without_userinfo_unchanged(self) -> None:
+        with PoolManager() as manager:
+            with patch.object(
+                HTTPConnectionPool,
+                "_make_request",
+                side_effect=[HTTPResponse(status=200)],
+            ) as request:
+                manager.urlopen("GET", "http://example.com/path")
+            headers = request.call_args.kwargs["headers"]
+            assert "authorization" not in {k.lower() for k in headers.keys()}
+
+    @pytest.mark.parametrize(
+        "target, expected",
+        [
+            ("http://user:pass@host/path", "http://host/path"),
+            ("http://user:p@ss@host/", "http://host/"),
+            ("http://user@host:8080/a?b=@c", "http://host:8080/a?b=@c"),
+            (
+                "http://us%40er:p%3Ass@[fe80::1%25eth0]:8080/p",
+                "http://[fe80::1%25eth0]:8080/p",
+            ),
+            ("http://host/path", "http://host/path"),
+        ],
+    )
+    def test_strip_userinfo(self, target: str, expected: str) -> None:
+        assert _strip_userinfo(target) == expected

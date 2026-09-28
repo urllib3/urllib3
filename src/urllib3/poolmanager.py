@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -164,6 +165,58 @@ key_fn_by_scheme = {
 }
 
 pool_classes_by_scheme = {"http": HTTPConnectionPool, "https": HTTPSConnectionPool}
+
+
+def _set_basic_auth_header(
+    headers: typing.Mapping[str, str] | None,
+    header_name: str,
+    header_value: str,
+) -> typing.Mapping[str, str]:
+    """Return headers with a Basic auth header derived from URL userinfo.
+
+    If the header is already present with the same value the headers are
+    returned unchanged. If it is present with a different value a
+    :exc:`ValueError` is raised instead of silently sending conflicting
+    credentials. The credentials themselves are never included in the
+    error message.
+    """
+    if headers:
+        for key, value in headers.items():
+            if key.lower() == header_name:
+                if value != header_value:
+                    raise ValueError(
+                        f"The {header_name!r} header conflicts with the "
+                        "credentials in the URL."
+                    )
+                return headers
+    if isinstance(headers, HTTPHeaderDict):
+        new_headers: typing.MutableMapping[str, str] = headers.copy()
+    else:
+        new_headers = dict(headers) if headers else {}
+    new_headers[header_name] = header_value
+    return new_headers
+
+
+def _strip_userinfo(target: str) -> str:
+    """Remove the userinfo (``user:password@``) from an absolute URL string.
+
+    Only the userinfo is removed; the rest of the URL is left exactly as-is
+    so that downstream normalization (which must only happen once, e.g. for
+    IPv6 zone identifiers) is unaffected.
+    """
+    scheme, sep, rest = target.partition("://")
+    if not sep:
+        return target
+    authority_end = len(rest)
+    for i, char in enumerate(rest):
+        if char in "/?":
+            authority_end = i
+            break
+    authority = rest[:authority_end]
+    if "@" not in authority:
+        return target
+    host_port = authority.rpartition("@")[2]
+    return f"{scheme}://{host_port}{rest[authority_end:]}"
 
 
 class PoolManager(RequestMethods):
@@ -458,10 +511,26 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        if u.auth is not None and u.auth_decoded_joined is not None:
+            # Credentials in the URL become an Authorization header instead of
+            # being dropped or sent as part of the request target.
+            headers = kw["headers"] if kw["headers"] is not None else self.headers
+            kw["headers"] = _set_basic_auth_header(
+                headers,
+                "authorization",
+                make_headers(basic_auth=u.auth_decoded_joined)["authorization"],
+            )
+
         if self._proxy_requires_url_absolute_form(u):
             # Strip the fragment here but let the connection pool normalize the URL
             # to avoid decoding IPv6 zone identifiers twice.
-            response = conn.urlopen(method, url.split("#", 1)[0], **kw)
+            target = url.split("#", 1)[0]
+            if u.auth is not None:
+                # Credentials are sent via the Authorization header instead of
+                # the request target. Remove only the userinfo so the raw URL
+                # is otherwise preserved for downstream normalization.
+                target = _strip_userinfo(target)
+            response = conn.urlopen(method, target, **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 
@@ -594,6 +663,19 @@ class ProxyManager(PoolManager):
 
         if proxy.scheme not in ("http", "https"):
             raise ProxySchemeUnknown(proxy.scheme)
+
+        if proxy.auth is not None and proxy.auth_decoded_joined is not None:
+            # Credentials in the proxy URL become a Proxy-Authorization header
+            # instead of being dropped.
+            proxy_headers = _set_basic_auth_header(
+                proxy_headers,
+                "proxy-authorization",
+                make_headers(proxy_basic_auth=proxy.auth_decoded_joined)[
+                    "proxy-authorization"
+                ],
+            )
+            # Don't retain credentials in the stored proxy URL.
+            proxy = proxy._replace(auth=None)
 
         # Keep the deprecated ssl_context fallback on the manager for
         # compatibility, while passing only explicit proxy policy to connections.
