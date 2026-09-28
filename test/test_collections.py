@@ -490,4 +490,3 @@ def test_extend_from_list(self, d: HTTPHeaderDict) -> None:
     def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
         with pytest.raises(TypeError, match="unsupported operand type.*'NoneType'"):
             d |= None
-
