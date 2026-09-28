@@ -1,2 +1,1 @@
-Added ``trustme>=1.2.1`` to the ``test`` dependency group, fixing test
-collection when only that group is installed.
+Added trustme to the ``test`` dependency group, fixing test collection when only that group is installed.
