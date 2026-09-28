@@ -1,0 +1,1 @@
+Fixed a flaky Windows test for ``test_ssl_custom_validation_failure_terminates`` by handling client connection resets correctly.

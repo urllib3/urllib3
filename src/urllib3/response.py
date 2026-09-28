@@ -205,6 +205,8 @@ class GzipDecoder(ContentDecoder):
         return bool(self._unconsumed_tail)
 
     def flush(self) -> bytes:
+        if self._state == GzipDecoderState.SWALLOW_DATA:
+            return b""
         return self._obj.flush()
 
 

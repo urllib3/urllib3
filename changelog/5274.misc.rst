@@ -1,0 +1,1 @@
+Fixed a flaky Windows test by handling ``ConnectionAbortedError`` when the test server sends a response.

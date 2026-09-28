@@ -4,6 +4,7 @@ import platform
 import select
 import socket
 import ssl
+import sys
 import threading
 import typing
 from unittest import mock
@@ -459,6 +460,11 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
     @pytest.mark.skipif(
         platform.system() == "Windows",
         reason="Skipping windows due to text makefile support",
+    )
+    @pytest.mark.skipif(
+        getattr(sys, "pypy_version_info", (0,))[:3] == (8, 0, 0),
+        reason="PyPy 8.0.0 raises BufferError when a TLS stream is read to EOF, "
+        "see https://github.com/pypy/pypy/issues/5589",
     )
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_tls_in_tls_makefile_rw_text(self) -> None:

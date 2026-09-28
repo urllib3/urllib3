@@ -30,6 +30,7 @@ from urllib3.response import (  # type: ignore[attr-defined]
     _MAX_CHUNK_LINE_LENGTH,
     BaseHTTPResponse,
     BytesQueueBuffer,
+    GzipDecoder,
     HTTPResponse,
     brotli,
 )
@@ -494,6 +495,16 @@ class TestResponse:
                 break
 
         assert ret == b"foofoofoo"
+
+    def test_decode_gzip_swallow_garbage_does_not_flush(self) -> None:
+        decoder = GzipDecoder()
+        data = gzip.compress(b"foo") + b"garbage"
+
+        assert decoder.decompress(data) == b"foo"
+        decoder._obj = mock.Mock(flush=mock.Mock(side_effect=zlib.error))
+
+        assert decoder.flush() == b""
+        decoder._obj.flush.assert_not_called()
 
     def test_chunked_decoding_gzip_swallow_garbage(self) -> None:
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
