@@ -201,7 +201,7 @@ class TestHTTPHeaderDict:
         ]
         org = HTTPHeaderDict(headers)
         h = HTTPHeaderDict(org)
-        assert len(h) == 3 
+        assert len(h) == 3
         assert "ab" in h
         clist = h.getlist("cookie")
         assert len(clist) == 3
