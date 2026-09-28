@@ -57,11 +57,9 @@ h2 = [
 ]
 
 [dependency-groups]
-# Bare dependencies needed to run the test suite. Kept free of profiling
-# (`coverage`, `pytest-memray`) and maintainer tooling (`build`, `towncrier`)
-# so downstream packagers can install just this group when generating
-# build-time test requirements (see issue #3594).
-test = [
+# Shared test dependencies, excluding trustme so dev-min-pyopenssl can pin
+# a version compatible with its older cryptography dependency.
+test-base = [
     "anyio[trio]>=4.8.0",
     "h2>=4.1.0",
     "httpx>=0.28.1",
@@ -73,11 +71,17 @@ test = [
     "quart>=0.20.0",
     "quart-trio>=0.12.0",
     "trio>=0.27.0",
-    # The last version of trustme to support cryptography < 3.1.
-    "trustme>=0.9",
+]
+# Bare dependencies needed to run the test suite. Kept free of profiling
+# (`coverage`, `pytest-memray`) and maintainer tooling (`build`, `towncrier`)
+# so downstream packagers can install just this group when generating
+# build-time test requirements (see issue #3594).
+test = [
+    {include-group = "test-base"},
+    "trustme>=1.2.1",
 ]
 dev-base = [
-    {include-group = "test"},
+    {include-group = "test-base"},
     "build>=1.2.2.post1",
     "coverage>=7.8.0",
     "pytest-memray==1.8.0 ; python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'",
@@ -109,7 +113,6 @@ mypy = [
     "cryptography>=44.0.2",
     "idna>=3.10",
     "mypy>=1.18.2",
-    "trustme>=1.2.1",
     "types-requests>=2.32.0.20241016",
     "nox>=2024.10.9",
     "types-pysocks>=1.7.1.20251001",
@@ -224,6 +227,10 @@ conflicts = [
   [
     {group = "dev-min-pyopenssl"},
     {group = "mypy"},
+  ],
+  [
+    {group = "dev-min-pyopenssl"},
+    {group = "test"},
   ],
 ]
 
