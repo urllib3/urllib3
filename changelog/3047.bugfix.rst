@@ -1,0 +1,1 @@
+Improved header typing so request and pool entry points accepted byte-keyed and byte-valued header mappings consistently with urllib3's existing runtime behavior.

@@ -131,6 +131,13 @@ class TestLRUContainer:
         with pytest.raises(NotImplementedError):
             d.__iter__()
 
+    def test_keys(self) -> None:
+        d: Container[int, str] = Container()
+        d[1] = "one"
+        d[2] = "two"
+
+        assert d.keys() == {1, 2}
+
 
 class NonMappingHeaderContainer:
     def __init__(self, **kwargs: str) -> None:
@@ -212,10 +219,10 @@ class TestHTTPHeaderDict:
 
     def test_setitem(self, d: HTTPHeaderDict) -> None:
         d["Cookie"] = "foo"
-        # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
-        d[b"Cookie"] = "bar"  # type: ignore[index]
+        d[b"Cookie"] = "bar"
+        d["Another"] = b"baz"
         assert d["cookie"] == "bar"
+        assert d["another"] == "baz"
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
 
@@ -231,7 +238,7 @@ class TestHTTPHeaderDict:
         assert "COOKIE" not in d
 
     def test_delitem_with_bytes_key(self, d: HTTPHeaderDict) -> None:
-        del d[b"cookie"]  # type: ignore[arg-type]
+        del d[b"cookie"]
         assert "cookie" not in d
 
     def test_add_well_known_multiheader(self, d: HTTPHeaderDict) -> None:
@@ -241,10 +248,8 @@ class TestHTTPHeaderDict:
 
     def test_add_comma_separated_multiheader(self, d: HTTPHeaderDict) -> None:
         d.add("bar", "foo")
-        # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
-        d.add(b"BAR", "bar")  # type: ignore[arg-type]
-        d.add("Bar", "asdf")
+        d.add(b"BAR", "bar")
+        d.add("Bar", b"asdf")
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
         assert d["bar"] == "foo, bar, asdf"
 
@@ -323,18 +328,18 @@ class TestHTTPHeaderDict:
         assert d.getlist("b") == ["asdf"]
 
     def test_getlist_with_bytes_key(self, d: HTTPHeaderDict) -> None:
-        assert d.getlist(b"cookie") == ["foo", "bar"]  # type: ignore[call-overload]
+        assert d.getlist(b"cookie") == ["foo", "bar"]
 
     def test_getitem_with_bytes(self, d: HTTPHeaderDict) -> None:
         d["Content-Type"] = "application/json"
         d.add("Content-Type", "charset=utf-8")
-        result = d[b"Content-Type"]  # type: ignore[index]
+        result = d[b"Content-Type"]
         assert result == "application/json, charset=utf-8"
 
     def test_contains_with_bytes(self, d: HTTPHeaderDict) -> None:
         d["Content-Type"] = "application/json"
-        assert b"Content-Type" in d  # type: ignore[comparison-overlap]
-        assert b"X-Not-There" not in d  # type: ignore[comparison-overlap]
+        assert b"Content-Type" in d
+        assert b"X-Not-There" not in d
 
     def test_getlist_after_copy(self, d: HTTPHeaderDict) -> None:
         assert d.getlist("cookie") == HTTPHeaderDict(d).getlist("cookie")
