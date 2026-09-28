@@ -1,0 +1,3 @@
+Added opt-in ``raise_on_retry_after_max`` option to ``Retry`` which raises
+``RetryAfterMaxExceededError`` instead of silently limiting the wait when a
+``Retry-After`` header exceeds ``retry_after_max``.

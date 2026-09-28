@@ -12,6 +12,7 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
     ResponseError,
+    RetryAfterMaxExceededError,
     SSLError,
 )
 from urllib3.response import HTTPResponse
@@ -192,6 +193,39 @@ class TestRetry:
         retry = Retry(retry_after_max=1)
         assert retry.parse_retry_after(str(1)) == 1
         assert retry.parse_retry_after(str(2)) == 1
+
+    def test_retry_after_max_exceeded_raises_when_enabled(self) -> None:
+        retry = Retry(retry_after_max=60, raise_on_retry_after_max=True)
+        with pytest.raises(RetryAfterMaxExceededError) as exc_info:
+            retry.parse_retry_after("3600")
+        assert exc_info.value.retry_after == 3600
+        assert exc_info.value.max_wait == 60
+
+    def test_retry_after_max_exceeded_date_format_raises(self) -> None:
+        # HTTP-date format in the far future also raises when enabled.
+        retry = Retry(retry_after_max=60, raise_on_retry_after_max=True)
+        future = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+            seconds=3600
+        )
+        http_date = future.strftime("%a, %d %b %Y %H:%M:%S GMT")
+        with pytest.raises(RetryAfterMaxExceededError):
+            retry.parse_retry_after(http_date)
+
+    def test_retry_after_max_boundary_does_not_raise(self) -> None:
+        retry = Retry(retry_after_max=60, raise_on_retry_after_max=True)
+        assert retry.parse_retry_after("60") == 60
+        assert retry.parse_retry_after("59") == 59
+
+    def test_retry_after_max_exceeded_disabled_by_default(self) -> None:
+        # Default behavior is unchanged: the value is capped, not raised.
+        retry = Retry(retry_after_max=60)
+        assert retry.parse_retry_after("3600") == 60
+        assert retry.raise_on_retry_after_max is False
+
+    def test_raise_on_retry_after_max_propagated_by_new(self) -> None:
+        retry = Retry(retry_after_max=60, raise_on_retry_after_max=True)
+        assert retry.new().raise_on_retry_after_max is True
+        assert retry.new().retry_after_max == 60
 
     def test_backoff_jitter(self) -> None:
         """Backoff with jitter is computed correctly"""

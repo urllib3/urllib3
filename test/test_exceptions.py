@@ -23,6 +23,7 @@ from urllib3.exceptions import (
     NameResolutionError,
     NewConnectionError,
     ReadTimeoutError,
+    RetryAfterMaxExceededError,
 )
 from urllib3.response import HTTPResponse
 
@@ -50,11 +51,18 @@ class TestPickle:
             NameResolutionError(
                 "host", HTTPConnection("localhost"), socket.gaierror("error")
             ),
+            RetryAfterMaxExceededError(3600, 60),
         ],
     )
     def test_exceptions(self, exception: Exception) -> None:
         result = pickle.loads(pickle.dumps(exception))
         assert isinstance(result, type(exception))
+
+        if isinstance(exception, RetryAfterMaxExceededError):
+            assert isinstance(result, RetryAfterMaxExceededError)
+            assert result.retry_after == exception.retry_after
+            assert result.max_wait == exception.max_wait
+            assert str(result) == str(exception)
 
         if hasattr(exception, "_message"):
             assert exception._message == result._message  # type: ignore[attr-defined]
