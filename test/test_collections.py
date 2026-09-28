@@ -201,7 +201,7 @@ class TestHTTPHeaderDict:
         ]
         org = HTTPHeaderDict(headers)
         h = HTTPHeaderDict(org)
-        assert len(h) == 3
+        assert len(h) == 3def 
         assert "ab" in h
         clist = h.getlist("cookie")
         assert len(clist) == 3
@@ -219,7 +219,7 @@ class TestHTTPHeaderDict:
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
 
-        test_setitem_with_bytes_value(self, d: HTTPHeaderDict) -> None:
+     def test_setitem_with_bytes_value(self, d: HTTPHeaderDict) -> None:
         # The bytes value gets converted to str. The API is typed for str only,
         # but the implementation continues supports bytes.
         d["user-agent"] = "Schönefeld/1.18.0".encode("latin-1")  # type: ignore[assignment]
@@ -257,7 +257,7 @@ class TestHTTPHeaderDict:
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
         assert d["bar"] == "foo, bar, asdf"
 
-        test_add_with_bytes_value(self, d: HTTPHeaderDict) -> None:
+    def test_add_with_bytes_value(self, d: HTTPHeaderDict) -> None:
         # The bytes value gets converted to str. The API is typed for str only,
         # but the implementation continues supports bytes.
         d.add("Cookie", b"C")  # type: ignore[arg-type]
