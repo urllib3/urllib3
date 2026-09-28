@@ -406,6 +406,10 @@ recommended to set the ``Content-Type`` header:
     print(resp.json()["data"])
     # data:application/octet-stream;base64,...
 
+To stream a raw file upload, pass the open binary file itself as ``body`` instead
+of calling ``fp.read()`` first. See :ref:`upload_buffering` for an example and
+guidance on tuning ``blocksize`` for large uploads.
+
 .. _ssl:
 
 Certificate Verification

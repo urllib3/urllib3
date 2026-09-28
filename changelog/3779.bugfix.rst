@@ -1,1 +1,0 @@
-Raised ``UnrewindableBodyError`` instead of ``ValueError`` when retrying a request whose body had ``tell()`` but not ``seek()``.

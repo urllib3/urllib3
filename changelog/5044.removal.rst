@@ -1,1 +1,0 @@
-Deprecated using an empty collection as ``Retry`` option ``allowed_methods`` to retry any verb.
