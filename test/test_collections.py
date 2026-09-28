@@ -213,15 +213,15 @@ class TestHTTPHeaderDict:
     def test_setitem(self, d: HTTPHeaderDict) -> None:
         d["Cookie"] = "foo"
         # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
+        # but the implementation continues to support bytes.
         d[b"Cookie"] = "bar"  # type: ignore[index]
         assert d["cookie"] == "bar"
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
 
-     def test_setitem_with_bytes_value(self, d: HTTPHeaderDict) -> None:
+    def test_setitem_with_bytes_value(self, d: HTTPHeaderDict) -> None:
         # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
+        # but the implementation continues to support bytes.
         d["user-agent"] = "Schönefeld/1.18.0".encode("latin-1")  # type: ignore[assignment]
         assert d["user-agent"] == "Schönefeld/1.18.0"
         assert d.getlist("user-agent") == ["Schönefeld/1.18.0"]
@@ -251,7 +251,7 @@ class TestHTTPHeaderDict:
     def test_add_comma_separated_multiheader(self, d: HTTPHeaderDict) -> None:
         d.add("bar", "foo")
         # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
+        # but the implementation continues to support bytes.
         d.add(b"BAR", "bar")  # type: ignore[arg-type]
         d.add("Bar", "asdf")
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
@@ -259,7 +259,7 @@ class TestHTTPHeaderDict:
 
     def test_add_with_bytes_value(self, d: HTTPHeaderDict) -> None:
         # The bytes value gets converted to str. The API is typed for str only,
-        # but the implementation continues supports bytes.
+        # but the implementation continues to support bytes.
         d.add("Cookie", b"C")  # type: ignore[arg-type]
         d.add("COOKIE", b"D")  # type: ignore[arg-type]
         assert d.getlist("cookie") == ["foo", "bar", "C", "D"]
