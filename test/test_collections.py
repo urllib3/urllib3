@@ -219,7 +219,16 @@ class TestHTTPHeaderDict:
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
 
-    def test_update(self, d: HTTPHeaderDict) -> None:
+        def test_setitem_with_bytes_value(self, d: HTTPHeaderDict) -> None:
+        # The bytes value gets converted to str. The API is typed for str only,
+        # but the implementation continues supports bytes.
+        d["user-agent"] = "Schönefeld/1.18.0".encode("latin-1")  # type: ignore[assignment]
+        assert d["user-agent"] == "Schönefeld/1.18.0"
+        assert d.getlist("user-agent") == ["Schönefeld/1.18.0"]
+        # All 256 byte values round-trip losslessly through latin-1.
+        d["x-binary"] = bytes(range(256))  # type: ignore[assignment]
+        assert d["x-binary"] == bytes(range(256)).decode("latin-1")
+def test_update(self, d: HTTPHeaderDict) -> None:
         d.update(dict(Cookie="foo"))
         assert d["cookie"] == "foo"
         d.update(dict(cookie="with, comma"))
@@ -248,7 +257,18 @@ class TestHTTPHeaderDict:
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
         assert d["bar"] == "foo, bar, asdf"
 
-    def test_extend_from_list(self, d: HTTPHeaderDict) -> None:
+        def test_add_with_bytes_value(self, d: HTTPHeaderDict) -> None:
+        # The bytes value gets converted to str. The API is typed for str only,
+        # but the implementation continues supports bytes.
+        d.add("Cookie", b"C")  # type: ignore[arg-type]
+        d.add("COOKIE", b"D")  # type: ignore[arg-type]
+        assert d.getlist("cookie") == ["foo", "bar", "C", "D"]
+        assert d["cookie"] == "foo, bar, C, D"
+
+    def test_add_with_bytes_value_combine(self, d: HTTPHeaderDict) -> None:
+        d.add("Cookie", b"E", combine=True)  # type: ignore[arg-type]
+        assert d["cookie"] == "foo, bar, E"
+def test_extend_from_list(self, d: HTTPHeaderDict) -> None:
         d.extend([("set-cookie", "100"), ("set-cookie", "200"), ("set-cookie", "300")])
         assert d["set-cookie"] == "100, 200, 300"
 
@@ -470,3 +490,4 @@ class TestHTTPHeaderDict:
     def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
         with pytest.raises(TypeError, match="unsupported operand type.*'NoneType'"):
             d |= None
+
