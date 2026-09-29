@@ -512,6 +512,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # With this behaviour, the received response is still readable.
         except BrokenPipeError:
             pass
+        except SocketTimeout as e:
+            # socket.timeout is an OSError (and TimeoutError on Python 3.10+).
+            # Convert write/send timeouts into ReadTimeoutError here so urlopen
+            # does not wrap them as ProtocolError ("Connection aborted.").
+            # See https://github.com/urllib3/urllib3/issues/1981
+            self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
+            raise
         except OSError as e:
             # MacOS/Linux
             # EPROTOTYPE and ECONNRESET are needed on macOS
@@ -845,6 +852,17 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 ),
             ) and (conn and conn.proxy and not conn.has_connected_to_proxy):
                 new_e = _wrap_proxy_error(new_e, conn.proxy.scheme)
+            elif isinstance(new_e, SocketTimeout):
+                # socket.timeout subclasses OSError, so without this branch
+                # send timeouts become ProtocolError. See #1981.
+                timeout_value = (
+                    conn.timeout if conn is not None else timeout_obj.read_timeout
+                )
+                new_e = ReadTimeoutError(
+                    self,
+                    url,
+                    f"Read timed out. (read timeout={timeout_value})",
+                )
             elif isinstance(new_e, (OSError, HTTPException)):
                 new_e = ProtocolError("Connection aborted.", new_e)
 

@@ -556,6 +556,35 @@ class TestSocketClosing(SocketDummyServerTestCase):
             assert http.pool is not None
             assert http.pool.qsize() == http.pool.maxsize
 
+    def test_request_body_send_timeout_is_read_timeout(self) -> None:
+        """A timeout while sending the request body is ReadTimeoutError, not ProtocolError.
+
+        Regression for https://github.com/urllib3/urllib3/issues/1981
+        """
+        finish = Event()
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            # Accept the connection but never read the request so the client
+            # send buffer fills and send() times out.
+            finish.wait(5)
+            sock.close()
+
+        def never_ending_body() -> typing.Iterator[bytes]:
+            while True:
+                yield b"x" * 65536
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(
+            self.host, self.port, timeout=SHORT_TIMEOUT, retries=False
+        ) as http:
+            try:
+                with pytest.raises(ReadTimeoutError) as excinfo:
+                    http.request("POST", "/", body=never_ending_body(), chunked=True)
+                assert not isinstance(excinfo.value, ProtocolError)
+            finally:
+                finish.set()
+
     def test_read_timeout_dont_retry_method_not_in_allowlist(self) -> None:
         timed_out = Event()
 
