@@ -1,0 +1,1 @@
+Prevented a stray ``SIGALRM`` from terminating the test run on macOS.
