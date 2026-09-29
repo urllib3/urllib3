@@ -32,6 +32,7 @@ if typing.TYPE_CHECKING:
     import ssl
     from typing import Protocol
 
+    from .connection import Stream
     from .response import BaseHTTPResponse
 
     class BaseHTTPConnection(Protocol):
@@ -52,6 +53,9 @@ if typing.TYPE_CHECKING:
 
         is_verified: bool
         proxy_is_verified: bool | None
+
+        http1: bool
+        http2: bool
 
         def __init__(
             self,
@@ -74,6 +78,8 @@ if typing.TYPE_CHECKING:
             scheme: str = "http",
         ) -> None: ...
 
+        def set_protocol_options(self, http1: bool, http2: bool) -> None: ...
+
         def connect(self) -> None: ...
 
         def request(
@@ -90,9 +96,11 @@ if typing.TYPE_CHECKING:
             preload_content: bool = True,
             decode_content: bool = True,
             enforce_content_length: bool = True,
-        ) -> None: ...
+        ) -> Stream: ...
 
-        def getresponse(self) -> BaseHTTPResponse: ...
+        def getresponse(self, stream: Stream | None = None) -> BaseHTTPResponse: ...
+
+        def close_stream(self, stream: Stream | None = None) -> None: ...
 
         def close(self) -> None: ...
 
