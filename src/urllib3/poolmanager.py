@@ -119,7 +119,12 @@ def _default_key_normalizer(
     # Since we mutate the dictionary, make a copy first
     context = request_context.copy()
     context["scheme"] = context["scheme"].lower()
-    context["host"] = context["host"].lower()
+    # Only the address portion of a scoped IPv6 host is case-insensitive.
+    address, separator, zone = context["host"].partition("%")
+    if separator and ":" in address:
+        context["host"] = f"{address.lower()}{separator}{zone}"
+    else:
+        context["host"] = context["host"].lower()
 
     # These are both dictionaries and need to be transformed into frozensets
     for key in ("headers", "_proxy_headers", "_socks_options"):
@@ -454,7 +459,9 @@ class PoolManager(RequestMethods):
             kw["headers"] = self.headers
 
         if self._proxy_requires_url_absolute_form(u):
-            response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
+            # Strip the fragment here but let the connection pool normalize the URL
+            # to avoid decoding IPv6 zone identifiers twice.
+            response = conn.urlopen(method, url.split("#", 1)[0], **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 

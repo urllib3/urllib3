@@ -22,6 +22,32 @@ from urllib3.util.url import Url
 
 
 class TestPoolManager:
+    @pytest.mark.parametrize("scheme", ["http", "https"])
+    def test_scoped_ipv6_zone_case_separates_pools(self, scheme: str) -> None:
+        with PoolManager(2) as manager:
+            upper = manager.connection_from_host("FE80::1%ethA", scheme=scheme)
+            lower = manager.connection_from_host("fe80::1%etha", scheme=scheme)
+
+            assert upper is not lower
+            assert manager.connection_from_host("fe80::1%ethA", scheme=scheme) is upper
+            assert upper.host == "fe80::1%ethA"
+            assert lower.host == "fe80::1%etha"
+            assert {key.key_host for key in manager.pools.keys()} == {
+                "fe80::1%ethA",
+                "fe80::1%etha",
+            }
+
+    @pytest.mark.parametrize("scheme", ["http", "https"])
+    def test_scoped_ipv6_url_zone_case_separates_pools(self, scheme: str) -> None:
+        with PoolManager(2) as manager:
+            upper = manager.connection_from_url(f"{scheme}://[FE80::1%25ethA]/")
+            lower = manager.connection_from_url(f"{scheme}://[fe80::1%25etha]/")
+
+            assert upper is not lower
+            assert upper.host == "fe80::1%ethA"
+            assert lower.host == "fe80::1%etha"
+            assert manager.connection_from_url(f"{scheme}://[fe80::1%25ethA]/") is upper
+
     @resolvesLocalhostFQDN()
     def test_same_url(self) -> None:
         # Convince ourselves that normally we don't get the same object

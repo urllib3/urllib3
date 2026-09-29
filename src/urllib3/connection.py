@@ -119,6 +119,10 @@ class HTTPConnection(_HTTPConnection):
     Accepted parameters include:
 
     - ``source_address``: Set the source address for the current connection.
+    - ``blocksize``: Read size for file-like request bodies, in bytes. Defaults to
+      16384 (16 KiB). Does not split or resize elements of iterable bodies.
+      Larger values may improve upload throughput but use more memory per active
+      upload. See :ref:`upload_buffering` for tuning guidance.
     - ``socket_options``: Set specific options on the underlying socket. If not specified, then
       defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
       Nagle's algorithm (sets TCP_NODELAY to 1) unless the connection is behind a proxy.
