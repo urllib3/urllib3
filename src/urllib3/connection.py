@@ -481,8 +481,13 @@ class HTTPConnection(_HTTPConnection):
     def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
         if len(values) == 1:
+            # Avoid generator creation, any(), and argument unpacking
+            # on the common single-value path.
             value = values[0]
-            skip_header = isinstance(value, str) and value == SKIP_HEADER
+            if not (isinstance(value, str) and value == SKIP_HEADER):
+                super().putheader(header, value)
+                return
+            skip_header = True
         else:
             skip_header = any(
                 isinstance(value, str) and value == SKIP_HEADER for value in values
