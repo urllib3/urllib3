@@ -634,7 +634,7 @@ You can still override this pool-level retry policy by specifying ``retries`` to
 :meth:`~urllib3.PoolManager.request`.
 
 Configuring Exponential Backoff
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 By default, :class:`~urllib3.util.Retry` does not sleep between retry attempts
 (``backoff_factor=0``), though it will still respect delays requested by the
@@ -643,7 +643,7 @@ server when a response includes a ``Retry-After`` header (see
 retrying immediately without backoff can overwhelm a recovering server or
 quickly exhaust API rate limits.
 
-When a ``Retry-After`` header is not present, you can set a non-zero
+When no server-requested delay is applied, you can set a non-zero
 ``backoff_factor`` to introduce exponential delays between retries. The sleep
 delay is calculated using the formula::
 
