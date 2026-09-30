@@ -480,7 +480,15 @@ class HTTPConnection(_HTTPConnection):
 
     def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
-        if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
+        if len(values) == 1:
+            value = values[0]
+            skip_header = isinstance(value, str) and value == SKIP_HEADER
+        else:
+            skip_header = any(
+                isinstance(value, str) and value == SKIP_HEADER for value in values
+            )
+
+        if not skip_header:
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
             skippable_headers = "', '".join(
