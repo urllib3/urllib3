@@ -147,7 +147,7 @@ def no_san_server(
 
 
 @pytest.fixture()
-def no_san_server_with_different_commmon_name(
+def no_san_server_with_different_common_name(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> typing.Generator[ServerConfig]:
     tmpdir = tmp_path_factory.mktemp("certs")
