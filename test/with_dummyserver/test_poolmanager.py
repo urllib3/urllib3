@@ -433,15 +433,28 @@ class TestPoolManager(HypercornDummyServerTestCase):
         assert response.status == 200
         assert response.data == b""
 
-    def test_307_redirect_resends_file_like_body(self) -> None:
+    @pytest.mark.parametrize("status", (301, 307, 308))
+    def test_redirect_resends_file_like_body(self, status: int) -> None:
         # The body is kept, so it has to be rewound to where it started rather
-        # than to wherever the first hop left it.
+        # than to wherever the first hop left it. Only 303 drops the body.
         with PoolManager() as http:
             response = http.urlopen(
                 "PUT",
-                f"{self.base_url}/redirect?target={self.base_url}/echo&status=307",
+                f"{self.base_url}/redirect?target={self.base_url}/echo"
+                f"&status={status}",
                 body=io.BytesIO(b"the data"),
             )
+        assert response.status == 200
+        assert response.data == b"the data"
+
+    def test_redirect_resends_file_like_body_through_top_level_request(self) -> None:
+        # urllib3.request() goes through the module-level PoolManager, so the
+        # rewind has to happen for it too.
+        response = request(
+            "PUT",
+            f"{self.base_url}/redirect?target={self.base_url}/echo&status=307",
+            body=io.BytesIO(b"the data"),
+        )
         assert response.status == 200
         assert response.data == b"the data"
 
