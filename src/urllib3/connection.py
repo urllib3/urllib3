@@ -832,14 +832,14 @@ class HTTPSConnection(HTTPConnection):
             # the target supports HTTP/2. Don't want to make a probe.
             target_supports_http2 = False
 
-        if self._connect_callback is not None:
-            self._connect_callback(
-                "before connect",
-                thread_id=threading.get_ident(),
-                target_supports_http2=target_supports_http2,
-            )
-
         try:
+            if self._connect_callback is not None:
+                self._connect_callback(
+                    "before connect",
+                    thread_id=threading.get_ident(),
+                    target_supports_http2=target_supports_http2,
+                )
+
             sock: socket.socket | ssl.SSLSocket
             self.sock = sock = self._new_conn()
             server_hostname: str = self.host
@@ -915,17 +915,20 @@ class HTTPSConnection(HTTPConnection):
         # If an error occurs during connection/handshake we may need to release
         # our lock so another connection can probe the origin.
         except BaseException:
-            if self._connect_callback is not None:
-                self._connect_callback(
-                    "after connect failure",
-                    thread_id=threading.get_ident(),
-                    target_supports_http2=target_supports_http2,
-                )
-
-            if target_supports_http2 is None:
-                http2_probe.set_and_release(
-                    host=probe_http2_host, port=probe_http2_port, supports_http2=None
-                )
+            try:
+                if self._connect_callback is not None:
+                    self._connect_callback(
+                        "after connect failure",
+                        thread_id=threading.get_ident(),
+                        target_supports_http2=target_supports_http2,
+                    )
+            finally:
+                if target_supports_http2 is None:
+                    http2_probe.set_and_release(
+                        host=probe_http2_host,
+                        port=probe_http2_port,
+                        supports_http2=None,
+                    )
             raise
 
         # If this connection doesn't know if the origin supports HTTP/2

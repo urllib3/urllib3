@@ -1080,7 +1080,6 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             if label == "before connect":
                 assert state is None
                 state = "connect"
-                assert current_thread != thread_id
                 current_thread = thread_id
             elif label == "after connect failure":
                 assert state == "connect"
