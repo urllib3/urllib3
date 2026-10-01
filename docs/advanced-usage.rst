@@ -685,3 +685,35 @@ flag that isn't set by default, and then makes a HTTPS request:
 Note that this is different from passing an ``options`` argument to
 :func:`~urllib3.util.create_urllib3_context` because we don't overwrite
 the default options: we only add a new one.
+
+.. warning::
+
+    An :class:`ssl.SSLContext <python:ssl.SSLContext>` must not be mutated
+    after it has been used to create a connection, and is not safe to mutate
+    from multiple threads. OpenSSL documents that an ``SSL_CTX`` object
+    "should not be changed after it is used to create any SSL objects or from
+    multiple threads concurrently".
+
+    This matters when you pass ``ssl_context`` **together with** any of
+    ``ca_certs``, ``ca_cert_dir``, ``cert_file`` or ``key_file`` to
+    :class:`~poolmanager.PoolManager` or
+    :class:`~connectionpool.HTTPSConnectionPool`. In that case urllib3 calls
+    :meth:`~ssl.SSLContext.load_verify_locations` or
+    :meth:`~ssl.SSLContext.load_cert_chain` on your context for every new
+    connection, mutating the shared object from whichever thread is opening
+    the connection.
+
+    Either load the certificates into the context yourself once, before
+    creating the pool, and pass only ``ssl_context``:
+
+    .. code-block:: python
+
+        ctx = create_urllib3_context()
+        ctx.load_verify_locations(ca_certs="ca.pem")
+        ctx.load_cert_chain(certfile="client.pem", keyfile="client.key")
+
+        with PoolManager(ssl_context=ctx) as pool:
+            pool.request("GET", "https://example.com/")
+
+    or leave ``ssl_context`` unset and let urllib3 build a fresh context from
+    the ``ca_certs``/``cert_file``/``key_file`` arguments.
