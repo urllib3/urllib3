@@ -1238,7 +1238,7 @@ class TestHTTPS_Hostname:
             )
 
     def test_common_name_without_san_with_different_common_name(
-        self, no_san_server_with_different_commmon_name: ServerConfig
+        self, no_san_server_with_different_common_name: ServerConfig
     ) -> None:
         ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
         try:
@@ -1247,10 +1247,10 @@ class TestHTTPS_Hostname:
             pytest.skip("Couldn't set 'SSLContext.hostname_checks_common_name'")
 
         with HTTPSConnectionPool(
-            no_san_server_with_different_commmon_name.host,
-            no_san_server_with_different_commmon_name.port,
+            no_san_server_with_different_common_name.host,
+            no_san_server_with_different_common_name.port,
             cert_reqs="CERT_REQUIRED",
-            ca_certs=no_san_server_with_different_commmon_name.ca_certs,
+            ca_certs=no_san_server_with_different_common_name.ca_certs,
             ssl_context=ctx,
         ) as https_pool:
             with pytest.raises(MaxRetryError) as e:
@@ -1313,15 +1313,15 @@ class TestHTTPS_Hostname:
             https_pool.request("GET", "/")
 
     def test_assert_hostname_invalid_cn(
-        self, no_san_server_with_different_commmon_name: ServerConfig
+        self, no_san_server_with_different_common_name: ServerConfig
     ) -> None:
         """Ensure CN errors are not raised while assert_hostname is false"""
         ctx = urllib3.util.ssl_.create_urllib3_context(verify_flags=0)
         with HTTPSConnectionPool(
-            no_san_server_with_different_commmon_name.host,
-            no_san_server_with_different_commmon_name.port,
+            no_san_server_with_different_common_name.host,
+            no_san_server_with_different_common_name.port,
             cert_reqs="CERT_REQUIRED",
-            ca_certs=no_san_server_with_different_commmon_name.ca_certs,
+            ca_certs=no_san_server_with_different_common_name.ca_certs,
             ssl_context=ctx,
             assert_hostname=False,
         ) as https_pool:
