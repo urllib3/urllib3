@@ -164,6 +164,9 @@ class TestConnectionPool:
             "127.0.0.1 ",
             "::1\n",
             "[::1]\n",
+            "::1%eth\n0",
+            "::1%eth 0",
+            "::1%eth\x7f0",
         ],
     )
     def test_control_characters_in_host_raise(self, host: str) -> None:
@@ -174,6 +177,47 @@ class TestConnectionPool:
     def test_malformed_percent_escapes_in_host_raise(self, host: str) -> None:
         with pytest.raises(LocationParseError):
             HTTPConnectionPool(host)
+
+    @pytest.mark.parametrize("pool_cls", [HTTPConnectionPool, HTTPSConnectionPool])
+    @pytest.mark.parametrize(
+        "zone, expected_zone",
+        [
+            ("", ""),
+            ("1", "1"),
+            ("25", "25"),
+            ("31", "31"),
+            ("251", "251"),
+            ("0d", "0d"),
+            ("AB", "AB"),
+            ("FF", "FF"),
+            ("eth0", "eth0"),
+            ("etH0", "etH0"),
+            ("et%61", "et%61"),
+            ("eth%0d", "eth%0d"),
+            ("eth%7F", "eth%7F"),
+            ("et%FF", "et%FF"),
+            ("25eth+Foo", "25eth+Foo"),
+            ("l\u00ado0", None),
+            ("l\u200co0", None),
+            ("eté", None),
+        ],
+    )
+    def test_unbracketed_scoped_ipv6(
+        self, pool_cls: type[HTTPConnectionPool], zone: str, expected_zone: str | None
+    ) -> None:
+        if expected_zone is None:
+            with pytest.raises(LocationParseError):
+                pool_cls(f"FE80::1%{zone}", port=8080)
+            return
+        with pool_cls(f"FE80::1%{zone}", port=8080) as pool:
+            assert pool.host == f"fe80::1%{expected_zone}"
+            assert pool._tunnel_host == f"fe80::1%{expected_zone}"
+            assert pool._new_conn().host == f"fe80::1%{expected_zone}"
+
+    def test_scoped_ipv6_zone_case_changes_host_identity(self) -> None:
+        with HTTPConnectionPool("FE80::1%ethA", port=8080) as pool:
+            assert pool.is_same_host("http://[fe80::1%25ethA]:8080/")
+            assert not pool.is_same_host("http://[fe80::1%25etha]:8080/")
 
     @pytest.mark.parametrize(
         "host, expected_host, expected_tunnel_host",
@@ -821,3 +865,41 @@ class TestConnectionPool:
 
         assert response.status == 200
         assert requested_urls == ["/", "http://localhost/next?x=1"]
+
+    @pytest.mark.parametrize("retry_kind", ["status", "connection"])
+    def test_scoped_ipv6_redirect_target_preserved_on_retry(
+        self, retry_kind: str
+    ) -> None:
+        redirect_response = HTTPResponse(
+            status=302,
+            headers={"location": "http://[FE80::1%25251]:8080/next?x=%23#fragment"},
+        )
+        retry_response: HTTPResponse | Exception
+        if retry_kind == "status":
+            retry_response = HTTPResponse(status=503)
+        else:
+            retry_response = OSError("connection reset")
+
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                side_effect=[
+                    redirect_response,
+                    retry_response,
+                    HTTPResponse(status=200),
+                ],
+            ) as request:
+                response = pool.urlopen(
+                    "GET",
+                    "/",
+                    assert_same_host=False,
+                    retries=Retry(total=2, status_forcelist=[503]),
+                )
+
+        assert response.status == 200
+        assert [call.args[2] for call in request.call_args_list] == [
+            "/",
+            "http://[fe80::1%251]:8080/next?x=%23",
+            "http://[fe80::1%251]:8080/next?x=%23",
+        ]
