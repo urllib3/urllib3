@@ -1,0 +1,1 @@
+Fixed SSL transport test failures on Python 3.10.22+, 3.11.17+, 3.12.15+, 3.13.16+, and 3.14.8+.
