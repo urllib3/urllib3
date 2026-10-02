@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import time
 import typing
 from enum import Enum
@@ -147,12 +148,18 @@ class Timeout:
                 "be an int, float or None."
             )
         try:
-            float(value)
+            timeout_float = float(value)
         except (TypeError, ValueError):
             raise ValueError(
                 "Timeout value %s was %s, but it must be an "
                 "int, float or None." % (name, value)
             ) from None
+
+        if not math.isfinite(timeout_float):
+            raise ValueError(
+                "Attempted to set %s timeout to %s, but the "
+                "timeout cannot be set to a non-finite value." % (name, value)
+            )
 
         try:
             if value <= 0:
