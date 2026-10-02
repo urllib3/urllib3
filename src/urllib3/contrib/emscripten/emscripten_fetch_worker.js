@@ -22,6 +22,16 @@ self.addEventListener("message", async function (event) {
     if (!value || curOffset >= value.length) {
       // read another buffer if required
       try {
+        if (reader === null) {
+          // no response body - clear connection and return
+          connections.delete(connectionID);
+          Atomics.store(intBuffer, 0, Status.SUCCESS_EOF);
+          Atomics.notify(intBuffer, 0);
+          // finished reading successfully
+          // return from event handler
+          return;
+        }
+
         let readResponse = await reader.read();
 
         if (readResponse.done) {
@@ -85,7 +95,7 @@ self.addEventListener("message", async function (event) {
       intBuffer[1] = written;
       // make a connection
       connections.set(connectionID, {
-        reader: response.body.getReader(),
+        reader: response.body ? response.body.getReader() : null,
         intBuffer: intBuffer,
         byteBuffer: byteBuffer,
         value: undefined,
