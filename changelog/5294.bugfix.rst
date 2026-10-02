@@ -1,0 +1,3 @@
+Rejected ``float("nan")``, ``float("inf")`` and other non-finite values in
+``Timeout`` so invalid timeouts fail at assignment instead of raising
+``ValueError`` or ``OverflowError`` from the socket layer later.
