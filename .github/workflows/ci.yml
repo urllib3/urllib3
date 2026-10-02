@@ -120,7 +120,7 @@ jobs:
       - name: "Install uv"
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.11.7"
+          version: "0.12.22"
 
       - name: "Install Chrome"
         uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
@@ -189,7 +189,7 @@ jobs:
       - name: "Install uv"
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.11.7"
+          version: "0.12.22"
 
       - name: "Install coverage"
         # Install the same version of coverage as in the lock file.
