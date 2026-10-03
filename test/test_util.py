@@ -1184,6 +1184,41 @@ class TestUtil:
             create_connection(("example.com", 80))
 
     @patch("socket.getaddrinfo")
+    @patch("socket.socket")
+    def test_create_connection_preserves_earlier_errors(
+        self, socket_cls: MagicMock, getaddrinfo: MagicMock
+    ) -> None:
+        ipv4 = (
+            socket.AF_INET,
+            socket.SOCK_STREAM,
+            socket.IPPROTO_TCP,
+            "",
+            ("127.0.0.1", 80),
+        )
+        ipv6 = (
+            socket.AF_INET6,
+            socket.SOCK_STREAM,
+            socket.IPPROTO_TCP,
+            "",
+            ("::1", 80, 0, 0),
+        )
+        getaddrinfo.return_value = [ipv4, ipv6]
+        first = MagicMock()
+        second = MagicMock()
+        first.connect.side_effect = TimeoutError("timed out")
+        second.connect.side_effect = ConnectionRefusedError("Connection refused")
+        socket_cls.side_effect = [first, second]
+
+        with pytest.raises(ConnectionRefusedError, match="also failed") as rec:
+            create_connection(("localhost", 80))
+
+        message = str(rec.value)
+        assert "127.0.0.1:80" in message
+        assert "timed out" in message
+        first.close.assert_called()
+        second.close.assert_called()
+
+    @patch("socket.getaddrinfo")
     def test_dnsresolver_forced_error(self, getaddrinfo: MagicMock) -> None:
         getaddrinfo.side_effect = socket.gaierror()
         with pytest.raises(socket.gaierror):

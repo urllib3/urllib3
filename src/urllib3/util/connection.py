@@ -46,6 +46,7 @@ def create_connection(
     if host.startswith("["):
         host = host.strip("[]")
     err = None
+    failed_attempts: list[tuple[object, OSError]] = []
 
     # Using the value from allowed_gai_family() in the context of getaddrinfo lets
     # us select whether to work with IPv4 DNS records, IPv6 records, or both.
@@ -77,17 +78,35 @@ def create_connection(
 
         except OSError as _:
             err = _
+            failed_attempts.append((sa, _))
             if sock is not None:
                 sock.close()
 
     if err is not None:
         try:
+            if len(failed_attempts) > 1:
+                earlier = "; ".join(
+                    f"{_format_sockaddr(sa)} ({type(exc).__name__}: {exc})"
+                    for sa, exc in failed_attempts[:-1]
+                )
+                extra = f" (also failed: {earlier})"
+                if err.args:
+                    err.args = (f"{err.args[0]}{extra}",) + err.args[1:]
+                else:
+                    err.args = (extra.strip(),)
             raise err
         finally:
             # Break explicitly a reference cycle
             err = None
     else:
         raise OSError("getaddrinfo returns an empty list")
+
+
+def _format_sockaddr(sa: object) -> str:
+    """Return host:port from a getaddrinfo sockaddr tuple."""
+    if isinstance(sa, tuple) and len(sa) >= 2:
+        return f"{sa[0]}:{sa[1]}"
+    return str(sa)
 
 
 def _set_socket_options(
