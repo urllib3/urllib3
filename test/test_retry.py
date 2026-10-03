@@ -193,6 +193,38 @@ class TestRetry:
         assert retry.parse_retry_after(str(1)) == 1
         assert retry.parse_retry_after(str(2)) == 1
 
+    @pytest.mark.parametrize("retry_after_max", [0, 30, Retry.DEFAULT_RETRY_AFTER_MAX])
+    def test_large_retry_after(self, retry_after_max: int) -> None:
+        retry = Retry(retry_after_max=retry_after_max)
+        assert retry.parse_retry_after("9" * 5000) == retry_after_max
+
+    @pytest.mark.parametrize("value, expected", [("0", 0), ("42", 42)])
+    def test_retry_after_leading_zeros(self, value: str, expected: int) -> None:
+        retry = Retry()
+        assert retry.parse_retry_after("\t" + "0" * 5000 + value + " ") == expected
+
+    def test_retry_after_large_max_preserves_precision(self) -> None:
+        retry_after_max = 2**53 + 1
+        retry = Retry(retry_after_max=retry_after_max)
+        assert retry.parse_retry_after(str(retry_after_max)) == retry_after_max
+        assert retry.parse_retry_after(str(retry_after_max + 1)) == retry_after_max
+
+    def test_retry_after_max_exceeds_conversion_limit(self) -> None:
+        retry_after_max = 10**5000
+        retry = Retry(retry_after_max=retry_after_max)
+        assert retry.parse_retry_after("42") == 42
+        assert retry.parse_retry_after("9" * 5001) == retry_after_max
+
+    @pytest.mark.parametrize("retry_after_max", [1e20, float("inf")])
+    def test_retry_after_float_max(self, retry_after_max: float) -> None:
+        retry = Retry(retry_after_max=retry_after_max)  # type: ignore[arg-type]
+        assert retry.parse_retry_after("123456") == 123456
+
+    def test_retry_after_float_max_boundary(self) -> None:
+        retry = Retry(retry_after_max=1e20)  # type: ignore[arg-type]
+        assert retry.parse_retry_after(str(10**20)) == 1e20
+        assert retry.parse_retry_after(str(10**20 + 1)) == 1e20
+
     def test_backoff_jitter(self) -> None:
         """Backoff with jitter is computed correctly"""
         max_backoff = 1
@@ -400,6 +432,10 @@ class TestRetry:
         "retry_after_header,respect_retry_after_header,sleep_duration",
         [
             ("3600", True, 3600),
+            pytest.param(
+                "9" * 5000, True, Retry.DEFAULT_RETRY_AFTER_MAX, id="large-delay"
+            ),
+            pytest.param("0" * 5000, True, None, id="zero-padded-delay"),
             ("3600", False, None),
             # Will sleep due to header is 1 hour in future
             ("Mon, 3 Jun 2019 12:00:00 UTC", True, 3600),

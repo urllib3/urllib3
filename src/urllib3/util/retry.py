@@ -343,7 +343,13 @@ class Retry:
         seconds: float
         # Whitespace: https://tools.ietf.org/html/rfc7230#section-3.2.4
         if re.match(r"^\s*[0-9]+\s*$", retry_after):
-            seconds = int(retry_after)
+            seconds = 0
+            # Stop at the cap without converting an arbitrarily long integer.
+            for digit in retry_after.strip().lstrip("0"):
+                seconds = seconds * 10 + int(digit)
+                if seconds > self.retry_after_max:
+                    seconds = self.retry_after_max
+                    break
         else:
             retry_date_tuple = email.utils.parsedate_tz(retry_after)
             if retry_date_tuple is None:
