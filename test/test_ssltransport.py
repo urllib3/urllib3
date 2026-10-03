@@ -577,3 +577,23 @@ class TestSSLTransportWithMock:
             _ssl_io_loop.side_effect = ssl.SSLError()
             with pytest.raises(ssl.SSLError):
                 ssl_transport._wrap_ssl_read(1)
+
+    def test_wrap_ssl_read_ragged_eof(self) -> None:
+        """A suppressed ragged EOF reports EOF the way ssl.SSLSocket.read does.
+
+        Reading into a buffer returns the number of bytes written to it, and a
+        read that returns the data returns an empty bytes object.
+        """
+        server_hostname = "example-domain.com"
+        sock = mock.Mock()
+        context = mock.create_autospec(ssl_.SSLContext)
+        ssl_transport = SSLTransport(
+            sock, context, server_hostname=server_hostname, suppress_ragged_eofs=True
+        )
+        ragged_eof = ssl.SSLError()
+        ragged_eof.errno = ssl.SSL_ERROR_EOF
+        with mock.patch.object(ssl_transport, "_ssl_io_loop", side_effect=ragged_eof):
+            assert ssl_transport.recv() == b""
+            assert ssl_transport.read(1024) == b""
+            assert ssl_transport.recv_into(bytearray(4)) == 0
+            assert ssl_transport.read(4, bytearray(4)) == 0
