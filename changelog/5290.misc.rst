@@ -1,0 +1,1 @@
+Fixed a hang in the test run on free-threaded macOS by releasing the HTTP/2 probe lock when a connect callback raises.
