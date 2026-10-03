@@ -1,0 +1,2 @@
+Fixed large numeric ``Retry-After`` values raising an integer conversion error
+instead of being limited by ``retry_after_max``, including long zero-padded values.
