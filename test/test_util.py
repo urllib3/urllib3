@@ -966,6 +966,15 @@ class TestUtil:
         with pytest.raises(ValueError, match=message):
             Timeout(**kwargs)
 
+    @pytest.mark.parametrize("name", ["connect", "read", "total"])
+    def test_nan_timeout(self, name: str) -> None:
+        with pytest.raises(ValueError, match=f"Timeout value {name} was nan"):
+            Timeout(**{name: float("nan")})
+
+    def test_nan_timeout_from_float(self) -> None:
+        with pytest.raises(ValueError, match="Timeout value connect was nan"):
+            Timeout.from_float(float("nan"))
+
     @patch("time.monotonic")
     def test_timeout(self, time_monotonic: MagicMock) -> None:
         timeout = Timeout(total=3)
