@@ -689,11 +689,17 @@ class BaseHTTPResponse(io.IOBase):
 
     # Compatibility methods for `io` module
     def readinto(self, b: bytearray | memoryview[int]) -> int:
-        temp = self.read(len(b))
+        view = memoryview(b)
+        if view.readonly:
+            raise TypeError(
+                "readinto() argument must be a read-write bytes-like object"
+            )
+        view = view.cast("B")
+        temp = self.read(len(view))
         if len(temp) == 0:
             return 0
         else:
-            b[: len(temp)] = temp
+            view[: len(temp)] = temp
             return len(temp)
 
     # Methods used by dependent libraries
