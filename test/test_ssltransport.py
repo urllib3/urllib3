@@ -136,7 +136,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         context = ssl.create_default_context()
         sock.close()
         with pytest.raises(OSError):
-            SSLTransport(sock, context)
+            SSLTransport(sock, context, server_hostname="localhost")
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_close_after_handshake(self) -> None:
