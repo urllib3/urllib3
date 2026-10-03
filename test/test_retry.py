@@ -194,6 +194,18 @@ class TestRetry:
         assert retry.parse_retry_after(str(2)) == 1
 
     @pytest.mark.parametrize("retry_after_max", [0, 30, Retry.DEFAULT_RETRY_AFTER_MAX])
+    def test_retry_after_date_exceeds_max(self, retry_after_max: int) -> None:
+        retry = Retry(retry_after_max=retry_after_max)
+        now = datetime.datetime(
+            2019, 6, 3, 11, tzinfo=datetime.timezone.utc
+        ).timestamp()
+        with mock.patch("time.time", return_value=now):
+            assert (
+                retry.parse_retry_after("Tue, 04 Jun 2019 11:00:00 GMT")
+                == retry_after_max
+            )
+
+    @pytest.mark.parametrize("retry_after_max", [0, 30, Retry.DEFAULT_RETRY_AFTER_MAX])
     def test_large_retry_after(self, retry_after_max: int) -> None:
         retry = Retry(retry_after_max=retry_after_max)
         assert retry.parse_retry_after("9" * 5000) == retry_after_max
