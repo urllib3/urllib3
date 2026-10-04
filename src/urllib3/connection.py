@@ -478,7 +478,7 @@ class HTTPConnection(_HTTPConnection):
             method, url, skip_host=skip_host, skip_accept_encoding=skip_accept_encoding
         )
 
-    def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
+    def putheader(self, header: str, *values: str | bytes) -> None:  # type: ignore[override]
         """"""
         if len(values) == 1:
             # Avoid generator creation, any(), and argument unpacking
@@ -510,7 +510,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         *,
         chunked: bool = False,
         preload_content: bool = True,
@@ -607,7 +607,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
     ) -> None:
         """
         Alternative to the common request method, which sends the

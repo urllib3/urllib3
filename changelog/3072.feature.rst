@@ -1,0 +1,1 @@
+Added support for byte-valued ``HTTPHeaderDict`` fields and request headers, preserving their original bytes and rejecting mixed string and byte values within the same field.
