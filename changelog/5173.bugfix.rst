@@ -1,0 +1,4 @@
+Fixed response framing to treat a body as chunked only when ``chunked`` is
+the final ``Transfer-Encoding`` coding, per RFC 9112 section 6.1. A value
+such as ``chunked, gzip`` where ``chunked`` is not last is no longer read as
+chunked, matching how ``http.client`` frames the same response.
