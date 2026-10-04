@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import time
 import typing
 from enum import Enum
@@ -136,7 +137,7 @@ class Timeout:
             used to specify in error messages.
         :return: The validated and casted version of the given value.
         :raises ValueError: If it is a numeric value less than or equal to
-            zero, or the type is not an integer, float, or None.
+            zero, NaN, or the type is not an integer, float, or None.
         """
         if value is None or value is _DEFAULT_TIMEOUT:
             return value
@@ -155,6 +156,11 @@ class Timeout:
             ) from None
 
         try:
+            if math.isnan(value):
+                raise ValueError(
+                    "Attempted to set %s timeout to %s, but the "
+                    "timeout cannot be set to NaN." % (name, value)
+                )
             if value <= 0:
                 raise ValueError(
                     "Attempted to set %s timeout to %s, but the "
