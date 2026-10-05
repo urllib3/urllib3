@@ -958,6 +958,9 @@ class TestUtil:
             ({"connect": 0}, "less than or equal"),
             ({"read": "foo"}, "int, float or None"),
             ({"read": "1.0"}, "int, float or None"),
+            ({"total": float("nan")}, "NaN"),
+            ({"connect": float("nan")}, "NaN"),
+            ({"read": float("nan")}, "NaN"),
         ],
     )
     def test_invalid_timeouts(

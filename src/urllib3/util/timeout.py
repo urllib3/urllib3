@@ -167,6 +167,12 @@ class Timeout:
                 "int, float or None." % (name, value)
             ) from None
 
+        if value != value:  # NaN check: NaN is the only value not equal to itself
+            raise ValueError(
+                "Attempted to set %s timeout to %s, but the "
+                "timeout cannot be set to NaN." % (name, value)
+            )
+
         return value
 
     @classmethod
