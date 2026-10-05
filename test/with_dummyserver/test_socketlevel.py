@@ -145,15 +145,15 @@ class TestCookies(SocketDummyServerTestCase):
             ]
             assert r._original_response.msg["fold-mixed-repeated"] == "one two three"
 
-    def test_bare_lf_line_folding_is_unfolded(self) -> None:
-        def folded_cookie_response_handler(listener: socket.socket) -> None:
+    def test_bare_lf_in_header_value_is_replaced(self) -> None:
+        def bare_lf_response_handler(listener: socket.socket) -> None:
             with listener.accept()[0] as sock:
                 buf = b""
                 while not buf.endswith(b"\r\n\r\n"):
                     buf += sock.recv(65536)
 
-                # http.client accepts bare-LF line endings, so a folded value
-                # arrives without a \r\n substring and must still be unfolded.
+                # http.client accepts bare-LF line endings and joins the
+                # continuation line, leaving a raw LF in the header value.
                 sock.sendall(
                     b"HTTP/1.1 200 OK\n"
                     b"Set-Cookie: sessionid=abc\n evil=INJECTED\n"
@@ -161,11 +161,11 @@ class TestCookies(SocketDummyServerTestCase):
                     b"\n"
                 )
 
-        self._start_server(folded_cookie_response_handler)
+        self._start_server(bare_lf_response_handler)
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/", retries=0)
 
-            assert r.headers["set-cookie"] == "sessionid=abc evil=INJECTED"
+            assert r.headers["set-cookie"] == "sessionid=abc  evil=INJECTED"
             assert all(
                 "\r" not in value and "\n" not in value for value in r.headers.values()
             )
