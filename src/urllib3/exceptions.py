@@ -348,6 +348,10 @@ class MaxRetryAfterWaitError(HTTPError):
         )
         super().__init__(message)
 
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        # For pickling purposes.
+        return self.__class__, (self.retry_after, self.max_wait)
+
 
 class UnrewindableBodyError(HTTPError):
     """urllib3 encountered an error when trying to rewind a body"""
