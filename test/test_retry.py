@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import pickle
 from test import DUMMY_POOL
 from unittest import mock
 
@@ -508,3 +509,11 @@ class TestRetry:
         assert new_retry.retry_after_max_strict is True
         with pytest.raises(MaxRetryAfterWaitError):
             new_retry.parse_retry_after("20")
+
+    def test_retry_after_max_strict_error_pickles(self) -> None:
+        """MaxRetryAfterWaitError keeps its fields through a pickle round trip."""
+        error = MaxRetryAfterWaitError(3600.0, 60)
+        result = pickle.loads(pickle.dumps(error))
+        assert result.retry_after == 3600.0
+        assert result.max_wait == 60
+        assert str(result) == str(error)
