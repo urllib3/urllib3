@@ -1,3 +1,7 @@
-Added ``raise_on_retry_after_max`` to ``Retry`` to raise an informative exception
-instead of capping ``Retry-After`` values that exceed ``retry_after_max``.
+Added ``raise_on_retry_after_max`` to ``Retry`` to raise an informative
+``RetryAfterMaxExceededError`` instead of silently capping a ``Retry-After``
+value that exceeds ``retry_after_max``. The error reports both the advertised
+delay and the configured limit, so callers can decide what to do. Enable it
+together with a ``retry_after_max`` below the values the server is expected to
+advertise; the default limit is ``21600`` seconds.
 
