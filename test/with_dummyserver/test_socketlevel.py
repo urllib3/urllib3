@@ -1188,10 +1188,6 @@ class TestProxyManager(SocketDummyServerTestCase):
         expected_host: bytes | None,
         expected_authorization: bool,
     ) -> None:
-        if redirect_target is None:
-            redirect_target = f"http://{self.host}:{self.port}/second"
-            expected_host = f"{self.host}:{self.port}".encode()
-
         requests: list[bytes] = []
 
         def redirect_socket_handler(listener: socket.socket) -> None:
@@ -1209,7 +1205,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                         b"Location: %s\r\n"
                         b"Content-Length: 0\r\n"
                         b"Connection: close\r\n"
-                        b"\r\n" % redirect_target.encode()
+                        b"\r\n" % location
                     )
                 else:
                     sock.send(
@@ -1222,6 +1218,13 @@ class TestProxyManager(SocketDummyServerTestCase):
 
         self._start_server(redirect_socket_handler)
         base_url = f"http://{self.host}:{self.port}"
+
+        # The proxy's port is only known once the server is running.
+        if redirect_target is None:
+            redirect_target = f"{base_url}/second"
+            expected_host = f"{self.host}:{self.port}".encode()
+        location = redirect_target.encode()
+
         with proxy_from_url(
             base_url, headers={"Authorization": "Bearer secret"}
         ) as proxy:
