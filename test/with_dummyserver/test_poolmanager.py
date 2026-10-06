@@ -15,7 +15,11 @@ from dummyserver.testcase import (
 )
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
+from urllib3.exceptions import (
+    MaxRetryError,
+    UnrewindableBodyError,
+    URLSchemeUnknown,
+)
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
@@ -424,11 +428,68 @@ class TestPoolManager(HypercornDummyServerTestCase):
                 "POST",
                 f"{self.base_url}/redirect?target={self.base_url}/echo",
                 body=io.BytesIO(b"the data"),
-                headers={"Content-Length": "8"},
                 body_pos=0,
             )
         assert response.status == 200
         assert response.data == b""
+
+    @pytest.mark.parametrize("status", (301, 307, 308))
+    def test_redirect_resends_file_like_body(self, status: int) -> None:
+        # The body is kept, so it has to be rewound to where it started rather
+        # than to wherever the first hop left it. Only 303 drops the body.
+        with PoolManager() as http:
+            response = http.urlopen(
+                "PUT",
+                f"{self.base_url}/redirect?target={self.base_url}/echo"
+                f"&status={status}",
+                body=io.BytesIO(b"the data"),
+            )
+        assert response.status == 200
+        assert response.data == b"the data"
+
+    def test_redirect_resends_file_like_body_through_top_level_request(self) -> None:
+        # urllib3.request() goes through the module-level PoolManager, so the
+        # rewind has to happen for it too.
+        response = request(
+            "PUT",
+            f"{self.base_url}/redirect?target={self.base_url}/echo&status=307",
+            body=io.BytesIO(b"the data"),
+        )
+        assert response.status == 200
+        assert response.data == b"the data"
+
+    def test_307_redirect_with_failed_tell(self) -> None:
+        # A body whose position cannot be recorded cannot be rewound either,
+        # which has to be an error rather than a silently empty request.
+        class BadTellObject(io.BytesIO):
+            def tell(self) -> typing.NoReturn:
+                raise OSError
+
+        with PoolManager() as http:
+            with pytest.raises(
+                UnrewindableBodyError, match="Unable to record file position"
+            ):
+                http.urlopen(
+                    "PUT",
+                    f"{self.base_url}/redirect?target={self.base_url}/echo&status=307",
+                    body=BadTellObject(b"the data"),
+                )
+
+    def test_failed_tell_without_a_redirect(self) -> None:
+        # Recording the position is not the same as rewinding to it: a body
+        # that cannot do either is fine as long as it is sent only once.
+        class BadTellObject(io.BytesIO):
+            def tell(self) -> typing.NoReturn:
+                raise OSError
+
+        with PoolManager() as http:
+            response = http.urlopen(
+                "PUT",
+                f"{self.base_url}/echo",
+                body=BadTellObject(b"the data"),
+            )
+        assert response.status == 200
+        assert response.data == b"the data"
 
     def test_unknown_scheme(self) -> None:
         with PoolManager() as http:
