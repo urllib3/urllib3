@@ -186,12 +186,12 @@ class TestALPN(SocketDummyServerTestCase):
         self._start_server(socket_handler)
         with HTTPSConnectionPool(self.host, self.port) as pool:
             try:
-                pool.request("GET", "/", retries=0)
+                pool.request("GET", "/", retries=0, http2=True)
             except MaxRetryError:  # We are violating the protocol
                 pass
             successful = done_receiving.wait(LONG_TIMEOUT)
             assert successful, "Timed out waiting for connection accept"
-            for protocol in util.ALPN_PROTOCOLS:
+            for protocol in ["http/1.1", "h2"]:
                 assert (
                     protocol.encode("ascii") in self.buf
                 ), "missing ALPN protocol in SSL handshake"
