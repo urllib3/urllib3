@@ -116,7 +116,6 @@ class Stream:
     def __init__(self, conn: BaseHTTPConnection):
         self.conn: BaseHTTPConnection = conn
         self.stream_id: int | None = None
-        self.request_data: dict[str, typing.Any] = {}
 
     def __enter__(self) -> Stream:
         return self
@@ -674,7 +673,7 @@ class HTTPConnection(_HTTPConnection):
                 finally:
                     response.close()
 
-    def set_protocol_options(self, http1: bool, http2: bool) -> None:
+    def set_protocol_options(self, http1: bool = True, http2: bool = False) -> None:
         self.http1 = http1
         self.http2 = http2
         if not self.http1 and self.http2:
