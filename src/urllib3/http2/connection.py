@@ -6,6 +6,7 @@ import threading
 import types
 import typing
 from dataclasses import dataclass, field
+from importlib.metadata import version
 
 import h2.config
 import h2.connection
@@ -99,17 +100,40 @@ class HTTP2StreamData:
 class HTTP2ProtocolHelper(BaseProtocolHelper):
     """Protocol helper class for HTTP/2."""
 
-    name = "http2"
+    name: str = "http2"
+    version_checked: bool = False
 
     def __init__(self, conn: HTTPConnection):
+
+        if not HTTP2ProtocolHelper.version_checked:
+            # check if h2 version is valid
+            h2_version = version("h2")
+            if not h2_version.startswith("4."):
+                raise ImportError(
+                    "urllib3 v2 supports h2 version 4.x.x, currently "
+                    f"the 'h2' module is compiled with {h2_version!r}. "
+                    "See: https://github.com/urllib3/urllib3/issues/3290"
+                )
+            HTTP2ProtocolHelper.version_checked = True
+
         super().__init__(conn, is_multistream=True)
         self._h2_conn = self._new_h2_conn()
-        self._initiated = False
         self._stream_data: dict[Stream | int, HTTP2StreamData] = {}
 
     def _new_h2_conn(self) -> _LockedObject[h2.connection.H2Connection]:
         config = h2.config.H2Configuration(client_side=True)
         return _LockedObject(h2.connection.H2Connection(config=config))
+
+    def connect(self) -> None:
+        with self._h2_conn as h2_conn:
+            h2_conn.initiate_connection()
+            if data_to_send := h2_conn.data_to_send():
+                if self.conn.sock is None:
+                    self.conn.connect()
+                self.conn.sock.sendall(data_to_send)
+
+        if self.conn.sock is not None:
+            self.conn.sock.settimeout(self.conn.timeout)
 
     def putrequest(
         self,
@@ -178,17 +202,6 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
         with self._h2_conn as h2_conn:
             stream.stream_id = h2_conn.get_next_available_stream_id()
-
-            if not self._initiated:
-                h2_conn.initiate_connection()
-                if data_to_send := h2_conn.data_to_send():
-                    if self.conn.sock is None:
-                        self.conn.connect()
-                    self.conn.sock.sendall(data_to_send)
-
-                if self.conn.sock is not None:
-                    self.conn.sock.settimeout(self.conn.timeout)
-                self._initiated = True
 
             h2_conn.send_headers(
                 stream_id=stream.stream_id,
@@ -389,15 +402,6 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             del self._stream_data[stream]
         if stream.stream_id in self._stream_data:
             del self._stream_data[stream.stream_id]
-
-
-class HTTP2Connection(HTTPSConnection):
-    _protocol_helper: HTTP2ProtocolHelper
-
-    def __init__(
-        self, host: str, port: int | None = None, **kwargs: typing.Any
-    ) -> None:
-        super().__init__(host, port, **kwargs)
 
 
 class HTTP2Response(HTTPResponse):
