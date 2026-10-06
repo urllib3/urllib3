@@ -82,7 +82,7 @@ class EmscriptenHTTPConnection:
     ) -> None:
         pass
 
-    def set_protocol_options(self, http1: bool, http2: bool) -> None:
+    def set_protocol_options(self, http1: bool = True, http2: bool = False) -> None:
         pass
 
     def connect(self) -> None:
