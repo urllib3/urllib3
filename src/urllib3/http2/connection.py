@@ -5,6 +5,7 @@ import re
 import threading
 import types
 import typing
+from dataclasses import dataclass, field
 
 import h2.config
 import h2.connection
@@ -88,6 +89,13 @@ class _LockedObject(typing.Generic[T]):
         self.lock.release()
 
 
+@dataclass
+class HTTP2StreamData:
+    url: str = field(default="")
+    headers: list[tuple[bytes, bytes]] = field(default_factory=list)
+    events: list[h2.events.Event] = field(default_factory=list)
+
+
 class HTTP2ProtocolHelper(BaseProtocolHelper):
     """Protocol helper class for HTTP/2."""
 
@@ -97,7 +105,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         super().__init__(conn, is_multistream=True)
         self._h2_conn = self._new_h2_conn()
         self._initiated = False
-        self._events: dict[int, list[h2.events.Event]] = {}
+        self._stream_data: dict[Stream | int, HTTP2StreamData] = {}
 
     def _new_h2_conn(self) -> _LockedObject[h2.connection.H2Connection]:
         config = h2.config.H2Configuration(client_side=True)
@@ -121,8 +129,11 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             raise NotImplementedError("`skip_accept_encoding` isn't supported")
         if stream is None:
             raise ConnectionError("`stream` cannot be None")
+        if stream in self._stream_data:
+            raise ConnectionError("`put_request` was already called for this stream")
 
-        stream.request_data["url"] = url or "/"
+        self._stream_data[stream] = HTTP2StreamData()
+        self._stream_data[stream].url = url or "/"
         self.conn._validate_path(url)  # type: ignore[attr-defined]
 
         port = self.conn.port if self.conn.port is not None else 443
@@ -131,11 +142,10 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         else:
             authority = f"{self.conn.host}:{port}"
 
-        stream.request_data["headers"] = []
-        stream.request_data["headers"].append((b":scheme", b"https"))
-        stream.request_data["headers"].append((b":method", method.encode()))
-        stream.request_data["headers"].append((b":authority", authority.encode()))
-        stream.request_data["headers"].append((b":path", url.encode()))
+        self._stream_data[stream].headers.append((b":scheme", b"https"))
+        self._stream_data[stream].headers.append((b":method", method.encode()))
+        self._stream_data[stream].headers.append((b":authority", authority.encode()))
+        self._stream_data[stream].headers.append((b":path", url.encode()))
 
         return True
 
@@ -157,7 +167,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             encoded_value = value.encode() if isinstance(value, str) else value
             if _is_illegal_header_value(encoded_value):
                 raise ValueError(f"Illegal header value {str(value)}")
-            stream.request_data["headers"].append((encoded_header, encoded_value))
+            self._stream_data[stream].headers.append((encoded_header, encoded_value))
         return True
 
     def endheaders(
@@ -182,11 +192,14 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
             h2_conn.send_headers(
                 stream_id=stream.stream_id,
-                headers=stream.request_data["headers"],
+                headers=self._stream_data[stream].headers,
                 end_stream=(message_body is None),
             )
             if data_to_send := h2_conn.data_to_send():
                 self.conn.sock.sendall(data_to_send)
+
+            # for convenience we associate the stream data also with the h2 stream ID
+            self._stream_data[stream.stream_id] = self._stream_data[stream]
         return True
 
     def request(
@@ -217,7 +230,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             else:
                 self.putheader(k, v, stream=stream)
 
-        if b"user-agent" not in dict(stream.request_data["headers"]):
+        if b"user-agent" not in dict(self._stream_data[stream].headers):
             self.putheader("user-agent", _get_default_user_agent(), stream=stream)
 
         if body:
@@ -234,7 +247,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             raise ConnectionError("Must call `request` to create a stream")
 
         with self._h2_conn as h2_conn:
-            if stream.stream_id not in self._events:
+            if not self._stream_data[stream].events:
                 # TODO: Arbitrary read value.
                 if received_data := self.conn.sock.recv(65535):
                     for event in h2_conn.receive_data(received_data):
@@ -246,10 +259,11 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                                 h2.events.StreamEnded,
                             ),
                         ):
-                            if event.stream_id not in self._events:
-                                self._events[event.stream_id] = []
-                            self._events[event.stream_id].append(event)
-            return self._events.pop(stream.stream_id, [])
+                            if event.stream_id in self._stream_data:
+                                self._stream_data[event.stream_id].events.append(event)
+            events = self._stream_data[stream].events
+            self._stream_data[stream].events = []
+            return events
 
     def getresponse(self, stream: Stream | None = None) -> HTTPResponse:
         if stream is None:
@@ -291,7 +305,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         return HTTP2Response(
             status=status,
             headers=headers,
-            request_url=stream.request_data["url"],
+            request_url=self._stream_data[stream].url,
             data=bytes(data),
             connection=self.conn,
         )
@@ -371,8 +385,10 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             except Exception:
                 pass
 
-        if stream.stream_id in self._events:
-            del self._events[stream.stream_id]
+        if stream in self._stream_data:
+            del self._stream_data[stream]
+        if stream.stream_id in self._stream_data:
+            del self._stream_data[stream.stream_id]
 
 
 class HTTP2Connection(HTTPSConnection):
