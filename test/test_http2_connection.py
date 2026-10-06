@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import socket
+import typing
 from unittest import mock
 
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from urllib3.connection import HTTPSConnection, Stream, _get_default_user_agent
 from urllib3.exceptions import ConnectionError
 from urllib3.http2.connection import (
+    HTTP2ProtocolHelper,
     _is_illegal_header_value,
     _is_legal_header_name,
 )
@@ -86,7 +88,8 @@ class TestHTTP2Connection:
         stream = Stream(conn)
         conn.putrequest("GET", "/", stream=stream)
         conn.putheader("foo", "bar", stream=stream)
-        assert (b"foo", b"bar") in stream.request_data["headers"]
+        protocol_helper = typing.cast(HTTP2ProtocolHelper, conn._protocol_helper)
+        assert (b"foo", b"bar") in protocol_helper._stream_data[stream].headers
 
     def test_request_putheader(self) -> None:
         conn = HTTPSConnection("example.com")
@@ -109,7 +112,7 @@ class TestHTTP2Connection:
         conn = HTTPSConnection("example.com")
         conn.set_protocol_options(http1=False, http2=True)
         stream = Stream(conn)
-        stream.request_data["headers"] = []
+
         with pytest.raises(ValueError):
             conn.putheader("foo\0bar", "baz", stream=stream)
         with pytest.raises(ValueError):
