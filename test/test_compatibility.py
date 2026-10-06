@@ -6,7 +6,8 @@ from unittest import mock
 
 import pytest
 
-import urllib3.http2
+from urllib3.connection import HTTPConnection
+from urllib3.http2.connection import HTTP2ProtocolHelper
 from urllib3.response import HTTPResponse
 
 
@@ -27,22 +28,21 @@ class TestCookiejar:
 
 
 class TestInitialization:
-    @mock.patch("urllib3.http2.version")
+    @mock.patch("urllib3.http2.connection.version")
     def test_h2_version_check(self, mock_version: mock.MagicMock) -> None:
-        try:
-            mock_version.return_value = "4.1.0"
-            urllib3.http2.inject_into_urllib3()
+        mock_conn = HTTPConnection("example.com")
 
-            mock_version.return_value = "3.9.9"
-            with pytest.raises(
-                ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"
-            ):
-                urllib3.http2.inject_into_urllib3()
+        mock_version.return_value = "4.1.0"
+        HTTP2ProtocolHelper.version_checked = False
+        HTTP2ProtocolHelper(mock_conn)
 
-            mock_version.return_value = "5.0.0"
-            with pytest.raises(
-                ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"
-            ):
-                urllib3.http2.inject_into_urllib3()
-        finally:
-            urllib3.http2.extract_from_urllib3()
+        mock_version.return_value = "3.9.9"
+        HTTP2ProtocolHelper(mock_conn)
+        HTTP2ProtocolHelper.version_checked = False
+        with pytest.raises(ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"):
+            HTTP2ProtocolHelper(mock_conn)
+
+        mock_version.return_value = "5.0.0"
+        HTTP2ProtocolHelper.version_checked = False
+        with pytest.raises(ImportError, match="urllib3 v2 supports h2 version 4.x.x.*"):
+            HTTP2ProtocolHelper(mock_conn)
