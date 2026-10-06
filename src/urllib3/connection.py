@@ -147,6 +147,9 @@ class BaseProtocolHelper:
         self.conn = conn
         self.is_multistream = is_multistream
 
+    def connect(self) -> None:
+        pass
+
     def request(
         self,
         method: str,
@@ -701,6 +704,9 @@ class HTTPConnection(_HTTPConnection):
         if self._has_connected_to_proxy:
             self.proxy_is_verified = False
 
+        # give the protocol helper a chance to initialize the connection
+        self._protocol_helper.connect()
+
     @property
     def is_closed(self) -> bool:
         return self.sock is None
@@ -1171,6 +1177,9 @@ class HTTPSConnection(HTTPConnection):
             from .http2.connection import HTTP2ProtocolHelper
 
             self._protocol_helper = HTTP2ProtocolHelper(self)
+
+        # give the protocol helper a chance to initialize the connection
+        self._protocol_helper.connect()
 
     def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> ssl.SSLSocket:
         """
