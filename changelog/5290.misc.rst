@@ -1,0 +1,1 @@
+Updated the HTTP/2 probe test to synchronize its worker threads and cleanly shut down the thread pool.
