@@ -228,6 +228,10 @@ class InsecureRequestWarning(SecurityWarning):
     """Warned when making an unverified HTTPS request."""
 
 
+class InsecureProxyWarning(SecurityWarning):
+    """Warned when using an unverified proxy."""
+
+
 class NotOpenSSLWarning(SecurityWarning):
     """Warned when using unsupported SSL library"""
 
