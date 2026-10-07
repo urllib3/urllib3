@@ -362,3 +362,12 @@ class TestConnection:
             assert "User-Agent" in request_headers
         else:
             assert user_agent not in request_headers
+
+    def test_putheader_multiple_values(self) -> None:
+        with mock.patch(
+            "urllib3.connection._HTTPConnection.putheader"
+        ) as http_client_putheader:
+            conn = HTTPConnection("")
+            conn.putheader("X-Test", "a", "b")
+
+        http_client_putheader.assert_called_once_with("X-Test", "a", "b")
