@@ -89,17 +89,27 @@ def create_connection(
                     f"{_format_sockaddr(sa)} ({type(exc).__name__}: {exc})"
                     for sa, exc in failed_attempts[:-1]
                 )
-                extra = f" (also failed: {earlier})"
-                if err.args:
-                    err.args = (f"{err.args[0]}{extra}",) + err.args[1:]
-                else:
-                    err.args = (extra.strip(),)
+                err = _with_earlier_failures(err, earlier)
             raise err
         finally:
             # Break explicitly a reference cycle
             err = None
     else:
         raise OSError("getaddrinfo returns an empty list")
+
+
+def _with_earlier_failures(err: OSError, earlier: str) -> OSError:
+    """Return a same-type error whose message includes earlier attempts."""
+    extra = f" (also failed: {earlier})"
+    if err.errno is not None or err.strerror:
+        strerror = f"{err.strerror or ''}{extra}"
+        winerror = getattr(err, "winerror", None)
+        if winerror is not None:
+            return type(err)(err.errno, strerror, None, winerror)
+        return type(err)(err.errno, strerror)
+    if err.args and isinstance(err.args[0], str):
+        return type(err)(f"{err.args[0]}{extra}")
+    return type(err)(f"{err}{extra}")
 
 
 def _format_sockaddr(sa: object) -> str:
