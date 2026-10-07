@@ -1206,15 +1206,55 @@ class TestUtil:
         first = MagicMock()
         second = MagicMock()
         first.connect.side_effect = TimeoutError("timed out")
-        second.connect.side_effect = ConnectionRefusedError("Connection refused")
+        second.connect.side_effect = ConnectionRefusedError(111, "Connection refused")
         socket_cls.side_effect = [first, second]
 
         with pytest.raises(ConnectionRefusedError, match="also failed") as rec:
             create_connection(("localhost", 80))
 
         message = str(rec.value)
+        assert rec.value.errno == 111
+        assert rec.value.args[0] == 111
+        assert "Connection refused" in message
         assert "127.0.0.1:80" in message
         assert "timed out" in message
+        first.close.assert_called()
+        second.close.assert_called()
+
+    @patch("socket.getaddrinfo")
+    @patch("socket.socket")
+    def test_create_connection_preserves_earlier_errors_without_errno(
+        self, socket_cls: MagicMock, getaddrinfo: MagicMock
+    ) -> None:
+        ipv4 = (
+            socket.AF_INET,
+            socket.SOCK_STREAM,
+            socket.IPPROTO_TCP,
+            "",
+            ("127.0.0.1", 80),
+        )
+        ipv6 = (
+            socket.AF_INET6,
+            socket.SOCK_STREAM,
+            socket.IPPROTO_TCP,
+            "",
+            ("::1", 80, 0, 0),
+        )
+        getaddrinfo.return_value = [ipv4, ipv6]
+        first = MagicMock()
+        second = MagicMock()
+        first.connect.side_effect = ConnectionRefusedError(111, "Connection refused")
+        second.connect.side_effect = TimeoutError("timed out")
+        socket_cls.side_effect = [first, second]
+
+        with pytest.raises(TimeoutError, match="also failed") as rec:
+            create_connection(("localhost", 80))
+
+        message = str(rec.value)
+        assert rec.value.errno is None
+        assert "timed out" in message
+        assert "127.0.0.1:80" in message
+        assert "Connection refused" in message
         first.close.assert_called()
         second.close.assert_called()
 
