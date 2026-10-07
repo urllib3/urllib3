@@ -1,0 +1,6 @@
+Fixed ``Retry-After`` being ignored when ``PoolManager`` follows a redirect.
+The high-level API resolves redirects itself, so the sleep the connection pool
+performs for a redirected response never ran and a 302/307/308 response with a
+``Retry-After`` header was retried immediately. ``retry_after_max`` and
+``raise_on_retry_after_max`` now apply to redirects made through
+``PoolManager`` as well.
