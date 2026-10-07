@@ -180,6 +180,7 @@ class GzipDecoder(ContentDecoder):
                     if isinstance(ret, bytes):
                         ret = bytearray(ret)
                     ret += chunk
+                    del chunk
             except zlib.error:
                 previous_state = self._state
                 # Ignore data after the first error
