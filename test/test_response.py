@@ -407,7 +407,7 @@ class TestResponse:
 
         assert r.data == b"foo"
 
-    def test_decode_deflate_case_insensitve(self) -> None:
+    def test_decode_deflate_case_insensitive(self) -> None:
         data = zlib.compress(b"foo")
 
         fp = BytesIO(data)
