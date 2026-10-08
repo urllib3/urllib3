@@ -215,6 +215,12 @@ class TestConnection:
             ("before \t\r\n\t  after", "before after"),
             ("one\r\n two\t\r\n\tthree", "one two three"),
             ("one\r\n \r\n\tthree", "one  three"),
+            # A bare CR or LF is not an obs-fold; each one is replaced with SP.
+            ("one\n two", "one  two"),
+            ("one\r two", "one  two"),
+            ("value\ninjected", "value injected"),
+            ("value\rinjected", "value injected"),
+            ("one\r\n\ttwo\n three", "one two  three"),
         ],
     )
     def test_normalize_header_value(self, value: str, expected: str) -> None:
