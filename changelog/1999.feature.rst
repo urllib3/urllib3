@@ -1,0 +1,1 @@
+Added support for constructing ``Authorization`` and ``Proxy-Authorization`` headers from username and password sections of request and proxy URLs.
