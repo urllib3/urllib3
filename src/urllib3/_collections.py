@@ -252,6 +252,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
+        if isinstance(val, bytes):
+            val = val.decode("latin-1")
         self._container[key.lower()] = [key, val]
 
     def __getitem__(self, key: str) -> str:
@@ -325,6 +327,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
+        if isinstance(val, bytes):
+            val = val.decode("latin-1")
         key_lower = key.lower()
         new_vals = [key, val]
         # Keep the common case aka no item present as fast as possible
