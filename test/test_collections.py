@@ -331,6 +331,24 @@ class TestHTTPHeaderDict:
         result = d[b"Content-Type"]  # type: ignore[index]
         assert result == "application/json, charset=utf-8"
 
+    def test_bytes_values_decode_to_latin1(self) -> None:
+        user_agent = "Schönefeld/1.18.0"
+        user_agent_bytes = user_agent.encode("latin-1")
+
+        headers = HTTPHeaderDict()
+        headers["user-agent"] = user_agent_bytes
+        headers.add("user-agent", b"extra")
+
+        assert headers["user-agent"] == f"{user_agent}, extra"
+        assert headers.getlist("user-agent") == [user_agent, "extra"]
+
+    def test_constructor_with_bytes_values(self) -> None:
+        user_agent = "Schönefeld/1.18.0"
+
+        headers = HTTPHeaderDict({"user-agent": user_agent.encode("latin-1")})
+
+        assert headers["user-agent"] == user_agent
+
     def test_contains_with_bytes(self, d: HTTPHeaderDict) -> None:
         d["Content-Type"] = "application/json"
         assert b"Content-Type" in d  # type: ignore[comparison-overlap]
