@@ -1,0 +1,1 @@
+Added ``Retry(raise_on_retry_after=True)`` to raise ``RetryAfterError`` when a server's Retry-After delay exceeds ``retry_after_max``. The exception preserves the requested delay and configured limit. The default behavior continues to cap the delay.

@@ -23,11 +23,20 @@ from urllib3.exceptions import (
     NameResolutionError,
     NewConnectionError,
     ReadTimeoutError,
+    RetryAfterError,
 )
 from urllib3.response import HTTPResponse
 
 
 class TestPickle:
+    def test_retry_after_error(self) -> None:
+        exception = RetryAfterError(3600.5, 60)
+        result = pickle.loads(pickle.dumps(exception))
+        assert isinstance(result, RetryAfterError)
+        assert result.retry_after == 3600.5
+        assert result.retry_after_max == 60
+        assert str(result) == str(exception)
+
     @pytest.mark.parametrize(
         "exception",
         [
