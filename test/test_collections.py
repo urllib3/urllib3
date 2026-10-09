@@ -234,6 +234,13 @@ class TestHTTPHeaderDict:
         del d[b"cookie"]  # type: ignore[arg-type]
         assert "cookie" not in d
 
+    def test_construct_with_bytes_headers(self) -> None:
+        h = HTTPHeaderDict({b"Content-Type": b"text/plain"})
+
+        assert "content-type" in h
+        assert h["content-type"] == "text/plain"
+        assert list(h.items()) == [("Content-Type", "text/plain")]
+
     def test_add_well_known_multiheader(self, d: HTTPHeaderDict) -> None:
         d.add("COOKIE", "asdf")
         assert d.getlist("cookie") == ["foo", "bar", "asdf"]
