@@ -1,0 +1,1 @@
+Fixed ``HTTPHeaderDict`` so byte values are normalized and can be read back without raising ``TypeError``.
