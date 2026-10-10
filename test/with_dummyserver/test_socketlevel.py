@@ -3003,3 +3003,28 @@ class TestRetryAfterMaxStrict(SocketDummyServerTestCase):
             assert pool.num_connections == 1
 
         assert request_lines == [b"GET /limited HTTP/1.1", b"GET /after HTTP/1.1"]
+
+    def test_pool_manager_redirect_raises_without_retrying(self) -> None:
+        request_lines = self._start_retry_after_server(b"302 Found")
+        retries = Retry(total=3, retry_after_max=60, retry_after_max_strict=True)
+        base_url = f"http://{self.host}:{self.port}"
+        with PoolManager(maxsize=1, block=True) as http:
+            with mock.patch("time.sleep") as sleep_mock:
+                with pytest.raises(MaxRetryAfterWaitError) as exc_info:
+                    http.request("GET", f"{base_url}/limited", retries=retries)
+            sleep_mock.assert_not_called()
+            assert exc_info.value.retry_after == 3600
+            assert exc_info.value.max_wait == 60
+
+            # The redirect raised before any follow-up request was sent, so the
+            # connection went back to the pool and can be reused.
+            response = http.request("GET", f"{base_url}/after", retries=False)
+            assert response.status == 200
+            assert response.data == b"ok"
+            pool = http.connection_from_url(base_url)
+            assert pool.num_connections == 1
+
+        assert request_lines == [
+            b"GET /limited HTTP/1.1",
+            b"GET /after HTTP/1.1",
+        ]
