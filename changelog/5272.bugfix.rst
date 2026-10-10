@@ -1,0 +1,1 @@
+Fixed the HTTP/2 (``urllib3.http2``) response path crashing with ``UnicodeDecodeError`` on RFC 9110-legal non-ASCII header bytes, and hanging at 100% CPU instead of raising when the server closes, resets, or terminates the connection mid-response.
