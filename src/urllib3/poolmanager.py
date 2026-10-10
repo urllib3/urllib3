@@ -20,6 +20,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import set_file_position
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -458,12 +459,18 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        body_pos = kw.get("body_pos")
+        if body_pos is None:
+            body_pos = set_file_position(kw.get("body"), None)
+
         if self._proxy_requires_url_absolute_form(u):
             # Strip the fragment here but let the connection pool normalize the URL
             # to avoid decoding IPv6 zone identifiers twice.
             response = conn.urlopen(method, url.split("#", 1)[0], **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
+
+        kw["body_pos"] = body_pos
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:
