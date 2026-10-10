@@ -1,0 +1,2 @@
+Cleared tracebacks from exceptions retained by retry history and retry warnings so
+failed requests do not keep their call frames and connection pools alive.
