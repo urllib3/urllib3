@@ -40,7 +40,6 @@ from urllib3 import (
     HTTPResponse,
     HTTPSConnectionPool,
     ProxyManager,
-    util,
 )
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
