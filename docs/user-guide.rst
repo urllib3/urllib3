@@ -670,6 +670,27 @@ most transient errors resolve immediately. For example, a ``backoff_factor`` of
 Adding ``backoff_jitter`` introduces random variance to avoid the "thundering
 herd" problem where many clients retry in lockstep against a server.
 
+Limiting Retry-After Delays
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A server can ask for a long delay with a ``Retry-After`` header, for example
+``Retry-After: 3600``. Connect and read timeouts do not apply to that sleep.
+``retry_after_max`` caps how long :class:`~urllib3.util.Retry` waits before
+retrying. Set ``retry_after_max_strict=True`` to raise
+:class:`~urllib3.exceptions.MaxRetryAfterWaitError` instead of retrying early.
+The exception carries the requested delay so the caller can reschedule:
+
+.. code-block:: python
+
+    import urllib3
+
+    retries = urllib3.Retry(retry_after_max=60, retry_after_max_strict=True)
+
+    try:
+        resp = urllib3.request("GET", "https://example.com", retries=retries)
+    except urllib3.exceptions.MaxRetryAfterWaitError as e:
+        print(f"Server asked to wait {e.retry_after}s, limit is {e.max_wait}s")
+
 Errors & Exceptions
 -------------------
 
