@@ -19,6 +19,7 @@ from urllib3.exceptions import (
     HTTPError,
     InvalidChunkLength,
     LocationParseError,
+    MaxRetryAfterWaitError,
     MaxRetryError,
     NameResolutionError,
     NewConnectionError,
@@ -50,6 +51,7 @@ class TestPickle:
             NameResolutionError(
                 "host", HTTPConnection("localhost"), socket.gaierror("error")
             ),
+            MaxRetryAfterWaitError(3600.0, 60),
         ],
     )
     def test_exceptions(self, exception: Exception) -> None:

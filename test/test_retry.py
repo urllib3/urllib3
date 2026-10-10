@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import pickle
 from test import DUMMY_POOL
 from unittest import mock
 
@@ -9,6 +10,7 @@ import pytest
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
+    MaxRetryAfterWaitError,
     MaxRetryError,
     ReadTimeoutError,
     ResponseError,
@@ -456,3 +458,104 @@ class TestRetry:
                 sleep_mock.assert_called_with(sleep_duration)
             else:
                 sleep_mock.assert_not_called()
+
+    def test_retry_after_max_strict_raises(self) -> None:
+        """When strict mode is enabled and Retry-After exceeds max, raise."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        with pytest.raises(MaxRetryAfterWaitError) as exc_info:
+            retry.parse_retry_after("20")
+        assert exc_info.value.retry_after == 20
+        assert exc_info.value.max_wait == 10
+
+    def test_retry_after_max_strict_within_limit(self) -> None:
+        """When strict mode is enabled but value is within limit, return normally."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        result = retry.parse_retry_after("5")
+        assert result == 5
+        assert result <= retry.retry_after_max
+
+    def test_retry_after_max_strict_exact_boundary(self) -> None:
+        """Exact boundary value (value == max) should NOT raise in strict mode."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        result = retry.parse_retry_after("10")
+        assert result == 10
+        assert result == retry.retry_after_max
+
+    def test_retry_after_max_strict_default_caps(self) -> None:
+        """Default behavior (strict=False) caps instead of raising."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=False)
+        result = retry.parse_retry_after("20")
+        assert result == 10
+        assert result == retry.retry_after_max
+
+    def test_retry_after_max_strict_sleep_raises(self) -> None:
+        """sleep_for_retry raises when strict mode is triggered."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        response = HTTPResponse(status=503, headers={"Retry-After": "20"})
+        with pytest.raises(MaxRetryAfterWaitError) as exc_info:
+            retry.sleep_for_retry(response)
+        assert exc_info.value.retry_after == 20
+
+    def test_retry_after_max_strict_zero_value(self) -> None:
+        """Zero Retry-After passes through in strict mode without raising."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        assert retry.parse_retry_after("0") == 0
+        assert retry.retry_after_max_strict is True
+
+    def test_retry_after_max_strict_propagated_via_new(self) -> None:
+        """retry_after_max_strict is preserved through new()."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        new_retry = retry.new()
+        assert new_retry.retry_after_max_strict is True
+        with pytest.raises(MaxRetryAfterWaitError):
+            new_retry.parse_retry_after("20")
+
+    def test_retry_after_max_strict_error_pickles(self) -> None:
+        """MaxRetryAfterWaitError keeps its fields through a pickle round trip."""
+        error = MaxRetryAfterWaitError(3600.0, 60)
+        result = pickle.loads(pickle.dumps(error))
+        assert result.retry_after == 3600.0
+        assert result.max_wait == 60
+        assert str(result) == str(error)
+
+    @pytest.mark.parametrize(
+        "retry_after_header, expected",
+        [
+            ("Mon, 03 Jun 2019 12:00:00 GMT", 3600),
+            ("Monday, 03-Jun-19 12:00:00 GMT", 3600),
+            ("Mon Jun  3 12:00:00 2019", 3600),
+        ],
+    )
+    def test_retry_after_max_strict_http_date(
+        self, retry_after_header: str, expected: int
+    ) -> None:
+        """HTTP-date Retry-After values are checked against the limit too."""
+        retry = Retry(retry_after_max=60, retry_after_max_strict=True)
+        now = datetime.datetime(2019, 6, 3, 11, tzinfo=datetime.timezone.utc)
+        with mock.patch("time.time", return_value=now.timestamp()):
+            with pytest.raises(MaxRetryAfterWaitError) as exc_info:
+                retry.parse_retry_after(retry_after_header)
+            assert exc_info.value.retry_after == expected
+            assert exc_info.value.max_wait == 60
+            assert retry.parse_retry_after("Mon, 03 Jun 2019 11:00:30 GMT") == 30
+
+    def test_retry_after_max_strict_does_not_sleep(self) -> None:
+        """The error is raised before any sleep happens."""
+        retry = Retry(retry_after_max=10, retry_after_max_strict=True)
+        response = HTTPResponse(status=503, headers={"Retry-After": "3600"})
+        with mock.patch("time.sleep") as sleep_mock:
+            with pytest.raises(MaxRetryAfterWaitError):
+                retry.sleep(response)
+        sleep_mock.assert_not_called()
+
+    def test_retry_after_max_strict_ignored_header(self) -> None:
+        """Nothing is raised when Retry-After headers are not respected."""
+        retry = Retry(
+            retry_after_max=10,
+            retry_after_max_strict=True,
+            respect_retry_after_header=False,
+        )
+        response = HTTPResponse(status=503, headers={"Retry-After": "3600"})
+        with mock.patch("time.sleep") as sleep_mock:
+            retry.sleep(response)
+        sleep_mock.assert_not_called()

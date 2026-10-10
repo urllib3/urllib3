@@ -1,0 +1,1 @@
+Retry-After is now honored on redirects handled by :class:`~urllib3.PoolManager`. Previously it was silently ignored on that path, so ``retry_after_max`` did not cap the wait and :exc:`~urllib3.exceptions.MaxRetryAfterWaitError` was not raised for ``retry_after_max_strict``.
