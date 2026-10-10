@@ -143,9 +143,8 @@ class BaseProtocolHelper:
 
     name = "unknown"
 
-    def __init__(self, conn: HTTPConnection, is_multistream: bool = False):
+    def __init__(self, conn: HTTPConnection):
         self.conn = conn
-        self.is_multistream = is_multistream
 
     def connect(self) -> None:
         pass
@@ -314,7 +313,9 @@ class HTTPProtocolHelper(BaseProtocolHelper):
         if chunked:
             self.conn.send(b"0\r\n\r\n")
 
-        return Stream(self.conn)
+        stream = Stream(self.conn)
+        stream.stream_id = 1  # always a single stream for HTTP(S)
+        return stream
 
     def getresponse(self, stream: Stream | None = None) -> HTTPResponse:
         # Raise the same error as http.client.HTTPConnection
@@ -734,12 +735,6 @@ class HTTPConnection(_HTTPConnection):
         Return True if a tunneling proxy is configured, else return False
         """
         return self._tunnel_host is not None
-
-    def is_multistream(self) -> bool:
-        """
-        Return True if this connection can handle multiple streams
-        """
-        return self._protocol_helper.is_multistream
 
     def close_stream(self, stream: Stream | None = None) -> None:
         self._protocol_helper.close_stream(stream=stream)
