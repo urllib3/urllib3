@@ -1,0 +1,4 @@
+Fixed iterating or streaming a response that has been closed silently
+producing a truncated body. ``HTTPResponse.stream()`` (and therefore
+iterating the response) now raises ``ValueError`` if the response was
+already closed, or is closed while iteration is in progress.
