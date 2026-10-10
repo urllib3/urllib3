@@ -116,7 +116,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                 )
             HTTP2ProtocolHelper.version_checked = True
 
-        super().__init__(conn, is_multistream=True)
+        super().__init__(conn)
         self._h2_conn = self._new_h2_conn()
         self._stream_data: dict[Stream | int, HTTP2StreamData] = {}
 

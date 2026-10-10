@@ -371,3 +371,33 @@ class TestConnection:
             conn.putheader("X-Test", "a", "b")
 
         http_client_putheader.assert_called_once_with("X-Test", "a", "b")
+
+    def test_stream(self) -> None:
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch("urllib3.connection._HTTPConnection.putheader"),
+            mock.patch(
+                "urllib3.connection._HTTPConnection.getresponse",
+            ) as getresponse,
+        ):
+            getresponse().status = 202
+            getresponse().msg = {"some-header": "some-value"}
+
+            conn = HTTPConnection("")
+            with conn.request("GET", "/foo") as stream:
+                resp = stream.getresponse()
+            conn.close()
+
+            assert resp.status == 202
+            assert resp.headers["some-header"] == "some-value"
+
+    def test_stream_getresponse_without_request(self) -> None:
+        with (
+            mock.patch("urllib3.util.connection.create_connection"),
+            mock.patch("urllib3.connection._HTTPConnection.putheader"),
+        ):
+            conn = HTTPConnection("")
+            stream = conn.request("GET", "/foo")
+            stream.stream_id = None
+            with pytest.raises(ValueError):
+                stream.getresponse()
