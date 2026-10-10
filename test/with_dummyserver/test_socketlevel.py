@@ -39,6 +39,7 @@ from urllib3 import (
     HTTPConnectionPool,
     HTTPResponse,
     HTTPSConnectionPool,
+    PoolManager,
     ProxyManager,
     util,
 )
@@ -47,6 +48,7 @@ from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.connectionpool import _url_from_pool
 from urllib3.exceptions import (
     InsecureRequestWarning,
+    MaxRetryAfterWaitError,
     MaxRetryError,
     ProtocolError,
     ProxyError,
@@ -2921,3 +2923,83 @@ class TestContentFraming(SocketDummyServerTestCase):
 
             sent_bytes = bytes(buffer)
             assert sent_bytes.endswith(expected)
+
+
+class TestRetryAfterMaxStrict(SocketDummyServerTestCase):
+    def _start_retry_after_server(self, status_line: bytes) -> list[bytes]:
+        """Answer the first request with a long Retry-After and the next one
+        with a 200, both on one connection. Returns the received request lines.
+        """
+        request_lines: list[bytes] = []
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            responses = [
+                b"HTTP/1.1 " + status_line + b"\r\n"
+                b"Retry-After: 3600\r\n"
+                b"Location: /redirected\r\n"
+                b"Content-Length: 11\r\n"
+                b"\r\n"
+                b"retry later",
+                b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            ]
+            for response in responses:
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += sock.recv(65536)
+                request_lines.append(buf.split(b"\r\n", 1)[0])
+                sock.sendall(response)
+            sock.close()
+
+        self._start_server(socket_handler)
+        return request_lines
+
+    @pytest.mark.parametrize(
+        "status_line",
+        [b"503 Service Unavailable", b"429 Too Many Requests", b"302 Found"],
+    )
+    @pytest.mark.parametrize("preload_content", [True, False])
+    def test_connection_pool_raises_without_retrying(
+        self, status_line: bytes, preload_content: bool
+    ) -> None:
+        request_lines = self._start_retry_after_server(status_line)
+        retries = Retry(total=3, retry_after_max=60, retry_after_max_strict=True)
+        with HTTPConnectionPool(self.host, self.port, maxsize=1, block=True) as pool:
+            with mock.patch("time.sleep") as sleep_mock:
+                with pytest.raises(MaxRetryAfterWaitError) as exc_info:
+                    pool.request(
+                        "GET",
+                        "/limited",
+                        retries=retries,
+                        preload_content=preload_content,
+                    )
+            sleep_mock.assert_not_called()
+            assert exc_info.value.retry_after == 3600
+            assert exc_info.value.max_wait == 60
+
+            # The connection went back to the pool and can be reused.
+            response = pool.request("GET", "/after", retries=False)
+            assert response.status == 200
+            assert response.data == b"ok"
+            assert pool.num_connections == 1
+
+        assert request_lines == [b"GET /limited HTTP/1.1", b"GET /after HTTP/1.1"]
+
+    def test_pool_manager_raises_without_retrying(self) -> None:
+        request_lines = self._start_retry_after_server(b"503 Service Unavailable")
+        retries = Retry(total=3, retry_after_max=60, retry_after_max_strict=True)
+        base_url = f"http://{self.host}:{self.port}"
+        with PoolManager(maxsize=1, block=True) as http:
+            with mock.patch("time.sleep") as sleep_mock:
+                with pytest.raises(MaxRetryAfterWaitError) as exc_info:
+                    http.request("GET", f"{base_url}/limited", retries=retries)
+            sleep_mock.assert_not_called()
+            assert exc_info.value.retry_after == 3600
+
+            response = http.request("GET", f"{base_url}/after", retries=False)
+            assert response.status == 200
+            assert response.data == b"ok"
+            pool = http.connection_from_url(base_url)
+            assert pool.num_connections == 1
+
+        assert request_lines == [b"GET /limited HTTP/1.1", b"GET /after HTTP/1.1"]
