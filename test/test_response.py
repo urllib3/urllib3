@@ -573,6 +573,49 @@ class TestResponse:
         with pytest.raises(DecodeError):
             r.read(decode_content=True)
 
+    @pytest.mark.parametrize("prefix_len", [1, 2, 3])
+    @pytest.mark.parametrize("mode", ["preload", "read", "read1"])
+    def test_decode_deflate_truncated_before_first_output(
+        self, prefix_len: int, mode: str
+    ) -> None:
+        body = zlib.compress(b"hello world")[:prefix_len]
+
+        with pytest.raises(DecodeError):
+            if mode == "preload":
+                HTTPResponse(BytesIO(body), headers={"content-encoding": "deflate"})
+            else:
+                r = HTTPResponse(
+                    BytesIO(body),
+                    headers={"content-encoding": "deflate"},
+                    preload_content=False,
+                )
+                if mode == "read":
+                    r.read(decode_content=True)
+                else:
+                    while r.read1(decode_content=True):
+                        pass
+
+    @pytest.mark.parametrize("prefix_len", [1, 2, 3, 9])
+    def test_decode_gzip_truncated_before_first_output(self, prefix_len: int) -> None:
+        body = gzip.compress(b"hello world")[:prefix_len]
+
+        with pytest.raises(DecodeError):
+            HTTPResponse(BytesIO(body), headers={"content-encoding": "gzip"})
+
+    def test_decode_deflate_complete_empty_stream(self) -> None:
+        r = HTTPResponse(
+            BytesIO(zlib.compress(b"")), headers={"content-encoding": "deflate"}
+        )
+
+        assert r.data == b""
+
+    def test_decode_deflate_raw_complete_stream(self) -> None:
+        compress = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+        body = compress.compress(b"hello world") + compress.flush()
+        r = HTTPResponse(BytesIO(body), headers={"content-encoding": "deflate"})
+
+        assert r.data == b"hello world"
+
     def test_decode_deflate_empty_body(self) -> None:
         r = HTTPResponse(BytesIO(b""), headers={"content-encoding": "deflate"})
 
