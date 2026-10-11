@@ -135,6 +135,8 @@ class DeflateDecoder(ContentDecoder):
         )
 
     def flush(self) -> bytes:
+        if not self._first_try and not self._obj.eof:
+            raise DecodeError("Deflate data is incomplete")
         return self._obj.flush()
 
 
@@ -214,6 +216,8 @@ class GzipDecoder(ContentDecoder):
     def flush(self) -> bytes:
         if self._state == GzipDecoderState.SWALLOW_DATA:
             return b""
+        if not self._obj.eof:
+            raise DecodeError("Gzip data is incomplete")
         return self._obj.flush()
 
 

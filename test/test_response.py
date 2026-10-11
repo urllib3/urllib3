@@ -517,6 +517,67 @@ class TestResponse:
 
         assert r.data == b"foofoofoo"
 
+    def test_decode_gzip_incomplete_preload_content(self) -> None:
+        data = gzip.compress(b"foo")
+        fp = BytesIO(data[:-1])  # shorten the data to trigger DecodeError
+
+        with pytest.raises(DecodeError):
+            HTTPResponse(fp, headers={"content-encoding": "gzip"})
+
+    def test_decode_gzip_incomplete_read(self) -> None:
+        data = gzip.compress(b"foo")
+        fp = BytesIO(data[:-1])
+
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "gzip"}, preload_content=False
+        )
+
+        with pytest.raises(DecodeError):
+            r.read(decode_content=True)
+
+    def test_decode_gzip_incomplete_read1(self) -> None:
+        data = gzip.compress(b"foo")
+        fp = BytesIO(data[:-1])
+
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "gzip"}, preload_content=False
+        )
+
+        with pytest.raises(DecodeError):
+            amt_decoded = 0
+            # loop, as read1() may return just partial data
+            while amt_decoded < len(data):
+                part = r.read1(decode_content=True)
+                amt_decoded += len(part)
+
+    def test_decode_gzip_empty_body(self) -> None:
+        r = HTTPResponse(BytesIO(b""), headers={"content-encoding": "gzip"})
+
+        assert r.data == b""
+
+    def test_decode_deflate_incomplete_preload_content(self) -> None:
+        data = zlib.compress(b"foo")
+        fp = BytesIO(data[:-1])  # shorten the data to trigger DecodeError
+
+        with pytest.raises(DecodeError):
+            HTTPResponse(fp, headers={"content-encoding": "deflate"})
+
+    def test_decode_deflate_incomplete_read(self) -> None:
+        data = zlib.compress(b"foo")
+        fp = BytesIO(data[:-1])
+
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+
+        with pytest.raises(DecodeError):
+            r.read(decode_content=True)
+
+    def test_decode_deflate_empty_body(self) -> None:
+        r = HTTPResponse(BytesIO(b""), headers={"content-encoding": "deflate"})
+
+        assert r.data == b""
+
     @onlyBrotli()
     def test_decode_brotli(self) -> None:
         data = brotli.compress(b"foo")
