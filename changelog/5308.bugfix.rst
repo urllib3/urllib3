@@ -1,0 +1,2 @@
+Fixed equality and set operations on ``HTTPHeaderDict.items()`` to use the headers
+in the live view, including duplicate header values.
