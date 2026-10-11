@@ -9,3 +9,5 @@
 /docs/_build
 coverage.xml
 src/urllib3/_version.py
+config.bat
+node_modules
