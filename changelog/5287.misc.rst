@@ -1,0 +1,1 @@
+Improved performance of single-value header handling in ``HTTPConnection.putheader()``.

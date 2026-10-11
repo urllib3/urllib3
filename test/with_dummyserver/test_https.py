@@ -8,6 +8,7 @@ import shutil
 import ssl
 import sys
 import tempfile
+import threading
 import time
 import typing
 import warnings
@@ -1091,6 +1092,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
 
         connect_timeout = LONG_TIMEOUT
         total_threads = 3
+        barrier = threading.Barrier(total_threads)
         urllib3.http2.inject_into_urllib3()
         try:
 
@@ -1105,13 +1107,17 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                     conn = pool._get_conn()
                     assert isinstance(conn, HTTPSConnection)
                     conn._connect_callback = connect_callback
+                    # ThreadPoolExecutor does not guarantee that each work item
+                    # runs on its own thread, so make every thread wait here
+                    # until all of them have a connection ready to attempt.
+                    barrier.wait()
                     with pytest.raises(ConnectTimeoutError):
                         conn.connect()
                     end_time = time.time()
                     return start_time, end_time
 
-            threadpool = concurrent.futures.ThreadPoolExecutor(total_threads)
-            list(threadpool.map(try_connect, range(total_threads)))
+            with concurrent.futures.ThreadPoolExecutor(total_threads) as threadpool:
+                list(threadpool.map(try_connect, range(total_threads)))
 
             # The probe was inconclusive since an error occurred during connection.
             assert http2_probe._values() == {(TARPIT_HOST, self.port): None}
