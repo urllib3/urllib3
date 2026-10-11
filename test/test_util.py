@@ -1183,17 +1183,30 @@ class TestUtil:
         with pytest.raises(OSError, match="getaddrinfo returns an empty list"):
             create_connection(("example.com", 80))
 
+    @pytest.mark.parametrize(
+        "earlier_sockaddr, expected_address",
+        [
+            (("127.0.0.1", 80), "127.0.0.1:80"),
+            ("socket-address", "socket-address"),
+            (("127.0.0.1",), "('127.0.0.1',)"),
+            ((), "()"),
+        ],
+    )
     @patch("socket.getaddrinfo")
     @patch("socket.socket")
     def test_create_connection_preserves_earlier_errors(
-        self, socket_cls: MagicMock, getaddrinfo: MagicMock
+        self,
+        socket_cls: MagicMock,
+        getaddrinfo: MagicMock,
+        earlier_sockaddr: object,
+        expected_address: str,
     ) -> None:
         ipv4 = (
             socket.AF_INET,
             socket.SOCK_STREAM,
             socket.IPPROTO_TCP,
             "",
-            ("127.0.0.1", 80),
+            earlier_sockaddr,
         )
         ipv6 = (
             socket.AF_INET6,
@@ -1216,15 +1229,23 @@ class TestUtil:
         assert rec.value.errno == 111
         assert rec.value.args[0] == 111
         assert "Connection refused" in message
-        assert "127.0.0.1:80" in message
+        assert expected_address in message
         assert "timed out" in message
-        first.close.assert_called()
-        second.close.assert_called()
+        assert rec.value.strerror == (
+            f"Connection refused (also failed: {expected_address} "
+            "(TimeoutError: timed out))"
+        )
+        first.connect.assert_called_once_with(earlier_sockaddr)
+        first.close.assert_called_once_with()
+        second.close.assert_called_once_with()
 
+    @pytest.mark.parametrize(
+        "error", [TimeoutError("timed out"), TimeoutError(), TimeoutError(42)]
+    )
     @patch("socket.getaddrinfo")
     @patch("socket.socket")
     def test_create_connection_preserves_earlier_errors_without_errno(
-        self, socket_cls: MagicMock, getaddrinfo: MagicMock
+        self, socket_cls: MagicMock, getaddrinfo: MagicMock, error: TimeoutError
     ) -> None:
         ipv4 = (
             socket.AF_INET,
@@ -1244,19 +1265,23 @@ class TestUtil:
         first = MagicMock()
         second = MagicMock()
         first.connect.side_effect = ConnectionRefusedError(111, "Connection refused")
-        second.connect.side_effect = TimeoutError("timed out")
+        second.connect.side_effect = error
         socket_cls.side_effect = [first, second]
 
         with pytest.raises(TimeoutError, match="also failed") as rec:
             create_connection(("localhost", 80))
 
         message = str(rec.value)
+        assert type(rec.value) is type(error)
         assert rec.value.errno is None
-        assert "timed out" in message
+        assert rec.value.args == (
+            f"{error} (also failed: 127.0.0.1:80 "
+            "(ConnectionRefusedError: [Errno 111] Connection refused))",
+        )
         assert "127.0.0.1:80" in message
         assert "Connection refused" in message
-        first.close.assert_called()
-        second.close.assert_called()
+        first.close.assert_called_once_with()
+        second.close.assert_called_once_with()
 
     @patch("socket.getaddrinfo")
     def test_dnsresolver_forced_error(self, getaddrinfo: MagicMock) -> None:
