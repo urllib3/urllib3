@@ -1099,6 +1099,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         connect_timeout = LONG_TIMEOUT
         total_threads = 3
         barrier = threading.Barrier(total_threads)
+
         def try_connect(_: typing.Any) -> tuple[float, float]:
             with HTTPSConnectionPool(
                 TARPIT_HOST,
