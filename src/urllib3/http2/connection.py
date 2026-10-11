@@ -128,7 +128,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         with self._h2_conn as h2_conn:
             h2_conn.initiate_connection()
             if data_to_send := h2_conn.data_to_send():
-                if self.conn.sock is None:
+                if self.conn.sock is None:  # Defensive:
                     self.conn.connect()
                 self.conn.sock.sendall(data_to_send)
 
@@ -254,11 +254,6 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         return stream
 
     def _receive(self, stream: Stream) -> list[h2.events.Event]:
-        if stream is None:
-            raise ConnectionError("`stream` cannot be None")
-        if not stream.stream_id:
-            raise ConnectionError("Must call `request` to create a stream")
-
         with self._h2_conn as h2_conn:
             if not self._stream_data[stream].events:
                 # TODO: Arbitrary read value.
@@ -382,13 +377,12 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
         # Reset all our HTTP/2 connection state.
         self._h2_conn = self._new_h2_conn()
-        self._initiated = False
 
     def close_stream(self, stream: Stream | None = None) -> None:
         if stream is None:
-            raise ValueError("`stream` cannot be None")
+            raise ConnectionError("`stream` cannot be None")
         if not stream.stream_id:
-            raise ValueError("Must call `request` to create a stream")
+            raise ConnectionError("Must call `request` to create a stream")
 
         with self._h2_conn as h2_conn:
             try:
