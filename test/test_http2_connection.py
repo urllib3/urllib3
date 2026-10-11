@@ -108,6 +108,18 @@ class TestHTTP2Connection:
             ]
         )
 
+    def test_putrequest_ConnectionError(self) -> None:
+        conn = HTTPSConnection("example.com")
+        conn.set_protocol_options(http1=False, http2=True)
+
+        with pytest.raises(ConnectionError):
+            conn.putrequest("GET", "/")
+
+        stream = Stream(conn)
+        conn.putrequest("GET", "/", stream=stream)
+        with pytest.raises(ConnectionError):
+            conn.putrequest("GET", "/", stream=stream)
+
     def test_putheader_ValueError(self) -> None:
         conn = HTTPSConnection("example.com")
         conn.set_protocol_options(http1=False, http2=True)
@@ -118,6 +130,13 @@ class TestHTTP2Connection:
         with pytest.raises(ValueError):
             conn.putheader("foo", "foo\r\nbar", stream=stream)
 
+    def test_putheader_ConnectionError(self) -> None:
+        conn = HTTPSConnection("example.com")
+        conn.set_protocol_options(http1=False, http2=True)
+
+        with pytest.raises(ConnectionError):
+            conn.putheader("foo", "bar")
+
     def test_endheaders_ConnectionError(self) -> None:
         conn = HTTPSConnection("example.com")
         conn.set_protocol_options(http1=False, http2=True)
@@ -127,8 +146,13 @@ class TestHTTP2Connection:
     def test_send_ConnectionError(self) -> None:
         conn = HTTPSConnection("example.com")
         conn.set_protocol_options(http1=False, http2=True)
+
         with pytest.raises(ConnectionError):
             conn.send(b"foo")
+
+        stream = Stream(conn)
+        with pytest.raises(ConnectionError):
+            conn.send(b"foo", stream=stream)
 
     def test_send_bytes(self) -> None:
         conn = HTTPSConnection("example.com")
@@ -391,7 +415,44 @@ class TestHTTP2Connection:
         close_connection.assert_called_with()
         data_to_send.assert_called_with()
         sendall.assert_called_with(b"foo")
-        assert not conn._protocol_helper._initiated  # type: ignore[attr-defined]
+
+    def test_close_stream(self) -> None:
+        conn = HTTPSConnection("example.com")
+        conn.set_protocol_options(http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(side_effect=Exception("foo")),
+        )
+        stream = Stream(conn)
+        stream.stream_id = 1
+        conn._protocol_helper._stream_data[stream] = "foo"  # type: ignore[attr-defined]
+        conn._protocol_helper._stream_data[1] = "foo"  # type: ignore[attr-defined]
+        sendall = conn.sock.sendall
+        data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[attr-defined]
+        end_stream = conn._protocol_helper._h2_conn._obj.end_stream = mock.Mock(  # type: ignore[attr-defined]
+            return_value=None
+        )
+
+        try:
+            conn.close_stream(stream=stream)
+        except Exception:
+            assert False, "Exception was raised"
+
+        end_stream.assert_called_with(1)
+        data_to_send.assert_called_with()
+        sendall.assert_called_with(b"foo")
+        assert stream not in conn._protocol_helper._stream_data  # type: ignore[attr-defined]
+        assert 1 not in conn._protocol_helper._stream_data  # type: ignore[attr-defined]
+
+    def test_close_stream_ConnectionError(self) -> None:
+        conn = HTTPSConnection("example.com")
+        conn.set_protocol_options(http1=False, http2=True)
+
+        with pytest.raises(ConnectionError):
+            conn.close_stream()
+
+        stream = Stream(conn)
+        with pytest.raises(ConnectionError):
+            conn.close_stream(stream=stream)
 
     def test_request_ignore_chunked(self) -> None:
         conn = HTTPSConnection("example.com")
@@ -426,3 +487,14 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+    def test_getresponse_ConnectionError(self) -> None:
+        conn = HTTPSConnection("example.com")
+        conn.set_protocol_options(http1=False, http2=True)
+
+        with pytest.raises(ConnectionError):
+            conn.getresponse()
+
+        stream = Stream(conn)
+        with pytest.raises(ConnectionError):
+            conn.getresponse(stream=stream)
