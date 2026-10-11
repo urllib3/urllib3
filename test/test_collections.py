@@ -398,6 +398,27 @@ class TestHTTPHeaderDict:
         assert ("Cookie", 1) not in items  # type: ignore[comparison-overlap]
         assert "Cookie" not in items  # type: ignore[comparison-overlap]
 
+    def test_items_set_operations(self, d: HTTPHeaderDict) -> None:
+        items: typing.AbstractSet[tuple[str, str]] = d.items()
+        expected = {("Cookie", "foo"), ("Cookie", "bar")}
+        other = {("Cookie", "foo"), ("Host", "example.com")}
+
+        assert items == expected
+        assert items != set()
+        assert items | other == expected | other
+        assert items & other == expected & other
+        assert items - other == expected - other
+        assert items ^ other == expected ^ other
+        assert not items.isdisjoint(other)
+
+    def test_items_set_operations_after_mutation(self, d: HTTPHeaderDict) -> None:
+        items: typing.AbstractSet[tuple[str, str]] = d.items()
+        d["Cookie"] = "baz"
+        d["Host"] = "example.com"
+
+        assert items == {("Cookie", "baz"), ("Host", "example.com")}
+        assert items & {("Cookie", "foo"), ("Cookie", "baz")} == {("Cookie", "baz")}
+
     def test_dict_conversion(self, d: HTTPHeaderDict) -> None:
         # Also tested in connectionpool, needs to preserve case
         hdict = {

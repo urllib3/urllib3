@@ -153,7 +153,7 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
             return set(self._container.keys())
 
 
-class HTTPHeaderDictItemView(set[tuple[str, str]]):
+class HTTPHeaderDictItemView(typing.ItemsView[str, str]):
     """
     HTTPHeaderDict is unusual for a Mapping[str, str] in that it has two modes of
     address.
@@ -185,6 +185,7 @@ class HTTPHeaderDictItemView(set[tuple[str, str]]):
     _headers: HTTPHeaderDict
 
     def __init__(self, headers: HTTPHeaderDict) -> None:
+        super().__init__(headers)
         self._headers = headers
 
     def __len__(self) -> int:
@@ -452,7 +453,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             val = self._container[key.lower()]
             yield val[0], ", ".join(val[1:])
 
-    def items(self) -> HTTPHeaderDictItemView:  # type: ignore[override]
+    def items(self) -> HTTPHeaderDictItemView:
         return HTTPHeaderDictItemView(self)
 
     def _has_value_for_header(self, header_name: str, potential_value: str) -> bool:
