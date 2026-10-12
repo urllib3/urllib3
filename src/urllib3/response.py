@@ -581,8 +581,11 @@ class BaseHTTPResponse(io.IOBase):
     @retries.setter
     def retries(self, retries: Retry | None) -> None:
         # Override the request_url if retries has a redirect location.
-        if retries is not None and retries.history:
-            self.url = retries.history[-1].redirect_location
+        if retries is not None:
+            for retry in reversed(retries.history):
+                if retry.redirect_location is not None:
+                    self.url = retry.redirect_location
+                    break
         self._retries = retries
 
     def stream(
