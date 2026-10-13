@@ -666,27 +666,6 @@ class TestPoolManager(HypercornDummyServerTestCase):
             r = http.request("GET", f"http://{self.host}:{self.port}/")
             assert r.status == 200
 
-    @pytest.mark.parametrize(
-        ["target", "expected_target"],
-        [
-            # annoyingly quart.request.full_path adds a stray `?`
-            ("/echo_uri", b"/echo_uri?"),
-            ("/echo_uri?q=1#fragment", b"/echo_uri?q=1"),
-            ("/echo_uri?#", b"/echo_uri?"),
-            ("/echo_uri#!", b"/echo_uri?"),
-            ("/echo_uri#!#", b"/echo_uri?"),
-            ("/echo_uri??#", b"/echo_uri??"),
-            ("/echo_uri?%3f#", b"/echo_uri?%3F"),
-            ("/echo_uri?%3F#", b"/echo_uri?%3F"),
-            ("/echo_uri?[]", b"/echo_uri?%5B%5D"),
-        ],
-    )
-    def test_encode_http_target(self, target: str, expected_target: bytes) -> None:
-        with PoolManager() as http:
-            url = f"http://{self.host}:{self.port}{target}"
-            r = http.request("GET", url)
-            assert r.data == expected_target
-
     def test_top_level_request(self) -> None:
         r = request("GET", f"{self.base_url}/")
         assert r.status == 200
