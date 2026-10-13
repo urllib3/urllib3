@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+import threading
 import typing
 
 import pytest
@@ -124,6 +126,89 @@ class TestLRUContainer:
 
         d.clear()
         assert evicted_items == [0, 1, 2, 3, 4, 5]
+
+    @pytest.mark.parametrize("maxsize", [0, 1, 2, 5])
+    @pytest.mark.parametrize("seed", [0, 1, 2])
+    def test_operation_sequence(self, maxsize: int, seed: int) -> None:
+        disposed: list[int | None] = []
+        expected_disposed: list[int | None] = []
+        d: Container[int, int | None] = Container(maxsize, disposed.append)
+        # A list provides an independent model, ordered oldest to newest.
+        expected: list[tuple[int, int | None]] = []
+        rng = random.Random(seed)
+
+        for step in range(200):
+            operation = rng.choice(["write", "write", "read", "delete", "clear"])
+            key = rng.randrange(7)
+            index = next(
+                (i for i, (stored_key, _) in enumerate(expected) if stored_key == key),
+                None,
+            )
+            if operation == "write":
+                value = None if step % 3 == 0 else step
+                if index is not None:
+                    expected_disposed.append(expected.pop(index)[1])
+                expected.append((key, value))
+                if len(expected) > maxsize:
+                    expected_disposed.append(expected.pop(0)[1])
+                d[key] = value
+            elif operation == "read":
+                if index is None:
+                    with pytest.raises(KeyError):
+                        d[key]
+                else:
+                    item = expected.pop(index)
+                    expected.append(item)
+                    assert d[key] == item[1]
+            elif operation == "delete":
+                if index is None:
+                    with pytest.raises(KeyError):
+                        del d[key]
+                else:
+                    expected_disposed.append(expected.pop(index)[1])
+                    del d[key]
+            else:
+                expected_disposed.extend(value for _, value in expected)
+                expected.clear()
+                d.clear()
+
+            assert list(d._container.items()) == expected
+            assert len(d) == len(expected)
+            assert disposed == expected_disposed
+
+    @pytest.mark.parametrize("operation", ["evict", "overwrite", "delete", "clear"])
+    def test_disposal_releases_lock(self, operation: str) -> None:
+        d: Container[int, int] = Container(1)
+        d[0] = 0
+        disposed: list[int] = []
+
+        def dispose(value: int) -> None:
+            acquired: list[bool] = []
+
+            def acquire_from_another_thread() -> None:
+                success = d.lock.acquire(timeout=1)
+                acquired.append(success)
+                if success:
+                    d.lock.release()
+
+            # The lock is reentrant, so checking from this thread would miss
+            # a callback accidentally running inside the critical section.
+            worker = threading.Thread(target=acquire_from_another_thread, daemon=True)
+            worker.start()
+            worker.join(timeout=2)
+            assert acquired == [True]
+            disposed.append(value)
+
+        d.dispose_func = dispose
+        if operation == "evict":
+            d[1] = 1
+        elif operation == "overwrite":
+            d[0] = 1
+        elif operation == "delete":
+            del d[0]
+        else:
+            d.clear()
+        assert disposed == [0]
 
     def test_iter(self) -> None:
         d: Container[str, str] = Container()
