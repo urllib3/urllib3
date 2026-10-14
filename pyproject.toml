@@ -84,7 +84,7 @@ dev-base = [
     {include-group = "test-base"},
     "build>=1.2.2.post1",
     "coverage>=7.8.0",
-    "pytest-memray==1.8.0 ; python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'",
+    "pytest-memray>=1.11.0 ; python_full_version < '3.16' and implementation_name == 'cpython' and sys_platform != 'win32'",
     "towncrier>=24.8.0",
 ]
 dev = [
