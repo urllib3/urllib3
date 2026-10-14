@@ -349,7 +349,10 @@ class Retry:
             if retry_date_tuple is None:
                 raise InvalidHeader(f"Invalid Retry-After header: {retry_after}")
 
-            retry_date = email.utils.mktime_tz(retry_date_tuple)
+            try:
+                retry_date = email.utils.mktime_tz(retry_date_tuple)
+            except (ValueError, OverflowError):
+                raise InvalidHeader(f"Invalid Retry-After header: {retry_after}")
             seconds = retry_date - time.time()
 
         seconds = max(seconds, 0)
