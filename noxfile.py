@@ -69,6 +69,17 @@ def tests_impl(
         memray_supported = False
     elif sys.platform == "win32":
         memray_supported = False
+    else:
+        # Dependency markers may exclude the plugin for this interpreter.
+        memray_supported = (
+            session.run(
+                "python",
+                "-c",
+                "import importlib.util; print(importlib.util.find_spec('pytest_memray') is not None)",
+                silent=True,
+            ).strip()  # type: ignore[union-attr]
+            == "True"
+        )
 
     # Environment variables being passed to the pytest run.
     pytest_session_envvars = {
