@@ -23,6 +23,7 @@ from urllib3.exceptions import (
     NameResolutionError,
     NewConnectionError,
     ReadTimeoutError,
+    RetryAfterMaxExceededError,
 )
 from urllib3.response import HTTPResponse
 
@@ -68,6 +69,16 @@ class TestPickle:
             # reason is likely an exception so do string comparison instead
             assert str(exception._reason) == str(result._reason)  # type: ignore[attr-defined]
 
+    def test_retry_after_max_exceeded_pickle(self) -> None:
+        exception = RetryAfterMaxExceededError(3600, 60)
+
+        result = pickle.loads(pickle.dumps(exception))
+
+        assert isinstance(result, RetryAfterMaxExceededError)
+        assert result.retry_after == 3600
+        assert result.max_wait == 60
+        assert str(result) == str(exception)
+
     def test_invalid_chunk_length(self) -> None:
         response = HTTPResponse(
             body=io.BytesIO(b"abcdef"),
@@ -93,6 +104,14 @@ class TestFormat:
 
         assert "defects" in str(hpe)
         assert "unparsed_data" in str(hpe)
+
+    def test_retry_after_max_exceeded(self) -> None:
+        error = RetryAfterMaxExceededError(3600, 60)
+
+        assert (
+            str(error)
+            == "Retry-After requested 3600 seconds, exceeding the configured maximum of 60 seconds"
+        )
 
 
 class TestNewConnectionError:

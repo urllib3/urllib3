@@ -514,6 +514,7 @@ class PoolManager(RequestMethods):
         log.info("Redirecting %s -> %s", url, redirect_location)
 
         response.drain_conn()
+        retries.sleep_for_retry(response)
         return self.urlopen(method, redirect_location, **kw)
 
 
