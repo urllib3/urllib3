@@ -148,6 +148,37 @@ to a byte string representing the response content:
 .. note:: For responses of large or unknown length, it's sometimes better to
     :ref:`stream <stream>` the response.
 
+Closing Responses
+~~~~~~~~~~~~~~~~~
+
+Always close :class:`~response.HTTPResponse` objects (or use them as a context
+manager) so the underlying socket returns to the pool promptly. Leaving a
+response open can produce ``ResourceWarning: unclosed <ssl.SSLSocket ...>``
+under tools that enable unraisable-exception checks (for example
+``pytest -W error``).
+
+.. code-block:: python
+
+    import urllib3
+
+    http = urllib3.PoolManager()
+
+    with http.request("GET", "https://httpbin.org/status/404", preload_content=False) as resp:
+        print(resp.status)
+        # 404
+    # Connection is released when the ``with`` block exits.
+
+If an exception keeps a response alive (for example a test helper holding
+``exc_info`` that references a frame which still holds the response), break the
+cycle by closing the response explicitly or clearing the exception reference
+after the assertion. See also `Python's ResourceWarning documentation
+<https://docs.python.org/3/library/exceptions.html#ResourceWarning>`_.
+
+.. note::
+   The stdlib :func:`urllib.request.urlopen` / :exc:`urllib.error.HTTPError`
+   path is separate from urllib3. Prefer urllib3's context-manager form above
+   when you control the client.
+
 Using io Wrappers with Response Content
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
