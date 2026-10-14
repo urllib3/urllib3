@@ -181,6 +181,31 @@ class TestRetry:
         retry = retry.increment(method="GET")
         assert retry.get_backoff_time() == max_backoff
 
+    @pytest.mark.parametrize(
+        "factor, expected",
+        [(0.0, 0.0), (0.5, 120.0), (-0.5, 0.0), (2.0**-1024, 1.0)],
+    )
+    def test_backoff_large_retry_count(self, factor: float, expected: float) -> None:
+        # 2026-10-09: Unbounded retries must still respect the backoff cap.
+        retry = Retry(total=None, backoff_factor=factor)
+        for _ in range(1025):
+            retry = retry.increment(method="GET")
+        assert retry.get_backoff_time() == expected
+
+    def test_zero_backoff_large_retry_count_with_jitter(self) -> None:
+        # 2026-10-09: A disabled exponential term must retain its jitter.
+        history = (RequestHistory("GET", "/", None, 503, None),) * 1025
+        retry = Retry(backoff_factor=0.0, backoff_jitter=0.4, history=history)
+        with mock.patch("random.random", return_value=0.5):
+            assert retry.get_backoff_time() == 0.2
+
+    @pytest.mark.parametrize("factor, expected", [(2**1024, 120.0), (-(2**1024), 0.0)])
+    def test_backoff_large_integer_factor(self, factor: int, expected: float) -> None:
+        # 2026-10-09: Overflow handling must not reconvert a large integer factor.
+        retry = Retry(backoff_factor=factor)
+        retry = retry.increment(method="GET").increment(method="GET")
+        assert retry.get_backoff_time() == expected
+
     def test_configurable_retry_after_max(self) -> None:
         """Configurable retry after is computed correctly"""
         max_retry_after = Retry.DEFAULT_RETRY_AFTER_MAX
