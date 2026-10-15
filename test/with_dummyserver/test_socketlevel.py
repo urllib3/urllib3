@@ -1727,7 +1727,7 @@ class TestSSL(SocketDummyServerTestCase):
                                 b"Hello"
                             )
                         except (
-                            ssl.SSLEOFError,
+                            ssl.SSLError,
                             ConnectionResetError,
                             ConnectionAbortedError,
                             BrokenPipeError,
