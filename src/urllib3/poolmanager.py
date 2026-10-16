@@ -10,7 +10,13 @@ from urllib.parse import urljoin
 from ._collections import HTTPHeaderDict, RecentlyUsedContainer
 from ._request_methods import RequestMethods
 from .connection import ProxyConfig
-from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
+from .connectionpool import (
+    HTTPConnectionPool,
+    HTTPSConnectionPool,
+    _is_same_host,
+    _normalize_host,
+    port_by_scheme,
+)
 from .exceptions import (
     LocationValueError,
     MaxRetryError,
@@ -488,15 +494,19 @@ class PoolManager(RequestMethods):
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect)
 
-        # Strip headers marked as unsafe to forward to the redirected location.
-        # Check remove_headers_on_redirect to avoid a potential network call within
-        # conn.is_same_host() which may use socket.gethostbyname() in the future.
-        if retries.remove_headers_on_redirect and not conn.is_same_host(
-            redirect_location
+        # Strip headers marked as unsafe to forward to the redirected location,
+        # along with Host, which ProxyManager._set_proxy_headers() derives from
+        # the request URL and so has to be recomputed for the new location.
+        # 'conn' is the proxy's pool when forwarding through an HTTP proxy, so
+        # compare the request URL itself rather than asking the pool.
+        scheme = u.scheme or "http"
+        if kw["headers"] is not None and not _is_same_host(
+            redirect_location, scheme, _normalize_host(u.host, scheme=scheme), u.port
         ):
+            headers_to_remove = retries.remove_headers_on_redirect | {"host"}
             new_headers = kw["headers"].copy()
             for header in kw["headers"]:
-                if header.lower() in retries.remove_headers_on_redirect:
+                if header.lower() in headers_to_remove:
                     new_headers.pop(header, None)
             kw["headers"] = new_headers
 
