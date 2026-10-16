@@ -153,7 +153,7 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
             return set(self._container.keys())
 
 
-class HTTPHeaderDictItemView(set[tuple[str, str]]):
+class HTTPHeaderDictItemView(typing.ItemsView[str, str]):
     """
     HTTPHeaderDict is unusual for a Mapping[str, str] in that it has two modes of
     address.
@@ -185,6 +185,7 @@ class HTTPHeaderDictItemView(set[tuple[str, str]]):
     _headers: HTTPHeaderDict
 
     def __init__(self, headers: HTTPHeaderDict) -> None:
+        super().__init__(headers)
         self._headers = headers
 
     def __len__(self) -> int:
@@ -199,6 +200,49 @@ class HTTPHeaderDictItemView(set[tuple[str, str]]):
             if isinstance(passed_key, str) and isinstance(passed_val, str):
                 return self._headers._has_value_for_header(passed_key, passed_val)
         return False
+
+    @staticmethod
+    def _distinct_length(items: typing.AbstractSet[typing.Any]) -> int:
+        if isinstance(items, HTTPHeaderDictItemView):
+            return len(set(items))
+        return len(items)
+
+    # Length and iteration include repeated header lines. Set comparisons count
+    # distinct pairs while retaining the views' membership semantics.
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, typing.AbstractSet):
+            return NotImplemented
+        return self._distinct_length(self) == self._distinct_length(other) and all(
+            item in other for item in self
+        )
+
+    def __le__(self, other: typing.AbstractSet[typing.Any]) -> bool:
+        if not isinstance(other, typing.AbstractSet):
+            return NotImplemented
+        return self._distinct_length(self) <= self._distinct_length(other) and all(
+            item in other for item in self
+        )
+
+    def __lt__(self, other: typing.AbstractSet[typing.Any]) -> bool:
+        if not isinstance(other, typing.AbstractSet):
+            return NotImplemented
+        return self._distinct_length(self) < self._distinct_length(other) and all(
+            item in other for item in self
+        )
+
+    def __ge__(self, other: typing.AbstractSet[typing.Any]) -> bool:
+        if not isinstance(other, typing.AbstractSet):
+            return NotImplemented
+        return self._distinct_length(self) >= self._distinct_length(other) and all(
+            item in self for item in other
+        )
+
+    def __gt__(self, other: typing.AbstractSet[typing.Any]) -> bool:
+        if not isinstance(other, typing.AbstractSet):
+            return NotImplemented
+        return self._distinct_length(self) > self._distinct_length(other) and all(
+            item in self for item in other
+        )
 
 
 class HTTPHeaderDict(typing.MutableMapping[str, str]):
@@ -452,7 +496,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             val = self._container[key.lower()]
             yield val[0], ", ".join(val[1:])
 
-    def items(self) -> HTTPHeaderDictItemView:  # type: ignore[override]
+    def items(self) -> HTTPHeaderDictItemView:
         return HTTPHeaderDictItemView(self)
 
     def _has_value_for_header(self, header_name: str, potential_value: str) -> bool:
