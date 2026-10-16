@@ -1597,6 +1597,23 @@ class TestResponse:
         with pytest.raises(StopIteration):
             next(stream)
 
+    @pytest.mark.parametrize("read_method", ("read", "stream"))
+    def test_deflate2_decodes_whole_body_in_small_reads(self, read_method: str) -> None:
+        # Raw deflate has no trailer, so zlib can still hold output after the
+        # input is used up. It must be flushed at EOF, not dropped.
+        msg = b"abc" * 2000
+        fp = BytesIO(deflate2_compress(msg))
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+
+        if read_method == "read":
+            parts = iter(lambda: resp.read(64), b"")
+        else:
+            parts = resp.stream(64)
+
+        assert b"".join(parts) == msg
+
     def test_empty_stream(self) -> None:
         fp = BytesIO(b"")
         resp = HTTPResponse(fp, preload_content=False)
