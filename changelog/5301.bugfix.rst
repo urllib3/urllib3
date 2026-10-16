@@ -1,0 +1,1 @@
+Corrected ``HTTPResponse.readinto()`` to use the byte size of typed memoryviews and to reject invalid buffers before consuming response data.
