@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import operator
 import typing
 
 import pytest
@@ -414,10 +415,95 @@ class TestHTTPHeaderDict:
     def test_items_set_operations_after_mutation(self, d: HTTPHeaderDict) -> None:
         items: typing.AbstractSet[tuple[str, str]] = d.items()
         d["Cookie"] = "baz"
+        d.add("Cookie", "baz")
         d["Host"] = "example.com"
 
+        assert len(items) == 3
         assert items == {("Cookie", "baz"), ("Host", "example.com")}
         assert items & {("Cookie", "foo"), ("Cookie", "baz")} == {("Cookie", "baz")}
+
+    @pytest.mark.parametrize(
+        "other",
+        [
+            set(),
+            {("Cookie", "foo")},
+            {("Cookie", "foo"), ("Cookie", "bar")},
+            {("Cookie", "foo"), ("Cookie", "bar"), ("Host", "example.com")},
+            frozenset({("Cookie", "foo"), ("Cookie", "bar")}),
+            {"Cookie": "foo", "Host": "example.com"}.items(),
+            HTTPHeaderDict([("Cookie", "foo")] * 3 + [("Cookie", "bar")]).items(),
+        ],
+    )
+    def test_items_comparisons_with_identical_pairs(
+        self, other: typing.AbstractSet[tuple[str, str]]
+    ) -> None:
+        headers = HTTPHeaderDict(
+            [("Cookie", "foo"), ("Cookie", "foo"), ("Cookie", "bar")]
+        )
+        items = headers.items()
+        expected = {("Cookie", "foo"), ("Cookie", "bar")}
+        distinct_other = set(other)
+
+        assert len(items) == 3
+        assert list(items) == [
+            ("Cookie", "foo"),
+            ("Cookie", "foo"),
+            ("Cookie", "bar"),
+        ]
+        assert ("cookie", "foo") in items
+        for compare in (
+            operator.eq,
+            operator.ne,
+            operator.lt,
+            operator.le,
+            operator.gt,
+            operator.ge,
+        ):
+            assert compare(items, other) == compare(expected, distinct_other)
+            assert compare(other, items) == compare(distinct_other, expected)
+
+    def test_items_comparisons_preserve_case_insensitive_membership(self) -> None:
+        headers = HTTPHeaderDict([("Cookie", "foo"), ("Cookie", "foo")])
+        items = headers.items()
+        other = HTTPHeaderDict({"cookie": "foo"}).items()
+
+        assert ("cookie", "foo") in items
+        assert items == other
+        assert other == items
+        assert items <= other
+        assert other <= items
+        assert items >= other
+        assert other >= items
+        assert not items < other
+        assert not items > other
+
+    def test_items_comparisons_with_unhashable_other_values(self) -> None:
+        headers = HTTPHeaderDict([("Cookie", "foo"), ("Cookie", "foo")])
+        items = headers.items()
+        expected = {"Cookie": "foo"}.items()
+        other: typing.ItemsView[str, list[str]] = {"Other": []}.items()
+
+        for compare in (
+            operator.eq,
+            operator.ne,
+            operator.lt,
+            operator.le,
+            operator.gt,
+            operator.ge,
+        ):
+            assert compare(items, other) == compare(expected, other)
+            assert compare(other, items) == compare(other, expected)
+
+    @pytest.mark.parametrize(
+        "compare", [operator.lt, operator.le, operator.gt, operator.ge]
+    )
+    def test_items_ordering_requires_set(
+        self, compare: typing.Callable[[typing.Any, typing.Any], bool]
+    ) -> None:
+        items = HTTPHeaderDict({"Cookie": "foo"}).items()
+        with pytest.raises(TypeError):
+            compare(items, [("Cookie", "foo")])
+        assert items.__eq__([("Cookie", "foo")]) is NotImplemented
 
     def test_dict_conversion(self, d: HTTPHeaderDict) -> None:
         # Also tested in connectionpool, needs to preserve case

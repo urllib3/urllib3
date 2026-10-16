@@ -201,6 +201,49 @@ class HTTPHeaderDictItemView(typing.ItemsView[str, str]):
                 return self._headers._has_value_for_header(passed_key, passed_val)
         return False
 
+    @staticmethod
+    def _distinct_length(items: typing.AbstractSet[typing.Any]) -> int:
+        if isinstance(items, HTTPHeaderDictItemView):
+            return len(set(items))
+        return len(items)
+
+    # Length and iteration include repeated header lines. Set comparisons count
+    # distinct pairs while retaining the views' membership semantics.
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, typing.AbstractSet):
+            return NotImplemented
+        return self._distinct_length(self) == self._distinct_length(other) and all(
+            item in other for item in self
+        )
+
+    def __le__(self, other: typing.AbstractSet[typing.Any]) -> bool:
+        if not isinstance(other, typing.AbstractSet):
+            return NotImplemented
+        return self._distinct_length(self) <= self._distinct_length(other) and all(
+            item in other for item in self
+        )
+
+    def __lt__(self, other: typing.AbstractSet[typing.Any]) -> bool:
+        if not isinstance(other, typing.AbstractSet):
+            return NotImplemented
+        return self._distinct_length(self) < self._distinct_length(other) and all(
+            item in other for item in self
+        )
+
+    def __ge__(self, other: typing.AbstractSet[typing.Any]) -> bool:
+        if not isinstance(other, typing.AbstractSet):
+            return NotImplemented
+        return self._distinct_length(self) >= self._distinct_length(other) and all(
+            item in self for item in other
+        )
+
+    def __gt__(self, other: typing.AbstractSet[typing.Any]) -> bool:
+        if not isinstance(other, typing.AbstractSet):
+            return NotImplemented
+        return self._distinct_length(self) > self._distinct_length(other) and all(
+            item in self for item in other
+        )
+
 
 class HTTPHeaderDict(typing.MutableMapping[str, str]):
     """

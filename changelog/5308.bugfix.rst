@@ -1,2 +1,3 @@
 Fixed equality and set operations on ``HTTPHeaderDict.items()`` to use the headers
-in the live view, including duplicate header values.
+in the live view. Comparisons use distinct pairs even when identical header values
+repeat; iteration and length still include every header line.
