@@ -1150,6 +1150,7 @@ class HTTPResponse(BaseHTTPResponse):
             not data
             and len(self._decoded_buffer) == 0
             and not (self._decoder and self._decoder.has_unconsumed_tail)
+            and not (amt and decode_content and self._has_decoded_content)
         ):
             return data
 
