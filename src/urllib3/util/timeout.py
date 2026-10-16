@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import time
 import typing
 from enum import Enum
@@ -135,8 +136,8 @@ class Timeout:
         :param name: The name of the timeout attribute to validate. This is
             used to specify in error messages.
         :return: The validated and casted version of the given value.
-        :raises ValueError: If it is a numeric value less than or equal to
-            zero, or the type is not an integer, float, or None.
+        :raises ValueError: If it is NaN, a numeric value less than or equal
+            to zero, or the type is not an integer, float, or None.
         """
         if value is None or value is _DEFAULT_TIMEOUT:
             return value
@@ -147,12 +148,17 @@ class Timeout:
                 "be an int, float or None."
             )
         try:
-            float(value)
+            float_value = float(value)
         except (TypeError, ValueError):
             raise ValueError(
                 "Timeout value %s was %s, but it must be an "
                 "int, float or None." % (name, value)
             ) from None
+
+        if math.isnan(float_value):
+            raise ValueError(
+                f"Timeout value {name} was {value}, but it must not be NaN."
+            )
 
         try:
             if value <= 0:
