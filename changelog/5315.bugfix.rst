@@ -1,0 +1,3 @@
+Fixed ``HTTPResponse.read(amt)`` and ``stream(amt)`` returning the last member of a
+multi-member gzip response repeatedly when a read ended exactly at the end of a
+member.
