@@ -1,0 +1,4 @@
+Fixed ``PoolManager`` (and therefore ``urllib3.request()``) silently sending
+an empty body on 301/307/308 redirects when the request body is a file-like
+object. The original file position is now recorded and passed through redirect
+hops so the body can be rewound, matching ``HTTPConnectionPool`` behavior.
