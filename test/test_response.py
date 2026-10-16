@@ -470,6 +470,18 @@ class TestResponse:
 
         assert r.data == b"foofoofoo"
 
+    def test_decode_gzip_multi_member_with_max_length(self) -> None:
+        data = gzip.compress(b"x" * 1024) + gzip.compress(b"y" * 1024)
+
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "gzip"}, preload_content=False
+        )
+
+        assert r.read(1024) == b"x" * 1024
+        assert r.read(1024) == b"y" * 1024
+        assert r.read() == b""
+
     def test_decode_gzip_error(self) -> None:
         fp = BytesIO(b"foo")
         with pytest.raises(DecodeError):
