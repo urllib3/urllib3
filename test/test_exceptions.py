@@ -33,7 +33,7 @@ class TestPickle:
         [
             HTTPError(None),
             MaxRetryError(DUMMY_POOL, "", None),
-            MaxRetryError(DUMMY_POOL, "", Exception("Error occured")),
+            MaxRetryError(DUMMY_POOL, "", Exception("Error occurred")),
             LocationParseError(""),
             ConnectTimeoutError(None),
             HTTPError("foo"),

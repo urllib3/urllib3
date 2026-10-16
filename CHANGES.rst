@@ -350,7 +350,7 @@ Bugfixes
 Misc
 ----
 
-- Switched to uv for installing development dependecies. (`#3550 <https://github.com/urllib3/urllib3/issues/3550>`__)
+- Switched to uv for installing development dependencies. (`#3550 <https://github.com/urllib3/urllib3/issues/3550>`__)
 - Removed the ``multiple.intoto.jsonl`` asset from GitHub releases. Attestation of release files since v2.3.0 can be found on PyPI. (`#3566 <https://github.com/urllib3/urllib3/issues/3566>`__)
 
 
