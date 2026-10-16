@@ -1,0 +1,3 @@
+Fixed response header values keeping a raw CR or LF when a server uses bare-LF
+line endings. Such a line break is not an obsolete line fold, so each CR or LF
+left in a value is now replaced with a space as required by RFC 9110.
