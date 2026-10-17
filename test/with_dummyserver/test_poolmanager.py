@@ -551,7 +551,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
         # Test uses a list of headers to assert the order
         # that headers are sent in the request too.
 
-        headers = HTTPHeaderDict()
+        headers = HTTPHeaderDict[str]()
         headers.add("Foo", "bar")
         headers.add("Multi", "1")
         headers.add("Baz", "quux")
@@ -585,7 +585,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
             ]
 
     def test_merge_headers_with_pool_manager_headers(self) -> None:
-        headers = HTTPHeaderDict()
+        headers = HTTPHeaderDict[str]()
         headers.add("Cookie", "choc-chip")
         headers.add("Cookie", "oatmeal-raisin")
         orig = headers.copy()
@@ -595,7 +595,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
             r = http.request(
                 "GET",
                 f"{self.base_url}/multi_headers",
-                headers=typing.cast(HTTPHeaderDict, http.headers) | added_headers,
+                headers=typing.cast(HTTPHeaderDict[str], http.headers) | added_headers,
             )
             returned_headers = r.json()["headers"]
             assert returned_headers[-3:] == [
@@ -607,7 +607,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert http.headers == orig
 
     def test_headers_http_multi_header_multipart(self) -> None:
-        headers = HTTPHeaderDict()
+        headers = HTTPHeaderDict[str]()
         headers.add("Multi", "1")
         headers.add("Multi", "2")
         old_headers = headers.copy()
@@ -787,7 +787,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
             HTTPHeaderDict(cookie="foo, bar"),
         ],
     )
-    def test_request_with_json(self, headers: HTTPHeaderDict) -> None:
+    def test_request_with_json(self, headers: HTTPHeaderDict[str]) -> None:
         old_headers = None if headers is None else headers.copy()
         body = {"attribute": "value"}
         r = request(
