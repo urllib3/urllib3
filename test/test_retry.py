@@ -12,6 +12,7 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
     ResponseError,
+    RetryAfterError,
     SSLError,
 )
 from urllib3.response import HTTPResponse
@@ -192,6 +193,44 @@ class TestRetry:
         retry = Retry(retry_after_max=1)
         assert retry.parse_retry_after(str(1)) == 1
         assert retry.parse_retry_after(str(2)) == 1
+
+    def test_raise_on_retry_after(self) -> None:
+        retry = Retry(retry_after_max=60, raise_on_retry_after=True)
+        response = HTTPResponse(status=503, headers={"Retry-After": "3600"})
+        with mock.patch("time.sleep") as sleep:
+            with pytest.raises(RetryAfterError, match="3600.*60") as exc:
+                retry.sleep(response)
+        assert exc.value.retry_after == 3600
+        assert exc.value.retry_after_max == 60
+        sleep.assert_not_called()
+
+    @pytest.mark.parametrize("delay", [0, 1, 60])
+    def test_raise_on_retry_after_within_limit(self, delay: int) -> None:
+        retry = Retry(retry_after_max=60, raise_on_retry_after=True)
+        assert retry.parse_retry_after(str(delay)) == delay
+
+    def test_raise_on_retry_after_date(self) -> None:
+        retry = Retry(retry_after_max=60, raise_on_retry_after=True)
+        with mock.patch("time.time", return_value=0):
+            with pytest.raises(RetryAfterError) as exc:
+                retry.parse_retry_after("Thu, 01 Jan 1970 01:00:00 GMT")
+        assert exc.value.retry_after == 3600
+
+    def test_raise_on_retry_after_increment(self) -> None:
+        retry = Retry(retry_after_max=60, raise_on_retry_after=True).increment()
+        with pytest.raises(RetryAfterError):
+            retry.parse_retry_after("61")
+        assert retry.new(raise_on_retry_after=False).parse_retry_after("61") == 60
+
+    def test_raise_on_retry_after_ignored_header(self) -> None:
+        retry = Retry(
+            retry_after_max=60,
+            raise_on_retry_after=True,
+            respect_retry_after_header=False,
+        )
+        with mock.patch("time.sleep") as sleep:
+            retry.sleep(HTTPResponse(status=503, headers={"Retry-After": "3600"}))
+        sleep.assert_not_called()
 
     def test_backoff_jitter(self) -> None:
         """Backoff with jitter is computed correctly"""
