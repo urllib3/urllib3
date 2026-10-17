@@ -378,6 +378,21 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r._pool.num_connections == 1
             assert len(http.pools) == 1
 
+    def test_303_redirect_keeps_head_method(self) -> None:
+        # RFC 9110, Section 15.4.4: a 303 is followed with GET or HEAD,
+        # so a HEAD request must stay a HEAD request.
+        with PoolManager() as http:
+            response = http.request(
+                "HEAD",
+                f"{self.base_url}/redirect",
+                fields={
+                    "target": f"{self.base_url}/specific_method?method=HEAD",
+                    "status": "303 See Other",
+                },
+            )
+        assert response.status == 200
+        assert response.data == b""
+
     def test_303_redirect_makes_request_lose_body(self) -> None:
         with PoolManager() as http:
             response = http.request(
