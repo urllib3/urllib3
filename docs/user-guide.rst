@@ -467,6 +467,49 @@ verification and will raise :class:`~exceptions.SSLError` if verification fails:
     at ``/etc/ssl/certs/ca-certificates.crt``. Other operating systems can
     be `difficult <https://stackoverflow.com/questions/10095676/openssl-reasonable-default-for-trusted-ca-certificates>`_.
 
+Verifying a Different Hostname
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default the certificate presented by the server must be valid for the host
+you connect to. Use ``assert_hostname`` when the certificate is issued for a
+different name, for example when connecting to a server by IP address. Pass the
+name to check, or ``False`` to turn the hostname check off while still
+verifying the certificate chain:
+
+.. code-block:: python
+
+    import certifi
+    import urllib3
+
+    http = urllib3.PoolManager(
+        ca_certs=certifi.where(),
+        assert_hostname="example.com"
+    )
+
+    http.request("GET", "https://203.0.113.10/")
+
+Pinning a Certificate
+~~~~~~~~~~~~~~~~~~~~~
+
+Use ``assert_fingerprint`` to only accept a server whose certificate matches a
+known fingerprint. It is the hexadecimal digest of the DER-encoded certificate,
+optionally separated by colons, and may be an MD5 (32 digits), SHA-1 (40
+digits) or SHA-256 (64 digits) digest. The hash function is picked from the
+length of the fingerprint:
+
+.. code-block:: python
+
+    import urllib3
+
+    http = urllib3.PoolManager(
+        assert_fingerprint="AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:"
+                           "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99"
+    )
+
+A mismatch raises :class:`~exceptions.SSLError`. When ``assert_fingerprint`` is
+set the hostname is not checked, because the pinned certificate already
+identifies the server. Prefer SHA-256, as MD5 and SHA-1 are weak.
+
 Using Timeouts
 --------------
 
