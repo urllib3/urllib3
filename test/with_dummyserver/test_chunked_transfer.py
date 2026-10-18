@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import array
 import io
 import socket
 import typing
@@ -139,6 +140,17 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             send_body(),
             expected_data=b"thisshouldbeonechunk\r\n\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\xc3\xbf",
         )
+
+    def test_typed_buffer_body(self) -> None:
+        # The chunk size has to be a number of bytes, not of elements.
+        data = array.array("I", [0x41414141, 0x42424242])
+        self._test_body(
+            typing.cast(bytes, memoryview(data)), expected_data=data.tobytes()
+        )
+
+    def test_multidimensional_buffer_body(self) -> None:
+        body = memoryview(b"AAAABBBB").cast("B", shape=[2, 4])
+        self._test_body(typing.cast(bytes, body), expected_data=b"AAAABBBB")
 
     def test_empty_body(self) -> None:
         self._test_body(None)
