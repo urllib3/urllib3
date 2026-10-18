@@ -1,0 +1,1 @@
+Documented ``assert_hostname`` and ``assert_fingerprint`` in the Certificate Verification section of the user guide.
