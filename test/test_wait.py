@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 import signal
 import threading
 import time
@@ -100,8 +101,8 @@ def test_wait_for_socket(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
 
 # ``select.poll()`` takes its timeout as a C ``int`` of milliseconds, and
 # ``select.select()`` rejects timeouts that don't fit in a ``time_t``. Both
-# overflow well below the timeouts that ``Timeout`` accepts, so any value past
-# these thresholds has to wait forever rather than raise.
+# overflow well below the timeouts that ``Timeout`` accepts, so a value past
+# these thresholds is clamped rather than raised on.
 FOREVER_SECONDS = 1e9
 
 
@@ -116,6 +117,11 @@ def test_wait_for_socket_timeout_too_large(
     assert wfs(a, read=True, timeout=float("inf"))
 
 
+@pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="Windows rejects socket timeouts that don't fit in a 32-bit timeval, "
+    "so settimeout() raises before wait_for_read() is called",
+)
 def test_wait_for_read_timeout_too_large(spair: TYPE_SOCKET_PAIR) -> None:
     # ``HTTPConnection.is_connected()`` and the pyOpenSSL contrib call
     # ``wait_for_read(sock, sock.gettimeout())``, so a socket configured with a
