@@ -958,13 +958,22 @@ class TestUtil:
             ({"connect": 0}, "less than or equal"),
             ({"read": "foo"}, "int, float or None"),
             ({"read": "1.0"}, "int, float or None"),
+            ({"connect": float("nan")}, "infinite or NaN"),
+            ({"read": float("nan")}, "infinite or NaN"),
+            ({"total": float("nan")}, "infinite or NaN"),
+            ({"connect": float("inf")}, "infinite or NaN"),
         ],
     )
     def test_invalid_timeouts(
-        self, kwargs: dict[str, int | bool], message: str
+        self, kwargs: dict[str, int | bool | float], message: str
     ) -> None:
         with pytest.raises(ValueError, match=message):
             Timeout(**kwargs)
+
+    def test_finite_float_timeout(self) -> None:
+        timeout = Timeout(connect=1.5, read=2.5, total=3.5)
+        assert timeout.connect_timeout == 1.5
+        assert timeout.read_timeout == 2.5
 
     @patch("time.monotonic")
     def test_timeout(self, time_monotonic: MagicMock) -> None:
