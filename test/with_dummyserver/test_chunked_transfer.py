@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import array
+import ctypes
 import io
 import socket
 import typing
@@ -151,6 +152,23 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
     def test_multidimensional_buffer_body(self) -> None:
         body = memoryview(b"AAAABBBB").cast("B", shape=[2, 4])
         self._test_body(typing.cast(bytes, body), expected_data=b"AAAABBBB")
+
+    def test_zero_byte_buffer_chunk_is_skipped(self) -> None:
+        # A buffer can have a non-zero length but hold no bytes. It must be
+        # skipped, since a zero-size chunk would end the body early.
+        class Empty(ctypes.Structure):
+            _fields_: typing.ClassVar[list[tuple[str, type]]] = []
+
+        empty = (Empty * 2)()
+        assert len(empty) == 2 and memoryview(empty).nbytes == 0
+        chunks = [b"foo", typing.cast(bytes, empty), b"bar"]
+
+        self.start_chunked_handler()
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            pool.urlopen("GET", "/", body=chunks, chunked=True)
+
+        body = self.buffer.split(b"\r\n\r\n", 1)[1]
+        assert body == b"3\r\nfoo\r\n3\r\nbar\r\n0\r\n\r\n"
 
     def test_empty_body(self) -> None:
         self._test_body(None)
