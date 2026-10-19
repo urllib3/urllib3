@@ -7,6 +7,33 @@ from functools import partial
 __all__ = ["wait_for_read", "wait_for_write"]
 
 
+# ``select.select()`` takes a timeout that has to fit in a ``time_t`` and
+# ``select.poll()`` takes one that has to fit in a C ``int`` of milliseconds.
+# Both raise ``OverflowError`` for anything larger rather than waiting, so a
+# timeout past these limits is clamped. Both limits are far longer than any
+# real request, so clamping is indistinguishable from waiting.
+_POLL_MAX_MILLISECONDS = 2147483647
+_SELECT_MAX_SECONDS = 2147483
+
+
+def _poll_timeout(timeout: float | None) -> int | None:
+    """Convert seconds to milliseconds, clamped to what ``poll()`` accepts."""
+    if timeout is None:
+        return None
+    if timeout * 1000 > _POLL_MAX_MILLISECONDS:
+        return _POLL_MAX_MILLISECONDS
+    return int(timeout * 1000)
+
+
+def _select_timeout(timeout: float | None) -> float | None:
+    """Clamp seconds to what ``select()`` accepts."""
+    if timeout is None:
+        return None
+    if timeout > _SELECT_MAX_SECONDS:
+        return _SELECT_MAX_SECONDS
+    return timeout
+
+
 # How should we wait on sockets?
 #
 # There are two types of APIs you can use for waiting on sockets: the fancy
@@ -50,7 +77,7 @@ def select_wait_for_socket(
     # sockets for both conditions. (The stdlib selectors module does the same
     # thing.)
     fn = partial(select.select, rcheck, wcheck, wcheck)
-    rready, wready, xready = fn(timeout)
+    rready, wready, xready = fn(_select_timeout(timeout))
     return bool(rready or wready or xready)
 
 
@@ -72,9 +99,7 @@ def poll_wait_for_socket(
 
     # For some reason, poll() takes timeout in milliseconds
     def do_poll(t: float | None) -> list[tuple[int, int]]:
-        if t is not None:
-            t *= 1000
-        return poll_obj.poll(t)
+        return poll_obj.poll(_poll_timeout(t))
 
     return bool(do_poll(timeout))
 

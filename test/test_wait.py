@@ -98,6 +98,35 @@ def test_wait_for_socket(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
         wfs(b, read=True)
 
 
+# ``select.poll()`` takes its timeout as a C ``int`` of milliseconds, and
+# ``select.select()`` rejects timeouts that don't fit in a ``time_t``. Both
+# overflow well below the timeouts that ``Timeout`` accepts, so any value past
+# these thresholds has to wait forever rather than raise.
+FOREVER_SECONDS = 1e9
+
+
+@pytest.mark.parametrize("wfs", variants)
+def test_wait_for_socket_timeout_too_large(
+    wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR
+) -> None:
+    a, b = spair
+    b.send(b"x")
+
+    assert wfs(a, read=True, timeout=FOREVER_SECONDS)
+    assert wfs(a, read=True, timeout=float("inf"))
+
+
+def test_wait_for_read_timeout_too_large(spair: TYPE_SOCKET_PAIR) -> None:
+    # ``HTTPConnection.is_connected()`` and the pyOpenSSL contrib call
+    # ``wait_for_read(sock, sock.gettimeout())``, so a socket configured with a
+    # long timeout has to be waitable.
+    a, b = spair
+    a.settimeout(FOREVER_SECONDS)
+    b.send(b"x")
+
+    assert wait_for_read(a, a.gettimeout())
+
+
 def test_wait_for_read_write(spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
 

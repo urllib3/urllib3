@@ -1,0 +1,4 @@
+Fixed ``OverflowError`` from ``urllib3.util.wait_for_read()``,
+``wait_for_write()`` and ``wait_for_socket()`` when the timeout exceeded what
+``select.poll()`` or ``select.select()`` accepts. Socket timeouts are now
+clamped instead of raising.
