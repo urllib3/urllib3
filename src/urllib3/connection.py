@@ -20,7 +20,7 @@ if typing.TYPE_CHECKING:
     from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
     from .util.ssltransport import SSLTransport
 
-from ._collections import HTTPHeaderDict
+from ._collections import _TYPE_HEADER_MAPPING, HTTPHeaderDict
 from .http2 import probe as http2_probe
 from .util.response import assert_header_parsing
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
@@ -267,13 +267,15 @@ class HTTPConnection(_HTTPConnection):
         self,
         host: str,
         port: int | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         scheme: str = "http",
     ) -> None:
         if scheme not in ("http", "https"):
             raise ValueError(
                 f"Invalid proxy scheme for tunneling: {scheme!r}, must be either 'http' or 'https'"
             )
+        if headers is not None:
+            headers = HTTPHeaderDict(headers)
         super().set_tunnel(host, port=port, headers=headers)
         self._tunnel_scheme = scheme
 
@@ -478,7 +480,9 @@ class HTTPConnection(_HTTPConnection):
             method, url, skip_host=skip_host, skip_accept_encoding=skip_accept_encoding
         )
 
-    def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
+    def putheader(  # type: ignore[override]
+        self, header: str | bytes, *values: str | bytes
+    ) -> None:
         """"""
         if len(values) == 1:
             # Avoid generator creation, any(), and argument unpacking
@@ -495,7 +499,7 @@ class HTTPConnection(_HTTPConnection):
 
         if not skip_header:
             super().putheader(header, *values)
-        elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
+        elif to_str(header.lower(), "latin-1") not in SKIPPABLE_HEADERS:
             skippable_headers = "', '".join(
                 [str.title(header) for header in sorted(SKIPPABLE_HEADERS)]
             )
@@ -510,7 +514,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
         *,
         chunked: bool = False,
         preload_content: bool = True,
@@ -540,7 +544,7 @@ class HTTPConnection(_HTTPConnection):
 
         if headers is None:
             headers = {}
-        header_keys = frozenset(to_str(k.lower()) for k in headers)
+        header_keys = frozenset(to_str(k.lower(), "latin-1") for k in headers)
         skip_accept_encoding = "accept-encoding" in header_keys
         skip_host = "host" in header_keys
         self.putrequest(
@@ -607,7 +611,7 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: _TYPE_HEADER_MAPPING | None = None,
     ) -> None:
         """
         Alternative to the common request method, which sends the
