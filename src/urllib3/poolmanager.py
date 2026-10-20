@@ -125,7 +125,12 @@ def _default_key_normalizer(
     # Since we mutate the dictionary, make a copy first
     context = request_context.copy()
     context["scheme"] = context["scheme"].lower()
-    context["host"] = context["host"].lower()
+    # Only the address portion of a scoped IPv6 host is case-insensitive.
+    address, separator, zone = context["host"].partition("%")
+    if separator and ":" in address:
+        context["host"] = f"{address.lower()}{separator}{zone}"
+    else:
+        context["host"] = context["host"].lower()
 
     # These are both dictionaries and need to be transformed into frozensets
     for key in ("headers", "_proxy_headers", "_socks_options"):
@@ -460,7 +465,9 @@ class PoolManager(RequestMethods):
             kw["headers"] = self.headers
 
         if self._proxy_requires_url_absolute_form(u):
-            response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
+            # Strip the fragment here but let the connection pool normalize the URL
+            # to avoid decoding IPv6 zone identifiers twice.
+            response = conn.urlopen(method, url.split("#", 1)[0], **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 
@@ -476,6 +483,11 @@ class PoolManager(RequestMethods):
             method = "GET"
             # And lose the body not to transfer anything sensitive.
             kw["body"] = None
+            # The body is gone, so the state that describes it has to go too:
+            # there is nothing left to frame with chunked transfer encoding,
+            # and nothing left to rewind.
+            kw["chunked"] = False
+            kw["body_pos"] = None
             kw["headers"] = HTTPHeaderDict(kw["headers"])._prepare_for_method_change()
 
         retries = kw.get("retries", response.retries)
@@ -593,6 +605,9 @@ class ProxyManager(PoolManager):
         if proxy.scheme not in ("http", "https"):
             raise ProxySchemeUnknown(proxy.scheme)
 
+        # Keep the deprecated ssl_context fallback on the manager for
+        # compatibility, while passing only explicit proxy policy to connections.
+        self.proxy_ssl_context = proxy_ssl_context
         if (
             use_forwarding_for_https
             and proxy.scheme == "https"
@@ -605,8 +620,8 @@ class ProxyManager(PoolManager):
                 FutureWarning,
                 stacklevel=2,
             )
-            if proxy_ssl_context is None:
-                proxy_ssl_context = connection_pool_kw.get("ssl_context")
+            if self.proxy_ssl_context is None:
+                self.proxy_ssl_context = connection_pool_kw.get("ssl_context")
 
         if proxy.port is None:
             port = port_by_scheme.get(proxy.scheme, 80)
@@ -614,7 +629,6 @@ class ProxyManager(PoolManager):
 
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
-        self.proxy_ssl_context = proxy_ssl_context
         self.proxy_config = ProxyConfig(
             proxy_ssl_context,
             use_forwarding_for_https,

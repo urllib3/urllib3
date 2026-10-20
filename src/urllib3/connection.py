@@ -77,6 +77,37 @@ port_by_scheme = {"http": 80, "https": 443}
 RECENT_DATE = datetime.date(2025, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+# Starting the optional OWS match at the beginning of a whitespace run avoids
+# quadratic backtracking for long header values.
+_OBSOLETE_FOLD_RE = re.compile(r"(?:(?<![ \t])[ \t]+)?\r\n[ \t]+")
+
+
+def _normalize_header_value(value: str) -> str:
+    if "\r\n" not in value:
+        return value
+    return _OBSOLETE_FOLD_RE.sub(" ", value)
+
+
+def _normalize_header_values(
+    message: http.client.HTTPMessage,
+) -> list[tuple[str, str]]:
+    header_items = message.items()
+    headers_changed = False
+    for index, (name, value) in enumerate(header_items):
+        normalized_value = _normalize_header_value(value)
+        if normalized_value != value:
+            header_items[index] = (name, normalized_value)
+            headers_changed = True
+
+    if headers_changed:
+        # Keep the original message in sync for downstream consumers such as
+        # cookie jars while preserving its identity and header ordering.
+        for name, _ in header_items:
+            del message[name]
+        for name, value in header_items:
+            message[name] = value
+
+    return header_items
 
 
 class HTTPConnection(_HTTPConnection):
@@ -88,6 +119,10 @@ class HTTPConnection(_HTTPConnection):
     Accepted parameters include:
 
     - ``source_address``: Set the source address for the current connection.
+    - ``blocksize``: Read size for file-like request bodies, in bytes. Defaults to
+      16384 (16 KiB). Does not split or resize elements of iterable bodies.
+      Larger values may improve upload throughput but use more memory per active
+      upload. See :ref:`upload_buffering` for tuning guidance.
     - ``socket_options``: Set specific options on the underlying socket. If not specified, then
       defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
       Nagle's algorithm (sets TCP_NODELAY to 1) unless the connection is behind a proxy.
@@ -292,7 +327,7 @@ class HTTPConnection(_HTTPConnection):
 
                 response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
                 try:
-                    (version, code, message) = response._read_status()  # type: ignore[attr-defined]
+                    version, code, message = response._read_status()  # type: ignore[attr-defined]
 
                     if code != http.HTTPStatus.OK:
                         self.close()
@@ -346,7 +381,7 @@ class HTTPConnection(_HTTPConnection):
 
                 response = self.response_class(self.sock, method=self._method)  # type: ignore[attr-defined]
                 try:
-                    (version, code, message) = response._read_status()  # type: ignore[attr-defined]
+                    version, code, message = response._read_status()  # type: ignore[attr-defined]
 
                     self._raw_proxy_headers = http.client._read_headers(response.fp)  # type: ignore[attr-defined]
 
@@ -445,7 +480,20 @@ class HTTPConnection(_HTTPConnection):
 
     def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
-        if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
+        if len(values) == 1:
+            # Avoid generator creation, any(), and argument unpacking
+            # on the common single-value path.
+            value = values[0]
+            if not (isinstance(value, str) and value == SKIP_HEADER):
+                super().putheader(header, value)
+                return
+            skip_header = True
+        else:
+            skip_header = any(
+                isinstance(value, str) and value == SKIP_HEADER for value in values
+            )
+
+        if not skip_header:
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
             skippable_headers = "', '".join(
@@ -616,7 +664,8 @@ class HTTPConnection(_HTTPConnection):
                 exc_info=True,
             )
 
-        headers = HTTPHeaderDict(httplib_response.msg.items())
+        header_items = _normalize_header_values(httplib_response.msg)
+        headers = HTTPHeaderDict(header_items)
 
         response = HTTPResponse(
             body=httplib_response,
@@ -838,30 +887,30 @@ class HTTPSConnection(HTTPConnection):
             # fall back to using the connection's SSL context until
             # urllib3 v3.0. Appropriate warning is emitted in
             # ``ProxyManager.__init__``.
+            wrapped_socket: ssl.SSLSocket | SSLTransport
             if self.proxy_is_forwarding and self.proxy_config is not None:
-                ssl_context = self.proxy_config.ssl_context
+                wrapped_socket = self._connect_tls_proxy(self.host, sock)
+                is_verified = self.proxy_is_verified is True
             else:
-                ssl_context = self.ssl_context
-
-            sock_and_verified = _ssl_wrap_socket_and_match_hostname(
-                sock=sock,
-                cert_reqs=self.cert_reqs,
-                ssl_version=self.ssl_version,
-                ssl_minimum_version=self.ssl_minimum_version,
-                ssl_maximum_version=self.ssl_maximum_version,
-                ca_certs=self.ca_certs,
-                ca_cert_dir=self.ca_cert_dir,
-                ca_cert_data=self.ca_cert_data,
-                cert_file=self.cert_file,
-                key_file=self.key_file,
-                key_password=self.key_password,
-                server_hostname=server_hostname_rm_dot,
-                ssl_context=ssl_context,
-                tls_in_tls=tls_in_tls,
-                assert_hostname=self.assert_hostname,
-                assert_fingerprint=self.assert_fingerprint,
-            )
-            self.sock = sock_and_verified.socket
+                wrapped_socket, is_verified = _ssl_wrap_socket_and_match_hostname(
+                    sock=sock,
+                    cert_reqs=self.cert_reqs,
+                    ssl_version=self.ssl_version,
+                    ssl_minimum_version=self.ssl_minimum_version,
+                    ssl_maximum_version=self.ssl_maximum_version,
+                    ca_certs=self.ca_certs,
+                    ca_cert_dir=self.ca_cert_dir,
+                    ca_cert_data=self.ca_cert_data,
+                    cert_file=self.cert_file,
+                    key_file=self.key_file,
+                    key_password=self.key_password,
+                    server_hostname=server_hostname_rm_dot,
+                    ssl_context=self.ssl_context,
+                    tls_in_tls=tls_in_tls,
+                    assert_hostname=self.assert_hostname,
+                    assert_fingerprint=self.assert_fingerprint,
+                )
+            self.sock = wrapped_socket
 
         # If an error occurs during connection/handshake we may need to release
         # our lock so another connection can probe the origin.
@@ -882,7 +931,7 @@ class HTTPSConnection(HTTPConnection):
         # If this connection doesn't know if the origin supports HTTP/2
         # we report back to the HTTP/2 probe our result.
         if target_supports_http2 is None:
-            supports_http2 = sock_and_verified.socket.selected_alpn_protocol() == "h2"
+            supports_http2 = wrapped_socket.selected_alpn_protocol() == "h2"
             http2_probe.set_and_release(
                 host=probe_http2_host,
                 port=probe_http2_port,
@@ -896,7 +945,7 @@ class HTTPSConnection(HTTPConnection):
         if self.proxy_is_forwarding:
             self.is_verified = False
         else:
-            self.is_verified = sock_and_verified.is_verified
+            self.is_verified = is_verified
 
         # If there's a proxy to be connected to we are fully connected.
         # This is set twice (once above and here) due to forwarding proxies
@@ -906,24 +955,47 @@ class HTTPSConnection(HTTPConnection):
         # Set `self.proxy_is_verified` unless it's already set while
         # establishing a tunnel.
         if self._has_connected_to_proxy and self.proxy_is_verified is None:
-            self.proxy_is_verified = sock_and_verified.is_verified
+            self.proxy_is_verified = is_verified
 
     def _connect_tls_proxy(self, hostname: str, sock: socket.socket) -> ssl.SSLSocket:
         """
-        Establish a TLS connection to the proxy using the provided SSL context.
+        Establish a TLS connection to the proxy using proxy-specific policy.
         """
-        # `_connect_tls_proxy` is called when self._tunnel_host is truthy.
         proxy_config = typing.cast(ProxyConfig, self.proxy_config)
-        ssl_context = proxy_config.ssl_context
+        proxy_ssl_context = proxy_config.ssl_context
+
+        ssl_context: ssl.SSLContext | None
+        cert_reqs: int | str | None
+        if proxy_ssl_context is not None:
+            # Prefer the proxy's cert policy for the proxy connection
+            ssl_context = proxy_ssl_context
+            cert_reqs = proxy_ssl_context.verify_mode
+            ca_certs = None
+            ca_cert_dir = None
+            ca_cert_data = None
+            ssl_version = None
+            ssl_minimum_version = None
+            ssl_maximum_version = None
+        else:
+            # Otherwise we inherit the pool's cert policies
+            ssl_context = self.ssl_context if self.proxy_is_forwarding else None
+            cert_reqs = self.cert_reqs
+            ca_certs = self.ca_certs
+            ca_cert_dir = self.ca_cert_dir
+            ca_cert_data = self.ca_cert_data
+            ssl_version = self.ssl_version
+            ssl_minimum_version = self.ssl_minimum_version
+            ssl_maximum_version = self.ssl_maximum_version
+
         sock_and_verified = _ssl_wrap_socket_and_match_hostname(
             sock,
-            cert_reqs=self.cert_reqs,
-            ssl_version=self.ssl_version,
-            ssl_minimum_version=self.ssl_minimum_version,
-            ssl_maximum_version=self.ssl_maximum_version,
-            ca_certs=self.ca_certs,
-            ca_cert_dir=self.ca_cert_dir,
-            ca_cert_data=self.ca_cert_data,
+            cert_reqs=cert_reqs,
+            ssl_version=ssl_version,
+            ssl_minimum_version=ssl_minimum_version,
+            ssl_maximum_version=ssl_maximum_version,
+            ca_certs=ca_certs,
+            ca_cert_dir=ca_cert_dir,
+            ca_cert_data=ca_cert_data,
             server_hostname=hostname,
             ssl_context=ssl_context,
             assert_hostname=proxy_config.assert_hostname,

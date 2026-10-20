@@ -263,7 +263,7 @@ class TestRetry:
         assert not retry.is_retry("GET", status_code=418)
 
     def test_allowed_methods_with_status_forcelist(self) -> None:
-        # Falsey allowed_methods means to retry on any method.
+        # None allowed_methods means to retry on any method.
         retry = Retry(status_forcelist=[500], allowed_methods=None)
         assert retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
@@ -272,6 +272,24 @@ class TestRetry:
         retry = Retry(status_forcelist=[500], allowed_methods=["POST"])
         assert not retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
+
+    def test_false_allowed_methods(self) -> None:
+        # False is also accepted to mean retry on any method, since 1.26.x
+        retry = Retry(status_forcelist=[500], allowed_methods=False)  # type: ignore[arg-type]
+        assert retry.is_retry("POST", status_code=500)
+
+    def test_empty_allowed_methods(self) -> None:
+        with pytest.warns(FutureWarning) as records:
+            retry = Retry(status_forcelist=[500], allowed_methods=[])
+        assert retry.is_retry("GET", status_code=500)
+        msg = (
+            "Using an empty collection for 'allowed_methods' option to retry "
+            "on any verb is deprecated and will skip retries for all verbs "
+            "in urllib3 v3.0. Instead use Retry(..., allowed_methods=None)."
+        )
+        record = records[0]
+        assert isinstance(record.message, Warning)
+        assert record.message.args[0] == msg
 
     def test_exhausted(self) -> None:
         assert not Retry(0).is_exhausted()

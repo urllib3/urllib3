@@ -70,8 +70,10 @@ __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 _openssl_versions: dict[int, int] = {
     util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
     util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
-    ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
+
+if hasattr(ssl, "PROTOCOL_TLSv1") and hasattr(OpenSSL.SSL, "TLSv1_METHOD"):
+    _openssl_versions[ssl.PROTOCOL_TLSv1] = OpenSSL.SSL.TLSv1_METHOD
 
 if hasattr(ssl, "PROTOCOL_TLSv1_1") and hasattr(OpenSSL.SSL, "TLSv1_1_METHOD"):
     _openssl_versions[ssl.PROTOCOL_TLSv1_1] = OpenSSL.SSL.TLSv1_1_METHOD
@@ -510,7 +512,15 @@ class PyOpenSSLContext:
                 # versions because set_passwd_cb() became deprecated in 26.3.0.
                 if int(OpenSSL.__version__.split(".")[0]) >= 26:
                     with open(keyfile or certfile, "rb") as key_file:
-                        private_key = load_pem_private_key(key_file.read(), password)
+                        key_data = key_file.read()
+                    try:
+                        private_key = load_pem_private_key(key_data, password)
+                    except TypeError:
+                        # Match SSLContext by ignoring passwords supplied
+                        # for unencrypted keys.
+                        # Incorrect passwords for encrypted keys raise
+                        # ValueError instead.
+                        private_key = load_pem_private_key(key_data, None)
                     # cryptography's loader returns a wider private-key union
                     # than pyOpenSSL accepts, so we add `type: ignore` here.
                     self._ctx.use_privatekey(private_key)  # type: ignore[arg-type]
