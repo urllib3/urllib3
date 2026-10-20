@@ -1,3 +1,3 @@
-Fixed a raw deflate response body being truncated by ``HTTPResponse.read(amt)``
-and ``HTTPResponse.stream(amt)``, which returned at EOF without flushing the
-decoder.
+Fixed ``HTTPResponse.read(amt)`` and ``HTTPResponse.stream(amt)`` not flushing
+the decoder at EOF, which truncated raw deflate bodies and let a truncated zstd
+body end without ``DecodeError``.

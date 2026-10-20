@@ -696,6 +696,32 @@ class TestResponse:
 
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_incomplete_read_with_amt(self, data: bytes) -> None:
+        data = zstd_compress(data)
+        fp = BytesIO(data[:-1])
+
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        # a truncated body must raise, not look like a clean EOF
+        with pytest.raises(DecodeError):
+            while r.read(64):
+                pass
+
+    @onlyZstd()
+    def test_decode_zstd_empty_body_read_with_amt(self) -> None:
+        # A decoder that never got data has nothing to flush: this is an
+        # empty body, not a truncated one.
+        r = HTTPResponse(
+            BytesIO(b""), headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        assert r.read(64) == b""
+        assert r.read(64) == b""
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", decode_param_set)
     def test_decode_zstd_incomplete_read1(self, data: bytes) -> None:
         data = zstd_compress(data)
         fp = BytesIO(data[:-1])
@@ -1039,6 +1065,22 @@ class TestResponse:
         assert r.read(9 * 3) == b"foobarbaz" * 3
         assert r.read(9 * 37) == b"foobarbaz" * 37
         assert r.read() == b""
+
+    def test_read_multi_decoding_raw_deflate_gzip_in_small_reads(self) -> None:
+        # EOF can be found while filling the buffer. The decoder must be
+        # flushed there too, or read() returns b"" before the body is done.
+        msg = b"abc" * 10
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(deflate2_compress(msg))
+        data += compress.flush()
+
+        resp = HTTPResponse(
+            BytesIO(data),
+            headers={"content-encoding": "deflate, gzip"},
+            preload_content=False,
+        )
+
+        assert b"".join(iter(lambda: resp.read(1), b"")) == msg
 
     def test_read_multi_decoding_too_many_links(self) -> None:
         fp = BytesIO(b"foo")
