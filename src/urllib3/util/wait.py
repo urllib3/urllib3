@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import select
 import socket
 from functools import partial
@@ -17,12 +18,19 @@ _SELECT_MAX_SECONDS = 2147483
 
 
 def _poll_timeout(timeout: float | None) -> int | None:
-    """Convert seconds to milliseconds, clamped to what ``poll()`` accepts."""
+    """Convert seconds to milliseconds, clamped to what ``poll()`` accepts.
+
+    ``poll()`` rounds a fractional millisecond up. Truncating with ``int()``
+    turned a positive sub-millisecond timeout into ``0``, which returns
+    immediately. ``timeout=0`` stays ``0`` and ``timeout=None`` stays indefinite.
+    """
     if timeout is None:
         return None
-    if timeout * 1000 > _POLL_MAX_MILLISECONDS:
+    # Check before ``math.ceil``: ``ceil(inf)`` raises ``OverflowError``.
+    milliseconds = timeout * 1000
+    if milliseconds > _POLL_MAX_MILLISECONDS:
         return _POLL_MAX_MILLISECONDS
-    return int(timeout * 1000)
+    return math.ceil(milliseconds)
 
 
 def _select_timeout(timeout: float | None) -> float | None:

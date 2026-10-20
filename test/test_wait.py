@@ -11,7 +11,9 @@ from types import FrameType
 import pytest
 
 from urllib3.util.wait import (
+    _POLL_MAX_MILLISECONDS,
     _have_working_poll,
+    _poll_timeout,
     poll_wait_for_socket,
     select_wait_for_socket,
     wait_for_read,
@@ -123,14 +125,44 @@ def test_wait_for_socket_timeout_too_large(
     "so settimeout() raises before wait_for_read() is called",
 )
 def test_wait_for_read_timeout_too_large(spair: TYPE_SOCKET_PAIR) -> None:
-    # ``HTTPConnection.is_connected()`` and the pyOpenSSL contrib call
-    # ``wait_for_read(sock, sock.gettimeout())``, so a socket configured with a
-    # long timeout has to be waitable.
+    # The pyOpenSSL contrib calls ``wait_for_read(sock, sock.gettimeout())``,
+    # so a socket configured with a long timeout has to be waitable.
+    # ``HTTPConnection.is_connected()`` passes ``timeout=0.0`` and is not
+    # affected by this clamp.
     a, b = spair
     a.settimeout(FOREVER_SECONDS)
     b.send(b"x")
 
     assert wait_for_read(a, a.gettimeout())
+
+
+def test_poll_submillisecond_timeout_is_not_truncated(
+    spair: TYPE_SOCKET_PAIR,
+) -> None:
+    # ``int(timeout * 1000)`` truncated 0.0004 s to 0 ms, so ``poll()`` returned
+    # immediately. Rounding up waits at least 1 ms. ``0`` stays immediate and
+    # ``None`` stays indefinite, and the result still cannot exceed poll's max.
+    assert _poll_timeout(None) is None
+    assert _poll_timeout(0) == 0
+    assert _poll_timeout(0.0004) == 1
+    assert _poll_timeout(1e9) == _POLL_MAX_MILLISECONDS
+    assert _poll_timeout(float("inf")) == _POLL_MAX_MILLISECONDS
+
+    if not _have_working_poll():
+        return
+
+    sock = spair[0]
+    # Nothing is readable, so timeout=0 comes back without waiting.
+    assert not poll_wait_for_socket(sock, read=True, timeout=0)
+
+    durations: list[float] = []
+    for _ in range(5):
+        start = time.monotonic()
+        assert not poll_wait_for_socket(sock, read=True, timeout=0.0004)
+        durations.append(time.monotonic() - start)
+
+    # Distinguish a real ~1 ms wait from the truncated 0 ms return (~0.002 ms).
+    assert min(durations) >= 0.0005
 
 
 def test_wait_for_read_write(spair: TYPE_SOCKET_PAIR) -> None:
