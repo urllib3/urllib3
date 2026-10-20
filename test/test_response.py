@@ -470,17 +470,19 @@ class TestResponse:
 
         assert r.data == b"foofoofoo"
 
-    def test_decode_gzip_multi_member_with_max_length(self) -> None:
+    @pytest.mark.parametrize("read_method", ("read", "read1"))
+    def test_decode_gzip_multi_member_with_max_length(self, read_method: str) -> None:
         data = gzip.compress(b"x" * 1024) + gzip.compress(b"y" * 1024)
 
         fp = BytesIO(data)
         r = HTTPResponse(
             fp, headers={"content-encoding": "gzip"}, preload_content=False
         )
+        read = getattr(r, read_method)
 
-        assert r.read(1024) == b"x" * 1024
-        assert r.read(1024) == b"y" * 1024
-        assert r.read() == b""
+        assert read(1024) == b"x" * 1024
+        assert read(1024) == b"y" * 1024
+        assert read() == b""
 
     def test_decode_gzip_error(self) -> None:
         fp = BytesIO(b"foo")
