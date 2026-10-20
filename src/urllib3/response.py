@@ -1430,6 +1430,8 @@ class HTTPResponse(BaseHTTPResponse):
             'content-encoding' header.
         """
         self._init_decoder()
+        if decode_content is None:
+            decode_content = self.decode_content
         # FIXME: Rewrite this method and make it a class with a better structured logic.
         if not self.chunked:
             raise ResponseNotChunked(
