@@ -375,11 +375,14 @@ class Retry:
 
     def sleep_for_retry(self, response: BaseHTTPResponse) -> bool:
         retry_after = self.get_retry_after(response)
-        if retry_after:
-            time.sleep(retry_after)
-            return True
+        # ``0`` is a real delay: the server said to retry immediately. Treating
+        # it as missing would also apply the backoff delay.
+        if retry_after is None:
+            return False
 
-        return False
+        if retry_after > 0:
+            time.sleep(retry_after)
+        return True
 
     def _sleep_backoff(self) -> None:
         backoff = self.get_backoff_time()

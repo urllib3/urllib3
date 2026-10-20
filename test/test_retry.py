@@ -466,3 +466,28 @@ class TestRetry:
                 sleep_mock.assert_called_with(sleep_duration)
             else:
                 sleep_mock.assert_not_called()
+
+    def test_retry_after_zero_does_not_fall_through_to_backoff(self) -> None:
+        """A present Retry-After of 0 seconds is a delay, not a missing header.
+
+        Two earlier failures make the backoff delay 2 seconds. That delay must
+        not be added on top of a header that already said to retry immediately.
+        """
+        history = (
+            RequestHistory("GET", "/", None, 503, None),
+            RequestHistory("GET", "/", None, 503, None),
+        )
+        retry = Retry(backoff_factor=1, history=history)
+        response = HTTPResponse(status=503, headers={"Retry-After": "0"})
+
+        with mock.patch("time.sleep") as sleep_mock:
+            retry.sleep(response)
+
+        sleep_mock.assert_not_called()
+
+        # The same history still backs off when the server sent no header.
+        response = HTTPResponse(status=503)
+        with mock.patch("time.sleep") as sleep_mock:
+            retry.sleep(response)
+
+        sleep_mock.assert_called_once_with(2)
