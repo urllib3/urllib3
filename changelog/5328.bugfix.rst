@@ -1,0 +1,1 @@
+Fixed ``Retry.sleep()`` applying the backoff delay when ``Retry-After`` was 0 seconds or a date that had already passed. A missing header still uses the backoff.
