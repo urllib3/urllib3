@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import io
+import time
 import typing
 from test import LONG_TIMEOUT
 from unittest import mock
@@ -477,6 +478,51 @@ class TestPoolManager(HypercornDummyServerTestCase):
             )
 
             assert r.status == 303
+
+    def test_redirect_honors_retry_after(self) -> None:
+        with PoolManager() as http:
+            with mock.patch("time.sleep") as sleep_mock:
+                r = http.request("GET", f"{self.base_url}/redirect_after")
+            assert r.status == 200
+            sleep_mock.assert_called_once_with(1)
+
+            # retry_after_max caps the wait, as it does for HTTPConnectionPool.
+            timestamp = time.time() + 3600
+            with mock.patch("time.sleep") as sleep_mock:
+                r = http.request(
+                    "GET",
+                    f"{self.base_url}/redirect_after",
+                    fields={"date": str(timestamp)},
+                    retries=Retry(retry_after_max=5),
+                )
+            assert r.status == 200
+            sleep_mock.assert_called_once_with(5)
+
+            # A Retry-After in the past does not cause a wait.
+            timestamp = time.time() - 1
+            with mock.patch("time.sleep") as sleep_mock:
+                r = http.request(
+                    "GET",
+                    f"{self.base_url}/redirect_after",
+                    fields={"date": str(timestamp)},
+                )
+            assert r.status == 200
+            sleep_mock.assert_not_called()
+
+    def test_redirect_retry_after_keeps_pool_retry_after_max(self) -> None:
+        # With retries=None the redirect uses the pool's Retry, so its
+        # retry_after_max still caps the wait.
+        timestamp = time.time() + 3600
+        with PoolManager(retries=Retry(retry_after_max=5)) as http:
+            with mock.patch("time.sleep") as sleep_mock:
+                r = http.request(
+                    "GET",
+                    f"{self.base_url}/redirect_after",
+                    fields={"date": str(timestamp)},
+                    retries=None,
+                )
+            assert r.status == 200
+            sleep_mock.assert_called_once_with(5)
 
     def test_raise_on_status(self) -> None:
         with PoolManager() as http:
