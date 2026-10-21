@@ -509,6 +509,21 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r.status == 200
             sleep_mock.assert_not_called()
 
+    def test_redirect_retry_after_keeps_pool_retry_after_max(self) -> None:
+        # With retries=None the redirect uses the pool's Retry, so its
+        # retry_after_max still caps the wait.
+        timestamp = time.time() + 3600
+        with PoolManager(retries=Retry(retry_after_max=5)) as http:
+            with mock.patch("time.sleep") as sleep_mock:
+                r = http.request(
+                    "GET",
+                    f"{self.base_url}/redirect_after",
+                    fields={"date": str(timestamp)},
+                    retries=None,
+                )
+            assert r.status == 200
+            sleep_mock.assert_called_once_with(5)
+
     def test_raise_on_status(self) -> None:
         with PoolManager() as http:
             with pytest.raises(MaxRetryError):
