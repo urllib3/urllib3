@@ -335,7 +335,6 @@ class Retry:
         if consecutive_errors_len <= 1:
             return 0
 
-        # 2026-10-09: Scale before capping without converting a huge integer.
         try:
             backoff_value = math.ldexp(self.backoff_factor, consecutive_errors_len - 1)
         except OverflowError:
