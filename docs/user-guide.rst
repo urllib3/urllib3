@@ -117,7 +117,8 @@ method of the response:
 
 Alternatively, Custom JSON libraries such as `orjson` can be used to encode data,
 retrieve data by decoding and deserializing the :attr:`~response.HTTPResponse.data` 
-attribute of the request:
+attribute of the response. When sending pre-encoded JSON with ``body``, set the
+``Content-Type`` header explicitly; urllib3 does not infer it from the bytes:
 
 .. code-block:: python
 
@@ -125,7 +126,12 @@ attribute of the request:
     import urllib3
 
     encoded_data = orjson.dumps({"attribute": "value"})
-    resp = urllib3.request(method="POST", url="http://httpbin.org/post", body=encoded_data)
+    resp = urllib3.request(
+        "POST",
+        "https://httpbin.org/post",
+        body=encoded_data,
+        headers={"Content-Type": "application/json"},
+    )
 
     print(orjson.loads(resp.data)["json"])
     # {'attribute': 'value'}
