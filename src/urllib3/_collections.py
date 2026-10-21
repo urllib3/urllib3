@@ -309,7 +309,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
 
         If this is called with combine=True, instead of adding a new header value
         as a distinct item during iteration, this will instead append the value to
-        any existing header value with a comma. If no existing header value exists
+        the last existing header value with a comma. If no existing header value exists
         for the key, then the value will simply be added, ignoring the combine parameter.
 
         >>> headers = HTTPHeaderDict(foo='bar')
@@ -320,7 +320,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         [('foo', 'bar'), ('foo', 'baz')]
         >>> headers.add('foo', 'quz', combine=True)
         >>> list(headers.items())
-        [('foo', 'bar, baz, quz')]
+        [('foo', 'bar'), ('foo', 'baz, quz')]
         """
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
