@@ -181,6 +181,33 @@ class TestRetry:
         retry = retry.increment(method="GET")
         assert retry.get_backoff_time() == max_backoff
 
+    @pytest.mark.parametrize(
+        "factor, consecutive_errors, expected",
+        [
+            (0.0, 1025, 0.0),
+            (0.5, 1025, 120.0),
+            (-0.5, 1025, 0.0),
+            (1.0, 1025, 120.0),
+            (-1.0, 1025, 0.0),
+            (2.0**-1024, 1025, 1.0),
+            (2**1024, 2, 120.0),
+            (-(2**1024), 2, 0.0),
+        ],
+    )
+    def test_backoff_overflow(
+        self, factor: float, consecutive_errors: int, expected: float
+    ) -> None:
+        retry = Retry(total=None, backoff_factor=factor)
+        for _ in range(consecutive_errors):
+            retry = retry.increment(method="GET")
+        assert retry.get_backoff_time() == expected
+
+    def test_zero_backoff_large_retry_count_with_jitter(self) -> None:
+        history = (RequestHistory("GET", "/", None, 503, None),) * 1025
+        retry = Retry(backoff_factor=0.0, backoff_jitter=0.4, history=history)
+        with mock.patch("random.random", return_value=0.5):
+            assert retry.get_backoff_time() == 0.2
+
     def test_configurable_retry_after_max(self) -> None:
         """Configurable retry after is computed correctly"""
         max_retry_after = Retry.DEFAULT_RETRY_AFTER_MAX

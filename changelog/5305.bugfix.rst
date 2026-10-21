@@ -1,0 +1,2 @@
+Fixed an ``OverflowError`` in retry backoff after many consecutive failures,
+including when exponential backoff was disabled.
