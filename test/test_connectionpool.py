@@ -7,6 +7,7 @@ import typing
 from http.client import HTTPException
 from queue import Empty
 from socket import error as SocketError
+from socket import timeout as SocketTimeout
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
 from unittest.mock import Mock, patch
@@ -754,6 +755,26 @@ class TestConnectionPool:
                 timeout = Timeout(1, 1, 1)
                 with pytest.raises(ReadTimeoutError):
                     pool._make_request(conn, "", "", timeout=timeout)
+
+    def test_write_timeout_during_request_is_read_timeout(self) -> None:
+        """socket.timeout while sending the request must not become ProtocolError.
+
+        Regression for https://github.com/urllib3/urllib3/issues/1981
+        """
+        conn = Mock()
+        conn.proxy = None
+        conn.has_connected_to_proxy = False
+        conn.is_closed = False
+        conn.timeout = SHORT_TIMEOUT
+        conn.request.side_effect = SocketTimeout("The write operation timed out")
+
+        with HTTPConnectionPool(host="localhost") as pool:
+            with patch.object(pool, "_get_conn", return_value=conn):
+                with pytest.raises(ReadTimeoutError) as excinfo:
+                    pool.urlopen("POST", "/", body=b"payload", retries=False)
+
+        assert "timed out" in str(excinfo.value).lower()
+        assert not isinstance(excinfo.value, ProtocolError)
 
     def test_default_queuecls_uses_current_lifoqueue(
         self, monkeypatch: pytest.MonkeyPatch
