@@ -1150,6 +1150,7 @@ class HTTPResponse(BaseHTTPResponse):
             not data
             and len(self._decoded_buffer) == 0
             and not (self._decoder and self._decoder.has_unconsumed_tail)
+            and not (amt and decode_content and self._has_decoded_content)
         ):
             return data
 
@@ -1186,6 +1187,7 @@ class HTTPResponse(BaseHTTPResponse):
                 # For example, the GZ file header takes 10 bytes, we don't want to read
                 # it one byte at a time
                 data = self._raw_read(amt)
+                flush_decoder = amt != 0 and not data
                 decoded_data = self._decode(
                     data,
                     decode_content,
