@@ -197,7 +197,7 @@ class BaseProtocolHelper:
         # this method
         return False
 
-    def close_stream(self, stream: Stream | None = None) -> None:
+    def close_stream(self, stream: Stream | None = None, cancel: bool = False) -> None:
         pass
 
     def close(self) -> None:
@@ -736,8 +736,8 @@ class HTTPConnection(_HTTPConnection):
         """
         return self._tunnel_host is not None
 
-    def close_stream(self, stream: Stream | None = None) -> None:
-        self._protocol_helper.close_stream(stream=stream)
+    def close_stream(self, stream: Stream | None = None, cancel: bool = False) -> None:
+        self._protocol_helper.close_stream(stream=stream, cancel=cancel)
 
     def close(self) -> None:
         try:
