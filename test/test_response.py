@@ -459,6 +459,21 @@ class TestResponse:
         assert r.read() == b""
         assert r.read() == b""
 
+    @pytest.mark.parametrize(
+        "content_encoding", ["gzip ", "gzip\t", " GZIP \t", "x-gzip "]
+    )
+    def test_decode_gzip_with_surrounding_whitespace(
+        self, content_encoding: str
+    ) -> None:
+        # http.client keeps trailing whitespace in header values, but it is not
+        # part of the field value (RFC 9110, Section 5.5).
+        data = gzip.compress(b"foo")
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={"content-encoding": content_encoding})
+
+        assert r.data == b"foo"
+
     def test_decode_gzip_multi_member(self) -> None:
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         data = compress.compress(b"foo")

@@ -1,0 +1,2 @@
+Fixed responses not being decoded when the ``Content-Encoding`` header value had
+trailing whitespace, such as ``Content-Encoding: gzip ``.
