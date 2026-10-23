@@ -134,7 +134,6 @@ SSL_WRITE_BLOCKSIZE = 16384
 
 orig_util_SSLContext = util.ssl_.SSLContext
 
-
 log = logging.getLogger(__name__)
 
 
