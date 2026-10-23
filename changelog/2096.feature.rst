@@ -1,0 +1,3 @@
+Added a ``retries`` attribute to ``MaxRetryError``, containing the exhausted
+``Retry`` object so its ``history`` of previous attempts can be inspected
+after the exception is raised.
