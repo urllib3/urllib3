@@ -83,14 +83,18 @@ _OBSOLETE_FOLD_RE = re.compile(r"(?:(?<![ \t])[ \t]+)?\r\n[ \t]+")
 
 
 def _normalize_header_value(value: str) -> str:
-    if "\r" not in value and "\n" not in value:
-        return value
-    value = _OBSOLETE_FOLD_RE.sub(" ", value)
-    # A CR or LF outside of an obs-fold is invalid in a field value, but
-    # http.client can let one through, e.g. when a server ends lines with a
-    # bare LF. RFC 9110 section 5.5 requires rejecting the message or
-    # replacing each such character with SP.
-    return value.replace("\r", " ").replace("\n", " ")
+    if "\r" in value or "\n" in value:
+        value = _OBSOLETE_FOLD_RE.sub(" ", value)
+        # A CR or LF outside of an obs-fold is invalid in a field value, but
+        # http.client can let one through, e.g. when a server ends lines with
+        # a bare LF. RFC 9110 section 5.5 requires rejecting the message or
+        # replacing each such character with SP.
+        value = value.replace("\r", " ").replace("\n", " ")
+    # RFC 9110 section 5.5 treats NUL the same way, and leading and trailing
+    # whitespace is not part of the field value.
+    if "\x00" in value:
+        value = value.replace("\x00", " ")
+    return value.strip(" \t")
 
 
 def _normalize_header_values(
