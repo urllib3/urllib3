@@ -219,11 +219,21 @@ class TestHTTPHeaderDict:
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
 
+    def test_setitem_with_bytes_value(self) -> None:
+        d = HTTPHeaderDict()
+        d["user-agent"] = b"Sch\xf6nefeld/1.18.0"  # type: ignore[assignment]
+        assert d["user-agent"] == "Sch\xf6nefeld/1.18.0"
+
     def test_update(self, d: HTTPHeaderDict) -> None:
         d.update(dict(Cookie="foo"))
         assert d["cookie"] == "foo"
         d.update(dict(cookie="with, comma"))
         assert d.getlist("cookie") == ["with, comma"]
+
+    def test_extend_with_bytes_value(self) -> None:
+        d = HTTPHeaderDict()
+        d.extend([(b"user-agent", b"Sch\xf6nefeld/1.18.0")])  # type: ignore[list-item]
+        assert d["user-agent"] == "Sch\xf6nefeld/1.18.0"
 
     def test_delitem(self, d: HTTPHeaderDict) -> None:
         del d["cookie"]
@@ -247,6 +257,13 @@ class TestHTTPHeaderDict:
         d.add("Bar", "asdf")
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
         assert d["bar"] == "foo, bar, asdf"
+
+    def test_add_with_bytes_value(self) -> None:
+        d = HTTPHeaderDict()
+        d.add("user-agent", b"Sch\xf6nefeld/1.18.0")  # type: ignore[arg-type]
+        d.add("user-agent", b"caf\xe9/2.0")  # type: ignore[arg-type]
+        assert d.getlist("user-agent") == ["Sch\xf6nefeld/1.18.0", "caf\xe9/2.0"]
+        assert d["user-agent"] == "Sch\xf6nefeld/1.18.0, caf\xe9/2.0"
 
     def test_extend_from_list(self, d: HTTPHeaderDict) -> None:
         d.extend([("set-cookie", "100"), ("set-cookie", "200"), ("set-cookie", "300")])
