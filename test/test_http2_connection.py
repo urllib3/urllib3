@@ -4,13 +4,15 @@ import socket
 import typing
 from unittest import mock
 
+import h2.events
 import pytest
 from h2.errors import ErrorCodes
 
 from urllib3.connection import HTTPSConnection, Stream, _get_default_user_agent
-from urllib3.exceptions import ConnectionError
+from urllib3.exceptions import ConnectionError, StreamError
 from urllib3.http2.connection import (
     HTTP2ProtocolHelper,
+    HTTP2StreamData,
     _is_illegal_header_value,
     _is_legal_header_name,
 )
@@ -403,6 +405,34 @@ class TestHTTP2Connection:
         end_stream.assert_called_with(1)
         close_connection.assert_called_with()
 
+    def test_request_aborted(self) -> None:
+        conn = HTTPSConnection("example.com")
+        conn.set_protocol_options(http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.receive_data = mock.Mock(side_effect=[[h2.events.ConnectionTerminated()]])  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.local_flow_control_window = mock.Mock(return_value=0)  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[attr-defined]
+
+        with pytest.raises(ConnectionError):
+            conn.request("POST", "/", body=b"foo")
+
+    def test_request_reset(self) -> None:
+        conn = HTTPSConnection("example.com")
+        conn.set_protocol_options(http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.receive_data = mock.Mock(side_effect=[[h2.events.StreamReset(stream_id=1)]])  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.local_flow_control_window = mock.Mock(return_value=0)  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[attr-defined]
+
+        with pytest.raises(StreamError):
+            conn.request("POST", "/", body=b"foo")
+
     def test_close(self) -> None:
         conn = HTTPSConnection("example.com")
         conn.set_protocol_options(http1=False, http2=True)
@@ -532,6 +562,34 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+    def test_getresponse_aborted(self) -> None:
+        conn = HTTPSConnection("example.com")
+        conn.set_protocol_options(http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._protocol_helper._h2_conn._obj.receive_data = mock.Mock(side_effect=[[h2.events.ConnectionTerminated()]])  # type: ignore[attr-defined]
+        stream = Stream(conn)
+        stream.stream_id = 1
+        with pytest.raises(ConnectionError):
+            conn.getresponse(stream=stream)
+
+    def test_getresponse_reset(self) -> None:
+        conn = HTTPSConnection("example.com")
+        conn.set_protocol_options(http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._protocol_helper._h2_conn._obj.receive_data = mock.Mock(side_effect=[[h2.events.StreamReset(stream_id=1)]])  # type: ignore[attr-defined]
+        stream = Stream(conn)
+        stream.stream_id = 1
+        conn._protocol_helper._stream_data[stream] = HTTP2StreamData()  # type: ignore[attr-defined]
+        conn._protocol_helper._stream_data[1] = conn._protocol_helper._stream_data[  # type: ignore[attr-defined]
+            stream
+        ]
+        with pytest.raises(StreamError):
+            conn.getresponse(stream=stream)
 
     def test_getresponse_ConnectionError(self) -> None:
         conn = HTTPSConnection("example.com")
