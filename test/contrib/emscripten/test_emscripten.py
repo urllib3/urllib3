@@ -491,7 +491,7 @@ def test_streaming_close(
             conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
             conn.request("GET", "{url}",preload_content=False)
             response = conn.getresponse()
-            # check body is a RawIOBase stream and isn't seekable, writeable
+            # check body is a RawIOBase stream and isn't seekable, writable
             body_internal = response._response.body
             assert(isinstance(body_internal,RawIOBase))
             assert(body_internal.writable() is False)
