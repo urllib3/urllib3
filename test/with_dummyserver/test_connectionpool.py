@@ -527,6 +527,21 @@ class TestConnectionPool(HypercornDummyServerTestCase):
         assert response.status == 200
         gzip_decompress.assert_not_called()
 
+    def test_303_redirect_keeps_head_method(self) -> None:
+        # RFC 9110, Section 15.4.4: a 303 is followed with GET or HEAD,
+        # so a HEAD request must stay a HEAD request.
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request(
+                "HEAD",
+                "/redirect",
+                fields={
+                    "target": "/specific_method?method=HEAD",
+                    "status": "303 See Other",
+                },
+            )
+        assert response.status == 200
+        assert response.data == b""
+
     def test_303_redirect_makes_request_lose_body(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
             response = pool.request(

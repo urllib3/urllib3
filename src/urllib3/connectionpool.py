@@ -894,8 +894,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         redirect_location = redirect and response.get_redirect_location()
         if redirect_location:
             if response.status == 303:
-                # Change the method according to RFC 9110, Section 15.4.4.
-                method = "GET"
+                # Change the method according to RFC 9110, Section 15.4.4,
+                # which allows following a 303 with either GET or HEAD.
+                if method != "HEAD":
+                    method = "GET"
                 # And lose the body not to transfer anything sensitive.
                 body = None
                 # The body is gone, so the state that describes it has to go
