@@ -69,8 +69,6 @@ def tests_impl(
     memray_supported = True
     if implementation_name != "cpython" or release_level != "final" or free_threading:
         memray_supported = False
-    elif (sys.version_info.major, sys.version_info.minor) >= (3, 15):
-        memray_supported = False
     elif sys.platform == "win32":
         memray_supported = False
     else:
