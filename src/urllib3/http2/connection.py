@@ -22,7 +22,7 @@ from ..connection import (
     Stream,
     _get_default_user_agent,
 )
-from ..exceptions import ConnectionError
+from ..exceptions import ConnectionError, StreamError
 from ..response import HTTPResponse
 
 orig_HTTPSConnection = HTTPSConnection
@@ -255,21 +255,26 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         return stream
 
     def _receive(self, until: typing.Callable[[], bool]) -> None:
-        """Process events until the callable returns True.
+        """Process events until the ``until`` callable returns True.
 
-        This is a generic event loop that waits for a condition provided by the
-        caller. Any data events for any streams that are received are cached.
+        This is a generic event loop that runs until a condition provided by the
+        caller triggers. Any data events for any streams that are received are
+        cached. A connection that is terminated by the server raises a
+        ``ConnectionError``.
         """
         with self._h2_conn as h2_conn:
             while not until():
                 # TODO: Arbitrary read value.
                 if received_data := self.conn.sock.recv(65535):
                     for event in h2_conn.receive_data(received_data):
+                        if isinstance(event, h2.events.ConnectionTerminated):
+                            raise ConnectionError("The connection was closed")
                         if isinstance(
                             event,
                             (
                                 h2.events.ResponseReceived,
                                 h2.events.DataReceived,
+                                h2.events.StreamReset,
                                 h2.events.StreamEnded,
                             ),
                         ):
@@ -295,12 +300,28 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
     def _wait_for_flow_control(self, stream: Stream) -> int:
         """Process events until the given stream's flow control window is
-        greater than zero."""
+        greater than zero or the stream was reset by the server."""
         if not stream.stream_id:  # Defensive:
             raise ConnectionError("Must call `request` to create a stream")
         with self._h2_conn as h2_conn:
+            # here we want to listen to events until one of:
+            # - the flow control window is updated and is greater than 0
+            # - the server reset the stream
             self._receive(
-                lambda: h2_conn.local_flow_control_window(stream.stream_id) > 0  # type: ignore[arg-type]
+                lambda: (
+                    h2_conn.local_flow_control_window(stream.stream_id) > 0  # type: ignore[arg-type]
+                    or (
+                        stream.stream_id in self._stream_data
+                        and len(self._stream_data[stream.stream_id].events) > 0
+                        and isinstance(
+                            self._stream_data[stream.stream_id].events[-1],
+                            (
+                                h2.events.StreamReset,
+                                h2.events.StreamEnded,
+                            ),
+                        )
+                    )
+                )
             )
             return h2_conn.local_flow_control_window(stream.stream_id)
 
@@ -331,6 +352,9 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                     elif isinstance(event, h2.events.DataReceived):
                         data += event.data
 
+                    elif isinstance(event, h2.events.StreamReset):
+                        raise StreamError("The stream was reset")
+
                     elif isinstance(event, h2.events.StreamEnded):
                         end_stream = True
 
@@ -351,6 +375,8 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             raise ConnectionError("Must call `request` to create a stream")
         while data:
             window_size = self._wait_for_flow_control(stream)
+            if window_size == 0:
+                raise StreamError("The stream was reset")
             with self._h2_conn as h2_conn:
                 chunk = data[:window_size]
                 data = data[window_size:]
