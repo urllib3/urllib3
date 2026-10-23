@@ -1,0 +1,1 @@
+Fixed chunked request framing for typed and multidimensional buffer bodies so the declared chunk size matches the number of bytes sent.
