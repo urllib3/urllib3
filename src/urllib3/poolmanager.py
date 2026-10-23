@@ -668,7 +668,7 @@ class ProxyManager(PoolManager):
         Sets headers needed by proxies: specifically, the Accept and Host
         headers. Only sets headers not provided by the user.
         """
-        headers_ = {"Accept": "*/*"}
+        headers_ = HTTPHeaderDict({"Accept": "*/*"})
 
         netloc = parse_url(url).netloc
         if netloc:
