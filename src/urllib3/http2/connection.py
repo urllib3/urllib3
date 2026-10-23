@@ -10,6 +10,7 @@ from importlib.metadata import version
 
 import h2.config
 import h2.connection
+import h2.errors
 import h2.events
 
 from .._base_connection import _TYPE_BODY
@@ -253,9 +254,14 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             self.endheaders(stream=stream)
         return stream
 
-    def _receive(self, stream: Stream) -> list[h2.events.Event]:
+    def _receive(self, until: typing.Callable[[], bool]) -> None:
+        """Process events until the callable returns True.
+
+        This is a generic event loop that waits for a condition provided by the
+        caller. Any data events for any streams that are received are cached.
+        """
         with self._h2_conn as h2_conn:
-            if not self._stream_data[stream].events:
+            while not until():
                 # TODO: Arbitrary read value.
                 if received_data := self.conn.sock.recv(65535):
                     for event in h2_conn.receive_data(received_data):
@@ -267,11 +273,36 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                                 h2.events.StreamEnded,
                             ),
                         ):
+                            if isinstance(event, h2.events.DataReceived):
+                                h2_conn.acknowledge_received_data(
+                                    event.flow_controlled_length, event.stream_id
+                                )
                             if event.stream_id in self._stream_data:
                                 self._stream_data[event.stream_id].events.append(event)
+
+    def _wait_for_data(self, stream: Stream) -> list[h2.events.Event]:
+        """Process events until the given stream has response data available."""
+        with self._h2_conn:
+            self._receive(
+                lambda: (
+                    stream.stream_id in self._stream_data
+                    and len(self._stream_data[stream.stream_id].events) > 0
+                )
+            )
             events = self._stream_data[stream].events
             self._stream_data[stream].events = []
             return events
+
+    def _wait_for_flow_control(self, stream: Stream) -> int:
+        """Process events until the given stream's flow control window is
+        greater than zero."""
+        if not stream.stream_id:  # Defensive:
+            raise ConnectionError("Must call `request` to create a stream")
+        with self._h2_conn as h2_conn:
+            self._receive(
+                lambda: h2_conn.local_flow_control_window(stream.stream_id) > 0  # type: ignore[arg-type]
+            )
+            return h2_conn.local_flow_control_window(stream.stream_id)
 
     def getresponse(self, stream: Stream | None = None) -> HTTPResponse:
         if stream is None:
@@ -285,7 +316,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             end_stream = False
             while not end_stream:
                 # TODO: Arbitrary read value.
-                events = self._receive(stream)
+                events = self._wait_for_data(stream)
                 for event in events:
                     if isinstance(event, h2.events.ResponseReceived):
                         headers = HTTPHeaderDict()
@@ -299,9 +330,6 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
                     elif isinstance(event, h2.events.DataReceived):
                         data += event.data
-                        h2_conn.acknowledge_received_data(
-                            event.flow_controlled_length, event.stream_id
-                        )
 
                     elif isinstance(event, h2.events.StreamEnded):
                         end_stream = True
@@ -317,6 +345,18 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             data=bytes(data),
             connection=self.conn,
         )
+
+    def _write_with_flow_control(self, data: bytes, stream: Stream) -> None:
+        if not stream.stream_id:  # Defensive:
+            raise ConnectionError("Must call `request` to create a stream")
+        while data:
+            window_size = self._wait_for_flow_control(stream)
+            with self._h2_conn as h2_conn:
+                chunk = data[:window_size]
+                data = data[window_size:]
+                h2_conn.send_data(stream.stream_id, chunk, end_stream=False)
+                if data_to_send := h2_conn.data_to_send():
+                    self.conn.sock.sendall(data_to_send)
 
     def send(self, data: typing.Any, stream: Stream | None = None) -> bool:
         if stream is None:
@@ -335,10 +375,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                     break
                 if isinstance(chunk, str):
                     chunk = chunk.encode()
-                with self._h2_conn as h2_conn:
-                    h2_conn.send_data(stream.stream_id, chunk, end_stream=False)
-                    if data_to_send := h2_conn.data_to_send():
-                        self.conn.sock.sendall(data_to_send)
+                self._write_with_flow_control(chunk, stream)
             with self._h2_conn as h2_conn:
                 h2_conn.end_stream(stream.stream_id)
             return True
@@ -348,16 +385,12 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
         try:
             if isinstance(data, bytes):
+                self._write_with_flow_control(data, stream)
                 with self._h2_conn as h2_conn:
-                    h2_conn.send_data(stream.stream_id, data, end_stream=True)
-                    if data_to_send := h2_conn.data_to_send():
-                        self.conn.sock.sendall(data_to_send)
+                    h2_conn.end_stream(stream.stream_id)
             else:
                 for chunk in data:
-                    with self._h2_conn as h2_conn:
-                        h2_conn.send_data(stream.stream_id, chunk, end_stream=False)
-                        if data_to_send := h2_conn.data_to_send():
-                            self.conn.sock.sendall(data_to_send)
+                    self._write_with_flow_control(chunk, stream)
                 with self._h2_conn as h2_conn:
                     h2_conn.end_stream(stream.stream_id)
         except TypeError:
@@ -378,7 +411,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         # Reset all our HTTP/2 connection state.
         self._h2_conn = self._new_h2_conn()
 
-    def close_stream(self, stream: Stream | None = None) -> None:
+    def close_stream(self, stream: Stream | None = None, cancel: bool = False) -> None:
         if stream is None:
             raise ConnectionError("`stream` cannot be None")
         if not stream.stream_id:
@@ -386,7 +419,12 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
         with self._h2_conn as h2_conn:
             try:
-                h2_conn.end_stream(stream.stream_id)
+                if cancel:
+                    h2_conn.reset_stream(
+                        stream.stream_id, error_code=h2.errors.ErrorCodes.CANCEL
+                    )
+                else:
+                    h2_conn.end_stream(stream.stream_id)
                 if data := h2_conn.data_to_send():
                     self.conn.sock.sendall(data)
             except Exception:
