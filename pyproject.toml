@@ -43,8 +43,8 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 brotli = [
-  "brotli>=1.2.0; platform_python_implementation == 'CPython'",
-  "brotlicffi>=1.2.0.0; platform_python_implementation != 'CPython'"
+  "brotli>=1.2.1; platform_python_implementation == 'CPython'",
+  "brotlicffi>=1.2.0.2; platform_python_implementation != 'CPython'"
 ]
 zstd = [
   "backports.zstd>=1.0.0; python_version<'3.14'",
