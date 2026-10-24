@@ -1056,6 +1056,18 @@ def _ssl_wrap_socket_and_match_hostname(
     else:
         context = ssl_context
 
+    # If the user provided their own SSLContext with hostname checking
+    # disabled, they have opted out of hostname verification entirely.
+    # Honor that by treating it like assert_hostname=False, unless the
+    # caller explicitly passed an assert_hostname of their own. This must
+    # be captured here, before check_hostname is mutated below.
+    if (
+        not default_ssl_context
+        and assert_hostname is None
+        and not getattr(context, "check_hostname", True)
+    ):
+        assert_hostname = False
+
     context.verify_mode = resolve_cert_reqs(cert_reqs)
 
     # In some cases, we want to verify hostnames ourselves
