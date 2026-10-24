@@ -1,0 +1,1 @@
+Honor a user-provided ``SSLContext`` with ``check_hostname=False`` by not performing urllib3 hostname verification for the connection, unless an explicit ``assert_hostname`` was passed.
