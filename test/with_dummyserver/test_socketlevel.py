@@ -19,7 +19,14 @@ import typing
 import zlib
 from collections import OrderedDict
 from pathlib import Path
-from test import LONG_TIMEOUT, SHORT_TIMEOUT, notWindows, resolvesLocalhostFQDN
+from test import (
+    LONG_TIMEOUT,
+    SHORT_TIMEOUT,
+    notWindows,
+    onlyBrotli,
+    onlyZstd,
+    resolvesLocalhostFQDN,
+)
 from threading import Event
 from unittest import mock
 from urllib.parse import urlparse
@@ -46,6 +53,7 @@ from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.connectionpool import _url_from_pool
 from urllib3.exceptions import (
+    DecodeError,
     InsecureRequestWarning,
     MaxRetryError,
     ProtocolError,
@@ -2459,6 +2467,80 @@ class TestHEAD(SocketDummyServerTestCase):
 
 
 class TestStream(SocketDummyServerTestCase):
+    @pytest.mark.parametrize(
+        "content_encoding",
+        [
+            "gzip",
+            "deflate",
+            pytest.param("br", marks=[onlyBrotli()]),  # type: ignore[list-item]
+            pytest.param("zstd", marks=[onlyZstd()]),  # type: ignore[list-item]
+            ", ".join(["gzip"] * 6),
+        ],
+    )
+    @pytest.mark.parametrize(
+        "read_method, chunked",
+        [
+            ("read", False),
+            ("read1", False),
+            ("stream", False),
+            ("read", True),
+            ("read1", True),
+            ("stream", True),
+            ("read_chunked", True),
+        ],
+    )
+    def test_decode_error_releases_connection(
+        self, content_encoding: str, read_method: str, chunked: bool
+    ) -> None:
+        # Leave unread bytes even if read1() needs its extra 8192-byte read
+        # before the decoder can reject the body.
+        body = b"garbage" * 2048
+        if chunked:
+            framing = b"Transfer-Encoding: chunked\r\n"
+            body = b"%x\r\n" % len(body) + body + b"\r\n0\r\n\r\n"
+        else:
+            framing = b"Content-Length: %d\r\n" % len(body)
+        self.start_response_handler(
+            b"HTTP/1.1 200 OK\r\n"
+            + framing
+            + b"Content-Encoding: "
+            + content_encoding.encode("ascii")
+            + b"\r\n\r\n"
+            + body,
+            num=2,
+        )
+
+        with HTTPConnectionPool(
+            self.host, self.port, maxsize=1, block=True, retries=False
+        ) as pool:
+            response = pool.request("GET", "/", preload_content=False)
+            conn = response.connection
+            assert conn is not None
+            try:
+                with pytest.raises(DecodeError):
+                    if read_method in ("stream", "read_chunked"):
+                        next(getattr(response, read_method)(2, decode_content=True))
+                    else:
+                        getattr(response, read_method)(2, decode_content=True)
+
+                assert response.closed
+                assert conn.is_closed
+                assert response.connection is None
+                assert pool.pool is not None
+                assert pool.pool.qsize() == 1
+
+                # The failed response must not exhaust a blocking pool. Drain the
+                # next response without decoding its intentionally invalid body.
+                following = pool.request(
+                    "GET", "/", preload_content=False, pool_timeout=SHORT_TIMEOUT
+                )
+                assert following.status == 200
+                following.drain_conn()
+                assert pool.pool.qsize() == 1
+            finally:
+                response.close()
+                response.release_conn()
+
     def test_stream_none_unchunked_response_does_not_hang(self) -> None:
         done_event = Event()
 
