@@ -161,7 +161,6 @@ class TestHTTP2Connection:
         conn = HTTPSConnection("example.com")
         conn.set_protocol_options(http1=False, http2=True)
         stream = Stream(conn)
-        stream.stream_id = 1
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
@@ -185,7 +184,6 @@ class TestHTTP2Connection:
         conn = HTTPSConnection("example.com")
         conn.set_protocol_options(http1=False, http2=True)
         stream = Stream(conn)
-        stream.stream_id = 1
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
@@ -209,7 +207,6 @@ class TestHTTP2Connection:
         conn = HTTPSConnection("example.com")
         conn.set_protocol_options(http1=False, http2=True)
         stream = Stream(conn)
-        stream.stream_id = 1
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
@@ -246,7 +243,6 @@ class TestHTTP2Connection:
         conn = HTTPSConnection("example.com")
         conn.set_protocol_options(http1=False, http2=True)
         stream = Stream(conn)
-        stream.stream_id = 1
         mock_open = mock.mock_open(read_data="foo\r\nbar\r\n")
         with mock.patch("builtins.open", mock_open):
             conn.sock = mock.MagicMock(
@@ -273,7 +269,6 @@ class TestHTTP2Connection:
         conn = HTTPSConnection("example.com")
         conn.set_protocol_options(http1=False, http2=True)
         stream = Stream(conn)
-        stream.stream_id = 1
         mock_open = mock.mock_open(read_data=b"foo\r\nbar\r\n")
         with mock.patch("builtins.open", mock_open):
             conn.sock = mock.MagicMock(
@@ -601,3 +596,47 @@ class TestHTTP2Connection:
         stream = Stream(conn)
         with pytest.raises(ConnectionError):
             conn.getresponse(stream=stream)
+
+    def test_flow_control(self) -> None:
+        conn = HTTPSConnection("example.com")
+        conn.set_protocol_options(http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._protocol_helper._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[attr-defined]
+            side_effect=[
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1, headers=[(b":status", b"200")]
+                    ),
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"fo",
+                        flow_controlled_length=2,
+                    ),
+                ],
+                [
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=b"o",
+                        flow_controlled_length=1,
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+        ack_received_data = conn._protocol_helper._h2_conn._obj.acknowledge_received_data = mock.Mock()  # type: ignore[attr-defined]
+        data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"flow")  # type: ignore[attr-defined]
+        stream = Stream(conn)
+        stream.stream_id = 1
+        conn._protocol_helper._stream_data[stream] = HTTP2StreamData()  # type: ignore[attr-defined]
+        conn._protocol_helper._stream_data[1] = conn._protocol_helper._stream_data[  # type: ignore[attr-defined]
+            stream
+        ]
+        resp = conn.getresponse(stream=stream)
+        assert resp.status == 200
+        assert resp.data == b"foo"
+        ack_received_data.assert_any_call(2, 1)
+        ack_received_data.assert_called_with(1, 1)
+        data_to_send.assert_called_with()
+        conn.sock.sendall.assert_called_with(b"flow")
