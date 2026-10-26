@@ -284,6 +284,8 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                                 )
                             if event.stream_id in self._stream_data:
                                 self._stream_data[event.stream_id].events.append(event)
+                    if data_to_send := h2_conn.data_to_send():
+                        self.conn.sock.sendall(data_to_send)
 
     def _wait_for_data(self, stream: Stream) -> list[h2.events.Event]:
         """Process events until the given stream has response data available."""
