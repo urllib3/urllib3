@@ -1047,7 +1047,7 @@ class TestResponse:
         ):
             HTTPResponse(
                 fp,
-                headers={"content-encoding": "gzip, deflate, br, zstd, gzip, deflate"},
+                headers={"content-encoding": "gzip, deflate, gzip, deflate, gzip, deflate"},
             )
 
     def test_read_multi_decoding_unknown_coding(self) -> None:
