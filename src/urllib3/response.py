@@ -1119,6 +1119,12 @@ class HTTPResponse(BaseHTTPResponse):
         if decode_content is None:
             decode_content = self.decode_content
 
+        if amt != 0 and not decode_content and self._has_decoded_content:
+            raise RuntimeError(
+                "Calling read(decode_content=False) is not supported after "
+                "read(decode_content=True) was called."
+            )
+
         if amt and amt < 0:
             # Negative numbers and `None` should be treated the same.
             amt = None
@@ -1166,11 +1172,6 @@ class HTTPResponse(BaseHTTPResponse):
         else:
             # do not waste memory on buffer when not decoding
             if not decode_content:
-                if self._has_decoded_content:
-                    raise RuntimeError(
-                        "Calling read(decode_content=False) is not supported after "
-                        "read(decode_content=True) was called."
-                    )
                 return data
 
             decoded_data = self._decode(
