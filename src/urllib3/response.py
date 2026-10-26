@@ -1115,9 +1115,10 @@ class HTTPResponse(BaseHTTPResponse):
             after having ``.read()`` the file object. (Overridden if ``amt`` is
             set.)
         """
-        self._init_decoder()
         if decode_content is None:
             decode_content = self.decode_content
+        if decode_content:
+            self._init_decoder()
 
         if amt and amt < 0:
             # Negative numbers and `None` should be treated the same.
@@ -1429,7 +1430,9 @@ class HTTPResponse(BaseHTTPResponse):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
-        self._init_decoder()
+        if decode_content:
+            self._init_decoder()
+
         # FIXME: Rewrite this method and make it a class with a better structured logic.
         if not self.chunked:
             raise ResponseNotChunked(
