@@ -1456,6 +1456,23 @@ class TestResponse:
         ):
             resp.read1(decode_content=False)
 
+    def test_read_chunked_with_illegal_mix_decode_toggle(self) -> None:
+        fp = MockChunkedEncodingResponse([zlib.compress(b"foo")])
+        raw = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        raw.fp = fp  # type: ignore[assignment]
+        resp = HTTPResponse(
+            raw,
+            headers={"transfer-encoding": "chunked", "content-encoding": "deflate"},
+            preload_content=False,
+        )
+        decoded = resp.read_chunked(1, decode_content=True)
+        assert next(decoded) == b"f"
+
+        with pytest.raises(RuntimeError, match="decode_content=False"):
+            next(resp.read_chunked(1, decode_content=False))
+
+        decoded.close()
+
     def test_read_with_mix_decode_toggle(self) -> None:
         data = zlib.compress(b"foo")
 
