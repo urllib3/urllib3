@@ -54,10 +54,8 @@ log = logging.getLogger(__name__)
 # Read in 64 KiB chunks
 _READ_CHUNK_SIZE = 2**16
 
-# RFC 9112 defines Content-Length as 1*DIGIT (section 6.3) and a chunk-size as
-# 1*HEXDIG (section 7.1). Python's int() additionally accepts leading signs,
-# underscores, surrounding whitespace and a "0x" prefix, so the raw field has to
-# be validated before conversion to avoid disagreeing with a stricter peer.
+# RFC 9112: Content-Length = 1*DIGIT and chunk-size = 1*HEXDIG.
+# int() is more permissive, so we match against the grammar before calling it.
 _CONTENT_LENGTH_RE = re.compile(r"[0-9]+")
 _CHUNK_SIZE_RE = re.compile(rb"[0-9A-Fa-f]+")
 
@@ -907,7 +905,7 @@ class HTTPResponse(BaseHTTPResponse):
                     # signs, underscores and unicode digits that int() accepts.
                     val = val.strip()
                     if not _CONTENT_LENGTH_RE.fullmatch(val):
-                        raise ValueError
+                        raise ValueError("invalid Content-Length")
                     lengths.add(int(val))
                 if len(lengths) > 1:
                     raise InvalidHeader(
@@ -1393,11 +1391,9 @@ class HTTPResponse(BaseHTTPResponse):
             ) from None
         line = line.split(b";", 1)[0]
         try:
-            # Strip the trailing CRLF, then require a bare hex chunk-size and
-            # reject the signs, underscores and "0x" prefix that int() allows.
-            chunk_size = line.strip()
+            chunk_size = line.rstrip()
             if not _CHUNK_SIZE_RE.fullmatch(chunk_size):
-                raise ValueError
+                raise ValueError("invalid chunk size")
             self.chunk_left = int(chunk_size, 16)
         except ValueError:
             self.close()
