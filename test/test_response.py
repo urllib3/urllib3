@@ -1691,6 +1691,15 @@ class TestResponse:
         resp = HTTPResponse(fp, headers=garbage, preload_content=False)
         assert resp.length_remaining is None
 
+    @pytest.mark.parametrize("value", ["1_000", "+5", "0x10", "0o10", "१२३"])
+    def test_length_w_non_rfc_header(self, value: str) -> None:
+        # int() accepts these forms but RFC 9112 section 6.3 only allows 1*DIGIT.
+        fp = BytesIO(b"12345")
+        resp = HTTPResponse(
+            fp, headers={"content-length": value}, preload_content=False
+        )
+        assert resp.length_remaining is None
+
     def test_length_when_chunked(self) -> None:
         # This is expressly forbidden in RFC 7230 sec 3.3.2
         # We fall back to chunked in this case and try to
@@ -1701,8 +1710,9 @@ class TestResponse:
         resp = HTTPResponse(fp, headers=headers, preload_content=False)
         assert resp.length_remaining is None
 
-    def test_length_with_multiple_content_lengths(self) -> None:
-        headers = {"content-length": "5, 5, 5"}
+    @pytest.mark.parametrize("value", ["5, 5, 5", " 5 , 5 , 5 ", "\t5\t,\t5\t, \t5 \t"])
+    def test_length_with_multiple_content_lengths(self, value: str) -> None:
+        headers = {"content-length": value}
         garbage = {"content-length": "5, 42"}
         fp = BytesIO(b"abcde")
 
@@ -1903,6 +1913,43 @@ class TestResponse:
         assert str(ctx.value) == msg
         assert isinstance(orig_ex, InvalidChunkLength)
         assert orig_ex.length == fp.BAD_LENGTH_LINE.encode()
+
+    @pytest.mark.parametrize("chunk_size", [b"-5", b"+5", b"0x5", b"1_f", b" 5"])
+    def test_non_rfc_chunk_length(self, chunk_size: bytes) -> None:
+        fp = BytesIO(chunk_size + b"\r\nHELLO\r\n0\r\n\r\n")
+        r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        with pytest.raises(ProtocolError) as ctx:
+            next(resp.read_chunked())
+
+        orig_ex = ctx.value.args[1]
+        assert isinstance(orig_ex, InvalidChunkLength)
+        assert orig_ex.length == chunk_size + b"\r\n"
+        assert fp.closed
+        assert r.isclosed()
+        assert resp.closed
+
+    @pytest.mark.parametrize(
+        "chunk_size", [b"5 ", b"5\t", b"5;name=value", b"5 \t;name=value"]
+    )
+    def test_chunk_length_with_trailing_whitespace_or_extensions(
+        self, chunk_size: bytes
+    ) -> None:
+        fp = BytesIO(chunk_size + b"\r\nHELLO\r\n0\r\n\r\n")
+        r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        resp = HTTPResponse(
+            r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked"},
+            original_response=r,
+        )
+        assert list(resp.read_chunked()) == [b"HELLO"]
 
     def test_chunk_size_line_too_long(self) -> None:
         # A malicious server can send a chunk-size line with no newline. urllib3's
