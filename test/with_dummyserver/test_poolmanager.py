@@ -665,6 +665,17 @@ class TestPoolManager(HypercornDummyServerTestCase):
                     headers=headers,
                 )
 
+    def test_url_auth_rejects_conflicting_redirect_credentials(self) -> None:
+        with PoolManager() as http:
+            with pytest.raises(InvalidHeader, match="Authorization"):
+                http.request(
+                    "GET",
+                    f"http://user:password@{self.host}:{self.port}/redirect",
+                    fields={
+                        "target": f"http://other:secret@{self.host}:{self.port}/headers"
+                    },
+                )
+
     def test_url_auth_redirects(self, caplog: pytest.LogCaptureFixture) -> None:
         caplog.set_level(logging.INFO, logger="urllib3.poolmanager")
         with PoolManager() as http:
