@@ -57,11 +57,9 @@ h2 = [
 ]
 
 [dependency-groups]
-# Bare dependencies needed to run the test suite. Kept free of profiling
-# (`coverage`, `pytest-memray`) and maintainer tooling (`build`, `towncrier`)
-# so downstream packagers can install just this group when generating
-# build-time test requirements (see issue #3594).
-test = [
+# Shared test dependencies, excluding trustme so dev-min-pyopenssl can pin
+# a version compatible with its older cryptography dependency.
+test-base = [
     "anyio[trio]>=4.8.0",
     "h2>=4.1.0",
     "httpx>=0.28.1",
@@ -74,11 +72,21 @@ test = [
     "quart-trio>=0.12.0",
     "trio>=0.27.0",
 ]
+# Bare dependencies needed to run the test suite. Kept free of profiling
+# (`coverage`, `pytest-memray`) and maintainer tooling (`build`, `towncrier`)
+# so downstream packagers can install just this group when generating
+# build-time test requirements (see issue #3594).
+test = [
+    {include-group = "test-base"},
+    "trustme>=1.2.1",
+]
 dev-base = [
-    {include-group = "test"},
+    {include-group = "test-base"},
     "build>=1.2.2.post1",
     "coverage>=7.8.0",
-    "pytest-memray==1.8.0 ; python_full_version < '3.15' and implementation_name == 'cpython' and sys_platform != 'win32'",
+    "pytest-cov>=7.1.0",
+    "pytest-memray>=1.11.0 ; python_full_version < '3.16' and implementation_name == 'cpython' and sys_platform != 'win32'",
+    "pytest-xdist>=3.8.0",
     "towncrier>=24.8.0",
 ]
 dev = [
@@ -107,7 +115,6 @@ mypy = [
     "cryptography>=44.0.2",
     "idna>=3.10",
     "mypy>=1.18.2",
-    "trustme>=1.2.1",
     "types-requests>=2.32.0.20241016",
     "nox>=2024.10.9",
     "types-pysocks>=1.7.1.20251001",
@@ -120,6 +127,7 @@ emscripten = [
 ]
 docs = [
     "furo>=2024.8.6",
+    "myst-parser>=5.1.0",
     "requests>=2.32.3",
     "sphinx>=7.2.6",
     "sphinx-copybutton>=0.5.2",
@@ -131,6 +139,7 @@ docs = [
 "Documentation" = "https://urllib3.readthedocs.io"
 "Code" = "https://github.com/urllib3/urllib3"
 "Issue tracker" = "https://github.com/urllib3/urllib3/issues"
+"Security policy" = "https://urllib3.readthedocs.io/en/latest/security.html"
 
 [tool.hatch.version]
 source = "vcs"
@@ -148,6 +157,7 @@ include = [
   "/uv.lock",
   "/CHANGES.rst",
   "/README.md",
+  "/SECURITY.md",
   "/LICENSE.txt",
 ]
 
@@ -167,9 +177,12 @@ markers = [
 log_level = "DEBUG"
 filterwarnings = [
     "error",
+    # Match urllib3 warnings by message to avoid importing urllib3 before
+    # pytest-cov starts.
     '''default:urllib3 v2 only supports OpenSSL 1.1.1+.*''',
-    '''default:No IPv6 support. Falling back to IPv4:urllib3.exceptions.HTTPWarning''',
-    '''default:No IPv6 support. skipping:urllib3.exceptions.HTTPWarning''',
+    '''default:No IPv6 support. Falling back to IPv4''',
+    '''default:No IPv6 support. skipping''',
+    '''default:Brotli >= 1.2.0 is required to prevent decompression bombs\.''',
     '''default:ssl\.TLSVersion\.TLSv1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLS is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1 is deprecated:DeprecationWarning''',
@@ -177,7 +190,6 @@ filterwarnings = [
     '''default:ssl\.PROTOCOL_TLSv1_1 is deprecated:DeprecationWarning''',
     '''default:ssl\.PROTOCOL_TLSv1_2 is deprecated:DeprecationWarning''',
     '''default:ssl NPN is deprecated, use ALPN instead:DeprecationWarning''',
-    '''default:Brotli >= 1.2.0 is required to prevent decompression bombs\.:urllib3.exceptions.DependencyWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/13328
     '''default:unclosed file <_io\.BufferedWriter name='/dev/null'>:ResourceWarning''',
     # https://github.com/SeleniumHQ/selenium/issues/14686
@@ -220,7 +232,16 @@ conflicts = [
     {group = "dev-min-pyopenssl"},
     {group = "mypy"},
   ],
+  [
+    {group = "dev-min-pyopenssl"},
+    {group = "test"},
+  ],
 ]
+
+[tool.uv.dependency-groups]
+# MyST 5.1+ supports GitHub-style alerts in the shared security policy and
+# requires Python 3.11+.
+docs = { requires-python = ">=3.11" }
 
 [tool.uv.sources]
 hypercorn = { git = "https://github.com/urllib3/hypercorn", rev = "urllib3-changes" }

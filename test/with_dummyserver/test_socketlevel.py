@@ -145,6 +145,31 @@ class TestCookies(SocketDummyServerTestCase):
             ]
             assert r._original_response.msg["fold-mixed-repeated"] == "one two three"
 
+    def test_bare_lf_in_header_value_is_replaced(self) -> None:
+        def bare_lf_response_handler(listener: socket.socket) -> None:
+            with listener.accept()[0] as sock:
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += sock.recv(65536)
+
+                # http.client accepts bare-LF line endings and joins the
+                # continuation line, leaving a raw LF in the header value.
+                sock.sendall(
+                    b"HTTP/1.1 200 OK\n"
+                    b"Set-Cookie: sessionid=abc\n evil=INJECTED\n"
+                    b"Content-Length: 0\n"
+                    b"\n"
+                )
+
+        self._start_server(bare_lf_response_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/", retries=0)
+
+            assert r.headers["set-cookie"] == "sessionid=abc  evil=INJECTED"
+            assert all(
+                "\r" not in value and "\n" not in value for value in r.headers.values()
+            )
+
 
 class TestSNI(SocketDummyServerTestCase):
     def test_hostname_in_first_request_packet(self) -> None:
@@ -438,14 +463,35 @@ class TestClientCerts(SocketDummyServerTestCase):
 
             assert len(client_certs) == 1
 
-    def test_load_keyfile_with_invalid_password(self) -> None:
+    @pytest.mark.parametrize("password", [None, "", b"", "secret", b"secret"])
+    @pytest.mark.parametrize("combined", [False, True])
+    def test_load_unencrypted_keyfile_with_password(
+        self, password: str | bytes | None, combined: bool
+    ) -> None:
+        """
+        Test that unencrypted keys ignore unused passwords in separate or
+        combined PEM files.
+        """
+        assert ssl_.SSLContext is not None
+        context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
+        context.load_cert_chain(
+            certfile=self.cert_combined_path if combined else self.cert_path,
+            keyfile=None if combined else self.key_path,
+            password=password,
+        )
+
+    @pytest.mark.parametrize("password", ["", b"", "letmei", b"letmei"])
+    def test_load_keyfile_with_invalid_password(self, password: str | bytes) -> None:
+        """
+        Test that encrypted keys reject empty or incorrect passwords.
+        """
         assert ssl_.SSLContext is not None
         context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
         with pytest.raises(ssl.SSLError):
             context.load_cert_chain(
                 certfile=self.cert_path,
                 keyfile=self.password_key_path,
-                password=b"letmei",
+                password=password,
             )
 
     def test_load_invalid_cert_file(self) -> None:
@@ -1225,6 +1271,77 @@ class TestProxyManager(SocketDummyServerTestCase):
                 ]
             )
 
+    @pytest.mark.parametrize(
+        ("redirect_target", "expected_host", "expected_authorization"),
+        [
+            pytest.param(
+                "http://example.com/second", b"example.com", False, id="cross-host"
+            ),
+            pytest.param(
+                "http://google.com/second", b"google.com", True, id="same-host"
+            ),
+            # A redirect to the proxy's own origin is still cross-host for the
+            # request target, so the credentials have to go.
+            pytest.param(None, None, False, id="proxy-origin"),
+        ],
+    )
+    def test_redirect_rewrites_host_and_strips_credentials(
+        self,
+        redirect_target: str | None,
+        expected_host: bytes | None,
+        expected_authorization: bool,
+    ) -> None:
+        requests: list[bytes] = []
+
+        def redirect_socket_handler(listener: socket.socket) -> None:
+            for first in (True, False):
+                sock = listener.accept()[0]
+
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += sock.recv(65536)
+                requests.append(buf)
+
+                if first:
+                    sock.send(
+                        b"HTTP/1.1 302 Found\r\n"
+                        b"Location: %s\r\n"
+                        b"Content-Length: 0\r\n"
+                        b"Connection: close\r\n"
+                        b"\r\n" % location
+                    )
+                else:
+                    sock.send(
+                        b"HTTP/1.1 200 OK\r\n"
+                        b"Content-Length: 0\r\n"
+                        b"Connection: close\r\n"
+                        b"\r\n"
+                    )
+                sock.close()
+
+        self._start_server(redirect_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        # The proxy's port is only known once the server is running.
+        if redirect_target is None:
+            redirect_target = f"{base_url}/second"
+            expected_host = f"{self.host}:{self.port}".encode()
+        location = redirect_target.encode()
+
+        with proxy_from_url(
+            base_url, headers={"Authorization": "Bearer secret"}
+        ) as proxy:
+            r = proxy.request("GET", "http://google.com/first")
+
+            assert r.status == 200
+
+        assert len(requests) == 2
+        assert requests[1].startswith(b"GET %s HTTP/1.1" % redirect_target.encode())
+        assert b"Host: %s\r\n" % expected_host in requests[1]
+        assert (
+            b"Authorization: Bearer secret\r\n" in requests[1]
+        ) is expected_authorization
+
     def test_headers(self) -> None:
         def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -1309,24 +1426,30 @@ class TestProxyManager(SocketDummyServerTestCase):
 
     def test_tunnel_sets_http_11_alpn(self) -> None:
         done_receiving = Event()
-        self.buf = b""
+        alpn_protocol: str | None = None
 
         def socket_handler(listener: socket.socket) -> None:
+            nonlocal alpn_protocol
             sock = listener.accept()[0]
 
-            self.buf = sock.recv(65536)  # We only accept one packet
-            done_receiving.set()  # let the test know it can proceed
-            sock.close()
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])
+            # Prefer h2 so the assertion fails if the client offers it.
+            context.set_alpn_protocols(["h2", "http/1.1"])
+            try:
+                with context.wrap_socket(sock, server_side=True) as ssl_sock:
+                    alpn_protocol = ssl_sock.selected_alpn_protocol()
+            finally:
+                done_receiving.set()  # let the test know it can proceed
 
         self._start_server(socket_handler)
         base_url = f"https://{self.host}:{self.port}"
-        with proxy_from_url(base_url) as proxy:
+        with proxy_from_url(base_url, ca_certs=DEFAULT_CA) as proxy:
             with pytest.raises(MaxRetryError):
                 proxy.request("GET", "https://localhost/")
 
         done_receiving.wait()
-        assert b"http/1.1" in self.buf
-        assert b"h2" not in self.buf
+        assert alpn_protocol == "http/1.1"
 
     def test_connect_reconn(self) -> None:
         def proxy_ssl_one(listener: socket.socket) -> None:
@@ -1699,7 +1822,12 @@ class TestSSL(SocketDummyServerTestCase):
                                 b"Content-Length: 5\r\n\r\n"
                                 b"Hello"
                             )
-                        except (ssl.SSLEOFError, ConnectionResetError, BrokenPipeError):
+                        except (
+                            ssl.SSLError,
+                            ConnectionResetError,
+                            ConnectionAbortedError,
+                            BrokenPipeError,
+                        ):
                             pass
 
                 sock.close()
@@ -1934,6 +2062,8 @@ class TestSSL(SocketDummyServerTestCase):
                     ca_certs=DEFAULT_CA,
                 )
             except ConnectionResetError:
+                # A reset from the client also terminates the connection.
+                server_closed.set()
                 return
             except ssl.SSLError as e:
                 assert "alert unknown ca" in str(e)
@@ -2380,6 +2510,40 @@ class TestStream(SocketDummyServerTestCase):
 
             # Stream should read to the end.
             assert [b"hello, world"] == list(r.stream(None))
+
+            done_event.set()
+
+    def test_chunked_size_line_too_long_does_not_buffer(self) -> None:
+        # A malicious server can advertise chunked encoding and then send an
+        # unterminated chunk-size line (no newline). The streaming path must
+        # reject it with a bounded read instead of buffering the whole run,
+        # which would exhaust memory.
+        done_event = Event()
+        # Well above the 65536-byte cap, but small enough for a fast test.
+        run_length = 512 * 1024
+
+        def socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+
+            sock.sendall(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n")
+            # A chunk-size line that never terminates with a newline.
+            with contextlib.suppress(OSError):
+                sock.sendall(b"f" * run_length)
+
+            done_event.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            r = pool.request("GET", "/", timeout=LONG_TIMEOUT, preload_content=False)
+            with pytest.raises(ProtocolError) as ctx:
+                next(r.stream(65536))
+            assert "chunk size line exceeded maximum allowed length" in str(ctx.value)
 
             done_event.set()
 

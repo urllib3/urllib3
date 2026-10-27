@@ -11,7 +11,7 @@ import zlib
 from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
 from io import BufferedReader, BytesIO, TextIOWrapper
-from test import onlyBrotli, onlyZstd
+from test import LONG_TIMEOUT, onlyBrotli, onlyZstd
 from unittest import mock
 
 import pytest
@@ -27,8 +27,10 @@ from urllib3.exceptions import (
     SSLError,
 )
 from urllib3.response import (  # type: ignore[attr-defined]
+    _MAX_CHUNK_LINE_LENGTH,
     BaseHTTPResponse,
     BytesQueueBuffer,
+    GzipDecoder,
     HTTPResponse,
     brotli,
 )
@@ -125,9 +127,9 @@ class TestBytesQueueBuffer:
         (lambda b: b.get(len(b)), lambda b: b.get_all()),
         ids=("get", "get_all"),
     )
-    @pytest.mark.limit_memory(
-        "12.5 MB", current_thread_only=True
-    )  # assert that we're not doubling memory usagelimit_mem
+    # Doubling memory usage would take this past 20 MiB; the peak is 12.1 MiB.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("15 MB", current_thread_only=True)
     def test_memory_usage(
         self, get_func: typing.Callable[[BytesQueueBuffer], bytes]
     ) -> None:
@@ -146,7 +148,10 @@ class TestBytesQueueBuffer:
         (lambda b: b.get(len(b)), lambda b: b.get_all()),
         ids=("get", "get_all"),
     )
-    @pytest.mark.limit_memory("10.01 MB", current_thread_only=True)
+    # Copying the chunk instead of handing it back would take this to 20 MiB;
+    # the peak is 10 MiB and the identity assertion below is the real check.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("12 MB", current_thread_only=True)
     def test_memory_usage_single_chunk(
         self, get_func: typing.Callable[[BytesQueueBuffer], bytes]
     ) -> None:
@@ -160,7 +165,10 @@ class TestBytesQueueBuffer:
         (True, False),
         ids=("finish_with_get_all", "finish_with_get"),
     )
-    @pytest.mark.limit_memory("11.01 MB", current_thread_only=True)
+    # Duplicating the chunk while splitting it would take this to 20 MiB;
+    # the peak is 11 MiB.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("13 MB", current_thread_only=True)
     def test_memory_usage_splitting_chunk(self, finish_with_get_all: bool) -> None:
         # Allocate a single 10MiB chunk, then read it in two parts.
         # Verifies that splitting a chunk doesn't cause additional memory allocation.
@@ -488,6 +496,16 @@ class TestResponse:
 
         assert ret == b"foofoofoo"
 
+    def test_decode_gzip_swallow_garbage_does_not_flush(self) -> None:
+        decoder = GzipDecoder()
+        data = gzip.compress(b"foo") + b"garbage"
+
+        assert decoder.decompress(data) == b"foo"
+        decoder._obj = mock.Mock(flush=mock.Mock(side_effect=zlib.error))
+
+        assert decoder.flush() == b""
+        decoder._obj.flush.assert_not_called()
+
     def test_chunked_decoding_gzip_swallow_garbage(self) -> None:
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         data = compress.compress(b"foo")
@@ -806,6 +824,44 @@ class TestResponse:
             assert all(len(chunk) == 10240 for chunk in result[:-1])
             assert len(result[-1]) == len(original_data) % 10240
         assert b"".join(result) == original_data
+
+    @pytest.mark.timeout(LONG_TIMEOUT)
+    @pytest.mark.parametrize(
+        "data",
+        [d[1] for d in _test_compressor_params],
+        ids=[d[0] for d in _test_compressor_params],
+    )
+    def test_read_chunked_with_trailing_data_does_not_hang(
+        self,
+        request: pytest.FixtureRequest,
+        data: tuple[str, typing.Callable[[bytes], bytes]] | None,
+    ) -> None:
+        if data is None:
+            pytest.skip(f"Proper {request.node.callspec.id} decoder is not available")
+        # The decoded body must fill multiple bounded reads so EOF is reached
+        # while trailing data remains in the decoder's input buffer.
+        original_data = b"A" * 100
+        content_encoding, compress_func = data
+        if content_encoding == "br" and brotli.__name__ == "brotlicffi":
+            pytest.skip("This case is not supported by brotlicffi")
+        compressed_data = compress_func(original_data) + b"tail"
+        httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        httplib_r.fp = MockChunkedEncodingResponse([compressed_data])  # type: ignore[assignment]
+        r = HTTPResponse(
+            httplib_r,
+            preload_content=False,
+            headers={
+                "transfer-encoding": "chunked",
+                "content-encoding": content_encoding,
+            },
+        )
+
+        stream = r.stream(len(original_data) // 2, decode_content=True)
+        if content_encoding in ("br", "zstd"):
+            with pytest.raises(DecodeError):
+                list(stream)
+        else:
+            assert b"".join(stream) == original_data
 
     @pytest.mark.parametrize(
         "delta",
@@ -1599,7 +1655,10 @@ class TestResponse:
             (False, 10 * 2**20, "read1"),
         ],
     )
-    @pytest.mark.limit_memory("10.5 MB", current_thread_only=True)
+    # The body is 10 MiB and reading it must not buffer a second copy, which
+    # would take the peak to 20 MiB.
+    # The margin is deliberately wide so that allocation noise cannot fail it.
+    @pytest.mark.limit_memory("13 MB", current_thread_only=True)
     def test_buffer_memory_usage_no_decoding(
         self, preload_content: bool, amt: int, read_meth: str
     ) -> None:
@@ -1632,6 +1691,15 @@ class TestResponse:
         resp = HTTPResponse(fp, headers=garbage, preload_content=False)
         assert resp.length_remaining is None
 
+    @pytest.mark.parametrize("value", ["1_000", "+5", "0x10", "0o10", "१२३"])
+    def test_length_w_non_rfc_header(self, value: str) -> None:
+        # int() accepts these forms but RFC 9112 section 6.3 only allows 1*DIGIT.
+        fp = BytesIO(b"12345")
+        resp = HTTPResponse(
+            fp, headers={"content-length": value}, preload_content=False
+        )
+        assert resp.length_remaining is None
+
     def test_length_when_chunked(self) -> None:
         # This is expressly forbidden in RFC 7230 sec 3.3.2
         # We fall back to chunked in this case and try to
@@ -1642,8 +1710,9 @@ class TestResponse:
         resp = HTTPResponse(fp, headers=headers, preload_content=False)
         assert resp.length_remaining is None
 
-    def test_length_with_multiple_content_lengths(self) -> None:
-        headers = {"content-length": "5, 5, 5"}
+    @pytest.mark.parametrize("value", ["5, 5, 5", " 5 , 5 , 5 ", "\t5\t,\t5\t, \t5 \t"])
+    def test_length_with_multiple_content_lengths(self, value: str) -> None:
+        headers = {"content-length": value}
         garbage = {"content-length": "5, 42"}
         fp = BytesIO(b"abcde")
 
@@ -1844,6 +1913,100 @@ class TestResponse:
         assert str(ctx.value) == msg
         assert isinstance(orig_ex, InvalidChunkLength)
         assert orig_ex.length == fp.BAD_LENGTH_LINE.encode()
+
+    @pytest.mark.parametrize("chunk_size", [b"-5", b"+5", b"0x5", b"1_f", b" 5"])
+    def test_non_rfc_chunk_length(self, chunk_size: bytes) -> None:
+        fp = BytesIO(chunk_size + b"\r\nHELLO\r\n0\r\n\r\n")
+        r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        with pytest.raises(ProtocolError) as ctx:
+            next(resp.read_chunked())
+
+        orig_ex = ctx.value.args[1]
+        assert isinstance(orig_ex, InvalidChunkLength)
+        assert orig_ex.length == chunk_size + b"\r\n"
+        assert fp.closed
+        assert r.isclosed()
+        assert resp.closed
+
+    @pytest.mark.parametrize(
+        "chunk_size", [b"5 ", b"5\t", b"5;name=value", b"5 \t;name=value"]
+    )
+    def test_chunk_length_with_trailing_whitespace_or_extensions(
+        self, chunk_size: bytes
+    ) -> None:
+        fp = BytesIO(chunk_size + b"\r\nHELLO\r\n0\r\n\r\n")
+        r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        resp = HTTPResponse(
+            r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked"},
+            original_response=r,
+        )
+        assert list(resp.read_chunked()) == [b"HELLO"]
+
+    def test_chunk_size_line_too_long(self) -> None:
+        # A malicious server can send a chunk-size line with no newline. urllib3's
+        # streaming path must reject it with a bounded read rather than buffering
+        # the whole line (memory exhaustion). See GHSA / CVE for chunked DoS.
+        stream = [b"foooo"]
+        fp = MockChunkedEncodingLongChunkSizeLine(stream)
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        with pytest.raises(ProtocolError) as ctx:
+            next(resp.read_chunked())
+
+        assert "chunk size line exceeded maximum allowed length" in str(ctx.value)
+
+    @pytest.mark.parametrize(
+        "trailer_length",
+        [
+            _MAX_CHUNK_LINE_LENGTH - 1,
+            _MAX_CHUNK_LINE_LENGTH,
+            _MAX_CHUNK_LINE_LENGTH + 1,
+        ],
+    )
+    @pytest.mark.parametrize("line_ending", [b"\r\n", b""])
+    def test_chunk_trailer_line_length(
+        self, trailer_length: int, line_ending: bytes
+    ) -> None:
+        # The line limit includes its CRLF, but not the final blank line.
+        trailer = b"X:" + b"x" * (trailer_length - 2 - len(line_ending)) + line_ending
+        fp = BytesIO(b"3\r\nfoo\r\n0\r\n" + trailer + (b"\r\n" if line_ending else b""))
+        r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        resp = HTTPResponse(
+            r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked"},
+            original_response=r,
+        )
+        chunks = resp.read_chunked()
+        assert next(chunks) == b"foo"
+
+        if trailer_length > _MAX_CHUNK_LINE_LENGTH:
+            with pytest.raises(
+                ProtocolError,
+                match="Response chunk trailer line exceeded maximum allowed length",
+            ):
+                next(chunks)
+        else:
+            assert list(chunks) == []
+
+        assert fp.closed
+        assert r.isclosed()
+        assert resp.closed
 
     def test_truncated_before_chunk(self) -> None:
         stream = [b"foooo", b"bbbbaaaaar"]
@@ -2105,7 +2268,19 @@ class MockChunkedEncodingResponse:
             return chunk_part
 
     def readline(self, amt: int = -1) -> bytes:
-        return self.pop_current_chunk(amt, till_crlf=amt < 0)
+        # Emulate a real file object's readline(size): return bytes up to and
+        # including the first newline, or at most ``amt`` bytes when ``amt >= 0``,
+        # whichever comes first.
+        if len(self.cur_chunk) <= 0:
+            self.cur_chunk = self._pop_new_chunk()
+        line = self.cur_chunk
+        newline_index = line.find(b"\n")
+        if newline_index != -1:
+            line = line[: newline_index + 1]
+        if 0 <= amt < len(line):
+            line = line[:amt]
+        self.cur_chunk = self.cur_chunk[len(line) :]
+        return line
 
     def read(self, amt: int = -1) -> bytes:
         return self.pop_current_chunk(amt)
@@ -2131,6 +2306,14 @@ class MockChunkedInvalidChunkLength(MockChunkedEncodingResponse):
 
     def _encode_chunk(self, chunk: bytes) -> bytes:
         return f"{self.BAD_LENGTH_LINE}{chunk.decode()}\r\n".encode()
+
+
+class MockChunkedEncodingLongChunkSizeLine(MockChunkedEncodingResponse):
+    def _encode_chunk(self, chunk: bytes) -> bytes:
+        # A chunk-size line far longer than _MAX_CHUNK_LINE_LENGTH with no
+        # newline, simulating a malicious server that never terminates the
+        # size line (memory-exhaustion attack).
+        return b"f" * (2**16 + 1024)
 
 
 class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
