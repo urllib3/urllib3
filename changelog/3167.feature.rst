@@ -1,0 +1,1 @@
+Logged only the first connection discarded because a pool is full at warning level, and logged subsequent occurrences at debug level.
