@@ -1918,7 +1918,7 @@ class TestResponse:
     def test_non_rfc_chunk_length(self, chunk_size: bytes) -> None:
         fp = BytesIO(chunk_size + b"\r\nHELLO\r\n0\r\n\r\n")
         r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
-        r.fp = fp
+        r.fp = fp  # type: ignore[assignment]
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(
@@ -1942,7 +1942,7 @@ class TestResponse:
     ) -> None:
         fp = BytesIO(chunk_size + b"\r\nHELLO\r\n0\r\n\r\n")
         r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
-        r.fp = fp
+        r.fp = fp  # type: ignore[assignment]
         resp = HTTPResponse(
             r,
             preload_content=False,
