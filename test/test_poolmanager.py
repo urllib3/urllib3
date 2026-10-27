@@ -22,6 +22,32 @@ from urllib3.util.url import Url
 
 
 class TestPoolManager:
+    @pytest.mark.parametrize("scheme", ["http", "https"])
+    def test_scoped_ipv6_zone_case_separates_pools(self, scheme: str) -> None:
+        with PoolManager(2) as manager:
+            upper = manager.connection_from_host("FE80::1%ethA", scheme=scheme)
+            lower = manager.connection_from_host("fe80::1%etha", scheme=scheme)
+
+            assert upper is not lower
+            assert manager.connection_from_host("fe80::1%ethA", scheme=scheme) is upper
+            assert upper.host == "fe80::1%ethA"
+            assert lower.host == "fe80::1%etha"
+            assert {key.key_host for key in manager.pools.keys()} == {
+                "fe80::1%ethA",
+                "fe80::1%etha",
+            }
+
+    @pytest.mark.parametrize("scheme", ["http", "https"])
+    def test_scoped_ipv6_url_zone_case_separates_pools(self, scheme: str) -> None:
+        with PoolManager(2) as manager:
+            upper = manager.connection_from_url(f"{scheme}://[FE80::1%25ethA]/")
+            lower = manager.connection_from_url(f"{scheme}://[fe80::1%25etha]/")
+
+            assert upper is not lower
+            assert upper.host == "fe80::1%ethA"
+            assert lower.host == "fe80::1%etha"
+            assert manager.connection_from_url(f"{scheme}://[fe80::1%25ethA]/") is upper
+
     @resolvesLocalhostFQDN()
     def test_same_url(self) -> None:
         # Convince ourselves that normally we don't get the same object
@@ -159,7 +185,7 @@ class TestPoolManager:
     def test_default_pool_key_funcs_copy(self) -> None:
         """Assert each PoolManager gets a copy of ``pool_keys_by_scheme``."""
         p = PoolManager()
-        assert p.key_fn_by_scheme == p.key_fn_by_scheme
+        assert p.key_fn_by_scheme == key_fn_by_scheme
         assert p.key_fn_by_scheme is not key_fn_by_scheme
 
     def test_pools_keyed_with_from_host(self) -> None:
@@ -246,6 +272,19 @@ class TestPoolManager:
         assert isinstance(pool, HTTPSConnectionPool)
         assert pool.assert_hostname
         assert fingerprint == pool.assert_fingerprint
+
+    def test_ssl_keywords_filtered_on_http(self) -> None:
+        """Assert SSL-specific kwargs are filtered when creating HTTP pools."""
+        fingerprint = "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
+        p = PoolManager(assert_hostname=True, assert_fingerprint=fingerprint)
+        pool = p.connection_from_url("http://example.com/")
+        assert 1 == len(p.pools)
+        assert not isinstance(pool, HTTPSConnectionPool)
+        # HTTP pool should not receive SSL_KEYWORDS kwargs
+        with pytest.raises(AttributeError):
+            _ = pool.assert_hostname  # type: ignore[attr-defined]
+        with pytest.raises(AttributeError):
+            _ = pool.assert_fingerprint  # type: ignore[attr-defined]
 
     def test_http_connection_from_context_case_insensitive(self) -> None:
         """Assert scheme case is ignored when getting the https key class."""
@@ -469,6 +508,11 @@ class TestPoolManager:
         conn.connect()
 
         assert ssl_wrap_socket.call_args[1]["server_hostname"] == "a::b"
+
+    def test_connection_from_host_port_zero(self) -> None:
+        p = PoolManager()
+        pool = p.connection_from_host("example.com", port=0, scheme="http")
+        assert pool.port == 0
 
     def test_thread_safty(self) -> None:
         pool_manager = PoolManager(num_pools=2)

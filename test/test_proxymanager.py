@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
-from urllib3.exceptions import MaxRetryError, NewConnectionError, ProxyError
+from urllib3.connectionpool import HTTPConnectionPool
+from urllib3.exceptions import (
+    LocationParseError,
+    MaxRetryError,
+    NewConnectionError,
+    ProxyError,
+)
 from urllib3.poolmanager import ProxyManager
 from urllib3.response import HTTPResponse
 from urllib3.util.retry import Retry
@@ -12,6 +20,42 @@ from .port_helpers import find_unused_port
 
 
 class TestProxyManager:
+    @pytest.mark.parametrize(
+        "proxy_scheme, scheme",
+        [("http", "http"), ("https", "http"), ("https", "https")],
+    )
+    @pytest.mark.parametrize("zone", ["1", "25", "251", "25ethA", "et%61"])
+    @pytest.mark.parametrize("retry_kind", [None, "status", "connection"])
+    def test_scoped_ipv6_request_target_matches_host(
+        self, proxy_scheme: str, scheme: str, zone: str, retry_kind: str | None
+    ) -> None:
+        responses: list[HTTPResponse | Exception] = []
+        if retry_kind == "status":
+            responses.extend([HTTPResponse(status=503), HTTPResponse(status=503)])
+        elif retry_kind == "connection":
+            responses.extend([OSError("connection reset"), OSError("connection reset")])
+        responses.append(HTTPResponse(status=200))
+
+        with ProxyManager(
+            f"{proxy_scheme}://proxy:8080", use_forwarding_for_https=True
+        ) as manager:
+            with patch.object(
+                HTTPConnectionPool,
+                "_make_request",
+                side_effect=responses,
+            ) as request:
+                response = manager.urlopen(
+                    "GET",
+                    f"{scheme}://[FE80::1%25{zone}]:8080/path?x=%23#fragment",
+                    retries=Retry(total=2, status_forcelist=[503]),
+                )
+
+        assert response.status == 200
+        assert request.call_count == len(responses)
+        for call in request.call_args_list:
+            assert call.args[2] == f"{scheme}://[fe80::1%{zone}]:8080/path?x=%23"
+            assert call.kwargs["headers"]["Host"] == f"[fe80::1%{zone}]:8080"
+
     @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
     def test_proxy_headers(self, proxy_scheme: str) -> None:
         url = "http://pypi.org/project/urllib3/"
@@ -49,6 +93,11 @@ class TestProxyManager:
         with ProxyManager("https://something") as p:
             assert p.proxy is not None
             assert p.proxy.port == 443
+
+    def test_proxy_port_zero(self) -> None:
+        with ProxyManager("http://proxy:0") as p:
+            assert p.proxy is not None
+            assert p.proxy.port == 0
 
     def test_invalid_scheme(self) -> None:
         with pytest.raises(AssertionError):
@@ -95,6 +144,28 @@ class TestProxyManager:
 
         assert response.status == 200
         assert CustomConnectionPool.requested_urls == ["http://example.com/path?x=1"]
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://victim.example\r\nInjected/path",
+            "https://[::1%25%0d%0a]/",
+        ],
+    )
+    def test_proxy_connect_rejects_control_characters_in_tunnel_host(
+        self, url: str
+    ) -> None:
+        with ProxyManager("http://proxy:8080") as p:
+            with pytest.raises(LocationParseError):
+                p.connection_from_url(url)
+
+    @pytest.mark.parametrize("host", ["foo%.example", "foo%zz.example"])
+    def test_proxy_connect_rejects_malformed_percent_escapes_in_tunnel_host(
+        self, host: str
+    ) -> None:
+        with ProxyManager("http://proxy:8080") as p:
+            with pytest.raises(LocationParseError):
+                p.connection_from_host(host, scheme="https")
 
     def test_proxy_connect_retry(self) -> None:
         retry = Retry(total=None, connect=False)

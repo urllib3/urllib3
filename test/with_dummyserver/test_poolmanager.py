@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import gzip
+import io
+import time
 import typing
 from test import LONG_TIMEOUT
 from unittest import mock
@@ -290,6 +292,20 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert "cookie" not in data
             assert "Cookie" not in data
 
+    def test_redirect_cross_host_headers_none(self) -> None:
+        with PoolManager() as http:
+            r = http.urlopen(
+                "GET",
+                f"{self.base_url}/redirect?target={self.base_url_alt}/headers"
+                "&status=302%20Found",
+                headers=None,
+            )
+
+            assert r.status == 200
+            assert isinstance(r, HTTPResponse)
+            assert r._pool is not None
+            assert r._pool.host == self.host_alt
+
     def test_redirect_cross_host_no_remove_headers(self) -> None:
         with PoolManager() as http:
             r = http.request(
@@ -391,6 +407,44 @@ class TestPoolManager(HypercornDummyServerTestCase):
         assert data["params"] == {}
         assert "Content-Type" not in HTTPHeaderDict(data["headers"])
 
+    @pytest.mark.parametrize("chunked_via", ["kwarg", "header"])
+    def test_303_redirect_makes_request_lose_body_framing(
+        self, chunked_via: str
+    ) -> None:
+        # The body is dropped, so the redirected GET must not keep announcing
+        # a chunked body that it is never going to send.
+        request_headers: dict[str, str] = {}
+        kw: dict[str, typing.Any] = {}
+        if chunked_via == "kwarg":
+            kw["chunked"] = True
+        else:
+            request_headers["Transfer-Encoding"] = "chunked"
+        with PoolManager() as http:
+            response = http.request(
+                "POST",
+                f"{self.base_url}/redirect?target={self.base_url}/headers_and_params",
+                body=iter([b"xxxxxxxx"]),
+                headers=request_headers,
+                **kw,
+            )
+        headers = HTTPHeaderDict(response.json()["headers"])
+        assert "Transfer-Encoding" not in headers
+        assert "Content-Length" not in headers
+
+    def test_303_redirect_with_body_pos(self) -> None:
+        # The body is dropped, so the position recorded to rewind it has to go
+        # as well, otherwise the redirect tries to rewind a body that is gone.
+        with PoolManager() as http:
+            response = http.urlopen(
+                "POST",
+                f"{self.base_url}/redirect?target={self.base_url}/echo",
+                body=io.BytesIO(b"the data"),
+                headers={"Content-Length": "8"},
+                body_pos=0,
+            )
+        assert response.status == 200
+        assert response.data == b""
+
     def test_unknown_scheme(self) -> None:
         with PoolManager() as http:
             unknown_scheme = "unknown"
@@ -424,6 +478,51 @@ class TestPoolManager(HypercornDummyServerTestCase):
             )
 
             assert r.status == 303
+
+    def test_redirect_honors_retry_after(self) -> None:
+        with PoolManager() as http:
+            with mock.patch("time.sleep") as sleep_mock:
+                r = http.request("GET", f"{self.base_url}/redirect_after")
+            assert r.status == 200
+            sleep_mock.assert_called_once_with(1)
+
+            # retry_after_max caps the wait, as it does for HTTPConnectionPool.
+            timestamp = time.time() + 3600
+            with mock.patch("time.sleep") as sleep_mock:
+                r = http.request(
+                    "GET",
+                    f"{self.base_url}/redirect_after",
+                    fields={"date": str(timestamp)},
+                    retries=Retry(retry_after_max=5),
+                )
+            assert r.status == 200
+            sleep_mock.assert_called_once_with(5)
+
+            # A Retry-After in the past does not cause a wait.
+            timestamp = time.time() - 1
+            with mock.patch("time.sleep") as sleep_mock:
+                r = http.request(
+                    "GET",
+                    f"{self.base_url}/redirect_after",
+                    fields={"date": str(timestamp)},
+                )
+            assert r.status == 200
+            sleep_mock.assert_not_called()
+
+    def test_redirect_retry_after_keeps_pool_retry_after_max(self) -> None:
+        # With retries=None the redirect uses the pool's Retry, so its
+        # retry_after_max still caps the wait.
+        timestamp = time.time() + 3600
+        with PoolManager(retries=Retry(retry_after_max=5)) as http:
+            with mock.patch("time.sleep") as sleep_mock:
+                r = http.request(
+                    "GET",
+                    f"{self.base_url}/redirect_after",
+                    fields={"date": str(timestamp)},
+                    retries=None,
+                )
+            assert r.status == 200
+            sleep_mock.assert_called_once_with(5)
 
     def test_raise_on_status(self) -> None:
         with PoolManager() as http:

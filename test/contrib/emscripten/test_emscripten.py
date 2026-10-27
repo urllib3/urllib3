@@ -668,7 +668,7 @@ def test_streaming_not_ready_in_browser(
         result=await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
         assert(result is False)
         assert(urllib3.contrib.emscripten.fetch.streaming_ready() is None )
-        """
+        """,
     )
 
 

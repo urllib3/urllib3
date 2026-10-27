@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import email
 import logging
+import math
 import random
 import re
 import time
 import typing
+import warnings
+from collections.abc import Collection
 from itertools import takewhile
 from types import TracebackType
 
@@ -155,7 +158,9 @@ class Retry:
         sleep for [0.0s, 0.2s, 0.4s, 0.8s, ...] between retries. No backoff will ever
         be longer than `backoff_max`.
 
-        By default, backoff is disabled (factor set to 0).
+        By default, backoff is disabled (factor set to 0). In production services,
+        setting a non-zero factor (e.g. 0.5 to 1.0) along with `backoff_jitter` is
+        recommended to prevent overloading servers with immediate retries.
 
     :param float backoff_max:
         The maximum backoff time (in seconds) between retry attempts.
@@ -198,7 +203,8 @@ class Retry:
         ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
     )
 
-    #: Default status codes to be used for ``status_forcelist``
+    #: Default status codes that trigger a retry when a Retry-After header is
+    #: present and ``respect_retry_after_header`` is enabled.
     RETRY_AFTER_STATUS_CODES = frozenset([413, 429, 503])
 
     #: Default headers to be used for ``remove_headers_on_redirect``
@@ -250,6 +256,15 @@ class Retry:
 
         self.redirect = redirect
         self.status_forcelist = status_forcelist or set()
+        if not allowed_methods and isinstance(allowed_methods, Collection):
+            warnings.warn(
+                "Using an empty collection for 'allowed_methods' option to "
+                "retry on any verb is deprecated and will skip retries for "
+                "all verbs in urllib3 v3.0. Instead use "
+                "Retry(..., allowed_methods=None).",
+                FutureWarning,
+                stacklevel=2,
+            )
         self.allowed_methods = allowed_methods
         self.backoff_factor = backoff_factor
         self.backoff_max = backoff_max
@@ -320,7 +335,10 @@ class Retry:
         if consecutive_errors_len <= 1:
             return 0
 
-        backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
+        try:
+            backoff_value = math.ldexp(self.backoff_factor, consecutive_errors_len - 1)
+        except OverflowError:
+            backoff_value = math.inf if self.backoff_factor > 0 else -math.inf
         if self.backoff_jitter != 0.0:
             backoff_value += random.random() * self.backoff_jitter
         return float(max(0, min(self.backoff_max, backoff_value)))
@@ -335,7 +353,10 @@ class Retry:
             if retry_date_tuple is None:
                 raise InvalidHeader(f"Invalid Retry-After header: {retry_after}")
 
-            retry_date = email.utils.mktime_tz(retry_date_tuple)
+            try:
+                retry_date = email.utils.mktime_tz(retry_date_tuple)
+            except (ValueError, OverflowError):
+                raise InvalidHeader(f"Invalid Retry-After header: {retry_after}")
             seconds = retry_date - time.time()
 
         seconds = max(seconds, 0)

@@ -42,13 +42,12 @@ from ..with_dummyserver.test_https import (  # noqa: E402, F401
     TestHTTPS_TLSv1_2,
     TestHTTPS_TLSv1_3,
 )
-from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
+
+from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401  # isort: skip
     TestClientCerts,
     TestSNI,
-    TestSocketClosing,
-)
-from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
     TestSSL as TestSocketSSL,
+    TestSocketClosing,
 )
 
 

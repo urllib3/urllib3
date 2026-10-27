@@ -10,7 +10,13 @@ from urllib.parse import urljoin
 from ._collections import HTTPHeaderDict, RecentlyUsedContainer
 from ._request_methods import RequestMethods
 from .connection import ProxyConfig
-from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
+from .connectionpool import (
+    HTTPConnectionPool,
+    HTTPSConnectionPool,
+    _is_same_host,
+    _normalize_host,
+    port_by_scheme,
+)
 from .exceptions import (
     LocationValueError,
     MaxRetryError,
@@ -47,6 +53,8 @@ SSL_KEYWORDS = (
     "ssl_context",
     "key_password",
     "server_hostname",
+    "assert_hostname",
+    "assert_fingerprint",
 )
 # Default value for `blocksize` - a new parameter introduced to
 # http.client.HTTPConnection & http.client.HTTPSConnection in Python 3.7
@@ -117,7 +125,12 @@ def _default_key_normalizer(
     # Since we mutate the dictionary, make a copy first
     context = request_context.copy()
     context["scheme"] = context["scheme"].lower()
-    context["host"] = context["host"].lower()
+    # Only the address portion of a scoped IPv6 host is case-insensitive.
+    address, separator, zone = context["host"].partition("%")
+    if separator and ":" in address:
+        context["host"] = f"{address.lower()}{separator}{zone}"
+    else:
+        context["host"] = context["host"].lower()
 
     # These are both dictionaries and need to be transformed into frozensets
     for key in ("headers", "_proxy_headers", "_socks_options"):
@@ -309,7 +322,7 @@ class PoolManager(RequestMethods):
 
         request_context = self._merge_pool_kwargs(pool_kwargs)
         request_context["scheme"] = scheme or "http"
-        if not port:
+        if port is None:
             port = port_by_scheme.get(request_context["scheme"].lower(), 80)
         request_context["port"] = port
         request_context["host"] = host
@@ -452,7 +465,9 @@ class PoolManager(RequestMethods):
             kw["headers"] = self.headers
 
         if self._proxy_requires_url_absolute_form(u):
-            response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
+            # Strip the fragment here but let the connection pool normalize the URL
+            # to avoid decoding IPv6 zone identifiers twice.
+            response = conn.urlopen(method, url.split("#", 1)[0], **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 
@@ -468,21 +483,32 @@ class PoolManager(RequestMethods):
             method = "GET"
             # And lose the body not to transfer anything sensitive.
             kw["body"] = None
+            # The body is gone, so the state that describes it has to go too:
+            # there is nothing left to frame with chunked transfer encoding,
+            # and nothing left to rewind.
+            kw["chunked"] = False
+            kw["body_pos"] = None
             kw["headers"] = HTTPHeaderDict(kw["headers"])._prepare_for_method_change()
 
         retries = kw.get("retries", response.retries)
         if not isinstance(retries, Retry):
-            retries = Retry.from_int(retries, redirect=redirect)
+            retries = Retry.from_int(
+                retries, redirect=redirect, default=response.retries
+            )
 
-        # Strip headers marked as unsafe to forward to the redirected location.
-        # Check remove_headers_on_redirect to avoid a potential network call within
-        # conn.is_same_host() which may use socket.gethostbyname() in the future.
-        if retries.remove_headers_on_redirect and not conn.is_same_host(
-            redirect_location
+        # Strip headers marked as unsafe to forward to the redirected location,
+        # along with Host, which ProxyManager._set_proxy_headers() derives from
+        # the request URL and so has to be recomputed for the new location.
+        # 'conn' is the proxy's pool when forwarding through an HTTP proxy, so
+        # compare the request URL itself rather than asking the pool.
+        scheme = u.scheme or "http"
+        if kw["headers"] is not None and not _is_same_host(
+            redirect_location, scheme, _normalize_host(u.host, scheme=scheme), u.port
         ):
+            headers_to_remove = retries.remove_headers_on_redirect | {"host"}
             new_headers = kw["headers"].copy()
             for header in kw["headers"]:
-                if header.lower() in retries.remove_headers_on_redirect:
+                if header.lower() in headers_to_remove:
                     new_headers.pop(header, None)
             kw["headers"] = new_headers
 
@@ -500,6 +526,7 @@ class PoolManager(RequestMethods):
         log.info("Redirecting %s -> %s", url, redirect_location)
 
         response.drain_conn()
+        retries.sleep_for_retry(response)
         return self.urlopen(method, redirect_location, **kw)
 
 
@@ -581,13 +608,30 @@ class ProxyManager(PoolManager):
         if proxy.scheme not in ("http", "https"):
             raise ProxySchemeUnknown(proxy.scheme)
 
-        if not proxy.port:
+        # Keep the deprecated ssl_context fallback on the manager for
+        # compatibility, while passing only explicit proxy policy to connections.
+        self.proxy_ssl_context = proxy_ssl_context
+        if (
+            use_forwarding_for_https
+            and proxy.scheme == "https"
+            and connection_pool_kw.get("ssl_context") is not None
+        ):
+            warnings.warn(
+                "Passing ssl_context when use_forwarding_for_https=True is deprecated "
+                "and will raise an error in urllib3 v3.0. "
+                "Use proxy_ssl_context to configure the TLS connection to the proxy.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if self.proxy_ssl_context is None:
+                self.proxy_ssl_context = connection_pool_kw.get("ssl_context")
+
+        if proxy.port is None:
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
-        self.proxy_ssl_context = proxy_ssl_context
         self.proxy_config = ProxyConfig(
             proxy_ssl_context,
             use_forwarding_for_https,

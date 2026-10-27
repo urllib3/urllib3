@@ -1,6 +1,11 @@
 name: lint
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    # Dependabot branches run through pull_request; tag pushes are not run.
+    branches-ignore: ["dependabot/**"]
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: "read"
@@ -12,19 +17,19 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: "Setup Python"
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.x"
 
       - name: "Install uv"
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.11.7"
+          version: "0.12.22"
 
       - name: "Lint code"
         run: uvx nox -s lint
