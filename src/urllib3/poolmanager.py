@@ -10,7 +10,13 @@ from urllib.parse import urljoin
 from ._collections import HTTPHeaderDict, RecentlyUsedContainer
 from ._request_methods import RequestMethods
 from .connection import ProxyConfig
-from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
+from .connectionpool import (
+    HTTPConnectionPool,
+    HTTPSConnectionPool,
+    _is_same_host,
+    _normalize_host,
+    port_by_scheme,
+)
 from .exceptions import (
     LocationValueError,
     MaxRetryError,
@@ -120,7 +126,12 @@ def _default_key_normalizer(
     # Since we mutate the dictionary, make a copy first
     context = request_context.copy()
     context["scheme"] = context["scheme"].lower()
-    context["host"] = context["host"].lower()
+    # Only the address portion of a scoped IPv6 host is case-insensitive.
+    address, separator, zone = context["host"].partition("%")
+    if separator and ":" in address:
+        context["host"] = f"{address.lower()}{separator}{zone}"
+    else:
+        context["host"] = context["host"].lower()
 
     # These are both dictionaries and need to be transformed into frozensets
     for key in ("headers", "_proxy_headers", "_socks_options"):
@@ -459,7 +470,9 @@ class PoolManager(RequestMethods):
             body_pos = set_file_position(kw.get("body"), None)
 
         if self._proxy_requires_url_absolute_form(u):
-            response = conn.urlopen(method, u._replace(fragment=None).url, **kw)
+            # Strip the fragment here but let the connection pool normalize the URL
+            # to avoid decoding IPv6 zone identifiers twice.
+            response = conn.urlopen(method, url.split("#", 1)[0], **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 
@@ -486,17 +499,23 @@ class PoolManager(RequestMethods):
 
         retries = kw.get("retries", response.retries)
         if not isinstance(retries, Retry):
-            retries = Retry.from_int(retries, redirect=redirect)
+            retries = Retry.from_int(
+                retries, redirect=redirect, default=response.retries
+            )
 
-        # Strip headers marked as unsafe to forward to the redirected location.
-        # Check remove_headers_on_redirect to avoid a potential network call within
-        # conn.is_same_host() which may use socket.gethostbyname() in the future.
-        if retries.remove_headers_on_redirect and not conn.is_same_host(
-            redirect_location
+        # Strip headers marked as unsafe to forward to the redirected location,
+        # along with Host, which ProxyManager._set_proxy_headers() derives from
+        # the request URL and so has to be recomputed for the new location.
+        # 'conn' is the proxy's pool when forwarding through an HTTP proxy, so
+        # compare the request URL itself rather than asking the pool.
+        scheme = u.scheme or "http"
+        if kw["headers"] is not None and not _is_same_host(
+            redirect_location, scheme, _normalize_host(u.host, scheme=scheme), u.port
         ):
+            headers_to_remove = retries.remove_headers_on_redirect | {"host"}
             new_headers = kw["headers"].copy()
             for header in kw["headers"]:
-                if header.lower() in retries.remove_headers_on_redirect:
+                if header.lower() in headers_to_remove:
                     new_headers.pop(header, None)
             kw["headers"] = new_headers
 
@@ -514,6 +533,7 @@ class PoolManager(RequestMethods):
         log.info("Redirecting %s -> %s", url, redirect_location)
 
         response.drain_conn()
+        retries.sleep_for_retry(response)
         return self.urlopen(method, redirect_location, **kw)
 
 

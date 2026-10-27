@@ -4,6 +4,7 @@ import collections
 import io
 import json as _json
 import logging
+import re
 import socket
 import sys
 import typing
@@ -53,6 +54,18 @@ log = logging.getLogger(__name__)
 # Read in 64 KiB chunks
 _READ_CHUNK_SIZE = 2**16
 
+# RFC 9112: Content-Length = 1*DIGIT and chunk-size = 1*HEXDIG.
+# int() is more permissive, so we match against the grammar before calling it.
+_CONTENT_LENGTH_RE = re.compile(r"[0-9]+")
+_CHUNK_SIZE_RE = re.compile(rb"[0-9A-Fa-f]+")
+
+# Maximum length of a chunk-size line (and the trailing CRLF line) when reading a
+# chunked-transfer-encoded response. Matches ``http.client._MAXLINE`` so urllib3's
+# streaming path bounds these reads exactly like the stdlib ``.read()`` path does,
+# preventing a malicious server from forcing unbounded buffering (memory exhaustion)
+# via an unterminated chunk-size line.
+_MAX_CHUNK_LINE_LENGTH = 2**16
+
 
 class ContentDecoder:
     def decompress(self, data: bytes, max_length: int = -1) -> bytes:
@@ -76,6 +89,10 @@ class DeflateDecoder(ContentDecoder):
     def decompress(self, data: bytes, max_length: int = -1) -> bytes:
         data = self._unfed_data + data
         self._unfed_data = b""
+        # Data received after EOF cannot produce more output from this
+        # Deflate stream.
+        if self._obj.eof:
+            return b""
         if not data and not self._obj.unconsumed_tail:
             return data
         original_max_length = max_length
@@ -118,7 +135,9 @@ class DeflateDecoder(ContentDecoder):
     @property
     def has_unconsumed_tail(self) -> bool:
         return bool(self._unfed_data) or (
-            bool(self._obj.unconsumed_tail) and not self._first_try
+            bool(self._obj.unconsumed_tail)
+            and not self._first_try
+            and not self._obj.eof
         )
 
     def flush(self) -> bytes:
@@ -138,9 +157,8 @@ class GzipDecoder(ContentDecoder):
         self._unconsumed_tail = b""
 
     def decompress(self, data: bytes, max_length: int = -1) -> bytes:
-        ret = bytearray()
         if self._state == GzipDecoderState.SWALLOW_DATA:
-            return bytes(ret)
+            return b""
 
         if max_length == 0:
             # We should not pass 0 to the zlib decompressor because 0 is
@@ -154,13 +172,21 @@ class GzipDecoder(ContentDecoder):
         # call if decompression is to continue.
         data = self._unconsumed_tail + data
         if not data and self._obj.eof:
-            return bytes(ret)
+            return b""
 
+        ret: bytes | bytearray = b""
         while True:
             try:
-                ret += self._obj.decompress(
+                chunk = self._obj.decompress(
                     data, max_length=max(max_length - len(ret), 0)
                 )
+                if not ret:
+                    ret = chunk
+                elif chunk:
+                    if isinstance(ret, bytes):
+                        ret = bytearray(ret)
+                    ret += chunk
+                    del chunk
             except zlib.error:
                 previous_state = self._state
                 # Ignore data after the first error
@@ -168,7 +194,7 @@ class GzipDecoder(ContentDecoder):
                 self._unconsumed_tail = b""
                 if previous_state == GzipDecoderState.OTHER_MEMBERS:
                     # Allow trailing garbage acceptable in other gzip clients
-                    return bytes(ret)
+                    return ret if isinstance(ret, bytes) else bytes(ret)
                 raise
 
             self._unconsumed_tail = data = (
@@ -178,20 +204,22 @@ class GzipDecoder(ContentDecoder):
                 break
 
             if not data:
-                return bytes(ret)
+                return ret if isinstance(ret, bytes) else bytes(ret)
             # When the end of a gzip member is reached, a new decompressor
             # must be created for unused (possibly future) data.
             if self._obj.eof:
                 self._state = GzipDecoderState.OTHER_MEMBERS
                 self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
-        return bytes(ret)
+        return ret if isinstance(ret, bytes) else bytes(ret)
 
     @property
     def has_unconsumed_tail(self) -> bool:
         return bool(self._unconsumed_tail)
 
     def flush(self) -> bytes:
+        if self._state == GzipDecoderState.SWALLOW_DATA:
+            return b""
         return self._obj.flush()
 
 
@@ -871,7 +899,14 @@ class HTTPResponse(BaseHTTPResponse):
                 # (e.g. Content-Length: 42, 42). This line ensures the values
                 # are all valid ints and that as long as the `set` length is 1,
                 # all values are the same. Otherwise, the header is invalid.
-                lengths = {int(val) for val in content_length.split(",")}
+                lengths = set()
+                for val in content_length.split(","):
+                    # Only optional whitespace may surround each value; reject
+                    # signs, underscores and unicode digits that int() accepts.
+                    val = val.strip()
+                    if not _CONTENT_LENGTH_RE.fullmatch(val):
+                        raise ValueError("invalid Content-Length")
+                    lengths.add(int(val))
                 if len(lengths) > 1:
                     raise InvalidHeader(
                         "Content-Length contained multiple "
@@ -880,9 +915,6 @@ class HTTPResponse(BaseHTTPResponse):
                 length = lengths.pop()
             except ValueError:
                 length = None
-            else:
-                if length < 0:
-                    length = None
 
         else:  # if content_length is None
             length = None
@@ -1351,10 +1383,18 @@ class HTTPResponse(BaseHTTPResponse):
         # we'll try to read it from socket.
         if self.chunk_left is not None:
             return None
-        line = self._fp.fp.readline()  # type: ignore[union-attr]
+        line = self._fp.fp.readline(_MAX_CHUNK_LINE_LENGTH + 1)  # type: ignore[union-attr]
+        if len(line) > _MAX_CHUNK_LINE_LENGTH:
+            self.close()
+            raise ProtocolError(
+                "Response chunk size line exceeded maximum allowed length"
+            ) from None
         line = line.split(b";", 1)[0]
         try:
-            self.chunk_left = int(line, 16)
+            chunk_size = line.rstrip()
+            if not _CHUNK_SIZE_RE.fullmatch(chunk_size):
+                raise ValueError("invalid chunk size")
+            self.chunk_left = int(chunk_size, 16)
         except ValueError:
             self.close()
             if line:
@@ -1462,7 +1502,11 @@ class HTTPResponse(BaseHTTPResponse):
 
             # Chunk content ends with \r\n: discard it.
             while self._fp is not None:
-                line = self._fp.fp.readline()
+                line = self._fp.fp.readline(_MAX_CHUNK_LINE_LENGTH + 1)
+                if len(line) > _MAX_CHUNK_LINE_LENGTH:
+                    raise ProtocolError(
+                        "Response chunk trailer line exceeded maximum allowed length"
+                    )
                 if not line:
                     # Some sites may not end with '\r\n'.
                     break

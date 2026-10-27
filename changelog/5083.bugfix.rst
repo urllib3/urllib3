@@ -1,0 +1,1 @@
+Tightened numeric validation of response framing fields. ``Content-Length`` values such as ``1_000`` are now ignored when tracking response length, and chunk sizes such as ``0x5`` are now rejected when streaming chunked responses.

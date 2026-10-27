@@ -1,2 +1,0 @@
-Fixed a bug where ``PoolManager`` passed the ``assert_hostname`` and
-``assert_fingerprint`` parameters to HTTP connection pools.

@@ -1,0 +1,2 @@
+Prevented a suppressed :class:`GzipDecoder` decompression error caused by invalid
+trailing data from resurfacing during ``flush()`` on newer Python versions.

@@ -110,6 +110,8 @@ class TestUtil:
         # Scoped IPv6 (with ZoneID), both RFC 6874 compliant and not.
         ("http://[a::b%25zone]", ("http", "[a::b%zone]", None)),
         ("http://[a::b%zone]", ("http", "[a::b%zone]", None)),
+        ("http://[fe80::1%2525]", ("http", "[fe80::1%25]", None)),
+        ("http://[fe80::1%25251]", ("http", "[fe80::1%251]", None)),
         # Hosts
         ("HTTP://GOOGLE.COM/mail/", ("http", "google.com", None)),
         ("GOogle.COM/mail", ("http", "google.com", None)),
@@ -243,6 +245,8 @@ class TestUtil:
             ("[::1%25zone]", "[::1%zone]"),
             ("[::1%0d]", "[::1%0d]"),
             ("[::1%25]", "[::1%25]"),
+            ("[::1%2525]", "[::1%25]"),
+            ("[::1%25251]", "[::1%251]"),
             ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%etH0%FF]/%AB%AF"),
             (
                 "http://user:pass@[AaAa::Ff%25etH0%Ff]/%ab%Af",
