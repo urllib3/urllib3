@@ -91,7 +91,7 @@ class ConnectionPool:
         # to avoid removing square braces around IPv6 addresses.
         # This value is sent to `HTTPConnection.set_tunnel()` if called
         # because square braces are required for HTTP CONNECT tunneling.
-        self._tunnel_host = normalize_host(host, scheme=self.scheme).lower()
+        self._tunnel_host = normalize_host(host, scheme=self.scheme)
 
     def __str__(self) -> str:
         return f"{type(self).__name__}(host={self.host!r}, port={self.port!r})"
@@ -585,22 +585,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         Check if the given ``url`` is a member of the same host as this
         connection pool.
         """
-        if url.startswith("/"):
-            return True
-
-        # TODO: Add optional support for socket.gethostbyname checking.
-        scheme, _, host, port, *_ = parse_url(url)
-        scheme = scheme or "http"
-        if host is not None:
-            host = _normalize_host(host, scheme=scheme)
-
-        # Use explicit default port for comparison when none is given
-        if self.port is not None and port is None:
-            port = port_by_scheme.get(scheme)
-        elif self.port is None and port == port_by_scheme.get(scheme):
-            port = None
-
-        return (scheme, host, port) == (self.scheme, self.host, self.port)
+        return _is_same_host(url, self.scheme, self.host, self.port)
 
     def urlopen(  # type: ignore[override]
         self,
@@ -715,6 +700,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
         """
+        # Preserve the input for retries so that IPv6 zone identifiers aren't
+        # decoded again when urlopen() normalizes the URL on the next attempt.
+        original_url = url
+
         # Ensure that the URL we're connecting to is properly encoded
         if url.startswith("/"):
             # URLs starting with / are inherently schemeless.
@@ -892,7 +881,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             )
             return self.urlopen(
                 method,
-                url,
+                original_url,
                 body,
                 headers,
                 retries,
@@ -980,7 +969,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             log.debug("Retry: %s", url)
             return self.urlopen(
                 method,
-                url,
+                original_url,
                 body,
                 headers,
                 retries=retries,
@@ -1198,6 +1187,32 @@ def _normalize_host(host: str | None, scheme: str | None) -> str | None:
     if host and host.startswith("[") and host.endswith("]"):
         host = host[1:-1]
     return host
+
+
+def _is_same_host(
+    url: str, scheme: str | None, host: str | None, port: int | None
+) -> bool:
+    """
+    Check if the given ``url`` is a member of the same host as the given
+    ``scheme``, ``host`` and ``port``. ``host`` is expected to be
+    normalized with :func:`_normalize_host` already.
+    """
+    if url.startswith("/"):
+        return True
+
+    # TODO: Add optional support for socket.gethostbyname checking.
+    url_scheme, _, url_host, url_port, *_ = parse_url(url)
+    url_scheme = url_scheme or "http"
+    if url_host is not None:
+        url_host = _normalize_host(url_host, scheme=url_scheme)
+
+    # Use explicit default port for comparison when none is given
+    if port is not None and url_port is None:
+        url_port = port_by_scheme.get(url_scheme)
+    elif port is None and url_port == port_by_scheme.get(url_scheme):
+        url_port = None
+
+    return (url_scheme, url_host, url_port) == (scheme, host, port)
 
 
 def _url_from_pool(

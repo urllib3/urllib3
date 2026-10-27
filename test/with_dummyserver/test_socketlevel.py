@@ -146,6 +146,31 @@ class TestCookies(SocketDummyServerTestCase):
             ]
             assert r._original_response.msg["fold-mixed-repeated"] == "one two three"
 
+    def test_bare_lf_in_header_value_is_replaced(self) -> None:
+        def bare_lf_response_handler(listener: socket.socket) -> None:
+            with listener.accept()[0] as sock:
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += sock.recv(65536)
+
+                # http.client accepts bare-LF line endings and joins the
+                # continuation line, leaving a raw LF in the header value.
+                sock.sendall(
+                    b"HTTP/1.1 200 OK\n"
+                    b"Set-Cookie: sessionid=abc\n evil=INJECTED\n"
+                    b"Content-Length: 0\n"
+                    b"\n"
+                )
+
+        self._start_server(bare_lf_response_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/", retries=0)
+
+            assert r.headers["set-cookie"] == "sessionid=abc  evil=INJECTED"
+            assert all(
+                "\r" not in value and "\n" not in value for value in r.headers.values()
+            )
+
 
 class TestSNI(SocketDummyServerTestCase):
     def test_hostname_in_first_request_packet(self) -> None:
@@ -1250,6 +1275,77 @@ class TestProxyManager(SocketDummyServerTestCase):
                 ]
             )
 
+    @pytest.mark.parametrize(
+        ("redirect_target", "expected_host", "expected_authorization"),
+        [
+            pytest.param(
+                "http://example.com/second", b"example.com", False, id="cross-host"
+            ),
+            pytest.param(
+                "http://google.com/second", b"google.com", True, id="same-host"
+            ),
+            # A redirect to the proxy's own origin is still cross-host for the
+            # request target, so the credentials have to go.
+            pytest.param(None, None, False, id="proxy-origin"),
+        ],
+    )
+    def test_redirect_rewrites_host_and_strips_credentials(
+        self,
+        redirect_target: str | None,
+        expected_host: bytes | None,
+        expected_authorization: bool,
+    ) -> None:
+        requests: list[bytes] = []
+
+        def redirect_socket_handler(listener: socket.socket) -> None:
+            for first in (True, False):
+                sock = listener.accept()[0]
+
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += sock.recv(65536)
+                requests.append(buf)
+
+                if first:
+                    sock.send(
+                        b"HTTP/1.1 302 Found\r\n"
+                        b"Location: %s\r\n"
+                        b"Content-Length: 0\r\n"
+                        b"Connection: close\r\n"
+                        b"\r\n" % location
+                    )
+                else:
+                    sock.send(
+                        b"HTTP/1.1 200 OK\r\n"
+                        b"Content-Length: 0\r\n"
+                        b"Connection: close\r\n"
+                        b"\r\n"
+                    )
+                sock.close()
+
+        self._start_server(redirect_socket_handler)
+        base_url = f"http://{self.host}:{self.port}"
+
+        # The proxy's port is only known once the server is running.
+        if redirect_target is None:
+            redirect_target = f"{base_url}/second"
+            expected_host = f"{self.host}:{self.port}".encode()
+        location = redirect_target.encode()
+
+        with proxy_from_url(
+            base_url, headers={"Authorization": "Bearer secret"}
+        ) as proxy:
+            r = proxy.request("GET", "http://google.com/first")
+
+            assert r.status == 200
+
+        assert len(requests) == 2
+        assert requests[1].startswith(b"GET %s HTTP/1.1" % redirect_target.encode())
+        assert b"Host: %s\r\n" % expected_host in requests[1]
+        assert (
+            b"Authorization: Bearer secret\r\n" in requests[1]
+        ) is expected_authorization
+
     def test_headers(self) -> None:
         def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
@@ -1730,7 +1826,12 @@ class TestSSL(SocketDummyServerTestCase):
                                 b"Content-Length: 5\r\n\r\n"
                                 b"Hello"
                             )
-                        except (ssl.SSLEOFError, ConnectionResetError, BrokenPipeError):
+                        except (
+                            ssl.SSLError,
+                            ConnectionResetError,
+                            ConnectionAbortedError,
+                            BrokenPipeError,
+                        ):
                             pass
 
                 sock.close()
@@ -1965,6 +2066,8 @@ class TestSSL(SocketDummyServerTestCase):
                     ca_certs=DEFAULT_CA,
                 )
             except ConnectionResetError:
+                # A reset from the client also terminates the connection.
+                server_closed.set()
                 return
             except ssl.SSLError as e:
                 assert "alert unknown ca" in str(e)
