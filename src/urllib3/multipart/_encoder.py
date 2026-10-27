@@ -171,11 +171,10 @@ class Part:
         self._peeked.clear()
 
     def _read_unbuffered(self, size: int) -> bytes:
-        result = bytearray()
+        result = b""
         if self._header_offset < len(self._headers):
-            chunk = self._headers[self._header_offset : self._header_offset + size]
-            self._header_offset += len(chunk)
-            result.extend(chunk)
+            result = self._headers[self._header_offset : self._header_offset + size]
+            self._header_offset += len(result)
 
         remaining = size - len(result)
         if not self._body_finished and self._body.finished():
@@ -186,13 +185,13 @@ class Part:
             if self._body.length is not None:
                 body_size = min(body_size, self._body.length - self._body.position)
             chunk = self._body.read(body_size)
-            result.extend(chunk)
+            result += chunk
             if self._body.finished():
                 self._body.check_end()
                 self._body_finished = True
             elif not chunk:
                 self._body_finished = True
-        return bytes(result)
+        return result
 
     def read(self, size: int | None = -1) -> bytes:
         if size is None or size < 0:
@@ -206,8 +205,14 @@ class Part:
         if size == 0:
             return b""
 
-        result = bytearray(self._peeked[:size])
-        del self._peeked[:size]
+        if not self._peeked:
+            chunk = self._read_unbuffered(size)
+            if len(chunk) == size or not chunk:
+                return chunk
+            result = bytearray(chunk)
+        else:
+            result = bytearray(self._peeked[:size])
+            del self._peeked[:size]
         while len(result) < size:
             chunk = self._read_unbuffered(size - len(result))
             if not chunk:
