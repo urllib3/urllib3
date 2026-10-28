@@ -298,7 +298,7 @@ starts with ``http://`` instead of ``https://``:
      http = urllib3.ProxyManager("https://...")
 
 If instead you're using ``urllib3`` through another library like Requests
-there are multiple ways your proxy could be mis-configured. You need to figure out
+there are multiple ways your proxy could be misconfigured. You need to figure out
 where the configuration isn't correct and make the fix there. Some common places
 to look are environment variables like ``HTTP_PROXY``, ``HTTPS_PROXY``, and ``ALL_PROXY``.
 
