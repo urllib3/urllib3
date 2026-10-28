@@ -161,7 +161,7 @@ The primary goal for migrating to urllib3 2.x should be to ensure your package s
 This is to reduce the chance that diamond dependencies are introduced into your users' dependencies which will then cause issues
 with them upgrading to the latest version of **your package**.
 
-The first step to supporting urllib3 2.x is to make sure the version 2.x not being excluded by ``install_requires``. You should
+The first step to supporting urllib3 2.x is to make sure version 2.x is not excluded by ``install_requires``. You should
 ensure your package allows for both urllib3 1.26.x and 2.x to be used:
 
 .. code-block:: python
