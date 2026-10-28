@@ -1,0 +1,1 @@
+Fixed ``PoolManager`` replacing its cached pool key with the key of each new request to the same host.
