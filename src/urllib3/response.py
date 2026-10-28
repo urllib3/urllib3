@@ -644,12 +644,15 @@ class BaseHTTPResponse(io.IOBase):
             if content_encoding in self.CONTENT_DECODERS:
                 self._decoder = _get_decoder(content_encoding)
             elif "," in content_encoding:
-                encodings = [
-                    e.strip()
-                    for e in content_encoding.split(",")
-                    if e.strip() in self.CONTENT_DECODERS
-                ]
-                if encodings:
+                encodings = [e.strip() for e in content_encoding.split(",")]
+                # Only decode if every coding in the chain is supported.
+                # Unknown codings must not silently fall back to deflate.
+                if encodings and all(
+                    e in self.CONTENT_DECODERS
+                    or (brotli is not None and e == "br")
+                    or (HAS_ZSTD and e == "zstd")
+                    for e in encodings
+                ):
                     self._decoder = _get_decoder(content_encoding)
 
         self._decoder_initialized = True
