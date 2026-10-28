@@ -8,6 +8,7 @@ import ssl
 import sys
 import typing
 import zlib
+from array import array
 from base64 import b64decode
 from http.client import IncompleteRead as httplib_IncompleteRead
 from io import BufferedReader, BytesIO, TextIOWrapper
@@ -1304,6 +1305,41 @@ class TestResponse:
         buf3 = bytearray(5)
         n3 = resp.readinto(buf3)
         assert n3 == 0
+
+    @pytest.mark.parametrize("typecode", ("B", "I", "d"))
+    @pytest.mark.parametrize("data", (b"short", bytes(range(32))))
+    @pytest.mark.parametrize("compressed", (False, True))
+    def test_readinto_with_typed_memoryview(
+        self, typecode: str, data: bytes, compressed: bool
+    ) -> None:
+        reference = BytesIO(data)
+        headers = {"content-encoding": "gzip"} if compressed else {}
+        body = gzip.compress(data) if compressed else data
+        resp = HTTPResponse(BytesIO(body), headers=headers, preload_content=False)
+        expected_buffer = memoryview(array(typecode, [0] * 3))
+        actual_buffer = memoryview(array(typecode, [0] * 3))
+
+        while True:
+            expected_count = reference.readinto(expected_buffer)
+            assert resp.readinto(actual_buffer) == expected_count
+            assert actual_buffer.tobytes() == expected_buffer.tobytes()
+            if expected_count == 0:
+                break
+
+    @pytest.mark.parametrize("readonly", (False, True))
+    def test_readinto_rejects_invalid_buffer_before_reading(
+        self, readonly: bool
+    ) -> None:
+        data = b"hello world"
+        buffer = memoryview(bytes(4)) if readonly else memoryview(bytearray(8))[::2]
+        reference = BytesIO(data)
+        resp = HTTPResponse(BytesIO(data), preload_content=False)
+
+        with pytest.raises(TypeError):
+            reference.readinto(buffer)
+        with pytest.raises(TypeError):
+            resp.readinto(buffer)
+        assert resp.read() == reference.read() == data
 
     def test_io_not_autoclose_bufferedreader(self) -> None:
         fp = BytesIO(b"hello\nworld")
