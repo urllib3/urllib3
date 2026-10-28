@@ -639,8 +639,9 @@ class BaseHTTPResponse(io.IOBase):
 
         if self._decoder is None:
             # Note: content-encoding value should be case-insensitive, per RFC 7230
-            # Section 3.2
-            content_encoding = self.headers.get("content-encoding", "").lower()
+            # Section 3.2. Surrounding whitespace is not part of the field value
+            # (RFC 9110, Section 5.5), but http.client keeps trailing whitespace.
+            content_encoding = self.headers.get("content-encoding", "").lower().strip()
             if content_encoding in self.CONTENT_DECODERS:
                 self._decoder = _get_decoder(content_encoding)
             elif "," in content_encoding:
