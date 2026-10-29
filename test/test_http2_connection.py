@@ -104,9 +104,9 @@ class TestHTTP2Connection:
         conn.request("GET", "/", headers={"foo": "bar"})
         conn._protocol_helper.putheader.assert_has_calls(
             [
-                mock.call("foo", "bar", stream=conn._first_stream),
+                mock.call("foo", "bar", stream=conn._last_stream),
                 mock.call(
-                    "user-agent", _get_default_user_agent(), stream=conn._first_stream
+                    "user-agent", _get_default_user_agent(), stream=conn._last_stream
                 ),
             ]
         )
