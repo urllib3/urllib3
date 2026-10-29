@@ -4,6 +4,7 @@ import gzip
 import io
 import time
 import typing
+from test import LONG_TIMEOUT
 from unittest import mock
 
 import pytest
@@ -13,7 +14,6 @@ from dummyserver.testcase import (
     HypercornDummyServerTestCase,
     IPv6HypercornDummyServerTestCase,
 )
-from test import LONG_TIMEOUT
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
