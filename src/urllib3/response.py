@@ -4,6 +4,7 @@ import collections
 import io
 import json as _json
 import logging
+import re
 import socket
 import sys
 import typing
@@ -52,6 +53,11 @@ log = logging.getLogger(__name__)
 
 # Read in 64 KiB chunks
 _READ_CHUNK_SIZE = 2**16
+
+# RFC 9112: Content-Length = 1*DIGIT and chunk-size = 1*HEXDIG.
+# int() is more permissive, so we match against the grammar before calling it.
+_CONTENT_LENGTH_RE = re.compile(r"[0-9]+")
+_CHUNK_SIZE_RE = re.compile(rb"[0-9A-Fa-f]+")
 
 # Maximum length of a chunk-size line (and the trailing CRLF line) when reading a
 # chunked-transfer-encoded response. Matches ``http.client._MAXLINE`` so urllib3's
@@ -893,7 +899,14 @@ class HTTPResponse(BaseHTTPResponse):
                 # (e.g. Content-Length: 42, 42). This line ensures the values
                 # are all valid ints and that as long as the `set` length is 1,
                 # all values are the same. Otherwise, the header is invalid.
-                lengths = {int(val) for val in content_length.split(",")}
+                lengths = set()
+                for val in content_length.split(","):
+                    # Only optional whitespace may surround each value; reject
+                    # signs, underscores and unicode digits that int() accepts.
+                    val = val.strip()
+                    if not _CONTENT_LENGTH_RE.fullmatch(val):
+                        raise ValueError("invalid Content-Length")
+                    lengths.add(int(val))
                 if len(lengths) > 1:
                     raise InvalidHeader(
                         "Content-Length contained multiple "
@@ -902,9 +915,6 @@ class HTTPResponse(BaseHTTPResponse):
                 length = lengths.pop()
             except ValueError:
                 length = None
-            else:
-                if length < 0:
-                    length = None
 
         else:  # if content_length is None
             length = None
@@ -1388,7 +1398,10 @@ class HTTPResponse(BaseHTTPResponse):
             ) from None
         line = line.split(b";", 1)[0]
         try:
-            self.chunk_left = int(line, 16)
+            chunk_size = line.rstrip()
+            if not _CHUNK_SIZE_RE.fullmatch(chunk_size):
+                raise ValueError("invalid chunk size")
+            self.chunk_left = int(chunk_size, 16)
         except ValueError:
             self.close()
             if line:
