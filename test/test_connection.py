@@ -319,6 +319,84 @@ class TestConnection:
 
         context.wrap_socket.return_value.close.assert_called_once_with()
 
+    def test_user_context_check_hostname_false_skips_matching(self) -> None:
+        # A user-provided SSLContext with check_hostname=False opts out of
+        # hostname verification: urllib3 must not run its own matching on
+        # top of it, even though the certificate is for a different host.
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.check_hostname = False
+        context.wrap_socket.return_value.getpeercert.return_value = {
+            "subjectAltName": (("DNS", "example.com"),)
+        }
+        conn = HTTPSConnection("google.com", port=443, ssl_context=context)
+        with mock.patch.object(conn, "_new_conn"):
+            conn.connect()
+
+        context.wrap_socket.return_value.close.assert_not_called()
+
+    def test_user_context_check_hostname_false_matching_host(self) -> None:
+        # Same opt-out, with a certificate that does match: connecting
+        # succeeds either way, and no error is raised.
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.check_hostname = False
+        context.wrap_socket.return_value.getpeercert.return_value = {
+            "subjectAltName": (("DNS", "google.com"),)
+        }
+        conn = HTTPSConnection("google.com", port=443, ssl_context=context)
+        with mock.patch.object(conn, "_new_conn"):
+            conn.connect()
+
+        context.wrap_socket.return_value.close.assert_not_called()
+
+    def test_explicit_assert_hostname_overrides_context_opt_out(self) -> None:
+        # An explicit assert_hostname wins over the context's
+        # check_hostname=False: the caller asked urllib3 to verify this
+        # specific hostname, so a mismatch still fails.
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.check_hostname = False
+        context.wrap_socket.return_value.getpeercert.return_value = {
+            "subjectAltName": (("DNS", "google.com"),)
+        }
+        conn = HTTPSConnection(
+            "google.com", port=443, assert_hostname="example.com", ssl_context=context
+        )
+        with mock.patch.object(conn, "_new_conn"):
+            with pytest.raises(ImplementationCertificateError):
+                conn.connect()
+
+        context.wrap_socket.return_value.close.assert_called_once_with()
+
+    def test_explicit_assert_hostname_false_still_disables(self) -> None:
+        # Pre-existing behavior is unchanged: assert_hostname=False
+        # disables matching regardless of the context.
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.check_hostname = True
+        context.wrap_socket.return_value.getpeercert.return_value = {
+            "subjectAltName": (("DNS", "example.com"),)
+        }
+        conn = HTTPSConnection(
+            "google.com", port=443, assert_hostname=False, ssl_context=context
+        )
+        with mock.patch.object(conn, "_new_conn"):
+            conn.connect()
+
+        context.wrap_socket.return_value.close.assert_not_called()
+
+    def test_user_context_check_hostname_true_defers_to_stdlib(self) -> None:
+        # With check_hostname=True on a user context, the stdlib performs
+        # verification during the handshake, so urllib3 does not run its
+        # own matching (and does not raise for a mismatched cert here).
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.check_hostname = True
+        context.wrap_socket.return_value.getpeercert.return_value = {
+            "subjectAltName": (("DNS", "example.com"),)
+        }
+        conn = HTTPSConnection("google.com", port=443, ssl_context=context)
+        with mock.patch.object(conn, "_new_conn"):
+            conn.connect()
+
+        context.wrap_socket.return_value.close.assert_not_called()
+
     @pytest.mark.parametrize(
         "accept_encoding",
         [
