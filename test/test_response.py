@@ -1812,6 +1812,28 @@ class TestResponse:
 
         assert b"foobar" == data
 
+    @pytest.mark.parametrize("use_stream", [True, False])
+    @pytest.mark.parametrize("decode_content", [True, False])
+    def test_mock_gzipped_transfer_encoding_chunked_default_decode_content(
+        self, use_stream: bool, decode_content: bool
+    ) -> None:
+        """stream() and read_chunked() follow the response's decode_content."""
+        compressed = gzip.compress(b"foobar")
+        fp = MockChunkedEncodingResponse(
+            [compressed[i : i + 2] for i in range(0, len(compressed), 2)]
+        )
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        headers = {"transfer-encoding": "chunked", "content-encoding": "gzip"}
+        resp = HTTPResponse(
+            r, preload_content=False, headers=headers, decode_content=decode_content
+        )
+
+        chunks = resp.stream() if use_stream else resp.read_chunked()
+        data = b"".join(chunks)
+
+        assert data == (b"foobar" if decode_content else compressed)
+
     def test_mock_transfer_encoding_chunked_custom_read(self) -> None:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
