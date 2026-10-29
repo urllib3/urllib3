@@ -15,3 +15,5 @@ but can also be used independently.
 .. automodule:: urllib3.util
     :members:
     :show-inheritance:
+
+.. autoclass:: urllib3.util.resolver.Resolver
