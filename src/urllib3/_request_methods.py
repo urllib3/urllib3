@@ -304,6 +304,8 @@ class RequestMethods:
             headers = self.headers
 
         extra_kw: dict[str, typing.Any] = {"headers": HTTPHeaderDict(headers)}
+        extra_kw["http1"] = http1
+        extra_kw["http2"] = http2
         body: bytes | str
 
         if fields:
@@ -324,8 +326,6 @@ class RequestMethods:
 
             extra_kw["body"] = body
             extra_kw["headers"].setdefault("Content-Type", content_type)
-            extra_kw["http1"] = http1
-            extra_kw["http2"] = http2
 
         extra_kw.update(urlopen_kw)
 

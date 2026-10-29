@@ -472,7 +472,7 @@ class HTTPConnection(_HTTPConnection):
 
         # we keep track of the stream for the first request issued, to use as
         # a default when a stream isn't given explicitly
-        self._first_stream: Stream | None = None
+        self._last_stream: Stream | None = None
 
     def __str__(self) -> str:
         return f"{type(self).__name__}(host={self.host!r}, port={self.port!r})"
@@ -849,8 +849,7 @@ class HTTPConnection(_HTTPConnection):
             decode_content=decode_content,
             enforce_content_length=enforce_content_length,
         )
-        if self._first_stream is None:
-            self._first_stream = stream
+        self._last_stream = stream
         return stream
 
     def request_chunked(
@@ -885,8 +884,10 @@ class HTTPConnection(_HTTPConnection):
         If the HTTPConnection is in the correct state, returns an instance of HTTPResponse or of whatever object is returned by the response_class variable.
 
         If a request has not been sent or if a previous response has not be handled, ResponseNotReady is raised. If the HTTP response indicates that the connection should be closed, then it will be closed before the response is returned. When the connection is closed, the underlying socket is closed.
+
+        If a stream is not provided, then the response for the last stream that was created us returned.
         """
-        return self._protocol_helper.getresponse(stream=stream or self._first_stream)
+        return self._protocol_helper.getresponse(stream=stream or self._last_stream)
 
 
 class HTTPSConnection(HTTPConnection):
