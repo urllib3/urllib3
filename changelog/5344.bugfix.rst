@@ -1,0 +1,1 @@
+Fixed rejected decoding-mode switches in ``HTTPResponse.read()`` consuming or returning response data before raising ``RuntimeError``.
