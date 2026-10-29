@@ -26,6 +26,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import set_file_position
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -458,6 +459,13 @@ class PoolManager(RequestMethods):
 
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
+        # Record the initial position of a seekable file-like body so it can be
+        # rewound before a body-preserving redirect (301/307/308). Without this,
+        # the connection pool records the position at EOF on the first hop and
+        # resends an empty body on the redirected request (see #5181).
+        if "body_pos" not in kw:
+            kw["body_pos"] = set_file_position(kw.get("body"), None)
+
         kw["assert_same_host"] = False
         kw["redirect"] = False
 
@@ -658,7 +666,10 @@ class ProxyManager(PoolManager):
             )
 
         return super().connection_from_host(
-            self.proxy.host, self.proxy.port, self.proxy.scheme, pool_kwargs=pool_kwargs  # type: ignore[union-attr]
+            self.proxy.host,
+            self.proxy.port,
+            self.proxy.scheme,
+            pool_kwargs=pool_kwargs,  # type: ignore[union-attr]
         )
 
     def _set_proxy_headers(

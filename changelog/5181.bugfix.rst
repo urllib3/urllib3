@@ -1,0 +1,1 @@
+Fixed ``PoolManager`` silently sending an empty seekable file-like request body after a body-preserving redirect (301/307/308).
