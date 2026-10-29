@@ -262,10 +262,10 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         cached. A connection that is terminated by the server raises a
         ``ConnectionError``.
         """
-        with self._h2_conn as h2_conn:
-            while not until():
-                # TODO: Arbitrary read value.
-                if received_data := self.conn.sock.recv(65535):
+        while not until():
+            # TODO: Arbitrary read value.
+            if received_data := self.conn.sock.recv(65535):
+                with self._h2_conn as h2_conn:
                     for event in h2_conn.receive_data(received_data):
                         if isinstance(event, h2.events.ConnectionTerminated):
                             raise ConnectionError("The connection was closed")
