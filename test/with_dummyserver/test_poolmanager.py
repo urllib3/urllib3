@@ -14,9 +14,13 @@ from dummyserver.testcase import (
     HypercornDummyServerTestCase,
     IPv6HypercornDummyServerTestCase,
 )
-from urllib3 import HTTPHeaderDict, HTTPResponse, request
+from urllib3 import BaseHTTPResponse, HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
+from urllib3.exceptions import (
+    MaxRetryAfterWaitError,
+    MaxRetryError,
+    URLSchemeUnknown,
+)
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
@@ -523,6 +527,37 @@ class TestPoolManager(HypercornDummyServerTestCase):
                 )
             assert r.status == 200
             sleep_mock.assert_called_once_with(5)
+
+    @pytest.mark.parametrize("retries_on_pool", [False, True])
+    def test_redirect_retry_after_max_strict(self, retries_on_pool: bool) -> None:
+        def request_redirect(retry_after_max_strict: bool) -> BaseHTTPResponse:
+            retries = Retry(
+                retry_after_max=5, retry_after_max_strict=retry_after_max_strict
+            )
+            pool_kwargs: dict[str, typing.Any] = {}
+            if retries_on_pool:
+                pool_kwargs["retries"] = retries
+            with PoolManager(**pool_kwargs) as http:
+                return http.request(
+                    "GET",
+                    f"{self.base_url}/redirect_after",
+                    fields={"date": str(time.time() + 3600)},
+                    retries=None if retries_on_pool else retries,
+                )
+
+        # Strict mode raises on a redirect instead of capping the wait.
+        with mock.patch("time.sleep") as sleep_mock:
+            with pytest.raises(MaxRetryAfterWaitError) as exc_info:
+                request_redirect(retry_after_max_strict=True)
+        sleep_mock.assert_not_called()
+        assert 3500 < exc_info.value.retry_after <= 3600
+        assert exc_info.value.max_wait == 5
+
+        # Without strict mode the redirect is followed after a capped wait.
+        with mock.patch("time.sleep") as sleep_mock:
+            r = request_redirect(retry_after_max_strict=False)
+        assert r.status == 200
+        sleep_mock.assert_called_once_with(5)
 
     def test_raise_on_status(self) -> None:
         with PoolManager() as http:
