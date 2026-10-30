@@ -932,6 +932,29 @@ class HTTPResponse(BaseHTTPResponse):
 
         return length
 
+    def _init_decoder(self) -> None:
+        try:
+            super()._init_decoder()
+        except DecodeError:
+            self.close()
+            self.release_conn()
+            raise
+
+    def _decode(
+        self,
+        data: bytes,
+        decode_content: bool | None,
+        flush_decoder: bool,
+        max_length: int | None = None,
+    ) -> bytes:
+        try:
+            return super()._decode(data, decode_content, flush_decoder, max_length)
+        except (DecodeError,) + self.DECODER_ERROR_CLASSES:
+            # Decoding can fail after _raw_read()'s error catcher has exited.
+            self.close()
+            self.release_conn()
+            raise
+
     @contextmanager
     def _error_catcher(self) -> typing.Generator[None]:
         """
