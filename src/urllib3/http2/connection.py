@@ -406,6 +406,8 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                 self._write_with_flow_control(chunk, stream)
             with self._h2_conn as h2_conn:
                 h2_conn.end_stream(stream.stream_id)
+                if data_to_send := h2_conn.data_to_send():
+                    self.conn.sock.sendall(data_to_send)
             return True
 
         if isinstance(data, str):  # str -> bytes
@@ -416,11 +418,15 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                 self._write_with_flow_control(data, stream)
                 with self._h2_conn as h2_conn:
                     h2_conn.end_stream(stream.stream_id)
+                    if data_to_send := h2_conn.data_to_send():
+                        self.conn.sock.sendall(data_to_send)
             else:
                 for chunk in data:
                     self._write_with_flow_control(chunk, stream)
                 with self._h2_conn as h2_conn:
                     h2_conn.end_stream(stream.stream_id)
+                    if data_to_send := h2_conn.data_to_send():
+                        self.conn.sock.sendall(data_to_send)
         except TypeError:
             raise TypeError(
                 "`data` should be str, bytes, iterable, or file. got %r" % type(data)
