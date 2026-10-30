@@ -1138,12 +1138,14 @@ class HTTPSConnection(HTTPConnection):
                 http2_probe.set_and_release(
                     host=probe_http2_host, port=probe_http2_port, supports_http2=None
                 )
+
             raise
 
         # If this connection doesn't know if the origin supports HTTP/2
         # we report back to the HTTP/2 probe our result.
-        if target_supports_http2 is None:
-            target_supports_http2 = wrapped_socket.selected_alpn_protocol() == "h2"
+        connection_supports_http2 = wrapped_socket.selected_alpn_protocol() == "h2"
+        if target_supports_http2 != connection_supports_http2:
+            target_supports_http2 = connection_supports_http2
             http2_probe.set_and_release(
                 host=probe_http2_host,
                 port=probe_http2_port,
