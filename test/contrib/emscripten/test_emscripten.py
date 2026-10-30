@@ -649,6 +649,7 @@ def test_upload(
         with HTTPConnectionPool(host, port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200
+            assert r.data == b"Uploaded file correct"
 
     pyodide_test(
         selenium_coverage, testserver_http.http_host, testserver_http.http_port
@@ -1331,3 +1332,15 @@ def test_pool_no_port(selenium_coverage: typing.Any) -> None:
         pool = HTTPConnectionPool("example.com", maxsize=10, block=True)
 
         pool.request("GET", "/")
+
+
+@run_in_pyodide  # type: ignore[untyped-decorator]
+def test_request_buffers_text_stream(selenium_coverage: typing.Any) -> None:
+    import io
+
+    from urllib3.contrib.emscripten.request import EmscriptenRequest
+
+    request = EmscriptenRequest("POST", "https://example.com/")
+    request.set_body(io.StringIO("café"))
+
+    assert request.body == b"caf\xc3\xa9"
