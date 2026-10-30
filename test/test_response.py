@@ -2121,6 +2121,47 @@ class TestResponse:
         resp = HTTPResponse(fp, retries=retry)
         assert resp.geturl() == "https://www.example.com"
 
+    @pytest.mark.parametrize("redirected", [False, True])
+    @pytest.mark.parametrize("assign_retries", [False, True])
+    @pytest.mark.parametrize("error, status", [(None, 503), (OSError(), None)])
+    def test_geturl_after_non_redirect_retry(
+        self,
+        redirected: bool,
+        assign_retries: bool,
+        error: Exception | None,
+        status: int | None,
+    ) -> None:
+        request_url = "https://example.com/resource"
+        history: tuple[RequestHistory, ...] = ()
+        if redirected:
+            history = (
+                RequestHistory(
+                    "GET", request_url, None, 301, "https://example.com/first"
+                ),
+                RequestHistory(
+                    "GET",
+                    "https://example.com/first",
+                    None,
+                    302,
+                    "https://example.com/last",
+                ),
+            )
+        retry = Retry(
+            history=history + (RequestHistory("GET", request_url, error, status, None),)
+        )
+        resp = HTTPResponse(
+            BytesIO(b""),
+            request_url=request_url,
+            retries=None if assign_retries else retry,
+        )
+        if assign_retries:
+            resp.retries = retry
+
+        expected_url = "https://example.com/last" if redirected else request_url
+        assert resp.url == expected_url
+        assert resp.geturl() == expected_url
+        assert resp.retries is retry
+
     @pytest.mark.parametrize(
         ["payload", "expected_stream"],
         [
