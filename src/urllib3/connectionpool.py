@@ -346,8 +346,19 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
 
     def _prepare_proxy(self, conn: BaseHTTPConnection) -> None:
-        # Nothing to do for HTTP connections.
-        pass
+        """Establishes a tunnel connection through HTTP CONNECT."""
+        if self.proxy and self.proxy.scheme == "https":
+            tunnel_scheme = "https"
+        else:
+            tunnel_scheme = "http"
+
+        conn.set_tunnel(
+            scheme=tunnel_scheme,
+            host=self._tunnel_host,
+            port=self.port,
+            headers=self.proxy_headers,
+        )
+        conn.connect()
 
     def _get_timeout(self, timeout: _TYPE_TIMEOUT) -> Timeout:
         """Helper that always returns a :class:`urllib3.util.Timeout`"""
