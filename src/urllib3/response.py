@@ -141,6 +141,12 @@ class DeflateDecoder(ContentDecoder):
         )
 
     def flush(self) -> bytes:
+        if self._obj.eof:
+            return self._obj.flush()
+        # Before the first decoded byte ``_first_try`` is still set, so
+        # check whether any compressed input was received at all.
+        if not self._first_try or self._first_try_data:
+            raise DecodeError("Deflate data is incomplete")
         return self._obj.flush()
 
 
@@ -220,6 +226,8 @@ class GzipDecoder(ContentDecoder):
     def flush(self) -> bytes:
         if self._state == GzipDecoderState.SWALLOW_DATA:
             return b""
+        if not self._obj.eof:
+            raise DecodeError("Gzip data is incomplete")
         return self._obj.flush()
 
 
