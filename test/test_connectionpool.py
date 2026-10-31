@@ -22,6 +22,7 @@ from urllib3.connectionpool import (
     _url_from_pool,
     connection_from_url,
 )
+from urllib3.util.url import parse_url
 from urllib3.exceptions import (
     ClosedPoolError,
     EmptyPoolError,
@@ -903,3 +904,30 @@ class TestConnectionPool:
             "http://[fe80::1%251]:8080/next?x=%23",
             "http://[fe80::1%251]:8080/next?x=%23",
         ]
+
+    @pytest.mark.parametrize(
+        "proxy_url, expected_scheme",
+        [
+            ("http://proxy:8080", "http"),
+            ("https://proxy:8443", "https"),
+        ],
+    )
+    def test_prepare_proxy_sets_up_tunnel(
+        self, proxy_url: str, expected_scheme: str
+    ) -> None:
+        """See https://github.com/urllib3/urllib3/issues/2730."""
+        pool = HTTPConnectionPool(
+            host="example.com",
+            port=8080,
+            _proxy=parse_url(proxy_url),
+            _proxy_headers={"X-Proxy": "test"},
+        )
+        conn = Mock()
+        pool._prepare_proxy(conn)
+        conn.set_tunnel.assert_called_once_with(
+            scheme=expected_scheme,
+            host=pool._tunnel_host,
+            port=pool.port,
+            headers={"X-Proxy": "test"},
+        )
+        conn.connect.assert_called_once_with()
