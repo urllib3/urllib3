@@ -98,6 +98,21 @@ def test_wait_for_socket(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
         wfs(b, read=True)
 
 
+@pytest.mark.parametrize("wfs", variants)
+def test_wait_for_socket_accepts_timeouts_the_platform_cannot_represent(
+    wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR
+) -> None:
+    a, b = spair
+    b.send(b"x")
+
+    # select.poll() takes its timeout in milliseconds as a C int and
+    # select.select() as a time_t. A timeout of a few weeks, or infinity, is a
+    # legal value for Timeout and for socket.settimeout(), but neither API can
+    # represent it: they used to raise instead of waiting.
+    assert wfs(a, read=True, timeout=1e9)
+    assert wfs(a, read=True, timeout=float("inf"))
+
+
 def test_wait_for_read_write(spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
 
