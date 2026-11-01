@@ -1,0 +1,8 @@
+Added ``urllib3.multipart.MultipartEncoder`` for streaming multipart uploads
+and ``Part`` with buffered ``read()`` and ``peek()`` operations. Encoders can
+rewind with ``seek(0, 0)`` when their body parts support seeking.
+``encode_multipart_formdata()`` uses the encoder internally and continues to
+return a complete bytes body.
+
+Added ``MultipartDecoder`` for parsing complete multipart response bodies,
+with raw part data and support for repeated headers.
