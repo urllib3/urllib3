@@ -129,7 +129,10 @@ def test_wait_for_read_does_not_overflow_on_a_long_socket_timeout(
     spair: TYPE_SOCKET_PAIR,
 ) -> None:
     a, b = spair
-    a.settimeout(1e9)
+    try:
+        a.settimeout(1e9)
+    except OverflowError:  # pragma: no cover - depends on the platform
+        pytest.skip("this platform cannot store a 1e9 second socket timeout")
     b.send(b"x")
 
     assert wait_for_read(a, a.gettimeout())
