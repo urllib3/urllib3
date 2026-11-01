@@ -412,6 +412,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             "Content-Type",
             "Content-Length",
             "Digest",
+            "Content-Digest",
             "Last-Modified",
             "Transfer-Encoding",
         ]

@@ -393,6 +393,24 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r._pool.num_connections == 1
             assert len(http.pools) == 1
 
+    def test_303_redirect_removes_content_digest(self) -> None:
+        with PoolManager() as http:
+            response = http.request(
+                "POST",
+                f"{self.base_url}/redirect",
+                fields={
+                    "target": f"{self.base_url}/headers_and_params",
+                    "status": "303 See Other",
+                },
+                headers={
+                    "Content-Digest": "sha-256=:dGVzdA==:",
+                },
+            )
+
+        assert response.status == 200
+        headers = HTTPHeaderDict(response.json()["headers"])
+        assert "Content-Digest" not in headers
+
     def test_303_redirect_makes_request_lose_body(self) -> None:
         with PoolManager() as http:
             response = http.request(
