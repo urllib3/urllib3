@@ -113,6 +113,28 @@ def test_wait_for_socket_accepts_timeouts_the_platform_cannot_represent(
     assert wfs(a, read=True, timeout=float("inf"))
 
 
+@pytest.mark.parametrize("wfs", variants)
+def test_wait_for_socket_caps_the_timeout_at_what_the_platform_accepts(
+    monkeypatch: pytest.MonkeyPatch, wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR
+) -> None:
+    monkeypatch.setattr("urllib3.util.wait._MAX_TIMEOUT", 0.05)
+    a, b = spair
+
+    start = time.monotonic()
+    assert not wfs(a, read=True, timeout=60)
+    assert time.monotonic() - start < 5
+
+
+def test_wait_for_read_does_not_overflow_on_a_long_socket_timeout(
+    spair: TYPE_SOCKET_PAIR,
+) -> None:
+    a, b = spair
+    a.settimeout(1e9)
+    b.send(b"x")
+
+    assert wait_for_read(a, a.gettimeout())
+
+
 def test_wait_for_read_write(spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
 
