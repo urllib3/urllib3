@@ -9,6 +9,11 @@ from .util.url import Url
 _TYPE_BODY = typing.Union[
     bytes, typing.IO[typing.Any], typing.Iterable[bytes | str], str
 ]
+_TYPE_HEADERS = (
+    typing.Mapping[str, str]
+    | typing.Mapping[bytes, bytes]
+    | typing.Mapping[str | bytes, str | bytes]
+)
 
 
 class ProxyConfig(typing.NamedTuple):
@@ -81,7 +86,7 @@ if typing.TYPE_CHECKING:
             method: str,
             url: str,
             body: _TYPE_BODY | None = None,
-            headers: typing.Mapping[str, str] | None = None,
+            headers: _TYPE_HEADERS | None = None,
             # We know *at least* botocore is depending on the order of the
             # first 3 parameters so to be safe we only mark the later ones
             # as keyword-only to ensure we have space to extend.
