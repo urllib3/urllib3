@@ -1,0 +1,2 @@
+Fixed ``PoolManager`` retaining a stale ``Content-Digest`` header
+after an HTTP 303 redirect discarded the original request body.
