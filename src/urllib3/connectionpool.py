@@ -839,7 +839,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             retries.sleep()
 
             # Keep track of the error for the retry warning.
-            err = e
+            err = e.with_traceback(None)
 
         finally:
             if not clean_exit:
