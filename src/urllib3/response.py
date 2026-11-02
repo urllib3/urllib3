@@ -200,16 +200,17 @@ class GzipDecoder(ContentDecoder):
             self._unconsumed_tail = data = (
                 self._obj.unconsumed_tail or self._obj.unused_data
             )
+            # When the end of a gzip member is reached, a new decompressor
+            # must be created for unused (possibly future) data.
+            if data and self._obj.eof:
+                self._state = GzipDecoderState.OTHER_MEMBERS
+                self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
+
             if max_length > 0 and len(ret) >= max_length:
                 break
 
             if not data:
                 return ret if isinstance(ret, bytes) else bytes(ret)
-            # When the end of a gzip member is reached, a new decompressor
-            # must be created for unused (possibly future) data.
-            if self._obj.eof:
-                self._state = GzipDecoderState.OTHER_MEMBERS
-                self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
         return ret if isinstance(ret, bytes) else bytes(ret)
 
