@@ -1,0 +1,1 @@
+Fixed ``HTTPResponse.stream()`` and ``HTTPResponse.read_chunked()`` returning undecoded data for responses using chunked transfer encoding when ``decode_content`` was not passed, instead of following the response's ``decode_content`` setting.
