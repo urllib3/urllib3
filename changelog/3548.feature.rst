@@ -1,0 +1,3 @@
+Added the ``QUERY`` method to ``Retry.DEFAULT_ALLOWED_METHODS`` so that ``QUERY``
+requests are retried by default, as RFC 10008 defines the method as safe and
+idempotent. As before, different methods can be set via ``Retry(allowed_methods=...)``.
