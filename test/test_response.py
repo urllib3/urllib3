@@ -1047,8 +1047,22 @@ class TestResponse:
         ):
             HTTPResponse(
                 fp,
-                headers={"content-encoding": "gzip, deflate, br, zstd, gzip, deflate"},
+                headers={
+                    "content-encoding": "gzip, deflate, gzip, deflate, gzip, deflate"
+                },
             )
+
+    def test_read_multi_decoding_unknown_coding(self) -> None:
+        # An unknown coding in the chain must not silently fall back to
+        # deflate; the body is returned without decoding.
+        data = gzip.compress(b"hello")
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp,
+            headers={"content-encoding": "gzip, unknown"},
+            preload_content=False,
+        )
+        assert r.read(decode_content=True) == data
 
     def test_full_read_after_partial_read_with_buffered_decoded_data(self) -> None:
         data = zlib.compress(b"foobarbaz")
