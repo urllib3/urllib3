@@ -225,6 +225,21 @@ Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
     print(resp.json()["headers"])
     # {"Accept": "application/json, text/plain", ...}
 
+HTTP Basic authentication
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Credentials in an HTTP or HTTPS request URL are used to construct an
+``Authorization`` header. Credentials in a proxy URL similarly produce a
+``Proxy-Authorization`` header.
+
+If the corresponding header is also supplied, it must match the credentials
+in the URL. Conflicting values raise :class:`~urllib3.exceptions.InvalidHeader`
+rather than replacing either set of credentials. This also applies to a
+same-host redirect whose URL credentials conflict with the inherited header.
+
+Credentials from a request URL are not saved in the pool manager's default
+headers for later requests.
+
 Cookies
 ~~~~~~~
 
