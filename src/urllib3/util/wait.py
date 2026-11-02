@@ -29,6 +29,14 @@ __all__ = ["wait_for_read", "wait_for_write"]
 # So: on Windows we use select(), and everywhere else we use poll(). We also
 # fall back to select() in case poll() is somehow broken or missing.
 
+# select.poll() takes its timeout as a C int of milliseconds, and select.select()
+# takes a time_t: a wait of a few weeks is legal for Timeout and for
+# socket.settimeout(), float("inf") included, but neither API can represent it
+# and both raise instead of waiting. A wait that long is a wait for as long as
+# it takes, so the wait is capped at the largest value they accept rather than
+# failing at the first socket wait.
+_MAX_TIMEOUT = 2147483.0  # seconds, just under 2**31 - 1 milliseconds
+
 
 def select_wait_for_socket(
     sock: socket.socket,
@@ -49,6 +57,8 @@ def select_wait_for_socket(
     # it as "exceptional". We paper over the difference by checking the write
     # sockets for both conditions. (The stdlib selectors module does the same
     # thing.)
+    if timeout is not None:
+        timeout = min(timeout, _MAX_TIMEOUT)
     fn = partial(select.select, rcheck, wcheck, wcheck)
     rready, wready, xready = fn(timeout)
     return bool(rready or wready or xready)
@@ -69,6 +79,9 @@ def poll_wait_for_socket(
         mask |= select.POLLOUT
     poll_obj = select.poll()
     poll_obj.register(sock, mask)
+
+    if timeout is not None:
+        timeout = min(timeout, _MAX_TIMEOUT)
 
     # For some reason, poll() takes timeout in milliseconds
     def do_poll(t: float | None) -> list[tuple[int, int]]:
