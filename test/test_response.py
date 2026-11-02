@@ -3,9 +3,12 @@ from __future__ import annotations
 import contextlib
 import gzip
 import http.client as httplib
+import os
 import socket
 import ssl
+import subprocess
 import sys
+import textwrap
 import typing
 import zlib
 from base64 import b64decode
@@ -544,6 +547,56 @@ class TestResponse:
         fp = BytesIO(b"foo")
         with pytest.raises(DecodeError):
             HTTPResponse(fp, headers={"content-encoding": "br"})
+
+    @onlyBrotli()
+    def test_urllib3_disable_brotli_env_var(self) -> None:
+        # Run in a fresh interpreter so the module-level import blocks
+        # re-evaluate: urllib3 reads URLLIB3_DISABLE_BROTLI only at import time.
+        env_off = {k: v for k, v in os.environ.items() if k != "URLLIB3_DISABLE_BROTLI"}
+        env_on = {**env_off, "URLLIB3_DISABLE_BROTLI": "1"}
+        script = textwrap.dedent("""
+            import os
+            from urllib3.util.request import ACCEPT_ENCODING
+            from urllib3.response import _get_decoder
+            from urllib3.response import brotli as _imported_brotli
+
+            enabled = not os.environ.get("URLLIB3_DISABLE_BROTLI")
+            if enabled:
+                assert ",br" in ACCEPT_ENCODING, ACCEPT_ENCODING
+                assert type(_get_decoder("br")).__name__ == "BrotliDecoder"
+            else:
+                assert ",br" not in ACCEPT_ENCODING, ACCEPT_ENCODING
+                assert type(_get_decoder("br")).__name__ != "BrotliDecoder"
+                assert _imported_brotli is None
+            print("OK")
+            """)
+        for env, expected in [(env_on, "OK"), (env_off, "OK")]:
+            # Run under coverage so the import-time branches above (including
+            # the env-gated raise ImportError lines) are recorded; a fresh
+            # interpreter is still required because urllib3 reads the env var
+            # only at import time.
+            cov_file = os.environ.get("COVERAGE_FILE", ".coverage")
+            cov_file += (
+                ".brotli_on" if "URLLIB3_DISABLE_BROTLI" in env else ".brotli_off"
+            )
+            run_env = {**env, "COVERAGE_FILE": cov_file}
+            wrapper = (
+                "import coverage; "
+                "c = coverage.Coverage(source=['urllib3']); "
+                "c.start(); "
+                "exec(%r); "
+                "c.stop(); "
+                "c.save()"
+            ) % script
+            ret = subprocess.run(
+                [sys.executable, "-c", wrapper],
+                env=run_env,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            assert ret.returncode == 0, f"env={env!r}\n{ret.stdout}\n{ret.stderr}"
+            assert ret.stdout.strip() == expected
 
     @onlyZstd()
     def test_decode_zstd(self) -> None:

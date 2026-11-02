@@ -4,6 +4,7 @@ import collections
 import io
 import json as _json
 import logging
+import os
 import re
 import socket
 import sys
@@ -19,6 +20,8 @@ if typing.TYPE_CHECKING:
     from ._base_connection import BaseHTTPConnection
 
 try:
+    if os.getenv("URLLIB3_DISABLE_BROTLI"):
+        raise ImportError("URLLIB3_DISABLE_BROTLI is set; refusing Brotli support")
     try:
         import brotlicffi as brotli  # type: ignore[import-not-found]
     except ImportError:
