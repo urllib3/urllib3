@@ -1,0 +1,3 @@
+Fixed URL parsing to reject invalid ASCII characters in hosts, including
+backslashes. Backslashes no longer terminate the URL authority, so Windows-style
+domain credentials in proxy URLs are parsed and percent-encoded as userinfo.
