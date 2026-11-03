@@ -413,11 +413,45 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             "Content-Length",
             "Digest",
             "Content-Digest",
+            "Repr-Digest",
+            "Content-Range",
+            "Content-MD5",
             "Last-Modified",
+            "Trailer",
             "Transfer-Encoding",
         ]
         for header in content_specific_headers:
             self.discard(header)
+
+        # A request without a body must not retain Expect: 100-continue.
+        expect_values = self.getlist("Expect")
+        if expect_values:
+            # Split on commas outside quoted strings only.
+            expectations = []
+            for value in expect_values:
+                start = 0
+                quoted = False
+                escaped = False
+                for pos, char in enumerate(value):
+                    if escaped:
+                        escaped = False
+                    elif char == "\\" and quoted:
+                        escaped = True
+                    elif char == '"':
+                        quoted = not quoted
+                    elif char == "," and not quoted:
+                        expectations.append(value[start:pos].strip())
+                        start = pos + 1
+                expectations.append(value[start:].strip())
+            remaining = [
+                part for part in expectations if part.lower() != "100-continue"
+            ]
+            if len(remaining) != len(expectations):
+                remaining = [part for part in remaining if part]
+                self.discard("Expect")
+                if remaining:
+                    self["Expect"] = ", ".join(remaining)
+
         return self
 
     # Backwards compatibility for httplib

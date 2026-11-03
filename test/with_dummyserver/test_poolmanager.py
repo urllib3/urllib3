@@ -411,6 +411,84 @@ class TestPoolManager(HypercornDummyServerTestCase):
         headers = HTTPHeaderDict(response.json()["headers"])
         assert "Content-Digest" not in headers
 
+    @pytest.mark.parametrize(
+        "header_name",
+        [
+            "Repr-Digest",
+            "Content-Range",
+            "Content-MD5",
+            "Trailer",
+        ],
+    )
+    def test_303_redirect_removes_additional_body_headers(
+        self, header_name: str
+    ) -> None:
+        with PoolManager() as http:
+            response = http.request(
+                "POST",
+                f"{self.base_url}/redirect",
+                fields={
+                    "target": f"{self.base_url}/headers_and_params",
+                    "status": "303 See Other",
+                },
+                headers={
+                    header_name: "test-value",
+                    "X-Unrelated": "keep",
+                },
+            )
+
+        assert response.status == 200
+        headers = HTTPHeaderDict(response.json()["headers"])
+        assert header_name not in headers
+        assert headers["X-Unrelated"] == "keep"
+
+    def test_303_redirect_removes_100_continue(self) -> None:
+        with PoolManager() as http:
+            response = http.request(
+                "POST",
+                f"{self.base_url}/redirect",
+                fields={
+                    "target": f"{self.base_url}/headers_and_params",
+                    "status": "303 See Other",
+                },
+                headers={
+                    "Expect": "100-continue",
+                    "X-Unrelated": "keep",
+                },
+            )
+
+        assert response.status == 200
+        headers = HTTPHeaderDict(response.json()["headers"])
+        assert "Expect" not in headers
+        assert headers["X-Unrelated"] == "keep"
+
+    @pytest.mark.parametrize(
+        "status",
+        ["307 Temporary Redirect", "308 Permanent Redirect"],
+    )
+    def test_307_308_redirect_preserves_body_headers(self, status: str) -> None:
+        with PoolManager() as http:
+            response = http.request(
+                "POST",
+                f"{self.base_url}/redirect",
+                fields={
+                    "target": f"{self.base_url}/headers",
+                    "status": status,
+                },
+                headers={
+                    "Content-Digest": "sha-256=:dGVzdA==:",
+                    "Repr-Digest": "sha-256=:dGVzdA==:",
+                    "X-Unrelated": "keep",
+                },
+            )
+
+        assert response.status == 200
+        headers = HTTPHeaderDict(response.json())
+        assert "Content-Digest" in headers
+        assert "Repr-Digest" in headers
+        assert headers["X-Unrelated"] == "keep"
+        assert int(headers["Content-Length"]) > 0
+
     def test_303_redirect_makes_request_lose_body(self) -> None:
         with PoolManager() as http:
             response = http.request(
