@@ -78,10 +78,6 @@ if typing.TYPE_CHECKING:
             scheme: str = "http",
         ) -> None: ...
 
-        def set_protocol_options(
-            self, http1: bool = True, http2: bool = False
-        ) -> None: ...
-
         def connect(self) -> None: ...
 
         def request(

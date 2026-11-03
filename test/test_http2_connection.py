@@ -80,14 +80,12 @@ class TestHTTP2Connection:
         assert _is_illegal_header_value(b"foo\x09"), "foo\\x09"
 
     def test_default_socket_options(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
         assert conn.port == 443
 
     def test_putheader(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         stream = Stream(conn)
         conn.putrequest("GET", "/", stream=stream)
         conn.putheader("foo", "bar", stream=stream)
@@ -95,11 +93,10 @@ class TestHTTP2Connection:
         assert (b"foo", b"bar") in protocol_helper._stream_data[stream].headers
 
     def test_request_putheader(self) -> None:
-        conn = HTTPSConnection("example.com")
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
-        conn.set_protocol_options(http1=False, http2=True)
         conn._protocol_helper.putheader = mock.MagicMock(return_value=None)  # type: ignore[method-assign]
         conn.request("GET", "/", headers={"foo": "bar"})
         conn._protocol_helper.putheader.assert_has_calls(
@@ -112,8 +109,7 @@ class TestHTTP2Connection:
         )
 
     def test_putrequest_ConnectionError(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
 
         with pytest.raises(ConnectionError):
             conn.putrequest("GET", "/")
@@ -124,8 +120,7 @@ class TestHTTP2Connection:
             conn.putrequest("GET", "/", stream=stream)
 
     def test_putheader_ValueError(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         stream = Stream(conn)
 
         with pytest.raises(ValueError):
@@ -134,21 +129,18 @@ class TestHTTP2Connection:
             conn.putheader("foo", "foo\r\nbar", stream=stream)
 
     def test_putheader_ConnectionError(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
 
         with pytest.raises(ConnectionError):
             conn.putheader("foo", "bar")
 
     def test_endheaders_ConnectionError(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         with pytest.raises(ConnectionError):
             conn.endheaders()
 
     def test_send_ConnectionError(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
 
         with pytest.raises(ConnectionError):
             conn.send(b"foo")
@@ -158,8 +150,7 @@ class TestHTTP2Connection:
             conn.send(b"foo", stream=stream)
 
     def test_send_bytes(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         stream = Stream(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
@@ -181,8 +172,7 @@ class TestHTTP2Connection:
         conn._protocol_helper._h2_conn._obj.end_stream.assert_called_with(1)  # type: ignore[attr-defined]
 
     def test_send_str(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         stream = Stream(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
@@ -204,8 +194,7 @@ class TestHTTP2Connection:
         conn._protocol_helper._h2_conn._obj.end_stream.assert_called_with(1)  # type: ignore[attr-defined]
 
     def test_send_iter(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         stream = Stream(conn)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
@@ -240,8 +229,7 @@ class TestHTTP2Connection:
         conn._protocol_helper._h2_conn._obj.end_stream.assert_called_with(1)  # type: ignore[attr-defined]
 
     def test_send_file_str(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         stream = Stream(conn)
         mock_open = mock.mock_open(read_data="foo\r\nbar\r\n")
         with mock.patch("builtins.open", mock_open):
@@ -266,8 +254,7 @@ class TestHTTP2Connection:
                 conn._protocol_helper._h2_conn._obj.end_stream.assert_called_with(1)  # type: ignore[attr-defined]
 
     def test_send_file_bytes(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         stream = Stream(conn)
         mock_open = mock.mock_open(read_data=b"foo\r\nbar\r\n")
         with mock.patch("builtins.open", mock_open):
@@ -292,8 +279,7 @@ class TestHTTP2Connection:
             conn._protocol_helper._h2_conn._obj.end_stream.assert_called_with(1)  # type: ignore[attr-defined]
 
     def test_send_invalid_type(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         stream = Stream(conn)
         stream.stream_id = 1
         conn.putrequest("GET", "/", stream=stream)
@@ -301,8 +287,7 @@ class TestHTTP2Connection:
             conn.send(1, stream=stream)
 
     def test_request_GET(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
@@ -335,8 +320,7 @@ class TestHTTP2Connection:
         close_connection.assert_called_with()
 
     def test_request_authority_port_zero(self) -> None:
-        conn = HTTPSConnection("example.com", port=0)
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", port=0, http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
@@ -362,8 +346,7 @@ class TestHTTP2Connection:
         )
 
     def test_request_POST(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
@@ -401,8 +384,7 @@ class TestHTTP2Connection:
         close_connection.assert_called_with()
 
     def test_request_aborted(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
@@ -415,8 +397,7 @@ class TestHTTP2Connection:
             conn.request("POST", "/", body=b"foo")
 
     def test_request_reset(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
@@ -429,8 +410,7 @@ class TestHTTP2Connection:
             conn.request("POST", "/", body=b"foo")
 
     def test_close(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(side_effect=Exception("foo")),
         )
@@ -452,8 +432,7 @@ class TestHTTP2Connection:
         sendall.assert_called_with(b"foo")
 
     def test_close_stream(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(side_effect=Exception("foo")),
         )
@@ -483,8 +462,7 @@ class TestHTTP2Connection:
         assert 1 not in conn._protocol_helper._stream_data  # type: ignore[attr-defined]
 
     def test_close_stream_cancel(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(side_effect=Exception("foo")),
         )
@@ -514,8 +492,7 @@ class TestHTTP2Connection:
         assert 1 not in conn._protocol_helper._stream_data  # type: ignore[attr-defined]
 
     def test_close_stream_ConnectionError(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
 
         with pytest.raises(ConnectionError):
             conn.close_stream()
@@ -525,8 +502,7 @@ class TestHTTP2Connection:
             conn.close_stream(stream=stream)
 
     def test_request_ignore_chunked(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
@@ -559,8 +535,7 @@ class TestHTTP2Connection:
         close_connection.assert_called_with()
 
     def test_getresponse_aborted(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
@@ -571,8 +546,7 @@ class TestHTTP2Connection:
             conn.getresponse(stream=stream)
 
     def test_getresponse_reset(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
@@ -587,8 +561,7 @@ class TestHTTP2Connection:
             conn.getresponse(stream=stream)
 
     def test_getresponse_ConnectionError(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
 
         with pytest.raises(ConnectionError):
             conn.getresponse()
@@ -598,8 +571,7 @@ class TestHTTP2Connection:
             conn.getresponse(stream=stream)
 
     def test_flow_control(self) -> None:
-        conn = HTTPSConnection("example.com")
-        conn.set_protocol_options(http1=False, http2=True)
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
