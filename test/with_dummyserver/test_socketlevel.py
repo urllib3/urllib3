@@ -208,9 +208,9 @@ class TestALPN(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        with HTTPSConnectionPool(self.host, self.port) as pool:
+        with HTTPSConnectionPool(self.host, self.port, http2=True) as pool:
             try:
-                pool.request("GET", "/", retries=0, http2=True)
+                pool.request("GET", "/", retries=0)
             except MaxRetryError:  # We are violating the protocol
                 pass
             successful = done_receiving.wait(LONG_TIMEOUT)

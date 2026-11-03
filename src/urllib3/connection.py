@@ -473,11 +473,16 @@ class HTTPConnection(_HTTPConnection):
         self._tunnel_port: int | None = None
         self._tunnel_scheme: str | None = None
 
-        # here we start with a conservative choice of HTTP/1.1
-        # if HTTP/2 is enabled and we determine that the server supports it
-        # during the connection handshake, then this will be changed to a
-        # HTTP2ProtocolHelper
+        # the protocol helper encodes requests and decodes responses
+        # unless we are told to only use HTTP/2, we start with a conservative
+        # choice of HTTP/1.1, which could change to HTTP/2 later on if the
+        # http2 flag is enabled and we determine that the server supports it
         self._protocol_helper: BaseProtocolHelper = HTTPProtocolHelper(self)
+        if not self.http1 and self.http2:
+            # HTTP/2 prior knowledge
+            from .http2.connection import HTTP2ProtocolHelper
+
+            self._protocol_helper = HTTP2ProtocolHelper(self)
 
         # we keep track of the stream for the first request issued, to use as
         # a default when a stream isn't given explicitly
@@ -685,17 +690,6 @@ class HTTPConnection(_HTTPConnection):
 
                 finally:
                     response.close()
-
-    def set_protocol_options(self, http1: bool = True, http2: bool = False) -> None:
-        self.http1 = http1
-        self.http2 = http2
-        if not self.http1 and self.http2:
-            # HTTP/2 prior knowledge
-            from .http2.connection import HTTP2ProtocolHelper
-
-            self._protocol_helper = HTTP2ProtocolHelper(self)
-        else:
-            self._protocol_helper = HTTPProtocolHelper(self)
 
     def connect(self) -> None:
         self.sock = self._new_conn()
@@ -930,6 +924,8 @@ class HTTPSConnection(HTTPConnection):
         ) = HTTPConnection.default_socket_options,
         proxy: Url | None = None,
         proxy_config: ProxyConfig | None = None,
+        http1: bool = True,
+        http2: bool = False,
         cert_reqs: int | str | None = None,
         assert_hostname: None | str | typing.Literal[False] = None,
         assert_fingerprint: str | None = None,
@@ -954,6 +950,8 @@ class HTTPSConnection(HTTPConnection):
             socket_options=socket_options,
             proxy=proxy,
             proxy_config=proxy_config,
+            http1=http1,
+            http2=http2,
         )
 
         self.key_file = key_file

@@ -627,10 +627,11 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             timeout=timeout,
             cert_reqs="CERT_NONE",
             ssl_minimum_version=self.tls_version(),
+            http1=(http_version == "h11"),
+            http2=(http_version == "h2"),
         ) as https_pool:
             with contextlib.closing(https_pool._new_conn()) as conn:
                 if http_version == "h2":
-                    conn.set_protocol_options(http1=False, http2=True)
                     with pytest.raises(NotImplementedError) as e:
                         conn.set_tunnel(self.host, self.port)
                     assert (
@@ -978,13 +979,13 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             self.port,
             ca_certs=DEFAULT_CA,
             ssl_minimum_version=self.tls_version(),
+            http1=(http_version == "h11"),
+            http2=(http_version == "h2"),
         ) as pool:
             r = pool.request(
                 "GET",
                 "/alpn_protocol",
                 retries=0,
-                http1=(http_version == "h11"),
-                http2=(http_version == "h2"),
             )
             assert r.status == 200
             assert (
@@ -999,13 +1000,13 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 self.host,
                 self.port,
                 ca_certs=DEFAULT_CA,
+                http1=(http_version == "h11"),
+                http2=(http_version == "h2"),
             ) as pool:
                 r = pool.request(
                     "GET",
                     "/alpn_protocol",
                     retries=0,
-                    http1=(http_version == "h11"),
-                    http2=(http_version == "h2"),
                 )
                 assert r.status == 200
 
@@ -1027,13 +1028,13 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             self.host,
             self.port,
             ca_certs=DEFAULT_CA,
+            http1=(http_version == "h11"),
+            http2=(http_version == "h2"),
         ) as pool:
             r = pool.request(
                 "GET",
                 "/",
                 retries=0,
-                http1=(http_version == "h11"),
-                http2=(http_version == "h2"),
             )
             assert r.status == 200
 
@@ -1048,9 +1049,11 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             self.port,
             ca_certs=DEFAULT_CA,
             timeout=SHORT_TIMEOUT,
+            http1=False,
+            http2=True,
         ) as pool:
             with pytest.raises(ConnectTimeoutError):
-                pool.request("GET", "/", retries=False, http1=False, http2=True)
+                pool.request("GET", "/", retries=False)
 
         # The probe was inconclusive since an error occurred during connection.
         assert http2_probe._values() == {(TARPIT_HOST, self.port): None}
@@ -1061,9 +1064,11 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             self.port,
             ca_certs=None,
             timeout=LONG_TIMEOUT,
+            http1=False,
+            http2=True,
         ) as pool:
             with pytest.raises(SSLError):
-                pool.request("GET", "/", retries=False, http1=False, http2=True)
+                pool.request("GET", "/", retries=False)
 
         # The probe was inconclusive since an error occurred during connection.
         assert http2_probe._values() == {(self.host, self.port): None}
@@ -1106,10 +1111,11 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 self.port,
                 ca_certs=DEFAULT_CA,
                 timeout=connect_timeout,
+                http1=False,
+                http2=True,
             ) as pool:
                 start_time = time.time()
                 conn = pool._get_conn()
-                conn.set_protocol_options(http1=False, http2=True)
                 assert isinstance(conn, HTTPSConnection)
                 conn._connect_callback = connect_callback
                 # ThreadPoolExecutor does not guarantee that each work item

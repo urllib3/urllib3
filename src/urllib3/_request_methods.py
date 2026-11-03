@@ -74,8 +74,6 @@ class RequestMethods:
         fields: _TYPE_FIELDS | None = None,
         headers: typing.Mapping[str, str] | None = None,
         json: typing.Any | None = None,
-        http1: bool = True,
-        http2: bool = False,
         **urlopen_kw: typing.Any,
     ) -> BaseHTTPResponse:
         """
@@ -110,18 +108,6 @@ class RequestMethods:
             Data to encode and send as JSON with UTF-encoded in the request body.
             The ``"Content-Type"`` header will be set to ``"application/json"``
             unless specified otherwise.
-
-        :param http1:
-            Set to `False` to enable the HTTP/1.1 protocol. Note that at least one of `http1`
-            and `http2` must be set to `True`. For non-TLS connections, if `http1` is `True`
-            (the default) then the HTTP/1.1 protocol will be used regardless of the value of
-            `http2`.
-
-        :param http2:
-            Set to `True` to enable the HTTP/2 protocol. If `http1` and `http2` are both `True`
-            and the connection uses TLS, then the protocol to use is determined by the ALPN
-            negotiation. For non-TLS connections, set `http1` to `False` and `http2` to `True`
-            to use a HTTP/2 prior knowledge connection.
         """
         method = method.upper()
 
@@ -151,8 +137,6 @@ class RequestMethods:
                 url,
                 fields=fields,  # type: ignore[arg-type]
                 headers=headers,
-                http1=http1,
-                http2=http2,
                 **urlopen_kw,
             )
         else:
@@ -161,8 +145,6 @@ class RequestMethods:
                 url,
                 fields=fields,
                 headers=headers,
-                http1=http1,
-                http2=http2,
                 **urlopen_kw,
             )
 
@@ -172,8 +154,6 @@ class RequestMethods:
         url: str,
         fields: _TYPE_ENCODE_URL_FIELDS | None = None,
         headers: typing.Mapping[str, str] | None = None,
-        http1: bool = True,
-        http2: bool = False,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
@@ -193,26 +173,12 @@ class RequestMethods:
             Dictionary of custom headers to send, such as User-Agent,
             If-None-Match, etc. If None, pool headers are used. If provided,
             these headers completely replace any pool-specific headers.
-
-        :param http1:
-            Set to `False` to enable the HTTP/1.1 protocol. Note that at least one of `http1`
-            and `http2` must be set to `True`. For non-TLS connections, if `http1` is `True`
-            (the default) then the HTTP/1.1 protocol will be used regardless of the value of
-            `http2`.
-
-        :param http2:
-            Set to `True` to enable the HTTP/2 protocol. If `http1` and `http2` are both `True`
-            and the connection uses TLS, then the protocol to use is determined by the ALPN
-            negotiation. For non-TLS connections, set `http1` to `False` and `http2` to `True`
-            to use a HTTP/2 prior knowledge connection.
         """
         if headers is None:
             headers = self.headers
 
         extra_kw: dict[str, typing.Any] = {"headers": headers}
         extra_kw.update(urlopen_kw)
-        extra_kw["http1"] = http1
-        extra_kw["http2"] = http2
 
         if fields:
             url += "?" + urlencode(fields)
@@ -227,8 +193,6 @@ class RequestMethods:
         headers: typing.Mapping[str, str] | None = None,
         encode_multipart: bool = True,
         multipart_boundary: str | None = None,
-        http1: bool = True,
-        http2: bool = False,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
@@ -287,25 +251,11 @@ class RequestMethods:
         :param multipart_boundary:
             If not specified, then a random boundary will be generated using
             :func:`urllib3.filepost.choose_boundary`.
-
-        :param http1:
-            Set to `False` to enable the HTTP/1.1 protocol. Note that at least one of `http1`
-            and `http2` must be set to `True`. For non-TLS connections, if `http1` is `True`
-            (the default) then the HTTP/1.1 protocol will be used regardless of the value of
-            `http2`.
-
-        :param http2:
-            Set to `True` to enable the HTTP/2 protocol. If `http1` and `http2` are both `True`
-            and the connection uses TLS, then the protocol to use is determined by the ALPN
-            negotiation. For non-TLS connections, set `http1` to `False` and `http2` to `True`
-            to use a HTTP/2 prior knowledge connection.
         """
         if headers is None:
             headers = self.headers
 
         extra_kw: dict[str, typing.Any] = {"headers": HTTPHeaderDict(headers)}
-        extra_kw["http1"] = http1
-        extra_kw["http2"] = http2
         body: bytes | str
 
         if fields:
