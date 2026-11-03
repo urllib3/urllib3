@@ -504,4 +504,3 @@ class TestRetry:
         # Invariant: get_retry_after without header must return None, not non-None
         response = HTTPResponse(status=200, headers={})
         assert retry.get_retry_after(response) is None
-
