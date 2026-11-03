@@ -514,7 +514,7 @@ class TestPoolManager:
         pool = p.connection_from_host("example.com", port=0, scheme="http")
         assert pool.port == 0
 
-    def test_thread_safty(self) -> None:
+    def test_thread_safety(self) -> None:
         pool_manager = PoolManager(num_pools=2)
 
         # thread 1 gets a pool for host x
