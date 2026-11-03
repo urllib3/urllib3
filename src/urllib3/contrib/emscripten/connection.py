@@ -87,7 +87,7 @@ class EmscriptenHTTPConnection:
         method: str,
         url: str,
         body: _TYPE_BODY | None = None,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         # We know *at least* botocore is depending on the order of the
         # first 3 parameters so to be safe we only mark the later ones
         # as keyword-only to ensure we have space to extend.
@@ -114,7 +114,9 @@ class EmscriptenHTTPConnection:
         request.set_body(body)
         if headers:
             for k, v in headers.items():
-                request.set_header(k, v)
+                request.set_header(
+                    k, v.decode("latin-1") if isinstance(v, bytes) else v
+                )
         self._response = None
         try:
             if not preload_content:

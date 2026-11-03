@@ -187,7 +187,7 @@ class SOCKSProxyManager(PoolManager):
         username: str | None = None,
         password: str | None = None,
         num_pools: int = 10,
-        headers: typing.Mapping[str, str] | None = None,
+        headers: typing.Mapping[str, str | bytes] | None = None,
         **connection_pool_kw: typing.Any,
     ):
         parsed = parse_url(proxy_url)
