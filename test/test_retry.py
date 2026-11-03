@@ -493,3 +493,15 @@ class TestRetry:
                 sleep_mock.assert_called_with(sleep_duration)
             else:
                 sleep_mock.assert_not_called()
+
+    def test_retry_is_retry_and_get_retry_after_strict_types(self) -> None:
+        retry = Retry(total=0)
+        # Invariant: is_retry must return bool False, not None
+        res = retry.is_retry("GET", 200)
+        assert res is False
+        assert type(res) is bool
+
+        # Invariant: get_retry_after without header must return None, not non-None
+        response = HTTPResponse(status=200, headers={})
+        assert retry.get_retry_after(response) is None
+
