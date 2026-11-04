@@ -245,6 +245,83 @@ class TestHTTPHeaderDict:
         del d[b"cookie"]  # type: ignore[arg-type]
         assert "cookie" not in d
 
+    def test_bytes_value_setitem(self) -> None:
+        headers = HTTPHeaderDict()
+        headers["user-agent"] = "Schönefeld/1.18.0".encode("latin-1")
+        assert headers["user-agent"] == "Schönefeld/1.18.0"
+        assert headers.getlist("user-agent") == ["Schönefeld/1.18.0"]
+
+    def test_bytes_value_add(self) -> None:
+        headers = HTTPHeaderDict()
+        headers.add("user-agent", b"foo")
+        headers.add("user-agent", b"bar")
+        assert headers["user-agent"] == "foo, bar"
+        assert headers.getlist("user-agent") == ["foo", "bar"]
+
+    def test_bytes_value_add_combine(self) -> None:
+        headers = HTTPHeaderDict()
+        headers.add("user-agent", b"foo")
+        headers.add("user-agent", b"bar", combine=True)
+        assert headers["user-agent"] == "foo, bar"
+        assert headers.getlist("user-agent") == ["foo, bar"]
+
+    def test_bytes_key_and_bytes_value(self) -> None:
+        headers = HTTPHeaderDict()
+        headers[b"custom-header"] = b"custom-value"  # type: ignore[index]
+        assert headers["custom-header"] == "custom-value"
+        assert headers[b"custom-header"] == "custom-value"  # type: ignore[index]
+        assert headers.getlist("custom-header") == ["custom-value"]
+
+    def test_bytes_value_constructor_and_extend(self) -> None:
+        h1 = HTTPHeaderDict({"a": b"1", "b": b"2"})
+        assert h1["a"] == "1"
+        assert h1["b"] == "2"
+
+        h2 = HTTPHeaderDict([("a", b"1"), ("a", b"2")])
+        assert h2.getlist("a") == ["1", "2"]
+        assert h2["a"] == "1, 2"
+
+        h3 = HTTPHeaderDict(a=b"1")
+        assert h3["a"] == "1"
+
+        h4 = HTTPHeaderDict()
+        h4.extend({"a": b"1"}, b=b"2")
+        assert h4["a"] == "1"
+        assert h4["b"] == "2"
+
+    def test_bytes_value_setdefault(self) -> None:
+        headers = HTTPHeaderDict()
+        val = headers.setdefault("a", b"default")
+        assert val == "default"
+        assert headers["a"] == "default"
+
+        val2 = headers.setdefault(b"b", "default2")  # type: ignore[arg-type]
+        assert val2 == "default2"
+        assert headers["b"] == "default2"
+
+        val3 = headers.setdefault(b"c", b"default3")  # type: ignore[arg-type]
+        assert val3 == "default3"
+        assert headers["c"] == "default3"
+
+        val4 = headers.setdefault(b"c", b"new_default")  # type: ignore[arg-type]
+        assert val4 == "default3"
+        assert headers["c"] == "default3"
+
+    def test_bytes_value_mixed_str_and_bytes(self) -> None:
+        headers = HTTPHeaderDict()
+        headers.add("a", "first")
+        headers.add("a", b"second")
+        assert headers["a"] == "first, second"
+        assert headers.getlist("a") == ["first", "second"]
+        assert list(headers.items()) == [("a", "first"), ("a", "second")]
+
+    def test_bytes_value_latin1_full_range(self) -> None:
+        all_bytes = bytes(range(256))
+        headers = HTTPHeaderDict()
+        headers["binary"] = all_bytes
+        assert headers["binary"] == all_bytes.decode("latin-1")
+        assert headers["binary"].encode("latin-1") == all_bytes
+
     def test_add_well_known_multiheader(self, d: HTTPHeaderDict) -> None:
         d.add("COOKIE", "asdf")
         assert d.getlist("cookie") == ["foo", "bar", "asdf"]
@@ -404,6 +481,12 @@ class TestHTTPHeaderDict:
         ]
         assert ("Cookie", "foo") in items
         assert ("Cookie", "bar") in items
+        assert (b"Cookie", "foo") in items  # type: ignore[comparison-overlap]
+        assert ("Cookie", b"foo") in items  # type: ignore[comparison-overlap]
+        assert (b"Cookie", b"foo") in items  # type: ignore[comparison-overlap]
+        assert (b"Cookie", b"not_present") not in items  # type: ignore[comparison-overlap]
+        assert ("Cookie", b"not_present") not in items  # type: ignore[comparison-overlap]
+        assert (b"Cookie", "not_present") not in items  # type: ignore[comparison-overlap]
         assert ("X-Some-Header", "foo") not in items
         assert ("Cookie", "not_present") not in items
         assert ("Cookie", 1) not in items  # type: ignore[comparison-overlap]

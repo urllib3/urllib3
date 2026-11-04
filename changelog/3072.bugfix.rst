@@ -1,0 +1,1 @@
+Added support for ``bytes`` header values in :class:`~urllib3.HTTPHeaderDict` by decoding them with ISO-8859-1 (Latin-1) in compliance with RFC 9110 Section 5.5.
