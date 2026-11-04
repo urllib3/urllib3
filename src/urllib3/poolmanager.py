@@ -29,6 +29,7 @@ from .util.proxy import connection_requires_http_tunnel
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
+from .util.util import to_str
 
 if typing.TYPE_CHECKING:
     import ssl
@@ -508,7 +509,7 @@ class PoolManager(RequestMethods):
             headers_to_remove = retries.remove_headers_on_redirect | {"host"}
             new_headers = kw["headers"].copy()
             for header in kw["headers"]:
-                if header.lower() in headers_to_remove:
+                if to_str(header, "latin-1").lower() in headers_to_remove:
                     new_headers.pop(header, None)
             kw["headers"] = new_headers
 

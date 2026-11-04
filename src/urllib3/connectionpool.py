@@ -913,7 +913,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             ):
                 new_headers = headers.copy()  # type: ignore[union-attr]
                 for header in headers:
-                    if header.lower() in retries.remove_headers_on_redirect:
+                    if (
+                        to_str(header, "latin-1").lower()
+                        in retries.remove_headers_on_redirect
+                    ):
                         new_headers.pop(header, None)
                 headers = new_headers
 

@@ -292,6 +292,27 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert "cookie" not in data
             assert "Cookie" not in data
 
+    def test_redirect_cross_host_remove_bytes_headers(self) -> None:
+        with PoolManager() as http:
+            r = http.urlopen(
+                "GET",
+                f"{self.base_url}/redirect?target={self.base_url_alt}/headers"
+                "&status=302%20Found",
+                headers={
+                    b"Authorization": b"foo",
+                    b"Proxy-Authorization": b"bar",
+                    b"Cookie": b"foo=bar",
+                },
+            )
+
+            assert r.status == 200
+
+            data = r.json()
+
+            assert "Authorization" not in data
+            assert "Proxy-Authorization" not in data
+            assert "Cookie" not in data
+
     def test_redirect_cross_host_headers_none(self) -> None:
         with PoolManager() as http:
             r = http.urlopen(
