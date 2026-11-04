@@ -470,6 +470,9 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         if stream_data.response_reset:
             if n == 0 or len(data) < n:
                 raise StreamError("The stream was reset")
+        if len(stream_data.response_buffer) == 0 and stream_data.response_eof:
+            # we just read the last of the response, so we can close the stream
+            self.close_stream(stream)
         return data
 
     def close(self) -> None:
@@ -484,20 +487,18 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         # Reset all our HTTP/2 connection state.
         self._h2_conn = self._new_h2_conn()
 
-    def close_stream(self, stream: Stream | None = None, cancel: bool = False) -> None:
+    def close_stream(self, stream: Stream | None = None) -> None:
         if stream is None:
             raise ConnectionError("`stream` cannot be None")
         if not stream.stream_id:
             raise ConnectionError("Must call `request` to create a stream")
 
+        reset_code = h2.errors.ErrorCodes.NO_ERROR
+        if stream in self._stream_data and not self._stream_data[stream].response_eof:
+            reset_code = h2.errors.ErrorCodes.CANCEL
         with self._h2_conn as h2_conn:
             try:
-                if cancel:
-                    h2_conn.reset_stream(
-                        stream.stream_id, error_code=h2.errors.ErrorCodes.CANCEL
-                    )
-                else:
-                    h2_conn.end_stream(stream.stream_id)
+                h2_conn.reset_stream(stream.stream_id, error_code=reset_code)
                 if data := h2_conn.data_to_send():
                     self.conn.sock.sendall(data)
             except Exception:

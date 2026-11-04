@@ -143,7 +143,7 @@ class EmscriptenHTTPConnection:
         else:
             raise ResponseNotReady()
 
-    def close_stream(self, stream: Stream | None = None, cancel: bool = False) -> None:
+    def close_stream(self, stream: Stream | None = None) -> None:
         pass
 
     def close(self) -> None:

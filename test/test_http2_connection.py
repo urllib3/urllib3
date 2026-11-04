@@ -443,24 +443,16 @@ class TestHTTP2Connection:
         )
         stream = Stream(conn)
         stream.stream_id = 1
-        conn._protocol_helper._stream_data[stream] = "foo"  # type: ignore[attr-defined]
-        conn._protocol_helper._stream_data[1] = "foo"  # type: ignore[attr-defined]
+        conn._protocol_helper._stream_data[stream] = mock.Mock(response_eof=True)  # type: ignore[attr-defined]
+        conn._protocol_helper._stream_data[1] = conn._protocol_helper._stream_data[stream]  # type: ignore[attr-defined]
         sendall = conn.sock.sendall
         data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[attr-defined]
         reset_stream = conn._protocol_helper._h2_conn._obj.reset_stream = mock.Mock(  # type: ignore[attr-defined]
             return_value=None
         )
-        end_stream = conn._protocol_helper._h2_conn._obj.end_stream = mock.Mock(  # type: ignore[attr-defined]
-            return_value=None
-        )
+        conn.close_stream(stream=stream)
 
-        try:
-            conn.close_stream(stream=stream)
-        except Exception:
-            assert False, "Exception was raised"
-
-        reset_stream.assert_not_called()
-        end_stream.assert_called_with(1)
+        reset_stream.assert_called_once_with(1, error_code=ErrorCodes.NO_ERROR)
         data_to_send.assert_called_with()
         sendall.assert_called_with(b"foo")
         assert stream not in conn._protocol_helper._stream_data  # type: ignore[attr-defined]
@@ -473,24 +465,16 @@ class TestHTTP2Connection:
         )
         stream = Stream(conn)
         stream.stream_id = 1
-        conn._protocol_helper._stream_data[stream] = "foo"  # type: ignore[attr-defined]
-        conn._protocol_helper._stream_data[1] = "foo"  # type: ignore[attr-defined]
+        conn._protocol_helper._stream_data[stream] = mock.Mock(response_eof=False)  # type: ignore[attr-defined]
+        conn._protocol_helper._stream_data[1] = conn._protocol_helper._stream_data[stream]  # type: ignore[attr-defined]
         sendall = conn.sock.sendall
         data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[attr-defined]
         reset_stream = conn._protocol_helper._h2_conn._obj.reset_stream = mock.Mock(  # type: ignore[attr-defined]
             return_value=None
         )
-        end_stream = conn._protocol_helper._h2_conn._obj.end_stream = mock.Mock(  # type: ignore[attr-defined]
-            return_value=None
-        )
+        conn.close_stream(stream=stream)
 
-        try:
-            conn.close_stream(stream=stream, cancel=True)
-        except Exception:
-            assert False, "Exception was raised"
-
-        reset_stream.assert_called_with(1, error_code=ErrorCodes.CANCEL)
-        end_stream.assert_not_called()
+        reset_stream.assert_called_once_with(1, error_code=ErrorCodes.CANCEL)
         data_to_send.assert_called_with()
         sendall.assert_called_with(b"foo")
         assert stream not in conn._protocol_helper._stream_data  # type: ignore[attr-defined]
@@ -617,6 +601,7 @@ class TestHTTP2Connection:
         )
         conn._protocol_helper._h2_conn._obj.acknowledge_received_data = mock.Mock()  # type: ignore[attr-defined]
         conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"flow")  # type: ignore[attr-defined]
+        conn._protocol_helper.close_stream = mock.Mock()  # type: ignore[method-assign]
         stream = Stream(conn)
         stream.stream_id = 1
         conn._protocol_helper._stream_data[stream] = HTTP2StreamData(**response_opts)  # type: ignore[attr-defined]
@@ -638,6 +623,16 @@ class TestHTTP2Connection:
         data_to_send.assert_called_with()
         conn.sock.sendall.assert_called_with(b"flow")  # type: ignore[union-attr]
 
+    def test_response_preload(self) -> None:
+        conn, stream = self._create_test_response_stream(
+            200, [], b"first,", b"second,", b"third"
+        )
+        resp = conn.getresponse(stream=stream)
+        assert resp.status == 200
+        assert resp._body == b"first,second,third"
+        assert resp.data == b"first,second,third"
+        conn._protocol_helper.close_stream.assert_called_once_with(stream)  # type: ignore[attr-defined]
+
     def test_response_read_on_demand(self) -> None:
         conn, stream = self._create_test_response_stream(
             200, [], b"first,", b"second,", b"third", preload_content=False
@@ -647,6 +642,7 @@ class TestHTTP2Connection:
         assert resp.status == 200
         assert resp.data == b"first,second,third"
         assert resp._body == b"first,second,third"
+        conn._protocol_helper.close_stream.assert_called_once_with(stream)  # type: ignore[attr-defined]
 
     def test_response_read_in_chunks(self) -> None:
         conn, stream = self._create_test_response_stream(
@@ -654,7 +650,11 @@ class TestHTTP2Connection:
         )
         resp = conn.getresponse(stream=stream)
         assert resp.status == 200
-        assert resp.read(3) + resp.read(12) + resp.read() == b"first,second,third"
+        data = resp.read(3) + resp.read(12)
+        conn._protocol_helper.close_stream.assert_not_called()  # type: ignore[attr-defined]
+        data += resp.read()
+        assert data == b"first,second,third"
+        conn._protocol_helper.close_stream.assert_called_once_with(stream)  # type: ignore[attr-defined]
 
     def test_response_enforce_content_length(self) -> None:
         conn, stream = self._create_test_response_stream(
