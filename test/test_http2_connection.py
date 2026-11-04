@@ -8,8 +8,13 @@ import h2.events
 import pytest
 from h2.errors import ErrorCodes
 
-from urllib3.connection import HTTPSConnection, Stream, _get_default_user_agent
-from urllib3.exceptions import ConnectionError, StreamError
+from urllib3.connection import (
+    HTTPConnection,
+    HTTPSConnection,
+    Stream,
+    _get_default_user_agent,
+)
+from urllib3.exceptions import ConnectionError, IncompleteRead, StreamError
 from urllib3.http2.connection import (
     HTTP2ProtocolHelper,
     HTTP2StreamData,
@@ -570,45 +575,95 @@ class TestHTTP2Connection:
         with pytest.raises(ConnectionError):
             conn.getresponse(stream=stream)
 
-    def test_flow_control(self) -> None:
+    def _create_test_response_stream(
+        self,
+        status: int,
+        headers: list[tuple[bytes, bytes]],
+        *chunks: bytes,
+        **response_opts: typing.Any,
+    ) -> tuple[HTTPConnection, Stream]:
         conn = HTTPSConnection("example.com", http1=False, http2=True)
         conn.sock = mock.MagicMock(
             sendall=mock.Mock(return_value=None),
         )
+        events: list[list[h2.events.Event]] = [
+            [
+                h2.events.ResponseReceived(
+                    stream_id=1, headers=[(b":status", str(status).encode())] + headers
+                ),
+            ],
+        ]
+        if len(chunks) > 0:
+            events[0].append(
+                h2.events.DataReceived(
+                    stream_id=1,
+                    data=chunks[0],
+                    flow_controlled_length=len(chunks[0]),
+                ),
+            )
+        for chunk in chunks[1:]:
+            events.append(
+                [
+                    h2.events.DataReceived(
+                        stream_id=1,
+                        data=chunk,
+                        flow_controlled_length=len(chunk),
+                    ),
+                ],
+            )
+        events[-1].append(h2.events.StreamEnded(stream_id=1))
         conn._protocol_helper._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[attr-defined]
-            side_effect=[
-                [
-                    h2.events.ResponseReceived(
-                        stream_id=1, headers=[(b":status", b"200")]
-                    ),
-                    h2.events.DataReceived(
-                        stream_id=1,
-                        data=b"fo",
-                        flow_controlled_length=2,
-                    ),
-                ],
-                [
-                    h2.events.DataReceived(
-                        stream_id=1,
-                        data=b"o",
-                        flow_controlled_length=1,
-                    ),
-                    h2.events.StreamEnded(stream_id=1),
-                ],
-            ]
+            side_effect=events,
         )
-        ack_received_data = conn._protocol_helper._h2_conn._obj.acknowledge_received_data = mock.Mock()  # type: ignore[attr-defined]
-        data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"flow")  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.acknowledge_received_data = mock.Mock()  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"flow")  # type: ignore[attr-defined]
         stream = Stream(conn)
         stream.stream_id = 1
-        conn._protocol_helper._stream_data[stream] = HTTP2StreamData()  # type: ignore[attr-defined]
+        conn._protocol_helper._stream_data[stream] = HTTP2StreamData(**response_opts)  # type: ignore[attr-defined]
         conn._protocol_helper._stream_data[1] = conn._protocol_helper._stream_data[  # type: ignore[attr-defined]
             stream
         ]
+        return conn, stream
+
+    def test_flow_control(self) -> None:
+        conn, stream = self._create_test_response_stream(200, [], b"fo", b"o")
+        ack_received_data = conn._protocol_helper._h2_conn._obj.acknowledge_received_data  # type: ignore[attr-defined]
+        data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send  # type: ignore[attr-defined]
+
         resp = conn.getresponse(stream=stream)
         assert resp.status == 200
         assert resp.data == b"foo"
         ack_received_data.assert_any_call(2, 1)
         ack_received_data.assert_called_with(1, 1)
         data_to_send.assert_called_with()
-        conn.sock.sendall.assert_called_with(b"flow")
+        conn.sock.sendall.assert_called_with(b"flow")  # type: ignore[union-attr]
+
+    def test_response_read_on_demand(self) -> None:
+        conn, stream = self._create_test_response_stream(
+            200, [], b"first,", b"second,", b"third", preload_content=False
+        )
+        resp = conn.getresponse(stream=stream)
+        assert resp._body is None
+        assert resp.status == 200
+        assert resp.data == b"first,second,third"
+        assert resp._body == b"first,second,third"
+
+    def test_response_read_in_chunks(self) -> None:
+        conn, stream = self._create_test_response_stream(
+            200, [], b"first,", b"second,", b"third", preload_content=False
+        )
+        resp = conn.getresponse(stream=stream)
+        assert resp.status == 200
+        assert resp.read(3) + resp.read(12) + resp.read() == b"first,second,third"
+
+    def test_response_enforce_content_length(self) -> None:
+        conn, stream = self._create_test_response_stream(
+            200,
+            [(b"content-length", b"4")],
+            b"foo",
+            preload_content=False,
+            enforce_content_length=True,
+        )
+        resp = conn.getresponse(stream=stream)
+        with pytest.raises(IncompleteRead):
+            resp.read(4)

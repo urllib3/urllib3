@@ -22,7 +22,7 @@ from ..connection import (
     Stream,
     _get_default_user_agent,
 )
-from ..exceptions import ConnectionError, StreamError
+from ..exceptions import ConnectionError, IncompleteRead, StreamError
 from ..response import HTTPResponse
 
 orig_HTTPSConnection = HTTPSConnection
@@ -95,7 +95,15 @@ class _LockedObject(typing.Generic[T]):
 class HTTP2StreamData:
     url: str = field(default="")
     headers: list[tuple[bytes, bytes]] = field(default_factory=list)
-    events: list[h2.events.Event] = field(default_factory=list)
+    preload_content: bool = field(default=True)
+    decode_content: bool = field(default=True)
+    enforce_content_length: bool = field(default=True)
+    status: int = field(default=0)
+    response_headers: HTTPHeaderDict = field(default_factory=HTTPHeaderDict)
+    response_buffer: bytes = field(default=b"")
+    response_bytes_read: int = field(default=0)
+    response_reset: bool = field(default=False)
+    response_eof: bool = field(default=False)
 
 
 class HTTP2ProtocolHelper(BaseProtocolHelper):
@@ -237,6 +245,11 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         stream = Stream(self.conn)
         self.putrequest(method, url, stream=stream)
 
+        # store response options in the stream data
+        self._stream_data[stream].preload_content = preload_content
+        self._stream_data[stream].decode_content = decode_content
+        self._stream_data[stream].enforce_content_length = enforce_content_length
+
         headers = headers or {}
         for k, v in headers.items():
             if k.lower() == "transfer-encoding" and v == "chunked":
@@ -269,36 +282,68 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                     for event in h2_conn.receive_data(received_data):
                         if isinstance(event, h2.events.ConnectionTerminated):
                             raise ConnectionError("The connection was closed")
-                        if isinstance(
-                            event,
-                            (
-                                h2.events.ResponseReceived,
-                                h2.events.DataReceived,
-                                h2.events.StreamReset,
-                                h2.events.StreamEnded,
-                            ),
-                        ):
-                            if isinstance(event, h2.events.DataReceived):
-                                h2_conn.acknowledge_received_data(
-                                    event.flow_controlled_length, event.stream_id
-                                )
+                        elif isinstance(event, h2.events.ResponseReceived):
                             if event.stream_id in self._stream_data:
-                                self._stream_data[event.stream_id].events.append(event)
+                                status = None
+                                headers = HTTPHeaderDict()
+                                for header, value in event.headers:
+                                    if header == b":status":
+                                        status = int(value.decode())
+                                    else:
+                                        headers.add(
+                                            header.decode("ascii"),
+                                            value.decode("ascii"),
+                                        )
+                                if not status:  # Defensive:
+                                    raise ConnectionError("Missing response status")
+                                self._stream_data[event.stream_id].status = status
+                                self._stream_data[event.stream_id].response_headers = (
+                                    headers
+                                )
+                        elif isinstance(event, h2.events.DataReceived):
+                            h2_conn.acknowledge_received_data(
+                                event.flow_controlled_length, event.stream_id
+                            )
+                            if event.stream_id in self._stream_data:
+                                self._stream_data[
+                                    event.stream_id
+                                ].response_buffer += event.data
+                        elif isinstance(event, h2.events.StreamReset):
+                            if event.stream_id in self._stream_data:
+                                self._stream_data[event.stream_id].response_reset = True
+                        elif isinstance(event, h2.events.StreamEnded):
+                            if event.stream_id in self._stream_data:
+                                self._stream_data[event.stream_id].response_eof = True
                     if data_to_send := h2_conn.data_to_send():
                         self.conn.sock.sendall(data_to_send)
 
-    def _wait_for_data(self, stream: Stream) -> list[h2.events.Event]:
+    def _wait_for_response(self, stream: Stream) -> None:
+        """Process events until the given stream returned a response."""
+        with self._h2_conn:
+            self._receive(
+                lambda: (
+                    stream.stream_id in self._stream_data
+                    and (
+                        self._stream_data[stream.stream_id].status > 0
+                        or self._stream_data[stream.stream_id].response_eof
+                        or self._stream_data[stream.stream_id].response_reset
+                    )
+                )
+            )
+
+    def _wait_for_data(self, stream: Stream) -> None:
         """Process events until the given stream has response data available."""
         with self._h2_conn:
             self._receive(
                 lambda: (
                     stream.stream_id in self._stream_data
-                    and len(self._stream_data[stream.stream_id].events) > 0
+                    and (
+                        len(self._stream_data[stream.stream_id].response_buffer) > 0
+                        or self._stream_data[stream.stream_id].response_eof
+                        or self._stream_data[stream.stream_id].response_reset
+                    )
                 )
             )
-            events = self._stream_data[stream].events
-            self._stream_data[stream].events = []
-            return events
 
     def _wait_for_flow_control(self, stream: Stream) -> int:
         """Process events until the given stream's flow control window is
@@ -314,13 +359,9 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                     h2_conn.local_flow_control_window(stream.stream_id) > 0  # type: ignore[arg-type]
                     or (
                         stream.stream_id in self._stream_data
-                        and len(self._stream_data[stream.stream_id].events) > 0
-                        and isinstance(
-                            self._stream_data[stream.stream_id].events[-1],
-                            (
-                                h2.events.StreamReset,
-                                h2.events.StreamEnded,
-                            ),
+                        and (
+                            self._stream_data[stream.stream_id].response_eof
+                            or self._stream_data[stream.stream_id].response_reset
                         )
                     )
                 )
@@ -333,43 +374,18 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         if not stream.stream_id:
             raise ConnectionError("Must call `request` to create a stream")
 
-        status = None
-        data = bytearray()
-        with self._h2_conn as h2_conn:
-            end_stream = False
-            while not end_stream:
-                # TODO: Arbitrary read value.
-                events = self._wait_for_data(stream)
-                for event in events:
-                    if isinstance(event, h2.events.ResponseReceived):
-                        headers = HTTPHeaderDict()
-                        for header, value in event.headers:
-                            if header == b":status":
-                                status = int(value.decode())
-                            else:
-                                headers.add(
-                                    header.decode("ascii"), value.decode("ascii")
-                                )
+        self._wait_for_response(stream)
+        stream_data = self._stream_data[stream]
 
-                    elif isinstance(event, h2.events.DataReceived):
-                        data += event.data
-
-                    elif isinstance(event, h2.events.StreamReset):
-                        raise StreamError("The stream was reset")
-
-                    elif isinstance(event, h2.events.StreamEnded):
-                        end_stream = True
-
-                if data_to_send := h2_conn.data_to_send():
-                    self.conn.sock.sendall(data_to_send)
-
-        assert status is not None
         return HTTP2Response(
-            status=status,
-            headers=headers,
-            request_url=self._stream_data[stream].url,
-            data=bytes(data),
             connection=self.conn,
+            request_url=stream_data.url,
+            status=stream_data.status,
+            headers=stream_data.response_headers,
+            read_stream=lambda amt: self.read_stream(stream, amt),
+            preload_content=stream_data.preload_content,
+            decode_content=stream_data.decode_content,
+            enforce_content_length=stream_data.enforce_content_length,
         )
 
     def _write_with_flow_control(self, data: bytes, stream: Stream) -> None:
@@ -433,6 +449,29 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             )
         return True
 
+    def read_stream(self, stream: Stream, n: int = 0) -> bytes:
+        """Read bytes from a stream."""
+        stream_data = self._stream_data[stream]
+        data = b""
+        while not stream_data.response_reset and not stream_data.response_eof:
+            if n > 0:
+                need = n - len(data)
+                data += stream_data.response_buffer[:need]
+                stream_data.response_buffer = stream_data.response_buffer[need:]
+                if len(data) == n:
+                    break  # we have what we need
+            else:
+                data += stream_data.response_buffer
+                stream_data.response_buffer = b""
+            self._wait_for_data(stream)
+        if n == 0:
+            data += stream_data.response_buffer
+            stream_data.response_buffer = b""
+        if stream_data.response_reset:
+            if n == 0 or len(data) < n:
+                raise StreamError("The stream was reset")
+        return data
+
     def close(self) -> None:
         with self._h2_conn as h2_conn:
             try:
@@ -477,10 +516,13 @@ class HTTP2Response(HTTPResponse):
         status: int,
         headers: HTTPHeaderDict,
         request_url: str,
-        data: bytes,
-        decode_content: bool = False,  # TODO: support decoding
+        read_stream: typing.Callable[[int], bytes],
+        preload_content: bool = True,
+        decode_content: bool = True,
+        enforce_content_length: bool = True,
         connection: HTTPConnection | None = None,
     ) -> None:
+        self._read_stream = read_stream
         super().__init__(
             status=status,
             headers=headers,
@@ -489,19 +531,40 @@ class HTTP2Response(HTTPResponse):
             version_string="HTTP/2",
             # No reason phrase in HTTP/2
             reason=None,
+            preload_content=preload_content,
             decode_content=decode_content,
+            enforce_content_length=enforce_content_length,
             connection=connection,
             request_url=request_url,
         )
-        self._data = data
-        self.length_remaining = 0
+
+    def _raw_read(
+        self,
+        amt: int | None = None,
+        *,
+        read1: bool = False,
+    ) -> bytes:
+        data = self._read_stream(amt or 0)
+        self._fp_bytes_read += len(data)
+        if self.length_remaining is not None:
+            self.length_remaining -= len(data)
+        if not data:
+            # auto-close here?
+            if (
+                self.enforce_content_length
+                and self.length_remaining is not None
+                and self.length_remaining != 0
+            ):
+                raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
+        return data
 
     @property
     def data(self) -> bytes:
-        return self._data
+        # For backwards-compat with earlier urllib3 0.4 and earlier.
+        if self._body:
+            return self._body  # type: ignore[return-value]
 
-    def get_redirect_location(self) -> None:
-        return None
+        return self.read(cache_content=True)
 
     def close(self) -> None:
         pass
