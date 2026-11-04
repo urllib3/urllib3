@@ -1,0 +1,5 @@
+Fixed ``HTTPConnection.request()`` sending a request with both ``Content-Length``
+and ``Transfer-Encoding`` headers, which RFC 9112 Section 6.3 forbids because the
+framing of such a request is ambiguous. Supplying both headers, or passing
+``chunked=True`` together with a ``Content-Length`` header, now raises
+``ValueError`` before anything is sent.
