@@ -16,6 +16,8 @@ from unittest import mock
 
 import pytest
 
+from urllib3.connection import HTTPConnection
+from urllib3.connectionpool import HTTPConnectionPool
 from urllib3.exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
@@ -1049,6 +1051,59 @@ class TestResponse:
                 fp,
                 headers={"content-encoding": "gzip, deflate, br, zstd, gzip, deflate"},
             )
+
+    @pytest.mark.parametrize("operation", ["decompress", "flush"])
+    @pytest.mark.parametrize("error_type", [DecodeError, zlib.error])
+    def test_decode_error_does_not_close_reborrowed_connection(
+        self, operation: str, error_type: type[Exception]
+    ) -> None:
+        data = gzip.compress(b"foo")
+        wire = (
+            b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n"
+            + b"Content-Length: %d\r\n\r\n" % len(data)
+            + data
+        )
+        sock = mock.Mock()
+        sock.makefile.return_value = BytesIO(wire)
+        original = httplib.HTTPResponse(sock)
+        original.begin()
+
+        with HTTPConnectionPool("localhost", maxsize=1, block=True) as pool:
+            conn = pool._get_conn()
+            assert isinstance(conn, HTTPConnection)
+            response = HTTPResponse(
+                original,
+                headers=dict(original.headers),
+                original_response=original,
+                pool=pool,
+                connection=conn,
+                preload_content=False,
+            )
+            response._init_decoder()
+            assert response._decoder is not None
+
+            def fail_after_reborrowing(*args: object, **kwargs: object) -> bytes:
+                # Reading the complete HTTP body returns the connection before
+                # decompression. Another request can already own it by now.
+                assert pool._get_conn(timeout=0) is conn
+                raise error_type("decoder failure")
+
+            with (
+                mock.patch.object(
+                    response._decoder, operation, side_effect=fail_after_reborrowing
+                ),
+                mock.patch(
+                    "urllib3.connectionpool.is_connection_dropped", return_value=False
+                ),
+                mock.patch.object(conn, "close") as close,
+            ):
+                with pytest.raises((DecodeError, zlib.error), match="decoder failure"):
+                    response.read()
+                close.assert_not_called()
+                assert response.connection is None
+                assert pool.pool is not None
+                assert pool.pool.qsize() == 0
+            pool._put_conn(conn)
 
     def test_full_read_after_partial_read_with_buffered_decoded_data(self) -> None:
         data = zlib.compress(b"foobarbaz")
