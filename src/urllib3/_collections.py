@@ -324,7 +324,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         except KeyError:
             pass
 
-    def add(self, key: str | bytes, val: str | bytes, *, combine: bool = False) -> None:
+    def add(self, key: str, val: str | bytes, *, combine: bool = False) -> None:
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
@@ -377,10 +377,16 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
                 self.add(h_key, h_val)
         elif isinstance(other, typing.Mapping):
             for m_key, m_val in other.items():
-                self.add(m_key, m_val)
+                self.add(
+                    m_key.decode("latin-1") if isinstance(m_key, bytes) else m_key,
+                    m_val,
+                )
         elif isinstance(other, typing.Iterable):
             for i_key, i_val in other:
-                self.add(i_key, i_val)
+                self.add(
+                    i_key.decode("latin-1") if isinstance(i_key, bytes) else i_key,
+                    i_val,
+                )
         elif hasattr(other, "keys") and hasattr(other, "__getitem__"):
             # THIS IS NOT A TYPESAFE BRANCH
             # In this branch, the object has a `keys` attr but is not a Mapping or any of
@@ -388,7 +394,10 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             # it as though it partially implements the Mapping interface, but we're not
             # doing that stuff safely AT ALL.
             for o_key in other.keys():
-                self.add(o_key, other[o_key])
+                self.add(
+                    o_key.decode("latin-1") if isinstance(o_key, bytes) else o_key,
+                    other[o_key],
+                )
 
         for key, value in kwargs.items():
             self.add(key, value)
