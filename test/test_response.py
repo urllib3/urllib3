@@ -1050,6 +1050,47 @@ class TestResponse:
                 headers={"content-encoding": "gzip, deflate, br, zstd, gzip, deflate"},
             )
 
+    @pytest.mark.parametrize("read_method", ("read", "read1", "read_chunked", "stream"))
+    @pytest.mark.parametrize(
+        "default_decode_content, decode_content", [(False, None), (True, False)]
+    )
+    def test_raw_read_ignores_content_encoding_chain(
+        self,
+        read_method: str,
+        default_decode_content: bool,
+        decode_content: bool | None,
+    ) -> None:
+        data = b"opaque encoded body"
+        headers = {"content-encoding": ", ".join(["gzip"] * 6)}
+        body: httplib.HTTPResponse | BytesIO
+        if read_method in ("read_chunked", "stream"):
+            httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+            httplib_r.chunked = True
+            httplib_r.chunk_left = None
+            httplib_r.fp = MockChunkedEncodingResponse([data])  # type: ignore[assignment]
+            headers["transfer-encoding"] = "chunked"
+            body = httplib_r
+        else:
+            body = BytesIO(data)
+
+        response = HTTPResponse(
+            body,
+            headers=headers,
+            preload_content=False,
+            decode_content=default_decode_content,
+        )
+        if read_method in ("read", "read1"):
+            read = {"read": response.read, "read1": response.read1}[read_method]
+            result = read(decode_content=decode_content)
+        else:
+            chunks = {
+                "read_chunked": response.read_chunked,
+                "stream": response.stream,
+            }[read_method]
+            result = b"".join(chunks(decode_content=decode_content))
+
+        assert result == data
+
     def test_full_read_after_partial_read_with_buffered_decoded_data(self) -> None:
         data = zlib.compress(b"foobarbaz")
         fp = BytesIO(data)
