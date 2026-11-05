@@ -78,6 +78,37 @@ class TestRetry:
         retry = retry.increment(method="GET", error=timeout_error)
         assert not retry.is_exhausted()
 
+    @pytest.mark.parametrize(
+        ("kwarg", "value"),
+        [
+            pytest.param("status_forcelist", "500", id="status_forcelist"),
+            pytest.param("allowed_methods", "GET", id="allowed_methods"),
+            pytest.param(
+                "remove_headers_on_redirect",
+                "Authorization",
+                id="remove_headers_on_redirect",
+            ),
+        ],
+    )
+    def test_string_collection_is_rejected(self, kwarg: str, value: str) -> None:
+        """A bare string is a Collection, so it passes typing but behaves wrongly."""
+        with pytest.raises(TypeError, match=f"'{kwarg}' must be a collection"):
+            Retry(**{kwarg: value})  # type: ignore[arg-type]
+
+    def test_collections_are_still_accepted(self) -> None:
+        """The fix must not narrow what already worked."""
+        retry = Retry(
+            status_forcelist=[500],
+            allowed_methods=["GET"],
+            remove_headers_on_redirect=["Authorization"],
+        )
+        assert retry.is_retry("GET", 500) is True
+
+        retry = Retry(status_forcelist={500}, allowed_methods=frozenset({"GET"}))
+        assert retry.is_retry("GET", 500) is True
+
+        assert Retry(allowed_methods=None).is_retry("GET", 500) is False
+
     def test_retry_default(self) -> None:
         """If no value is specified, should retry connects 3 times"""
         retry = Retry()
