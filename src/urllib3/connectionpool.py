@@ -26,6 +26,7 @@ from .connection import (
 from .connection import port_by_scheme as port_by_scheme
 from .exceptions import (
     ClosedPoolError,
+    ConnectTimeoutError,
     EmptyPoolError,
     FullPoolError,
     HostChangedError,
@@ -468,7 +469,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Trigger any extra validation we need to do.
             try:
                 self._validate_conn(conn)
-            except (SocketTimeout, BaseSSLError) as e:
+            except SocketTimeout as e:
+                raise ConnectTimeoutError(
+                    conn,
+                    f"Connection to {self.host} timed out. "
+                    f"(connect timeout={conn.timeout})",
+                ) from e
+            except BaseSSLError as e:
                 self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
                 raise
 
