@@ -39,6 +39,7 @@ from urllib3.exceptions import (
 from urllib3.response import HTTPResponse
 from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import _DEFAULT_TIMEOUT, Timeout
+from urllib3.util.url import parse_url
 
 from .test_response import MockChunkedEncodingResponse, MockSock
 
@@ -903,3 +904,100 @@ class TestConnectionPool:
             "http://[fe80::1%251]:8080/next?x=%23",
             "http://[fe80::1%251]:8080/next?x=%23",
         ]
+
+    def test_cross_host_redirect_removes_bytes_headers(self) -> None:
+        redirect_response = HTTPResponse(
+            status=302,
+            headers={"location": "http://otherhost/next"},
+        )
+        final_response = HTTPResponse(status=200)
+
+        with HTTPConnectionPool(host="localhost", port=80) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                side_effect=[redirect_response, final_response],
+            ) as mock_request:
+                response = pool.urlopen(
+                    "GET",
+                    "/",
+                    headers={
+                        b"Authorization": b"secret",
+                        b"Custom-Header": b"keep",
+                    },
+                    assert_same_host=False,
+                    retries=1,
+                )
+
+            assert response.status == 200
+            second_call_headers = mock_request.call_args_list[1].kwargs.get("headers")
+            if second_call_headers is None:
+                second_call_headers = mock_request.call_args_list[1].args[4]
+            assert b"Authorization" not in second_call_headers
+            assert "Authorization" not in second_call_headers
+            assert second_call_headers.get(b"Custom-Header") == b"keep"
+
+    def test_proxy_headers_merged_with_bytes_headers(self) -> None:
+        final_response = HTTPResponse(status=200)
+        with HTTPConnectionPool(
+            host="localhost",
+            port=80,
+            _proxy=parse_url("http://proxy:8080"),
+            _proxy_headers={b"Proxy-Authorization": b"basic"},
+        ) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                return_value=final_response,
+            ) as mock_request:
+                response = pool.urlopen(
+                    "GET",
+                    "http://localhost/",
+                    headers={b"User-Agent": b"test-agent"},
+                )
+
+            assert response.status == 200
+            called_headers = mock_request.call_args.kwargs.get("headers")
+            if called_headers is None:
+                called_headers = mock_request.call_args.args[4]
+            assert called_headers.get(b"Proxy-Authorization") == b"basic"
+            assert called_headers.get(b"User-Agent") == b"test-agent"
+
+    def test_proxy_headers_merged_with_read_only_mapping(self) -> None:
+        class ReadOnlyDict(typing.Mapping[bytes, bytes]):
+            def __init__(self, d: dict[bytes, bytes]) -> None:
+                self._d = d
+
+            def __getitem__(self, k: bytes) -> bytes:
+                return self._d[k]
+
+            def __iter__(self) -> typing.Iterator[bytes]:
+                return iter(self._d)
+
+            def __len__(self) -> int:
+                return len(self._d)
+
+        final_response = HTTPResponse(status=200)
+        with HTTPConnectionPool(
+            host="localhost",
+            port=80,
+            _proxy=parse_url("http://proxy:8080"),
+            _proxy_headers={b"Proxy-Authorization": b"basic"},
+        ) as pool:
+            with patch.object(
+                pool,
+                "_make_request",
+                return_value=final_response,
+            ) as mock_request:
+                response = pool.urlopen(
+                    "GET",
+                    "http://localhost/",
+                    headers=ReadOnlyDict({b"User-Agent": b"test-agent"}),
+                )
+
+            assert response.status == 200
+            called_headers = mock_request.call_args.kwargs.get("headers")
+            if called_headers is None:
+                called_headers = mock_request.call_args.args[4]
+            assert called_headers.get(b"Proxy-Authorization") == b"basic"
+            assert called_headers.get(b"User-Agent") == b"test-agent"

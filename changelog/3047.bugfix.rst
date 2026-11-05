@@ -1,0 +1,1 @@
+Added support for ``bytes`` header names and values in type annotations and normalized header lookups across all public request and connection APIs in compliance with RFC 9110.

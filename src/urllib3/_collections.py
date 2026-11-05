@@ -28,10 +28,16 @@ _VT = typing.TypeVar("_VT")
 # Default type
 _DT = typing.TypeVar("_DT")
 
+_TYPE_HEADER_MAPPING: typing.TypeAlias = (
+    typing.Mapping[str, str | bytes]
+    | typing.Mapping[bytes, str | bytes]
+    | typing.Mapping[str | bytes, str | bytes]
+)
+
 ValidHTTPHeaderSource = typing.Union[
     "HTTPHeaderDict",
-    typing.Mapping[str, str | bytes],
-    typing.Iterable[tuple[str, str | bytes]],
+    _TYPE_HEADER_MAPPING,
+    typing.Iterable[tuple[str | bytes, str | bytes]],
     "HasGettableStringKeys",
 ]
 
@@ -48,12 +54,12 @@ def ensure_can_construct_http_header_dict(
     elif isinstance(potential, typing.Mapping):
         # Full runtime checking of the contents of a Mapping is expensive, so for the
         # purposes of typechecking, we assume that any Mapping is the right shape.
-        return typing.cast(typing.Mapping[str, str | bytes], potential)
+        return typing.cast(_TYPE_HEADER_MAPPING, potential)
     elif isinstance(potential, typing.Iterable):
         # Similarly to Mapping, full runtime checking of the contents of an Iterable is
         # expensive, so for the purposes of typechecking, we assume that any Iterable
         # is the right shape.
-        return typing.cast(typing.Iterable[tuple[str, str | bytes]], potential)
+        return typing.cast(typing.Iterable[tuple[str | bytes, str | bytes]], potential)
     elif hasattr(potential, "keys") and hasattr(potential, "__getitem__"):
         return typing.cast("HasGettableStringKeys", potential)
     else:
@@ -318,7 +324,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         except KeyError:
             pass
 
-    def add(self, key: str, val: str | bytes, *, combine: bool = False) -> None:
+    def add(self, key: str | bytes, val: str | bytes, *, combine: bool = False) -> None:
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
