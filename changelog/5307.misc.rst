@@ -1,0 +1,1 @@
+Fixed test sessions passing Memray options when the pytest plugin was not installed.

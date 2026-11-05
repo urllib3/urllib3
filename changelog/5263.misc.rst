@@ -1,0 +1,1 @@
+Enabled parallel execution of the test suite with ``pytest-xdist``.
