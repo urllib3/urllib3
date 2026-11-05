@@ -1,0 +1,2 @@
+Fixed a ``303 See Other`` redirect turning a ``HEAD`` request into a ``GET`` request.
+As allowed by RFC 9110, Section 15.4.4, ``HEAD`` requests are now redirected with ``HEAD``.
