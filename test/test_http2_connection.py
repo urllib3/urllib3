@@ -384,3 +384,42 @@ class TestHTTP2Connection:
         )
 
         close_connection.assert_called_with()
+
+    def test_request_transfer_encoding_chunked_bytes(self) -> None:
+        conn = HTTP2Connection("example.com")
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
+        sendall = conn.sock.sendall
+        data_to_send = conn._h2_conn._obj.data_to_send = mock.Mock(return_value=b"foo")  # type: ignore[method-assign]
+        send_headers = conn._h2_conn._obj.send_headers = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[method-assign]
+        conn._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[method-assign]
+        close_connection = conn._h2_conn._obj.close_connection = mock.Mock(  # type: ignore[method-assign]
+            return_value=None
+        )
+
+        conn.request(
+            "GET",
+            "/",
+            headers={b"Transfer-Encoding": b"chunked", b"X-Custom": b"Value"},
+            chunked=True,
+        )
+        conn.close()
+
+        data_to_send.assert_called_with()
+        sendall.assert_called_with(b"foo")
+        send_headers.assert_called_with(
+            stream_id=1,
+            headers=[
+                (b":scheme", b"https"),
+                (b":method", b"GET"),
+                (b":authority", b"example.com:443"),
+                (b":path", b"/"),
+                (b"x-custom", b"Value"),
+                (b"user-agent", _get_default_user_agent().encode()),
+            ],
+            end_stream=True,
+        )
+
+        close_connection.assert_called_with()

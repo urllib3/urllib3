@@ -292,6 +292,67 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert "cookie" not in data
             assert "Cookie" not in data
 
+    def test_redirect_cross_host_removes_bytes_header_names(self) -> None:
+        headers: typing.Mapping[bytes, bytes] = {
+            b"Authorization": b"foo",
+            b"Proxy-Authorization": b"bar",
+            b"Cookie": b"foo=bar",
+        }
+        with PoolManager() as http:
+            r = http.request(
+                "GET",
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url_alt}/headers"},
+                headers=headers,
+            )
+
+            assert r.status == 200
+
+            data = r.json()
+
+            assert "authorization" not in data
+            assert "Authorization" not in data
+            assert "proxy-authorization" not in data
+            assert "Proxy-Authorization" not in data
+            assert "cookie" not in data
+            assert "Cookie" not in data
+
+    def test_redirect_cross_host_accepts_read_only_bytes_mapping(self) -> None:
+        class ReadOnlyHeaders(typing.Mapping[bytes, bytes]):
+            def __init__(self, values: dict[bytes, bytes]) -> None:
+                self._values = values
+
+            def __getitem__(self, key: bytes) -> bytes:
+                return self._values[key]
+
+            def __iter__(self) -> typing.Iterator[bytes]:
+                return iter(self._values)
+
+            def __len__(self) -> int:
+                return len(self._values)
+
+        headers = ReadOnlyHeaders(
+            {
+                b"Authorization": b"foo",
+                b"Cookie": b"foo=bar",
+            }
+        )
+
+        with PoolManager() as http:
+            r = http.request(
+                "GET",
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url_alt}/headers"},
+                headers=headers,
+            )
+
+            assert r.status == 200
+            data = r.json()
+            assert "authorization" not in data
+            assert "Authorization" not in data
+            assert "cookie" not in data
+            assert "Cookie" not in data
+
     def test_redirect_cross_host_headers_none(self) -> None:
         with PoolManager() as http:
             r = http.urlopen(
@@ -845,6 +906,8 @@ class TestPoolManager(HypercornDummyServerTestCase):
             {"content-Type": "text/plain"},
             {"attribute": "value", "CONTENT-TYPE": "application/json"},
             HTTPHeaderDict(cookie="foo, bar"),
+            {b"content-Type": b"text/plain"},
+            {b"attribute": b"value", b"CONTENT-TYPE": b"application/json"},
         ],
     )
     def test_request_with_json(self, headers: HTTPHeaderDict) -> None:
