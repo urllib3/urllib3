@@ -19,7 +19,7 @@ class _TYPE_DEFAULT(Enum):
 
 _DEFAULT_TIMEOUT: Final[_TYPE_DEFAULT] = _TYPE_DEFAULT.token
 
-_TYPE_TIMEOUT = typing.Optional[typing.Union[float, _TYPE_DEFAULT]]
+_TYPE_TIMEOUT = typing.Optional[float | _TYPE_DEFAULT]
 
 
 class Timeout:

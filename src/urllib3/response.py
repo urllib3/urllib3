@@ -13,7 +13,6 @@ import zlib
 from contextlib import contextmanager
 from http.client import HTTPMessage as _HttplibHTTPMessage
 from http.client import HTTPResponse as _HttplibHTTPResponse
-from socket import timeout as SocketTimeout
 
 if typing.TYPE_CHECKING:
     from ._base_connection import BaseHTTPConnection
@@ -417,7 +416,7 @@ class BytesQueueBuffer:
     """
 
     def __init__(self) -> None:
-        self.buffer: typing.Deque[bytes | memoryview[bytes]] = collections.deque()
+        self.buffer: collections.deque[bytes | memoryview[bytes]] = collections.deque()
         self._size: int = 0
 
     def __len__(self) -> int:
@@ -947,7 +946,7 @@ class HTTPResponse(BaseHTTPResponse):
             try:
                 yield
 
-            except SocketTimeout as e:
+            except TimeoutError as e:
                 # FIXME: Ideally we'd like to include the url in the ReadTimeoutError but
                 # there is yet no clean way to get at it from this context.
                 raise ReadTimeoutError(self._pool, None, "Read timed out.") from e  # type: ignore[arg-type]
