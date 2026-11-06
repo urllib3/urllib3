@@ -102,6 +102,7 @@ class HTTP2StreamData:
     response_headers: HTTPHeaderDict = field(default_factory=HTTPHeaderDict)
     response_buffer: bytes = field(default=b"")
     response_bytes_read: int = field(default=0)
+    request_reset: bool = field(default=False)
     response_reset: bool = field(default=False)
     response_eof: bool = field(default=False)
 
@@ -310,7 +311,14 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                                 ].response_buffer += event.data
                         elif isinstance(event, h2.events.StreamReset):
                             if event.stream_id in self._stream_data:
-                                self._stream_data[event.stream_id].response_reset = True
+                                if event.error_code != h2.errors.ErrorCodes.NO_ERROR:
+                                    self._stream_data[
+                                        event.stream_id
+                                    ].response_reset = True
+                                else:
+                                    self._stream_data[event.stream_id].request_reset = (
+                                        True
+                                    )
                         elif isinstance(event, h2.events.StreamEnded):
                             if event.stream_id in self._stream_data:
                                 self._stream_data[event.stream_id].response_eof = True
@@ -362,6 +370,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                         and (
                             self._stream_data[stream.stream_id].response_eof
                             or self._stream_data[stream.stream_id].response_reset
+                            or self._stream_data[stream.stream_id].request_reset
                         )
                     )
                 )
@@ -394,7 +403,13 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         while data:
             window_size = self._wait_for_flow_control(stream)
             if window_size == 0:
-                raise StreamError("The stream was reset")
+                # this happens when the stream is reset by the server
+                if self._stream_data[stream].response_reset:
+                    # the server halted the stream and will not be sending a response
+                    raise StreamError("The stream was reset")
+                else:
+                    # the server wants us to stop sending, but will send a response anyway
+                    break
             with self._h2_conn as h2_conn:
                 chunk = data[:window_size]
                 data = data[window_size:]

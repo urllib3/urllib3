@@ -407,7 +407,7 @@ class TestHTTP2Connection:
             sendall=mock.Mock(return_value=None),
         )
         conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[attr-defined]
-        conn._protocol_helper._h2_conn._obj.receive_data = mock.Mock(side_effect=[[h2.events.StreamReset(stream_id=1)]])  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.receive_data = mock.Mock(side_effect=[[h2.events.StreamReset(stream_id=1, error_code=ErrorCodes.CANCEL)]])  # type: ignore[attr-defined]
         conn._protocol_helper._h2_conn._obj.local_flow_control_window = mock.Mock(return_value=0)  # type: ignore[attr-defined]
         conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[attr-defined]
 
@@ -667,3 +667,33 @@ class TestHTTP2Connection:
         resp = conn.getresponse(stream=stream)
         with pytest.raises(IncompleteRead):
             resp.read(4)
+
+    def test_response_after_reset(self) -> None:
+        conn = HTTPSConnection("example.com", http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
+        conn._protocol_helper._h2_conn._obj.send_data = mock.Mock(return_value=None)  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[attr-defined]
+            side_effect=[
+                [h2.events.StreamReset(stream_id=1, error_code=ErrorCodes.NO_ERROR)],
+                [
+                    h2.events.ResponseReceived(
+                        stream_id=1, headers=[(b":status", b"413")]
+                    ),
+                    h2.events.DataReceived(
+                        stream_id=1, data=b"too large", flow_controlled_length=9
+                    ),
+                    h2.events.StreamEnded(stream_id=1),
+                ],
+            ]
+        )
+        conn._protocol_helper._h2_conn._obj.local_flow_control_window = mock.Mock(return_value=0)  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.get_next_available_stream_id = mock.Mock(return_value=1)  # type: ignore[attr-defined]
+
+        stream = conn.request("POST", "/", body=b"foo")
+        resp = stream.getresponse()
+
+        assert resp.status == 413
+        assert resp.data == b"too large"
+        conn._protocol_helper._h2_conn._obj.send_data.assert_not_called()  # type: ignore[attr-defined]
