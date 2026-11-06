@@ -475,7 +475,7 @@ class TestRetry:
             mock.patch(
                 "time.time",
                 return_value=datetime.datetime(
-                    2019, 6, 3, 11, tzinfo=datetime.timezone.utc
+                    2019, 6, 3, 11, tzinfo=datetime.UTC
                 ).timestamp(),
             ),
             mock.patch("time.sleep") as sleep_mock,

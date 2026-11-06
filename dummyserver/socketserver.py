@@ -23,7 +23,7 @@ from urllib3.exceptions import HTTPWarning
 from urllib3.util import resolve_cert_reqs, resolve_ssl_version
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import ParamSpec
+    from typing import ParamSpec
 
     P = ParamSpec("P")
 
