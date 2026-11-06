@@ -59,7 +59,7 @@ if typing.TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_TYPE_TIMEOUT = typing.Union[Timeout, float, _TYPE_DEFAULT, None]
+_TYPE_TIMEOUT = Timeout | float | _TYPE_DEFAULT | None
 _DEFAULT_QUEUE_CLASS = queue.LifoQueue
 
 
@@ -765,7 +765,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if self.proxy is not None and http_tunnel_required and conn.is_closed:
                 try:
                     self._prepare_proxy(conn)
-                except (BaseSSLError, OSError, SocketTimeout) as e:
+                except (BaseSSLError, OSError) as e:
                     self._raise_timeout(
                         err=e, url=self.proxy.url, timeout_value=conn.timeout
                     )
