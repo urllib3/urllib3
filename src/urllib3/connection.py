@@ -1148,16 +1148,17 @@ class HTTPSConnection(HTTPConnection):
 
             raise
 
-        # If this connection doesn't know if the origin supports HTTP/2
         # we report back to the HTTP/2 probe our result.
         connection_supports_http2 = wrapped_socket.selected_alpn_protocol() == "h2"
-        if target_supports_http2 != connection_supports_http2:
-            target_supports_http2 = connection_supports_http2
+        if target_supports_http2 is None:
             http2_probe.set_and_release(
                 host=probe_http2_host,
                 port=probe_http2_port,
-                supports_http2=target_supports_http2,
+                supports_http2=connection_supports_http2,
             )
+
+        # we prefer what we learned from the connection
+        target_supports_http2 = connection_supports_http2
 
         # Forwarding proxies can never have a verified target since
         # the proxy is the one doing the verification. Should instead
