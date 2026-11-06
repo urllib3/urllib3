@@ -1,0 +1,1 @@
+Fixed ``Retry.parse_retry_after()`` raising ``ValueError`` instead of returning ``Retry.retry_after_max`` for a ``Retry-After`` header made of more than 4300 digits.
