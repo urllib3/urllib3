@@ -333,3 +333,7 @@ class HeaderParsingError(HTTPError):
 
 class UnrewindableBodyError(HTTPError):
     """urllib3 encountered an error when trying to rewind a body"""
+
+
+class StreamError(HTTPError):
+    """The server reset the stream mid-request."""
