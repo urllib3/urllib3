@@ -10,5 +10,6 @@ API Reference
    urllib3.exceptions
    urllib3.response
    urllib3.fields
+   urllib3.multipart
    urllib3.util
    contrib/index

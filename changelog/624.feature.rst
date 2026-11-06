@@ -1,0 +1,1 @@
+Added ``urllib3.multipart`` with streaming multipart encoding and response decoding. File objects passed through ``fields`` are now streamed instead of buffering the complete request body.
