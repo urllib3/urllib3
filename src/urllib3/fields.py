@@ -4,12 +4,12 @@ import email.utils
 import mimetypes
 import typing
 
-_TYPE_FIELD_VALUE = typing.Union[str, bytes]
-_TYPE_FIELD_VALUE_TUPLE = typing.Union[
-    _TYPE_FIELD_VALUE,
-    tuple[str, _TYPE_FIELD_VALUE],
-    tuple[str, _TYPE_FIELD_VALUE, str],
-]
+_TYPE_FIELD_VALUE = str | bytes
+_TYPE_FIELD_VALUE_TUPLE = (
+    _TYPE_FIELD_VALUE
+    | tuple[str, _TYPE_FIELD_VALUE]
+    | tuple[str, _TYPE_FIELD_VALUE, str]
+)
 
 
 def guess_content_type(

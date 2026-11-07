@@ -13,7 +13,6 @@ import warnings
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException as HTTPException  # noqa: F401
 from http.client import ResponseNotReady
-from socket import timeout as SocketTimeout
 
 if typing.TYPE_CHECKING:
     from .response import HTTPResponse
@@ -257,7 +256,7 @@ class HTTPConnection(_HTTPConnection):
             )
         except socket.gaierror as e:
             raise NameResolutionError(self.host, self, e) from e
-        except SocketTimeout as e:
+        except TimeoutError as e:
             raise ConnectTimeoutError(
                 self,
                 f"Connection to {self.host} timed out. (connect timeout={self.timeout})",

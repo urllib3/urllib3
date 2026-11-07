@@ -259,7 +259,7 @@ async def redirect_after() -> ResponseReturnValue:
     params = request.args
     date = params.get("date")
     if date:
-        dt = datetime.datetime.fromtimestamp(float(date), tz=datetime.timezone.utc)
+        dt = datetime.datetime.fromtimestamp(float(date), tz=datetime.UTC)
         http_dt = email.utils.format_datetime(dt, usegmt=True)
         retry_after = str(http_dt)
     else:

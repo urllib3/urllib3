@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 import typing
 
 import pytest
@@ -8,10 +7,6 @@ import pytest
 from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
 
 from ...port_helpers import find_unused_port
-
-if sys.version_info < (3, 11):
-    # pyodide only works on 3.11+
-    pytest.skip(allow_module_level=True)
 
 # only run these tests if pytest_pyodide is installed
 # so we don't break non-emscripten pytest running

@@ -11,12 +11,9 @@ from .fields import _TYPE_FIELD_VALUE_TUPLE, RequestField
 writer = codecs.lookup("utf-8")[3]
 
 _TYPE_FIELDS_SEQUENCE = typing.Sequence[
-    typing.Union[tuple[str, _TYPE_FIELD_VALUE_TUPLE], RequestField]
+    tuple[str, _TYPE_FIELD_VALUE_TUPLE] | RequestField
 ]
-_TYPE_FIELDS = typing.Union[
-    _TYPE_FIELDS_SEQUENCE,
-    typing.Mapping[str, _TYPE_FIELD_VALUE_TUPLE],
-]
+_TYPE_FIELDS = _TYPE_FIELDS_SEQUENCE | typing.Mapping[str, _TYPE_FIELD_VALUE_TUPLE]
 
 
 def choose_boundary() -> str:

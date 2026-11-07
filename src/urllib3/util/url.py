@@ -29,7 +29,7 @@ _URI_RE = re.compile(
 
 _IPV4_PAT = r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}"
 _HEX_PAT = "[0-9A-Fa-f]{1,4}"
-_LS32_PAT = "(?:{hex}:{hex}|{ipv4})".format(hex=_HEX_PAT, ipv4=_IPV4_PAT)
+_LS32_PAT = f"(?:{_HEX_PAT}:{_HEX_PAT}|{_IPV4_PAT})"
 _subs = {"hex": _HEX_PAT, "ls32": _LS32_PAT}
 _variations = [
     #                            6( h16 ":" ) ls32
@@ -87,13 +87,13 @@ class Url(
     typing.NamedTuple(
         "Url",
         [
-            ("scheme", typing.Optional[str]),
-            ("auth", typing.Optional[str]),
-            ("host", typing.Optional[str]),
-            ("port", typing.Optional[int]),
-            ("path", typing.Optional[str]),
-            ("query", typing.Optional[str]),
-            ("fragment", typing.Optional[str]),
+            ("scheme", str | None),
+            ("auth", str | None),
+            ("host", str | None),
+            ("port", int | None),
+            ("path", str | None),
+            ("query", str | None),
+            ("fragment", str | None),
         ],
     )
 ):

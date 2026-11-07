@@ -25,7 +25,6 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -38,7 +37,7 @@ classifiers = [
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Software Development :: Libraries",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dynamic = ["version"]
 
 [project.optional-dependencies]
@@ -237,11 +236,6 @@ conflicts = [
     {group = "test"},
   ],
 ]
-
-[tool.uv.dependency-groups]
-# MyST 5.1+ supports GitHub-style alerts in the shared security policy and
-# requires Python 3.11+.
-docs = { requires-python = ">=3.11" }
 
 [tool.uv.sources]
 hypercorn = { git = "https://github.com/urllib3/hypercorn", rev = "urllib3-changes" }

@@ -8,9 +8,7 @@ from threading import RLock
 if typing.TYPE_CHECKING:
     # We can only import Protocol if TYPE_CHECKING because it's a development
     # dependency, and is not available at runtime.
-    from typing import Protocol
-
-    from typing_extensions import Self
+    from typing import Protocol, Self
 
     class HasGettableStringKeys(Protocol):
         def keys(self) -> typing.Iterator[str]: ...

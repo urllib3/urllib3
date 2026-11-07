@@ -47,7 +47,7 @@ class _TYPE_FAILEDTELL(Enum):
 
 _FAILEDTELL: Final[_TYPE_FAILEDTELL] = _TYPE_FAILEDTELL.token
 
-_TYPE_BODY_POSITION = typing.Union[int, _TYPE_FAILEDTELL]
+_TYPE_BODY_POSITION = int | _TYPE_FAILEDTELL
 
 # When sending a request with these methods we aren't expecting
 # a body so don't need to set an explicit 'Content-Length: 0'

@@ -3,13 +3,12 @@ repos:
     rev: 75992aaa40730136014f34227e0135f63fc951b4 # frozen: v3.21.2
     hooks:
       - id: pyupgrade
-        args: ["--py310-plus"]
+        args: ["--py311-plus"]
 
   - repo: https://github.com/psf/black-pre-commit-mirror
     rev: 4160603246a6b365d4a2af661c6d71b0a0f50478 # frozen: 26.5.1
     hooks:
       - id: black
-        args: ["--target-version", "py310"]
 
   - repo: https://github.com/PyCQA/isort
     rev: 131f4adcd5582bfc53928ab0d740eceb8b506b6c # frozen: 9.0.1

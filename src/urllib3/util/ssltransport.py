@@ -8,12 +8,12 @@ import typing
 from ..exceptions import ProxySchemeUnsupported
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import Self
+    from typing import Self
 
     from .ssl_ import _TYPE_PEER_CERT_RET, _TYPE_PEER_CERT_RET_DICT
 
 
-_WriteBuffer = typing.Union[bytearray, memoryview]
+_WriteBuffer = bytearray | memoryview
 _ReturnValue = typing.TypeVar("_ReturnValue")
 
 SSL_BLOCKSIZE = 16384
