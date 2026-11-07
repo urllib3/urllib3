@@ -1,0 +1,3 @@
+Converted ``socket.timeout`` raised while sending a request body into
+:class:`~urllib3.exceptions.ReadTimeoutError` instead of wrapping it as
+:class:`~urllib3.exceptions.ProtocolError`.
