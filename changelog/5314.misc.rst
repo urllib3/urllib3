@@ -1,0 +1,1 @@
+Improved performance of ``parse_url()`` for URLs with an ASCII host and no dot segments in the path.
