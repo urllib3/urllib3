@@ -1152,6 +1152,58 @@ def test_streaming2_jspi(
     )
 
 
+@pytest.mark.with_jspi
+def test_streaming_jspi_null_body(
+    selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
+) -> None:
+    """Test streaming fetch with JSPI when response body is null (Issue #3723)."""
+
+    @run_in_pyodide
+    def pyodide_test(selenium, host, port):  # type: ignore[no-untyped-def]
+        from urllib3.connection import HTTPConnection
+        from urllib3.response import BaseHTTPResponse
+
+        conn = HTTPConnection(host, port)
+        conn.request(
+            "GET",
+            f"http://{host}:{port}/status?status=204 NO CONTENT",
+            preload_content=False,
+        )
+        response = conn.getresponse()
+        assert isinstance(response, BaseHTTPResponse)
+        assert response.status == 204
+        assert response.read() == b""
+
+    pyodide_test(
+        selenium_coverage,
+        testserver_http.http_host,
+        testserver_http.http_port,
+    )
+
+
+@pytest.mark.webworkers
+@pytest.mark.without_jspi
+def test_streaming_worker_null_body(
+    testserver_http: PyodideServerInfo,
+    run_from_server: ServerRunnerInfo,
+) -> None:
+    """Test streaming fetch in webworker with a null response body (Issue #3723)."""
+    worker_code = f"""
+        import urllib3.contrib.emscripten.fetch
+        await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
+        from urllib3.connection import HTTPConnection
+        from urllib3.response import BaseHTTPResponse
+
+        conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
+        conn.request("GET", "/status?status=204 NO CONTENT", preload_content=False)
+        response = conn.getresponse()
+        assert isinstance(response, BaseHTTPResponse)
+        assert response.status == 204
+        assert response.read() == b""
+    """
+    run_from_server.run_webworker(worker_code)
+
+
 def test_cache_content_ignored_during_and_after_partial_read(
     selenium_coverage: typing.Any, testserver_http: PyodideServerInfo
 ) -> None:

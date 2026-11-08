@@ -50,6 +50,11 @@ from pyodide.ffi import (  # type: ignore[import-not-found]
     to_js,
 )
 
+try:
+    from pyodide.ffi import JsNull
+except ImportError:
+    JsNull = None
+
 if TYPE_CHECKING:
     from typing_extensions import Buffer
 
@@ -603,7 +608,11 @@ def send_jspi_request(
     )
     if streaming:
         # get via inputstream
-        if response_js.body is not None:
+        if (
+            response_js.body is not None
+            and (JsNull is None or not isinstance(response_js.body, JsNull))
+            and getattr(response_js.body, "getReader", None) is not None
+        ):
             # get a reader from the fetch response
             body_stream_js = response_js.body.getReader()
             body = _JSPIReadStream(
