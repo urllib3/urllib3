@@ -7,8 +7,8 @@ import typing
 _TYPE_FIELD_VALUE = typing.Union[str, bytes]
 _TYPE_FIELD_VALUE_TUPLE = typing.Union[
     _TYPE_FIELD_VALUE,
-    tuple[str, _TYPE_FIELD_VALUE],
-    tuple[str, _TYPE_FIELD_VALUE, str],
+    tuple[str | None, _TYPE_FIELD_VALUE],
+    tuple[str | None, _TYPE_FIELD_VALUE, str],
 ]
 
 
@@ -217,7 +217,8 @@ class RequestField:
             'typedfile': ('bazfile.bin', open('bazfile').read(), 'image/jpeg'),
             'nonamefile': 'contents of nonamefile field',
 
-        Field names and filenames must be unicode.
+        Field names and filenames must be unicode. Use ``None`` for the
+        filename to omit it from the Content-Disposition header.
         """
         filename: str | None
         content_type: str | None

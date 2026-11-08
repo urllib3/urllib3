@@ -110,6 +110,21 @@ class TestRequestField:
         cd = field.headers["Content-Disposition"]
         assert cd == 'form-data; name="file"; filename="スキー旅行.txt"'
 
+    @pytest.mark.parametrize("data", ["data", b"data"])
+    @pytest.mark.parametrize("content_type", [None, "application/json"])
+    def test_from_tuples_without_filename(
+        self, data: str | bytes, content_type: str | None
+    ) -> None:
+        if content_type is None:
+            field = RequestField.from_tuples("metadata", (None, data))
+        else:
+            field = RequestField.from_tuples("metadata", (None, data, content_type))
+
+        assert field.headers["Content-Disposition"] == 'form-data; name="metadata"'
+        assert field.headers["Content-Type"] == (
+            content_type or "application/octet-stream"
+        )
+
     def test_from_tuples_rfc2231(self) -> None:
         with pytest.deprecated_call(match=r"urllib3 v3\.0"):
             field = RequestField.from_tuples(
