@@ -396,7 +396,18 @@ def _get_decoder(mode: str) -> ContentDecoder:
     if mode in ("gzip", "x-gzip"):
         return GzipDecoder()
 
-    if brotli is not None and mode == "br":
+    if mode == "br":
+        if brotli is None:
+            # Brotli was requested but is unavailable: either the caller
+            # opted out via URLLIB3_DISABLE_BROTLI, or the 'brotli' package
+            # is not installed. Silently feeding brotli bytes to the
+            # DeflateDecoder below would corrupt the response or fail with a
+            # misleading zlib error; fail loudly with the real cause instead.
+            raise DecodeError(
+                "Brotli content-encoding is not available "
+                "(URLLIB3_DISABLE_BROTLI is set, or the 'brotli' package "
+                "is not installed)."
+            )
         return BrotliDecoder()
 
     if HAS_ZSTD and mode == "zstd":

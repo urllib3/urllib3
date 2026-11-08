@@ -556,6 +556,7 @@ class TestResponse:
         env_on = {**env_off, "URLLIB3_DISABLE_BROTLI": "1"}
         script = textwrap.dedent("""
             import os
+            from urllib3.exceptions import DecodeError
             from urllib3.util.request import ACCEPT_ENCODING
             from urllib3.response import _get_decoder
             from urllib3.response import brotli as _imported_brotli
@@ -566,7 +567,14 @@ class TestResponse:
                 assert type(_get_decoder("br")).__name__ == "BrotliDecoder"
             else:
                 assert ",br" not in ACCEPT_ENCODING, ACCEPT_ENCODING
-                assert type(_get_decoder("br")).__name__ != "BrotliDecoder"
+                # Brotli is opted out, so requesting a 'br' decoder must fail
+                # loudly instead of silently falling back to DeflateDecoder.
+                try:
+                    _get_decoder("br")
+                except DecodeError:
+                    pass
+                else:
+                    raise AssertionError("expected DecodeError when brotli is disabled")
                 assert _imported_brotli is None
             print("OK")
             """)
@@ -597,6 +605,50 @@ class TestResponse:
             )
             assert ret.returncode == 0, f"env={env!r}\n{ret.stdout}\n{ret.stderr}"
             assert ret.stdout.strip() == expected
+
+    @onlyBrotli()
+    def test_decode_compound_gzip_br_with_brotli_disabled(self) -> None:
+        # With URLLIB3_DISABLE_BROTLI=1, a compound Content-Encoding of
+        # 'gzip, br' must fail loudly with a clear DecodeError instead of
+        # silently routing the 'br' step to DeflateDecoder. Runs in a fresh
+        # interpreter because urllib3 reads the env var only at import time
+        # (the standalone 'brotli' package is still importable to build the
+        # test body even when urllib3's brotli support is opted out).
+        script = textwrap.dedent("""
+            import gzip
+            from io import BytesIO
+            import brotli
+            from urllib3.exceptions import DecodeError
+            from urllib3.response import HTTPResponse
+
+            body = brotli.compress(gzip.compress(b"hello world"))
+            r = HTTPResponse(
+                BytesIO(body),
+                headers={"content-encoding": "gzip, br"},
+                preload_content=False,
+            )
+            try:
+                r.read()
+            except DecodeError as e:
+                # The failure must be the explicit "brotli unavailable" error,
+                # not a misleading zlib error from deflating brotli bytes.
+                assert "Brotli" in str(e), str(e)
+                assert "Error -3" not in str(e), str(e)
+            else:
+                raise AssertionError("expected DecodeError for 'gzip, br' when brotli is disabled")
+            print("OK")
+            """)
+        env = {k: v for k, v in os.environ.items() if k != "URLLIB3_DISABLE_BROTLI"}
+        env["URLLIB3_DISABLE_BROTLI"] = "1"
+        ret = subprocess.run(
+            [sys.executable, "-c", script],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        assert ret.returncode == 0, f"{ret.stdout}\n{ret.stderr}"
+        assert ret.stdout.strip() == "OK"
 
     @onlyZstd()
     def test_decode_zstd(self) -> None:
