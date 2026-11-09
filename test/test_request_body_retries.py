@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
-from typing import Any, Callable, Iterator
+from typing import Any
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
@@ -73,9 +74,7 @@ def server_with_retry_response(
             lambda: (part for part in (b"PAYLOAD-1", b"PAYLOAD-2")),
             id="generator",
         ),
-        pytest.param(
-            lambda: iter([b"PAYLOAD-1", b"PAYLOAD-2"]), id="list-iterator"
-        ),
+        pytest.param(lambda: iter([b"PAYLOAD-1", b"PAYLOAD-2"]), id="list-iterator"),
         pytest.param(
             lambda: map(lambda part: part, (b"PAYLOAD-1", b"PAYLOAD-2")),
             id="map",
