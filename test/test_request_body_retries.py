@@ -159,6 +159,7 @@ def test_reiterable_body_can_still_be_retried() -> None:
 
 def test_iterator_can_be_reused_if_no_chunk_was_consumed() -> None:
     body = _wrap_iterator_body(iter([b"payload"]))
+    assert body is not None
     iter(body)
 
     assert list(body) == [b"payload"]
@@ -173,6 +174,7 @@ def test_iterator_exception_makes_body_unrewindable() -> None:
             raise OSError("failed while reading body")
 
     body = _wrap_iterator_body(FailingIterator())
+    assert body is not None
     with pytest.raises(OSError, match="failed while reading body"):
         next(iter(body))
 
