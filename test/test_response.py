@@ -1789,6 +1789,25 @@ class TestResponse:
         for i, c in enumerate(resp.stream()):
             assert c == stream[i]
 
+    @pytest.mark.parametrize("read_method", ["read", "read1"])
+    @pytest.mark.parametrize("read_size", [2, 7])
+    def test_chunked_stream_after_partial_read(
+        self, read_method: str, read_size: int
+    ) -> None:
+        chunks = [b"example", b"end"]
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = MockChunkedEncodingResponse(chunks)  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+
+        assert getattr(resp, read_method)(read_size) == chunks[0][:read_size]
+        remainder = list(resp.stream(3))
+        assert b"".join(remainder) == b"".join(chunks)[read_size:]
+        assert all(0 < len(chunk) <= 3 for chunk in remainder)
+
     def test_mock_gzipped_transfer_encoding_chunked_decoded(self) -> None:
         """Show that we can decode the gzipped and chunked body."""
 
