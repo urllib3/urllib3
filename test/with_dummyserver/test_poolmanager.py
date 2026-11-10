@@ -808,7 +808,7 @@ class TestPoolManager(DummyServerTestCase):
     def test_top_level_request_without_keyword_args(self) -> None:
         body = ""
         with pytest.raises(TypeError):
-            request(  # type: ignore[call-arg]
+            request(  # type: ignore[misc]
                 "GET",
                 f"{self.base_url}/",
                 body,
