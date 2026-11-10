@@ -321,6 +321,10 @@ def _encode_invalid_chars(
 
 
 def _remove_path_dot_segments(path: str) -> str:
+    # Fast path: without a '.' or '..' segment there is nothing to remove.
+    if "/." not in path and not path.startswith("."):
+        return path
+
     # See http://tools.ietf.org/html/rfc3986#section-5.2.4 for pseudo-code
     segments = path.split("/")  # Turn the path into a list of segments
     output = []  # Initialize the variable to use to store output
@@ -390,7 +394,15 @@ def _normalize_host(host: str | None, scheme: str | None) -> str | None:
                 else:
                     return host.lower()
             elif not _IPV4_RE.match(host):
+                # Fast path: for an ASCII host without percent-encoding,
+                # IDNA-encoding each label reduces to lower-casing it.
+                if "%" not in host and host.isascii():
+                    return host.lower()
                 if "%" in host:
+                    address, separator, zone = host.partition("%")
+                    if ":" in address and host.isascii() and _IPV6_RE.match(address):
+                        # Native IPv6 zone names may be case-sensitive.
+                        return f"{address.lower()}{separator}{zone}"
                     host = _HOST_PERCENT_RE.sub(_normalize_host_percent_encoding, host)
                 return to_str(
                     b".".join([_idna_encode(label) for label in host.split(".")]),

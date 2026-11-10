@@ -1,0 +1,3 @@
+Fixed ``SSLTransport.recv()`` and ``SSLTransport.read()`` returning the integer ``0``
+instead of an empty ``bytes`` object when a TLS-in-TLS connection was closed without a
+``close_notify`` alert and ``suppress_ragged_eofs`` was enabled.

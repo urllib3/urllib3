@@ -83,9 +83,18 @@ _OBSOLETE_FOLD_RE = re.compile(r"(?:(?<![ \t])[ \t]+)?\r\n[ \t]+")
 
 
 def _normalize_header_value(value: str) -> str:
-    if "\r\n" not in value:
-        return value
-    return _OBSOLETE_FOLD_RE.sub(" ", value)
+    if "\r" in value or "\n" in value:
+        value = _OBSOLETE_FOLD_RE.sub(" ", value)
+        # A CR or LF outside of an obs-fold is invalid in a field value, but
+        # http.client can let one through, e.g. when a server ends lines with
+        # a bare LF. RFC 9110 section 5.5 requires rejecting the message or
+        # replacing each such character with SP.
+        value = value.replace("\r", " ").replace("\n", " ")
+    # RFC 9110 section 5.5 treats NUL the same way, and leading and trailing
+    # whitespace is not part of the field value.
+    if "\x00" in value:
+        value = value.replace("\x00", " ")
+    return value.strip(" \t")
 
 
 def _normalize_header_values(
@@ -119,6 +128,10 @@ class HTTPConnection(_HTTPConnection):
     Accepted parameters include:
 
     - ``source_address``: Set the source address for the current connection.
+    - ``blocksize``: Read size for file-like request bodies, in bytes. Defaults to
+      16384 (16 KiB). Does not split or resize elements of iterable bodies.
+      Larger values may improve upload throughput but use more memory per active
+      upload. See :ref:`upload_buffering` for tuning guidance.
     - ``socket_options``: Set specific options on the underlying socket. If not specified, then
       defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
       Nagle's algorithm (sets TCP_NODELAY to 1) unless the connection is behind a proxy.
@@ -476,7 +489,20 @@ class HTTPConnection(_HTTPConnection):
 
     def putheader(self, header: str, *values: str) -> None:  # type: ignore[override]
         """"""
-        if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
+        if len(values) == 1:
+            # Avoid generator creation, any(), and argument unpacking
+            # on the common single-value path.
+            value = values[0]
+            if not (isinstance(value, str) and value == SKIP_HEADER):
+                super().putheader(header, value)
+                return
+            skip_header = True
+        else:
+            skip_header = any(
+                isinstance(value, str) and value == SKIP_HEADER for value in values
+            )
+
+        if not skip_header:
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
             skippable_headers = "', '".join(

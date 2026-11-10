@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import email
 import logging
+import math
 import random
 import re
 import time
@@ -157,7 +158,9 @@ class Retry:
         sleep for [0.0s, 0.2s, 0.4s, 0.8s, ...] between retries. No backoff will ever
         be longer than `backoff_max`.
 
-        By default, backoff is disabled (factor set to 0).
+        By default, backoff is disabled (factor set to 0). In production services,
+        setting a non-zero factor (e.g. 0.5 to 1.0) along with `backoff_jitter` is
+        recommended to prevent overloading servers with immediate retries.
 
     :param float backoff_max:
         The maximum backoff time (in seconds) between retry attempts.
@@ -332,7 +335,10 @@ class Retry:
         if consecutive_errors_len <= 1:
             return 0
 
-        backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
+        try:
+            backoff_value = math.ldexp(self.backoff_factor, consecutive_errors_len - 1)
+        except OverflowError:
+            backoff_value = math.inf if self.backoff_factor > 0 else -math.inf
         if self.backoff_jitter != 0.0:
             backoff_value += random.random() * self.backoff_jitter
         return float(max(0, min(self.backoff_max, backoff_value)))
@@ -347,7 +353,10 @@ class Retry:
             if retry_date_tuple is None:
                 raise InvalidHeader(f"Invalid Retry-After header: {retry_after}")
 
-            retry_date = email.utils.mktime_tz(retry_date_tuple)
+            try:
+                retry_date = email.utils.mktime_tz(retry_date_tuple)
+            except (ValueError, OverflowError):
+                raise InvalidHeader(f"Invalid Retry-After header: {retry_after}")
             seconds = retry_date - time.time()
 
         seconds = max(seconds, 0)

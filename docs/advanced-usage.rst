@@ -165,6 +165,56 @@ You can use this file-like object to do things like decode the content using
 
     resp.release_conn()
 
+.. _upload_buffering:
+
+Upload Buffering
+----------------
+
+To upload a file without reading it all into memory first, pass an open binary
+file as the request's ``body``. urllib3 reads file-like bodies by calling
+``body.read(blocksize)``. The default ``blocksize`` is 16 KiB (16384 bytes).
+Generic iterables of bytes retain their own yielded chunk sizes: ``blocksize``
+does not split or resize their elements. Bodies supplied as ``bytes`` are also
+sent without being split according to ``blocksize``.
+
+Larger reads reduce the number of Python-level ``send()`` calls, which may
+improve upload throughput on fast networks. For a large file, using 128 KiB
+instead of 16 KiB means roughly one-eighth as many body reads and sends.
+
+Set ``blocksize`` when creating a :class:`~poolmanager.PoolManager` or a
+:class:`~connectionpool.HTTPConnectionPool` or
+:class:`~connectionpool.HTTPSConnectionPool`:
+
+.. code-block:: python
+
+    import urllib3
+
+    http = urllib3.PoolManager(
+        blocksize=128 * 1024,  # 128 KiB
+    )
+
+    with open("large-file.bin", "rb") as body:
+        resp = http.request(
+            "PUT",
+            "https://example.com/upload",
+            body=body,
+            headers={"Content-Type": "application/octet-stream"},
+        )
+
+For a file-like body without an explicit ``Content-Length`` header, urllib3
+uses HTTP/1.1 chunked transfer encoding. Each non-empty body chunk is framed
+separately, so the read size also affects observable HTTP chunk boundaries and
+the amount of framing and copying work. For iterable bodies, the yielded
+elements determine these boundaries instead.
+
+Larger buffers use more memory per active upload and make progress callbacks
+attached to reads less frequent. Custom file-like objects will receive different
+``read(n)`` sizes. Benchmark with your workload to choose an appropriate value.
+
+The 16 KiB default was chosen to match OpenSSL's default read size. Application
+writes do not need to match TLS record or TCP packet sizes; TLS and TCP handle
+their own segmentation.
+
 .. _proxies:
 
 Proxies
