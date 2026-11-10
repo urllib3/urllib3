@@ -1449,6 +1449,7 @@ class TestRetryAfter(DummyServerTestCase):
 
 
 class TestFileBodiesOnRetryOrRedirect(DummyServerTestCase):
+    @pytest.mark.usefixtures("reset_retry_state")
     def test_retries_put_filehandle(self, pool_factory: PoolFactory) -> None:
         """HTTP PUT retry with a file-like object should not timeout"""
         with pool_factory(self.host, self.port, timeout=LONG_TIMEOUT) as pool:
@@ -1471,6 +1472,10 @@ class TestFileBodiesOnRetryOrRedirect(DummyServerTestCase):
                 redirect=False,
             )
             assert resp.status == 200
+            assert resp.retries is not None
+            assert resp.retries.history == (
+                RequestHistory("PUT", "/successful_retry", None, 418, None),
+            )
 
     def test_redirect_put_file(self, pool_factory: PoolFactory) -> None:
         """PUT with file object should work with a redirection response"""
