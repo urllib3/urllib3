@@ -1,0 +1,1 @@
+Fixed :class:`~urllib3.PoolManager` to honor the ``Retry-After`` header on redirects, matching :class:`~urllib3.HTTPConnectionPool`. Previously the header was ignored when ``PoolManager`` followed a redirect.
