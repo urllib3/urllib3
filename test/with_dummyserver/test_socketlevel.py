@@ -8,7 +8,6 @@ import http.client
 import io
 import os
 import os.path
-import select
 import shutil
 import socket
 import ssl
@@ -30,6 +29,9 @@ import trustme
 from dummyserver.socketserver import (
     DEFAULT_CA,
     DEFAULT_CERTS,
+    HAS_IPV6_AND_DNS,
+    SocketServerThread,
+    _MultiSocketListener,
     encrypt_key_pem,
     get_unreachable_address,
 )
@@ -913,11 +915,9 @@ class TestSocketClosing(SocketDummyServerTestCase):
             timed_out.wait(5)
 
             # Expect a new request, but keep hold of the old socket to avoid
-            # leaking it. Because we don't want to hang this thread, we
-            # actually use select.select to confirm that a new request is
-            # coming in: this lets us time the thread out.
-            rlist, _, _ = select.select([listener], [], [], 1)
-            assert rlist
+            # leaking it. Use a bounded accept timeout so the server thread
+            # does not hang if no request arrives.
+            listener.settimeout(1)
             new_sock = listener.accept()[0]
 
             # Consume request
@@ -1018,11 +1018,9 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # inside `urlopen()`.
             sock.close()
 
-            # Expect a new request. Because we don't want to hang this thread,
-            # we actually use select.select to confirm that a new request is
-            # coming in: this lets us time the thread out.
-            rlist, _, _ = select.select([listener], [], [], 5)
-            assert rlist
+            # Expect a new request. Use a bounded accept timeout so the
+            # server thread does not hang if no request arrives.
+            listener.settimeout(5)
             sock = listener.accept()[0]
             consume_socket(sock)
 
@@ -3017,3 +3015,101 @@ class TestContentFraming(SocketDummyServerTestCase):
 
             sent_bytes = bytes(buffer)
             assert sent_bytes.endswith(expected)
+
+
+class TestSocketDummyServerDualStack(SocketDummyServerTestCase):
+    def test_localhost_accepts_ipv4_and_ipv6(self) -> None:
+        if not HAS_IPV6_AND_DNS:
+            pytest.skip("Test requires IPv6 and localhost DNS resolution")
+
+        self.start_basic_handler(num=3)
+
+        orig_getaddrinfo = socket.getaddrinfo
+
+        def ipv4_only_getaddrinfo(
+            host: str | bytes | None,
+            port: str | int | None,
+            family: int = 0,
+            type: int = 0,
+            proto: int = 0,
+            flags: int = 0,
+        ) -> list[typing.Any]:
+            results = orig_getaddrinfo(host, port, family, type, proto, flags)
+            if host == "localhost":
+                return [r for r in results if r[0] == socket.AF_INET]
+            return results
+
+        with mock.patch.object(
+            socket, "getaddrinfo", side_effect=ipv4_only_getaddrinfo
+        ):
+            with HTTPConnectionPool(
+                self.host, self.port, retries=False, timeout=LONG_TIMEOUT
+            ) as pool:
+                assert pool.request("GET", "/").status == 200
+
+        for addr in ("127.0.0.1", "::1"):
+            with HTTPConnectionPool(
+                addr, self.port, retries=False, timeout=LONG_TIMEOUT
+            ) as pool:
+                assert pool.request("GET", "/").status == 200
+
+    def test_multi_socket_listener_timeout_and_close(self) -> None:
+        s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s1.bind(("127.0.0.1", 0))
+            s2.bind(("127.0.0.1", 0))
+            s1.listen(1)
+            s2.listen(1)
+            listener = _MultiSocketListener([s1, s2])
+            with pytest.raises(ValueError, match="Timeout value out of range"):
+                listener.settimeout(-1)
+            listener.settimeout(0.01)
+            assert listener.gettimeout() == 0.01
+            with pytest.raises(TimeoutError):
+                listener.accept()
+            listener.close()
+            with pytest.raises(OSError):
+                listener.accept()
+        finally:
+            s1.close()
+            s2.close()
+
+    def test_dual_stack_bind_retries_on_eaddrinuse(self) -> None:
+        if not HAS_IPV6_AND_DNS:
+            pytest.skip("Test requires IPv6 and localhost DNS resolution")
+
+        thread = SocketServerThread(lambda listener: None, host="localhost")
+        orig_socket = socket.socket
+        bind_calls = 0
+
+        class FailOnceSocket:
+            def __init__(self, inner: socket.socket) -> None:
+                self._inner = inner
+
+            def __getattr__(self, name: str) -> typing.Any:
+                return getattr(self._inner, name)
+
+            def bind(self, address: typing.Any) -> None:
+                nonlocal bind_calls
+                bind_calls += 1
+                if bind_calls == 2:
+                    raise OSError(errno.EADDRINUSE, "Address already in use")
+                self._inner.bind(address)
+
+        def socket_factory(
+            family: int = socket.AF_INET,
+            type: int = socket.SOCK_STREAM,
+            proto: int = 0,
+        ) -> typing.Any:
+            return FailOnceSocket(orig_socket(family, type, proto))
+
+        with mock.patch.object(socket, "socket", side_effect=socket_factory):
+            sockets = thread._create_bound_sockets()
+        try:
+            assert len(sockets) == 2
+            assert bind_calls == 4
+            assert thread.port > 0
+        finally:
+            for sock in sockets:
+                sock.close()
