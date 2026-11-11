@@ -1021,7 +1021,9 @@ class TestResponse:
         leftover = b"X" * 50_000
         r = HTTPResponse(BytesIO(b""), preload_content=False)
         r._decoder = RecordingDecoder(leftover)  # type: ignore[assignment]
-        decoded = r._decode(b"", decode_content=True, flush_decoder=True, max_length=1024)
+        decoded = r._decode(
+            b"", decode_content=True, flush_decoder=True, max_length=1024
+        )
         assert len(decoded) == 1024
         assert decoded == leftover[:1024]
         # The first decompress keeps the caller's budget, and the flush
@@ -1104,6 +1106,57 @@ class TestResponse:
         assert chunks
         assert all(len(chunk) <= amt for chunk in chunks)
         assert b"".join(chunks) == b"Y" * 80_000
+
+    @pytest.mark.parametrize("stuck", (False, True))
+    def test_bounded_stream_flush_of_chunked_response_yields_in_pieces(
+        self, stuck: bool
+    ) -> None:
+        """
+        A decoder that only releases its output on the final flush (as on
+        Jython) still yields at most ``amt`` bytes at a time from a chunked
+        stream(). A decoder that claims a tail but returns nothing must not
+        loop forever.
+        """
+
+        class LateTailDecoder:
+            def __init__(self) -> None:
+                self._pending = b""
+                self._tail = b""
+                self._flushed = False
+
+            def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+                if data:
+                    self._pending += b"Z" * 5000
+                    return b""
+                self._flushed = True
+                self._tail, self._pending = self._tail + self._pending, b""
+                if max_length is None or max_length < 0:
+                    out, self._tail = self._tail, b""
+                    return out
+                out, self._tail = self._tail[:max_length], self._tail[max_length:]
+                return out
+
+            @property
+            def has_unconsumed_tail(self) -> bool:
+                return bool(self._tail) or (stuck and self._flushed)
+
+            def flush(self) -> bytes:
+                out, self._tail = self._tail, b""
+                return out
+
+        httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        httplib_r.fp = MockChunkedEncodingResponse([b"wire"])  # type: ignore[assignment]
+        r = HTTPResponse(
+            httplib_r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked"},
+        )
+        r._init_decoder()
+        r._decoder = LateTailDecoder()  # type: ignore[assignment]
+
+        chunks = list(r.stream(1024, decode_content=True))
+        assert all(len(chunk) <= 1024 for chunk in chunks)
+        assert b"".join(chunks) == b"Z" * 5000
 
     def test_multi_decoding_deflate_deflate(self) -> None:
         data = zlib.compress(zlib.compress(b"foo"))
