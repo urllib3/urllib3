@@ -1020,7 +1020,8 @@ class TestResponse:
 
         leftover = b"X" * 50_000
         r = HTTPResponse(BytesIO(b""), preload_content=False)
-        r._decoder = RecordingDecoder(leftover)  # type: ignore[assignment]
+        decoder = RecordingDecoder(leftover)
+        r._decoder = decoder  # type: ignore[assignment]
         decoded = r._decode(
             b"", decode_content=True, flush_decoder=True, max_length=1024
         )
@@ -1028,15 +1029,15 @@ class TestResponse:
         assert decoded == leftover[:1024]
         # The first decompress keeps the caller's budget, and the flush
         # is given the remaining budget (0), never -1.
-        assert r._decoder.calls[0][1] == 1024
-        assert r._decoder.calls[-1][1] == 0
-        assert r._decoder.has_unconsumed_tail
-        assert len(r._decoder._leftover) == len(leftover) - 1024
+        assert decoder.calls[0][1] == 1024
+        assert decoder.calls[-1][1] == 0
+        assert decoder.has_unconsumed_tail
+        assert len(decoder._leftover) == len(leftover) - 1024
 
         # An unbounded flush still returns the rest of the decoder output.
         rest = r._decode(b"", decode_content=True, flush_decoder=True, max_length=None)
         assert rest == leftover[1024:]
-        assert not r._decoder.has_unconsumed_tail
+        assert not decoder.has_unconsumed_tail
 
     @pytest.mark.parametrize("read_method", ("read", "read1", "stream"))
     def test_bounded_read_at_eof_does_not_dump_decoder_tail(
