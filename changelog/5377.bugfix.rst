@@ -1,0 +1,1 @@
+Fixed ``HTTPResponse.tell()`` and ``InvalidChunkLength.partial`` reporting zero bytes after streaming a chunked response.
