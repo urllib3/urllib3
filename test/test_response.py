@@ -1471,6 +1471,101 @@ class TestResponse:
         with pytest.raises(StopIteration):
             next(stream)
 
+    @pytest.mark.parametrize("read_method", ["stream", "read_chunked"])
+    @pytest.mark.parametrize("amt", [None, 2, 3, 10])
+    def test_chunked_streaming_tell(self, read_method: str, amt: int | None) -> None:
+        chunks = [b"foo", b"example"]
+        r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
+        r.fp = MockChunkedEncodingResponse(chunks)  # type: ignore[assignment]
+        resp = HTTPResponse(
+            r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked"},
+            original_response=r,
+        )
+        position = 0
+        assert resp.tell() == position
+        for chunk in getattr(resp, read_method)(amt, decode_content=False):
+            position += len(chunk)
+            assert resp.tell() == position
+        assert resp.tell() == len(b"".join(chunks))
+        assert list(resp.stream()) == []
+        assert resp.tell() == position
+
+    def test_gzipped_chunked_streaming_tell(self) -> None:
+        data = b"foo" * 100
+        compressed = gzip.compress(data)
+        r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
+        r.fp = MockChunkedEncodingResponse([compressed])  # type: ignore[assignment]
+        resp = HTTPResponse(
+            r,
+            preload_content=False,
+            headers={
+                "transfer-encoding": "chunked",
+                "content-encoding": "gzip",
+            },
+            original_response=r,
+        )
+        stream = resp.stream(2, decode_content=True)
+        first = next(stream)
+        assert 0 < resp.tell() <= len(compressed)
+        assert first + b"".join(stream) == data
+        assert resp.tell() == len(compressed)
+
+    def test_chunked_tell_across_stream_calls(self) -> None:
+        r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
+        r.fp = MockChunkedEncodingResponse([b"foo", b"example"])  # type: ignore[assignment]
+        resp = HTTPResponse(
+            r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked"},
+            original_response=r,
+        )
+        stream = resp.stream(2)
+        assert next(stream) == b"fo"
+        assert resp.tell() == 2
+        assert b"".join(resp.stream(2)) == b"oexample"
+        assert resp.tell() == 10
+        stream.close()
+
+    @pytest.mark.parametrize("read_method", ["read", "read1"])
+    def test_chunked_tell_with_following_read(self, read_method: str) -> None:
+        r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
+        r.fp = MockChunkedEncodingResponse([b"foo", b"example"])  # type: ignore[assignment]
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked"},
+            original_response=r,
+        )
+        stream = resp.stream(3)
+        assert next(stream) == b"foo"
+        assert resp.tell() == 3
+        assert getattr(resp, read_method)(2) == b"ex"
+        assert resp.tell() == 5
+        assert resp.read() == b"ample"
+        assert resp.tell() == 10
+        stream.close()
+
+    def test_invalid_chunk_length_reports_bytes_read(self) -> None:
+        r = httplib.HTTPResponse(MockSock, method="GET")  # type: ignore[arg-type]
+        r.fp = BytesIO(b"3\r\nfoo\r\nZZZ\r\n")  # type: ignore[assignment]
+        resp = HTTPResponse(
+            r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked"},
+            original_response=r,
+        )
+        stream = resp.stream()
+        assert next(stream) == b"foo"
+        with pytest.raises(ProtocolError) as ctx:
+            next(stream)
+        error = ctx.value.args[1]
+        assert isinstance(error, InvalidChunkLength)
+        assert error.partial == len(b"foo")
+
     def test_gzipped_streaming(self) -> None:
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         data = compress.compress(b"foo")
