@@ -228,12 +228,15 @@ class TestResponse:
         assert r.data == b"foo"
 
     @pytest.mark.parametrize("read_args", ((), (None,), (-1,)))
+    @pytest.mark.parametrize("compress", (False, True))
     def test_cache_content_with_explicit_read_call(
-        self, read_args: tuple[typing.Any, ...]
+        self, read_args: tuple[typing.Any, ...], compress: bool
     ) -> None:
-        fp = BytesIO(b"foo")
-        r = HTTPResponse(fp, preload_content=False)
+        fp = BytesIO(zlib.compress(b"foo") if compress else b"foo")
+        headers = {"content-encoding": "deflate"} if compress else None
+        r = HTTPResponse(fp, headers=headers, preload_content=False)
         assert r.read(*read_args, cache_content=True) == b"foo"  # type: ignore[misc]
+        assert r.read(*read_args, cache_content=True) == b""  # type: ignore[misc]
         assert r._body == b"foo"
         assert r.data == b"foo"
 
@@ -1639,18 +1642,26 @@ class TestResponse:
         with pytest.raises(StopIteration):
             next(stream)
 
-    @pytest.mark.parametrize("read_method", ("read", "stream"))
+    @pytest.mark.parametrize("read_method", ("read", "stream", "read_then_read_all"))
     def test_deflate2_decodes_whole_body_in_small_reads(self, read_method: str) -> None:
         # Raw deflate has no trailer, so zlib can still hold output after the
         # input is used up. It must be flushed at EOF, not dropped.
         msg = b"abc" * 2000
-        fp = BytesIO(deflate2_compress(msg))
+        data = deflate2_compress(msg)
+        fp = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        fp.fp = BytesIO(data)  # type: ignore[assignment]
+        fp.chunked = False
+        fp.length = len(data)
         resp = HTTPResponse(
-            fp, headers={"content-encoding": "deflate"}, preload_content=False
+            fp,
+            headers={"content-encoding": "deflate", "content-length": str(len(data))},
+            preload_content=False,
         )
 
         if read_method == "read":
             parts = iter(lambda: resp.read(64), b"")
+        elif read_method == "read_then_read_all":
+            parts = iter([resp.read(5952), resp.read()])
         else:
             parts = resp.stream(64)
 

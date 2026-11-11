@@ -1150,7 +1150,7 @@ class HTTPResponse(BaseHTTPResponse):
             not data
             and len(self._decoded_buffer) == 0
             and not (self._decoder and self._decoder.has_unconsumed_tail)
-            and not (amt and decode_content and self._has_decoded_content)
+            and not (decode_content and self._has_decoded_content)
         ):
             return data
 
@@ -1162,7 +1162,7 @@ class HTTPResponse(BaseHTTPResponse):
                 self._decoded_buffer.put(data)
                 data = self._decoded_buffer.get_all()
 
-            if cache_content and not self._uncached_read_occurred:
+            if cache_content and not self._uncached_read_occurred and data:
                 self._body = data
         else:
             # do not waste memory on buffer when not decoding
@@ -1298,11 +1298,13 @@ class HTTPResponse(BaseHTTPResponse):
                 not is_fp_closed(self._fp)
                 or len(self._decoded_buffer) > 0
                 or (self._decoder and self._decoder.has_unconsumed_tail)
+                or self._has_decoded_content
             ):
                 data = self.read(amt=amt, decode_content=decode_content)
 
-                if data:
-                    yield data
+                if not data:
+                    break
+                yield data
 
     # Overrides from io.IOBase
     def readable(self) -> bool:
