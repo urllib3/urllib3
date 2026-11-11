@@ -2,48 +2,31 @@ from __future__ import annotations
 
 import typing
 from functools import partial
-from pathlib import Path
-from test.conftest import _write_cert_to_dir
 
 import pytest
-import trustme
 
 import urllib3
-from dummyserver.app import RETRY_TEST_NAMES, hypercorn_app
-from dummyserver.hypercornserver import run_hypercorn_in_thread
-from dummyserver.socketserver import DEFAULT_CA, DEFAULT_CA_KEY, DEFAULT_CERTS
+from dummyserver.app import RETRY_TEST_NAMES
+from dummyserver.socketserver import DEFAULT_CA
+from dummyserver.testcase import DualHypercornDummyServerTestCase
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, PoolManager
 
 from . import PoolFactory, PoolManagerFactory, RequestFunction
 
 
 @pytest.fixture(scope="class", params=["http", "https"])
-def server_scheme(
-    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
-) -> typing.Generator[str]:
+def server_scheme(request: pytest.FixtureRequest) -> str:
     """
-    Start a server for the selected scheme and set the test class URLs.
+    Select one of the running servers and set the test class URLs.
     """
     cls = request.cls
-    assert cls is not None
-    scheme = request.param
-    if scheme == "https":
-        ca = trustme.CA.from_pem(
-            Path(DEFAULT_CA).read_bytes(), Path(DEFAULT_CA_KEY).read_bytes()
-        )
-        server_cert = ca.issue_cert(cls.host, cls.host_alt)
-        certs = {
-            **DEFAULT_CERTS,
-            **_write_cert_to_dir(server_cert, tmp_path_factory.mktemp("http-server")),
-        }
-    else:
-        certs = None
-    with run_hypercorn_in_thread(cls.host, certs, hypercorn_app) as port:
-        cls.scheme = scheme
-        cls.port = port
-        cls.base_url = f"{scheme}://{cls.host}:{port}"
-        cls.base_url_alt = f"{scheme}://{cls.host_alt}:{port}"
-        yield scheme
+    assert cls is not None and issubclass(cls, DualHypercornDummyServerTestCase)
+    scheme: str = request.param
+    cls.scheme = scheme
+    cls.port = cls.https_port if scheme == "https" else cls.http_port
+    cls.base_url = f"{scheme}://{cls.host}:{cls.port}"
+    cls.base_url_alt = f"{scheme}://{cls.host_alt}:{cls.port}"
+    return scheme
 
 
 @pytest.fixture

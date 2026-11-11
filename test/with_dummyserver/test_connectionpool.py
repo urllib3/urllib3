@@ -15,7 +15,10 @@ from urllib.parse import urlencode
 import pytest
 
 from dummyserver.socketserver import NoIPv6Warning
-from dummyserver.testcase import SocketDummyServerTestCase
+from dummyserver.testcase import (
+    DualHypercornDummyServerTestCase,
+    SocketDummyServerTestCase,
+)
 from urllib3 import HTTPConnectionPool, encode_multipart_formdata
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent
@@ -36,7 +39,7 @@ from urllib3.util.timeout import _TYPE_TIMEOUT, Timeout
 
 from .. import INVALID_SOURCE_ADDRESSES, TARPIT_HOST, VALID_SOURCE_ADDRESSES
 from ..port_helpers import find_unused_port
-from . import DummyServerTestCase, PoolFactory
+from . import PoolFactory
 
 
 def wait_for_socket(ready_event: Event) -> None:
@@ -206,7 +209,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
                 conn.connect()
 
 
-class TestConnectionPool(DummyServerTestCase):
+class TestConnectionPool(DualHypercornDummyServerTestCase):
     @pytest.mark.parametrize("server_scheme", ["http"], indirect=True)
     def test_http2_test_error(self, http_version: str) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
@@ -1194,7 +1197,7 @@ class TestConnectionPool(DummyServerTestCase):
 
 
 @pytest.mark.usefixtures("reset_retry_state")
-class TestRetry(DummyServerTestCase):
+class TestRetry(DualHypercornDummyServerTestCase):
     def test_max_retry(self, pool_factory: PoolFactory) -> None:
         with pool_factory(self.host, self.port) as pool:
             with pytest.raises(MaxRetryError):
@@ -1361,7 +1364,7 @@ class TestRetry(DummyServerTestCase):
             assert actual == expected
 
 
-class TestRetryAfter(DummyServerTestCase):
+class TestRetryAfter(DualHypercornDummyServerTestCase):
     def test_retry_after(self, pool_factory: PoolFactory) -> None:
         # Request twice in a second to get a 429 response.
         with pool_factory(self.host, self.port) as pool:
@@ -1448,7 +1451,7 @@ class TestRetryAfter(DummyServerTestCase):
             assert delta < 1
 
 
-class TestFileBodiesOnRetryOrRedirect(DummyServerTestCase):
+class TestFileBodiesOnRetryOrRedirect(DualHypercornDummyServerTestCase):
     @pytest.mark.usefixtures("reset_retry_state")
     def test_retries_put_filehandle(self, pool_factory: PoolFactory) -> None:
         """HTTP PUT retry with a file-like object should not timeout"""
@@ -1539,7 +1542,7 @@ class TestFileBodiesOnRetryOrRedirect(DummyServerTestCase):
         assert resp.data == b""
 
 
-class TestRetryPoolSize(DummyServerTestCase):
+class TestRetryPoolSize(DualHypercornDummyServerTestCase):
     def test_pool_size_retry(self, pool_factory: PoolFactory) -> None:
         retries = Retry(total=1, raise_on_status=False, status_forcelist=[404])
         with pool_factory(
@@ -1549,7 +1552,7 @@ class TestRetryPoolSize(DummyServerTestCase):
             assert pool.num_connections == 1
 
 
-class TestRedirectPoolSize(DummyServerTestCase):
+class TestRedirectPoolSize(DualHypercornDummyServerTestCase):
     def test_pool_size_redirect(self, pool_factory: PoolFactory) -> None:
         retries = Retry(
             total=1, raise_on_status=False, status_forcelist=[404], redirect=True

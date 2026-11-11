@@ -10,17 +10,20 @@ from unittest import mock
 import pytest
 
 from dummyserver.socketserver import HAS_IPV6
-from dummyserver.testcase import IPv6HypercornDummyServerTestCase
+from dummyserver.testcase import (
+    DualHypercornDummyServerTestCase,
+    IPv6HypercornDummyServerTestCase,
+)
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
-from . import DummyServerTestCase, PoolManagerFactory, RequestFunction
+from . import PoolManagerFactory, RequestFunction
 
 
-class TestPoolManager(DummyServerTestCase):
+class TestPoolManager(DualHypercornDummyServerTestCase):
     @pytest.mark.parametrize(
         "pool_manager_kwargs",
         ({}, {"retries": None}, {"retries": 1}, {"retries": Retry(1)}),
