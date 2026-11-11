@@ -672,7 +672,10 @@ class BaseHTTPResponse(io.IOBase):
                 )
             return data
 
-        if max_length is None or flush_decoder:
+        # Preserve a bounded read's remaining budget on EOF flush. Forcing
+        # max_length=-1 here used to dump the decoder's entire accumulated
+        # output (notably Brotli's ring buffer) in a single call.
+        if max_length is None:
             max_length = -1
 
         try:
@@ -687,17 +690,28 @@ class BaseHTTPResponse(io.IOBase):
                 e,
             ) from e
         if flush_decoder:
-            data += self._flush_decoder()
+            remaining = max_length
+            if max_length >= 0:
+                remaining = max(0, max_length - len(data))
+            data += self._flush_decoder(max_length=remaining)
 
         return data
 
-    def _flush_decoder(self) -> bytes:
+    def _flush_decoder(self, max_length: int = -1) -> bytes:
         """
         Flushes the decoder. Should only be called if the decoder is actually
         being used.
+
+        When ``max_length`` is non-negative, only that many decoded bytes are
+        returned and any leftover tail stays in the decoder for later reads.
+        ``flush()`` has no size limit, so it is only called for an unbounded
+        flush.
         """
         if self._decoder:
-            return self._decoder.decompress(b"") + self._decoder.flush()
+            flushed = self._decoder.decompress(b"", max_length=max_length)
+            if max_length < 0:
+                return flushed + self._decoder.flush()
+            return flushed
         return b""
 
     # Compatibility methods for `io` module
@@ -1495,9 +1509,21 @@ class HTTPResponse(BaseHTTPResponse):
             if decode_content:
                 # On CPython and PyPy, we should never need to flush the
                 # decoder. However, on Jython we *might* need to, so
-                # lets defensively do it anyway.
-                decoded = self._flush_decoder()
+                # lets defensively do it anyway. Honour amt so a bounded
+                # stream() does not materialise the entire decoder tail
+                # in one yield.
+                flush_limit = amt if amt else -1
+                decoded = self._flush_decoder(max_length=flush_limit)
                 if decoded:  # Platform-specific: Jython.
+                    yield decoded
+                while (
+                    flush_limit > 0
+                    and self._decoder
+                    and self._decoder.has_unconsumed_tail
+                ):
+                    decoded = self._flush_decoder(max_length=flush_limit)
+                    if not decoded:
+                        break
                     yield decoded
 
             # Chunk content ends with \r\n: discard it.
