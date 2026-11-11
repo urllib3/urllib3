@@ -1,0 +1,1 @@
+Corrected the custom JSON request example to set the ``Content-Type`` header.

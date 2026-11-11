@@ -1,0 +1,1 @@
+Fixed ``Retry.parse_retry_after()`` raising ``ValueError`` or ``OverflowError`` for a ``Retry-After`` date outside the supported range. It now raises ``InvalidHeader`` like other invalid values.

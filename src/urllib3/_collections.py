@@ -91,10 +91,11 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
         self.lock = RLock()
 
     def __getitem__(self, key: _KT) -> _VT:
-        # Re-insert the item, moving it to the end of the eviction line.
+        # Move the item to the end of the eviction line. move_to_end() keeps
+        # the stored key instead of replacing it with the caller's key.
         with self.lock:
-            item = self._container.pop(key)
-            self._container[key] = item
+            item = self._container[key]
+            self._container.move_to_end(key)
             return item
 
     def __setitem__(self, key: _KT, value: _VT) -> None:
@@ -309,7 +310,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
 
         If this is called with combine=True, instead of adding a new header value
         as a distinct item during iteration, this will instead append the value to
-        any existing header value with a comma. If no existing header value exists
+        the last existing header value with a comma. If no existing header value exists
         for the key, then the value will simply be added, ignoring the combine parameter.
 
         >>> headers = HTTPHeaderDict(foo='bar')
@@ -320,7 +321,7 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         [('foo', 'bar'), ('foo', 'baz')]
         >>> headers.add('foo', 'quz', combine=True)
         >>> list(headers.items())
-        [('foo', 'bar, baz, quz')]
+        [('foo', 'bar'), ('foo', 'baz, quz')]
         """
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
