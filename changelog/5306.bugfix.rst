@@ -1,0 +1,2 @@
+Raise ``DecodeError`` when a gzip or deflate response body is truncated and the
+compressed stream never completes, instead of silently returning partial data.
