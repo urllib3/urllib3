@@ -1,0 +1,5 @@
+Fixed ``HTTPResponse`` corrupting the response body (or raising ``DecodeError``)
+when the ``Content-Encoding`` header chains a supported coding with an unknown
+one (e.g. ``gzip, unknown``). Unknown codings no longer silently fall back to
+deflate; if any coding in the chain is unsupported, the body is returned
+without decoding.
