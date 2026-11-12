@@ -7,6 +7,7 @@ import ssl
 import sys
 import typing
 import warnings
+from array import array
 from test import ImportBlocker, ModuleStash, notBrotli, notZstd, onlyBrotli, onlyZstd
 from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
@@ -25,7 +26,7 @@ from urllib3.exceptions import (
 from urllib3.util import is_fp_closed
 from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
 from urllib3.util.proxy import connection_requires_http_tunnel
-from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
+from urllib3.util.request import _FAILEDTELL, body_to_chunks, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.ssl_ import (
     _is_has_never_check_common_name_reliable,
@@ -919,6 +920,28 @@ class TestUtil:
 
         with pytest.raises(UnrewindableBodyError):
             rewind_body(NoSeek(), body_pos=2)
+
+    @pytest.mark.parametrize(
+        "body, expected",
+        [
+            (memoryview(b"AAAABBBB").cast("B", shape=[2, 4]), b"AAAABBBB"),
+            (array("I", [0x41414141, 0x42424242]), b"AAAABBBB"),
+            (memoryview(b"AAAABBBB")[::-1], b"BBBBAAAA"),
+            (memoryview(b""), b""),
+            (bytearray(b"hello"), b"hello"),
+        ],
+    )
+    def test_body_to_chunks_buffer_len_matches_nbytes(
+        self, body: typing.Any, expected: bytes
+    ) -> None:
+        chunks, content_length = body_to_chunks(body, method="POST", blocksize=16384)
+        assert chunks is not None
+        chunk_list = list(chunks)
+        assert len(chunk_list) == 1
+        chunk = chunk_list[0]
+        assert len(chunk) == len(expected)
+        assert bytes(chunk) == expected
+        assert content_length == len(expected)
 
     def test_add_stderr_logger(self) -> None:
         handler = add_stderr_logger(level=logging.INFO)  # Don't actually print debug
