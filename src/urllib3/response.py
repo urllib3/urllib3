@@ -4,6 +4,7 @@ import collections
 import io
 import json as _json
 import logging
+import re
 import socket
 import sys
 import typing
@@ -52,6 +53,11 @@ log = logging.getLogger(__name__)
 
 # Read in 64 KiB chunks
 _READ_CHUNK_SIZE = 2**16
+
+# RFC 9112: Content-Length = 1*DIGIT and chunk-size = 1*HEXDIG.
+# int() is more permissive, so we match against the grammar before calling it.
+_CONTENT_LENGTH_RE = re.compile(r"[0-9]+")
+_CHUNK_SIZE_RE = re.compile(rb"[0-9A-Fa-f]+")
 
 # Maximum length of a chunk-size line (and the trailing CRLF line) when reading a
 # chunked-transfer-encoded response. Matches ``http.client._MAXLINE`` so urllib3's
@@ -194,16 +200,17 @@ class GzipDecoder(ContentDecoder):
             self._unconsumed_tail = data = (
                 self._obj.unconsumed_tail or self._obj.unused_data
             )
+            # When the end of a gzip member is reached, a new decompressor
+            # must be created for unused (possibly future) data.
+            if data and self._obj.eof:
+                self._state = GzipDecoderState.OTHER_MEMBERS
+                self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
+
             if max_length > 0 and len(ret) >= max_length:
                 break
 
             if not data:
                 return ret if isinstance(ret, bytes) else bytes(ret)
-            # When the end of a gzip member is reached, a new decompressor
-            # must be created for unused (possibly future) data.
-            if self._obj.eof:
-                self._state = GzipDecoderState.OTHER_MEMBERS
-                self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
         return ret if isinstance(ret, bytes) else bytes(ret)
 
@@ -893,7 +900,14 @@ class HTTPResponse(BaseHTTPResponse):
                 # (e.g. Content-Length: 42, 42). This line ensures the values
                 # are all valid ints and that as long as the `set` length is 1,
                 # all values are the same. Otherwise, the header is invalid.
-                lengths = {int(val) for val in content_length.split(",")}
+                lengths = set()
+                for val in content_length.split(","):
+                    # Only optional whitespace may surround each value; reject
+                    # signs, underscores and unicode digits that int() accepts.
+                    val = val.strip()
+                    if not _CONTENT_LENGTH_RE.fullmatch(val):
+                        raise ValueError("invalid Content-Length")
+                    lengths.add(int(val))
                 if len(lengths) > 1:
                     raise InvalidHeader(
                         "Content-Length contained multiple "
@@ -902,9 +916,6 @@ class HTTPResponse(BaseHTTPResponse):
                 length = lengths.pop()
             except ValueError:
                 length = None
-            else:
-                if length < 0:
-                    length = None
 
         else:  # if content_length is None
             length = None
@@ -1150,6 +1161,7 @@ class HTTPResponse(BaseHTTPResponse):
             not data
             and len(self._decoded_buffer) == 0
             and not (self._decoder and self._decoder.has_unconsumed_tail)
+            and not (decode_content and self._has_decoded_content)
         ):
             return data
 
@@ -1161,7 +1173,7 @@ class HTTPResponse(BaseHTTPResponse):
                 self._decoded_buffer.put(data)
                 data = self._decoded_buffer.get_all()
 
-            if cache_content and not self._uncached_read_occurred:
+            if cache_content and not self._uncached_read_occurred and data:
                 self._body = data
         else:
             # do not waste memory on buffer when not decoding
@@ -1186,6 +1198,7 @@ class HTTPResponse(BaseHTTPResponse):
                 # For example, the GZ file header takes 10 bytes, we don't want to read
                 # it one byte at a time
                 data = self._raw_read(amt)
+                flush_decoder = amt != 0 and not data
                 decoded_data = self._decode(
                     data,
                     decode_content,
@@ -1296,11 +1309,13 @@ class HTTPResponse(BaseHTTPResponse):
                 not is_fp_closed(self._fp)
                 or len(self._decoded_buffer) > 0
                 or (self._decoder and self._decoder.has_unconsumed_tail)
+                or self._has_decoded_content
             ):
                 data = self.read(amt=amt, decode_content=decode_content)
 
-                if data:
-                    yield data
+                if not data:
+                    break
+                yield data
 
     # Overrides from io.IOBase
     def readable(self) -> bool:
@@ -1381,7 +1396,10 @@ class HTTPResponse(BaseHTTPResponse):
             ) from None
         line = line.split(b";", 1)[0]
         try:
-            self.chunk_left = int(line, 16)
+            chunk_size = line.rstrip()
+            if not _CHUNK_SIZE_RE.fullmatch(chunk_size):
+                raise ValueError("invalid chunk size")
+            self.chunk_left = int(chunk_size, 16)
         except ValueError:
             self.close()
             if line:
