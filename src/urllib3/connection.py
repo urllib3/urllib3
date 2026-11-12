@@ -602,7 +602,12 @@ class HTTPConnection(_HTTPConnection):
                 if isinstance(chunk, str):
                     chunk = chunk.encode("utf-8")
                 if chunked:
-                    self.send(b"%x\r\n%b\r\n" % (len(chunk), chunk))
+                    # The chunk size is a number of bytes, which differs from
+                    # len() for typed or multidimensional buffers.
+                    nbytes = memoryview(chunk).nbytes
+                    if not nbytes:
+                        continue
+                    self.send(b"%x\r\n%b\r\n" % (nbytes, chunk))
                 else:
                     self.send(chunk)
 
