@@ -1,0 +1,1 @@
+Fixed ``Timeout.read_timeout`` returning ``read`` instead of the shorter of ``total`` and ``read`` when accessed before ``Timeout.start_connect()``. Requests made through connection pools were not affected.

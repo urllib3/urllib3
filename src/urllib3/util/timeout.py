@@ -250,14 +250,16 @@ class Timeout:
         computes the read timeout appropriately.
 
         If self.total is set, the read timeout is dependent on the amount of
-        time taken by the connect timeout. If the connection time has not been
-        established, a :exc:`~urllib3.exceptions.TimeoutStateError` will be
-        raised.
+        time taken by the connect timeout. If :meth:`start_connect` has not
+        been called yet, the shorter of ``total`` and ``read`` is returned
+        when both are set; otherwise a
+        :exc:`~urllib3.exceptions.TimeoutStateError` is raised.
 
         :return: Value to use for the read timeout.
         :rtype: int, float or None
         :raises urllib3.exceptions.TimeoutStateError: If :meth:`start_connect`
-            has not yet been called on this object.
+            has not yet been called on this object and ``total`` is set
+            without ``read``.
         """
         if (
             self.total is not None
@@ -267,7 +269,7 @@ class Timeout:
         ):
             # In case the connect timeout has not yet been established.
             if self._start_connect is None:
-                return self._read
+                return min(self.total, self._read)
             return max(0, min(self.total - self.get_connect_duration(), self._read))
         elif self.total is not None and self.total is not _DEFAULT_TIMEOUT:
             return max(0, self.total - self.get_connect_duration())
