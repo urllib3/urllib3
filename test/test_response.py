@@ -228,12 +228,15 @@ class TestResponse:
         assert r.data == b"foo"
 
     @pytest.mark.parametrize("read_args", ((), (None,), (-1,)))
+    @pytest.mark.parametrize("compress", (False, True))
     def test_cache_content_with_explicit_read_call(
-        self, read_args: tuple[typing.Any, ...]
+        self, read_args: tuple[typing.Any, ...], compress: bool
     ) -> None:
-        fp = BytesIO(b"foo")
-        r = HTTPResponse(fp, preload_content=False)
+        fp = BytesIO(zlib.compress(b"foo") if compress else b"foo")
+        headers = {"content-encoding": "deflate"} if compress else None
+        r = HTTPResponse(fp, headers=headers, preload_content=False)
         assert r.read(*read_args, cache_content=True) == b"foo"  # type: ignore[misc]
+        assert r.read(*read_args, cache_content=True) == b""  # type: ignore[misc]
         assert r._body == b"foo"
         assert r.data == b"foo"
 
@@ -470,6 +473,20 @@ class TestResponse:
 
         assert r.data == b"foofoofoo"
 
+    @pytest.mark.parametrize("read_method", ("read", "read1"))
+    def test_decode_gzip_multi_member_with_max_length(self, read_method: str) -> None:
+        data = gzip.compress(b"x" * 1024) + gzip.compress(b"y" * 1024)
+
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "gzip"}, preload_content=False
+        )
+        read = getattr(r, read_method)
+
+        assert read(1024) == b"x" * 1024
+        assert read(1024) == b"y" * 1024
+        assert read() == b""
+
     def test_decode_gzip_error(self) -> None:
         fp = BytesIO(b"foo")
         with pytest.raises(DecodeError):
@@ -693,6 +710,32 @@ class TestResponse:
         # read/decode, expecting DecodeError
         with pytest.raises(DecodeError):
             r.read(decode_content=True)
+
+    @onlyZstd()
+    @pytest.mark.parametrize("data", decode_param_set)
+    def test_decode_zstd_incomplete_read_with_amt(self, data: bytes) -> None:
+        data = zstd_compress(data)
+        fp = BytesIO(data[:-1])
+
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        # a truncated body must raise, not look like a clean EOF
+        with pytest.raises(DecodeError):
+            while r.read(64):
+                pass
+
+    @onlyZstd()
+    def test_decode_zstd_empty_body_read_with_amt(self) -> None:
+        # A decoder that never got data has nothing to flush: this is an
+        # empty body, not a truncated one.
+        r = HTTPResponse(
+            BytesIO(b""), headers={"content-encoding": "zstd"}, preload_content=False
+        )
+
+        assert r.read(64) == b""
+        assert r.read(64) == b""
 
     @onlyZstd()
     @pytest.mark.parametrize("data", decode_param_set)
@@ -1039,6 +1082,22 @@ class TestResponse:
         assert r.read(9 * 3) == b"foobarbaz" * 3
         assert r.read(9 * 37) == b"foobarbaz" * 37
         assert r.read() == b""
+
+    def test_read_multi_decoding_raw_deflate_gzip_in_small_reads(self) -> None:
+        # EOF can be found while filling the buffer. The decoder must be
+        # flushed there too, or read() returns b"" before the body is done.
+        msg = b"abc" * 10
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(deflate2_compress(msg))
+        data += compress.flush()
+
+        resp = HTTPResponse(
+            BytesIO(data),
+            headers={"content-encoding": "deflate, gzip"},
+            preload_content=False,
+        )
+
+        assert b"".join(iter(lambda: resp.read(1), b"")) == msg
 
     def test_read_multi_decoding_too_many_links(self) -> None:
         fp = BytesIO(b"foo")
@@ -1596,6 +1655,31 @@ class TestResponse:
         assert next(stream) == b"o"
         with pytest.raises(StopIteration):
             next(stream)
+
+    @pytest.mark.parametrize("read_method", ("read", "stream", "read_then_read_all"))
+    def test_deflate2_decodes_whole_body_in_small_reads(self, read_method: str) -> None:
+        # Raw deflate has no trailer, so zlib can still hold output after the
+        # input is used up. It must be flushed at EOF, not dropped.
+        msg = b"abc" * 2000
+        data = deflate2_compress(msg)
+        fp = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        fp.fp = BytesIO(data)  # type: ignore[assignment]
+        fp.chunked = False
+        fp.length = len(data)
+        resp = HTTPResponse(
+            fp,
+            headers={"content-encoding": "deflate", "content-length": str(len(data))},
+            preload_content=False,
+        )
+
+        if read_method == "read":
+            parts = iter(lambda: resp.read(64), b"")
+        elif read_method == "read_then_read_all":
+            parts = iter([resp.read(5952), resp.read()])
+        else:
+            parts = resp.stream(64)
+
+        assert b"".join(parts) == msg
 
     def test_empty_stream(self) -> None:
         fp = BytesIO(b"")
