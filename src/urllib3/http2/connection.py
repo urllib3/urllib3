@@ -16,6 +16,7 @@ import h2.events
 from .._base_connection import _TYPE_BODY
 from .._collections import HTTPHeaderDict
 from ..connection import (
+    _CONTAINS_CONTROL_CHAR_RE,
     BaseProtocolHelper,
     HTTPConnection,
     HTTPSConnection,
@@ -23,7 +24,9 @@ from ..connection import (
     _get_default_user_agent,
 )
 from ..exceptions import ConnectionError, IncompleteRead, StreamError
-from ..response import HTTPResponse
+from ..response import _READ_CHUNK_SIZE, HTTPResponse
+from ..util import SKIP_HEADER, SKIPPABLE_HEADERS
+from ..util.util import to_str
 
 orig_HTTPSConnection = HTTPSConnection
 
@@ -106,6 +109,9 @@ class HTTP2StreamData:
     response_reset: bool = field(default=False)
     response_eof: bool = field(default=False)
 
+    def is_eof(self) -> bool:
+        return not self.response_buffer and (self.response_eof or self.response_reset)
+
 
 class HTTP2ProtocolHelper(BaseProtocolHelper):
     """Protocol helper class for HTTP/2."""
@@ -166,6 +172,12 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         if stream in self._stream_data:
             raise ConnectionError("`put_request` was already called for this stream")
 
+        match = _CONTAINS_CONTROL_CHAR_RE.search(method)
+        if match:
+            raise ValueError(
+                f"Method cannot contain non-token characters {method!r} (found at least {match.group()!r})"
+            )
+
         self._stream_data[stream] = HTTP2StreamData()
         self._stream_data[stream].url = url or "/"
         self.conn._validate_path(url)  # type: ignore[attr-defined]
@@ -198,10 +210,26 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             raise ValueError(f"Illegal header name {str(header)}")
 
         for value in values:
-            encoded_value = value.encode() if isinstance(value, str) else value
-            if _is_illegal_header_value(encoded_value):
-                raise ValueError(f"Illegal header value {str(value)}")
-            self._stream_data[stream].headers.append((encoded_header, encoded_value))
+            if not (isinstance(value, str) and value == SKIP_HEADER):
+                encoded_value: bytes
+                if hasattr(value, "encode"):
+                    encoded_value = value.encode("latin-1")
+                elif isinstance(value, int):
+                    encoded_value = str(value).encode("ascii")
+                else:
+                    encoded_value = value  # type: ignore[assignment]
+                if _is_illegal_header_value(encoded_value):
+                    raise ValueError(f"Illegal header value {str(value)}")
+                self._stream_data[stream].headers.append(
+                    (encoded_header, encoded_value)
+                )
+            elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
+                skippable_headers = "', '".join(
+                    [str.title(header) for header in sorted(SKIPPABLE_HEADERS)]
+                )
+                raise ValueError(
+                    f"urllib3.util.SKIP_HEADER only supports '{skippable_headers}'"
+                )
         return True
 
     def endheaders(
@@ -219,6 +247,8 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                 end_stream=(message_body is None),
             )
             if data_to_send := h2_conn.data_to_send():
+                if self.conn.is_closed:
+                    self.conn.connect()
                 self.conn.sock.sendall(data_to_send)
 
             # for convenience we associate the stream data also with the h2 stream ID
@@ -243,6 +273,11 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             # raise NotImplementedError("`chunked` isn't supported with HTTP/2")
             pass
 
+        # Update the inner socket's timeout value to send the request.
+        # This only triggers if the connection is re-used.
+        if self.conn.sock is not None:
+            self.conn.sock.settimeout(self.conn.timeout)
+
         stream = Stream(self.conn)
         self.putrequest(method, url, stream=stream)
 
@@ -252,14 +287,15 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         self._stream_data[stream].enforce_content_length = enforce_content_length
 
         headers = headers or {}
+        header_keys = frozenset(to_str(k.lower()) for k in headers)
         for k, v in headers.items():
             if k.lower() == "transfer-encoding" and v == "chunked":
                 continue
             else:
                 self.putheader(k, v, stream=stream)
 
-        if b"user-agent" not in dict(self._stream_data[stream].headers):
-            self.putheader("user-agent", _get_default_user_agent(), stream=stream)
+        if "user-agent" not in header_keys:
+            self.putheader("User-Agent", _get_default_user_agent(), stream=stream)
 
         if body:
             self.endheaders(message_body=body, stream=stream)
@@ -327,30 +363,18 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
     def _wait_for_response(self, stream: Stream) -> None:
         """Process events until the given stream returned a response."""
+        assert stream.stream_id in self._stream_data
+        stream_data = self._stream_data[stream.stream_id]
         with self._h2_conn:
-            self._receive(
-                lambda: (
-                    stream.stream_id in self._stream_data
-                    and (
-                        self._stream_data[stream.stream_id].status > 0
-                        or self._stream_data[stream.stream_id].response_eof
-                        or self._stream_data[stream.stream_id].response_reset
-                    )
-                )
-            )
+            self._receive(lambda: stream_data.status > 0 or stream_data.is_eof())
 
     def _wait_for_data(self, stream: Stream) -> None:
         """Process events until the given stream has response data available."""
+        assert stream.stream_id in self._stream_data
+        stream_data = self._stream_data[stream.stream_id]
         with self._h2_conn:
             self._receive(
-                lambda: (
-                    stream.stream_id in self._stream_data
-                    and (
-                        len(self._stream_data[stream.stream_id].response_buffer) > 0
-                        or self._stream_data[stream.stream_id].response_eof
-                        or self._stream_data[stream.stream_id].response_reset
-                    )
-                )
+                lambda: len(stream_data.response_buffer) > 0 or stream_data.is_eof()
             )
 
     def _wait_for_flow_control(self, stream: Stream) -> int:
@@ -383,15 +407,19 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         if not stream.stream_id:
             raise ConnectionError("Must call `request` to create a stream")
 
+        # Since the connection's timeout value may have been updated
+        # we need to set the timeout on the socket.
+        self.conn.sock.settimeout(self.conn.timeout)
+
         self._wait_for_response(stream)
         stream_data = self._stream_data[stream]
 
         return HTTP2Response(
-            connection=self.conn,
             request_url=stream_data.url,
             status=stream_data.status,
             headers=stream_data.response_headers,
-            read_stream=lambda amt: self.read_stream(stream, amt),
+            stream=stream,
+            stream_data=stream_data,
             preload_content=stream_data.preload_content,
             decode_content=stream_data.decode_content,
             enforce_content_length=stream_data.enforce_content_length,
@@ -466,9 +494,11 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
     def read_stream(self, stream: Stream, n: int = 0) -> bytes:
         """Read bytes from a stream."""
+        if stream not in self._stream_data:
+            return b""
         stream_data = self._stream_data[stream]
         data = b""
-        while not stream_data.response_reset and not stream_data.response_eof:
+        while stream_data.response_buffer or not stream_data.is_eof():
             if n > 0:
                 need = n - len(data)
                 data += stream_data.response_buffer[:need]
@@ -526,19 +556,19 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
 
 class HTTP2Response(HTTPResponse):
-    # TODO: This is a woefully incomplete response object, but works for non-streaming.
     def __init__(
         self,
         status: int,
         headers: HTTPHeaderDict,
         request_url: str,
-        read_stream: typing.Callable[[int], bytes],
+        stream: Stream,
+        stream_data: HTTP2StreamData,
         preload_content: bool = True,
         decode_content: bool = True,
         enforce_content_length: bool = True,
-        connection: HTTPConnection | None = None,
     ) -> None:
-        self._read_stream = read_stream
+        self._stream = stream
+        self._stream_data = stream_data
         super().__init__(
             status=status,
             headers=headers,
@@ -550,8 +580,8 @@ class HTTP2Response(HTTPResponse):
             preload_content=preload_content,
             decode_content=decode_content,
             enforce_content_length=enforce_content_length,
-            connection=connection,
             request_url=request_url,
+            sock_shutdown=lambda _: None,
         )
 
     def _raw_read(
@@ -560,19 +590,54 @@ class HTTP2Response(HTTPResponse):
         *,
         read1: bool = False,
     ) -> bytes:
-        data = self._read_stream(amt or 0)
+        data: bytes = self._stream.conn._protocol_helper.read_stream(  # type: ignore[attr-defined]
+            self._stream, amt or 0
+        )
         self._fp_bytes_read += len(data)
         if self.length_remaining is not None:
             self.length_remaining -= len(data)
         if not data:
-            # auto-close here?
             if (
                 self.enforce_content_length
                 and self.length_remaining is not None
                 and self.length_remaining != 0
             ):
                 raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
+        if not data or self._stream_data.is_eof():
+            self.release_conn()
         return data
+
+    def stream(
+        self, amt: int | None = _READ_CHUNK_SIZE, decode_content: bool | None = None
+    ) -> typing.Generator[bytes]:
+        """
+        A generator wrapper for the read() method. A call will block until
+        ``amt`` bytes have been read from the connection or until the
+        connection is closed.
+
+        :param amt:
+            How much of the content to read. The generator will return up to
+            much data per iteration, but may return less. This is particularly
+            likely when using compressed data. However, the empty string will
+            never be returned.
+
+        :param decode_content:
+            If True, will attempt to decode the body based on the
+            'content-encoding' header.
+        """
+        if amt == 0:
+            return
+
+        while (
+            self._stream_data.response_buffer
+            or not self._stream_data.response_eof
+            or len(self._decoded_buffer) > 0
+            or (self._decoder and self._decoder.has_unconsumed_tail)
+        ):
+            data = self.read(amt=amt, decode_content=decode_content)
+
+            if data:
+                yield data
 
     @property
     def data(self) -> bytes:
@@ -582,5 +647,9 @@ class HTTP2Response(HTTPResponse):
 
         return self.read(cache_content=True)
 
-    def close(self) -> None:
-        pass
+    def drain_conn(self) -> None:
+        try:
+            self.read()
+        except Exception:
+            pass
+        self._stream.conn.close_stream(self._stream)

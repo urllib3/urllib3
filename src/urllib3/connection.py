@@ -69,7 +69,6 @@ from .util.url import Url
 ConnectionError = ConnectionError
 BrokenPipeError = BrokenPipeError
 
-
 log = logging.getLogger(__name__)
 
 port_by_scheme = {"http": 80, "https": 443}
@@ -749,7 +748,6 @@ class HTTPConnection(_HTTPConnection):
         finally:
             # Reset all stateful properties so connection
             # can be re-used without leaking prior configs.
-            self._response_options = None
             self.sock = None
             self.is_verified = False
             self.proxy_is_verified = None
@@ -774,6 +772,11 @@ class HTTPConnection(_HTTPConnection):
             raise ValueError(
                 f"Method cannot contain non-token characters {method!r} (found at least {match.group()!r})"
             )
+
+        if self.is_closed:
+            self.connect()
+            if self.is_closed:  # Defensive:
+                raise ConnectionError("Unable to connect to server")
 
         if not self._protocol_helper.putrequest(
             method,
@@ -842,6 +845,11 @@ class HTTPConnection(_HTTPConnection):
         decode_content: bool = True,
         enforce_content_length: bool = True,
     ) -> Stream:
+        if self.is_closed:
+            self.connect()
+            if self.is_closed:  # Defensive:
+                raise ConnectionError("Unable to connect to server")
+
         stream = self._protocol_helper.request(
             method,
             url,

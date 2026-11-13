@@ -91,6 +91,9 @@ class TestHTTP2Connection:
 
     def test_putheader(self) -> None:
         conn = HTTPSConnection("example.com", http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
         stream = Stream(conn)
         conn.putrequest("GET", "/", stream=stream)
         conn.putheader("foo", "bar", stream=stream)
@@ -108,13 +111,16 @@ class TestHTTP2Connection:
             [
                 mock.call("foo", "bar", stream=conn._last_stream),
                 mock.call(
-                    "user-agent", _get_default_user_agent(), stream=conn._last_stream
+                    "User-Agent", _get_default_user_agent(), stream=conn._last_stream
                 ),
             ]
         )
 
     def test_putrequest_ConnectionError(self) -> None:
         conn = HTTPSConnection("example.com", http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
 
         with pytest.raises(ConnectionError):
             conn.putrequest("GET", "/")
@@ -285,6 +291,9 @@ class TestHTTP2Connection:
 
     def test_send_invalid_type(self) -> None:
         conn = HTTPSConnection("example.com", http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
         stream = Stream(conn)
         stream.stream_id = 1
         conn.putrequest("GET", "/", stream=stream)
