@@ -1488,6 +1488,7 @@ class HTTPResponse(BaseHTTPResponse):
                     if self.chunk_left == 0:
                         break
                     chunk = self._handle_chunk(amt)
+                    self._fp_bytes_read += len(chunk)
                 decoded = self._decode(
                     chunk,
                     decode_content=decode_content,
