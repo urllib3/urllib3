@@ -6,12 +6,16 @@ Dummy server used for unit testing.
 
 from __future__ import annotations
 
+import contextlib
+import errno
 import logging
 import os
+import select
 import socket
 import ssl
 import sys
 import threading
+import time
 import typing
 import warnings
 
@@ -93,6 +97,62 @@ class NoIPv6Warning(HTTPWarning):
     "IPv6 is not available"
 
 
+class _MultiSocketListener:
+    """Presents multiple listening sockets behind a single accept() API."""
+
+    def __init__(self, sockets: list[socket.socket]) -> None:
+        self._sockets = sockets
+        self._timeout: float | None = None
+        self._closed = False
+
+    def settimeout(self, value: float | None) -> None:
+        if value is not None and value < 0:
+            raise ValueError("Timeout value out of range")
+        self._timeout = value
+
+    def gettimeout(self) -> float | None:
+        return self._timeout
+
+    def getsockname(self) -> typing.Any:
+        return self._sockets[0].getsockname()
+
+    def accept(self) -> tuple[socket.socket, typing.Any]:
+        if self._closed:
+            raise OSError(errno.EBADF, "Bad file descriptor")
+        deadline = None if self._timeout is None else time.monotonic() + self._timeout
+        while True:
+            remaining = (
+                None if deadline is None else max(0.0, deadline - time.monotonic())
+            )
+            readable, _, _ = select.select(self._sockets, [], [], remaining)
+            if not readable:
+                raise TimeoutError("timed out")
+            for sock in readable:
+                sock.setblocking(False)
+                try:
+                    conn, addr = sock.accept()
+                except BlockingIOError:
+                    continue
+                finally:
+                    with contextlib.suppress(OSError):
+                        sock.setblocking(True)
+                conn.setblocking(True)
+                return conn, addr
+            if deadline is not None and time.monotonic() >= deadline:
+                raise TimeoutError("timed out")
+
+    def close(self) -> None:
+        self._closed = True
+        for sock in self._sockets:
+            sock.close()
+
+    def __enter__(self) -> _MultiSocketListener:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        self.close()
+
+
 class SocketServerThread(threading.Thread):
     """
     :param socket_handler: Callable which receives a socket argument for one
@@ -118,26 +178,86 @@ class SocketServerThread(threading.Thread):
         self.ready_event = ready_event
         self.quit_event = quit_event
 
-    def _start_server(self) -> None:
-        if self.USE_IPV6:
-            sock = socket.socket(socket.AF_INET6)
-        else:
+    def _resolve_bind_targets(self) -> list[tuple[int, int, int, typing.Any]]:
+        if not self.USE_IPV6:
             warnings.warn("No IPv6 support. Falling back to IPv4.", NoIPv6Warning)
-            sock = socket.socket(socket.AF_INET)
-        if sys.platform != "win32":
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            return [(socket.AF_INET, socket.SOCK_STREAM, 0, (self.host, 0))]
 
-        with sock:
-            sock.bind((self.host, 0))
-            self.port = sock.getsockname()[1]
+        addrinfo = socket.getaddrinfo(
+            self.host, 0, socket.AF_UNSPEC, socket.SOCK_STREAM, 0, socket.AI_PASSIVE
+        )
+        targets_by_family: dict[int, tuple[int, int, int, typing.Any]] = {}
+        for af, socktype, proto, _, sockaddr in addrinfo:
+            if af in (socket.AF_INET, socket.AF_INET6) and af not in targets_by_family:
+                targets_by_family[af] = (af, socktype, proto, sockaddr)
+        if self.host == "localhost":
+            targets_by_family.setdefault(
+                socket.AF_INET6, (socket.AF_INET6, socket.SOCK_STREAM, 0, ("::1", 0))
+            )
 
-            # Once listen() returns, the server socket is ready
-            sock.listen(1)
+        # Bind IPv4 first to select a free port, then bind IPv6 on the same port.
+        targets = [
+            targets_by_family[af]
+            for af in (socket.AF_INET, socket.AF_INET6)
+            if af in targets_by_family
+        ]
+        return targets or [(socket.AF_INET6, socket.SOCK_STREAM, 0, (self.host, 0))]
+
+    def _create_bound_sockets(self) -> list[socket.socket]:
+        targets = self._resolve_bind_targets()
+        max_attempts = 10 if len(targets) > 1 else 1
+        for attempt in range(max_attempts):
+            sockets: list[socket.socket] = []
+            port = 0
+            try:
+                for af, socktype, proto, sockaddr in targets:
+                    sock = socket.socket(af, socktype, proto)
+                    sockets.append(sock)
+                    if sys.platform != "win32":
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    if af == socket.AF_INET6 and hasattr(socket, "IPV6_V6ONLY"):
+                        sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+                    bind_addr = (
+                        sockaddr if port == 0 else (sockaddr[0], port, *sockaddr[2:])
+                    )
+                    sock.bind(bind_addr)
+                    if port == 0:
+                        port = sock.getsockname()[1]
+                for sock in sockets:
+                    # Once listen() returns, the server socket is ready
+                    sock.listen(5)
+                self.port = port
+                return sockets
+            except OSError as e:
+                for sock in sockets:
+                    sock.close()
+                if attempt == max_attempts - 1 or e.errno not in (
+                    errno.EADDRINUSE,
+                    errno.EACCES,
+                ):
+                    raise
+            except BaseException:
+                for sock in sockets:
+                    sock.close()
+                raise
+
+        raise OSError("failed to bind socket")
+
+    def _start_server(self) -> None:
+        sockets = self._create_bound_sockets()
+        with contextlib.ExitStack() as stack:
+            for sock in sockets:
+                stack.enter_context(sock)
 
             if self.ready_event:
                 self.ready_event.set()
 
-            self.socket_handler(sock)
+            listener = (
+                sockets[0]
+                if len(sockets) == 1
+                else typing.cast(socket.socket, _MultiSocketListener(sockets))
+            )
+            self.socket_handler(listener)
 
     def run(self) -> None:
         self._start_server()
