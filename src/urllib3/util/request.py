@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 import sys
 import typing
 from base64 import b64encode
@@ -21,6 +22,8 @@ SKIPPABLE_HEADERS = frozenset(["accept-encoding", "host", "user-agent"])
 
 ACCEPT_ENCODING = "gzip,deflate"
 try:
+    if os.getenv("URLLIB3_DISABLE_BROTLI"):
+        raise ImportError("URLLIB3_DISABLE_BROTLI is set; refusing Brotli support")
     try:
         import brotlicffi as _unused_module_brotli  # type: ignore[import-not-found] # noqa: F401
     except ImportError:
