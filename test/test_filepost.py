@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from email import policy
+from email.parser import BytesParser
+
 import pytest
 
 from urllib3.fields import RequestField
@@ -10,6 +13,33 @@ BOUNDARY_BYTES = BOUNDARY.encode()
 
 
 class TestMultipartEncoding:
+    @pytest.mark.parametrize("boundary", [None, "boundary", "abc-123_456.789+"])
+    def test_token_boundary(self, boundary: str | None) -> None:
+        encoded, content_type = encode_multipart_formdata(
+            {"field": "value"}, boundary=boundary
+        )
+        encoded_boundary = encoded.split(b"\r\n", 1)[0][2:].decode()
+        assert content_type == f"multipart/form-data; boundary={encoded_boundary}"
+        if boundary is not None:
+            assert encoded_boundary == boundary
+
+    @pytest.mark.parametrize("separator", [" ", ":", "/", "?", "=", ",", "(", ")"])
+    def test_boundary_requires_quotes(self, separator: str) -> None:
+        boundary = f"part{separator}boundary"
+        encoded, content_type = encode_multipart_formdata(
+            {"field": "value"}, boundary=boundary
+        )
+        message = BytesParser(policy=policy.default).parsebytes(
+            f"Content-Type: {content_type}\r\n\r\n".encode() + encoded
+        )
+
+        assert message.get_boundary() == boundary
+        assert not message.defects
+        parts = list(message.iter_parts())
+        assert len(parts) == 1
+        assert parts[0].get_param("name", header="content-disposition") == "field"
+        assert parts[0].get_payload(decode=True) == b"value"
+
     @pytest.mark.parametrize(
         "fields", [dict(k="v", k2="v2"), [("k", "v"), ("k2", "v2")]]
     )
@@ -41,7 +71,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == f'multipart/form-data; boundary="{BOUNDARY}"'
 
     def test_filename(self) -> None:
         fields = [("k", ("somename", b"v"))]
@@ -58,7 +88,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == f'multipart/form-data; boundary="{BOUNDARY}"'
 
     def test_textplain(self) -> None:
         fields = [("k", ("somefile.txt", b"v"))]
@@ -75,7 +105,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == f'multipart/form-data; boundary="{BOUNDARY}"'
 
     def test_explicit(self) -> None:
         fields = [("k", ("somefile.txt", b"v", "image/jpeg"))]
@@ -92,7 +122,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == f'multipart/form-data; boundary="{BOUNDARY}"'
 
     def test_request_fields(self) -> None:
         fields = [

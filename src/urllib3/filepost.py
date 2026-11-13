@@ -3,7 +3,9 @@ from __future__ import annotations
 import binascii
 import codecs
 import os
+import re
 import typing
+from email.utils import quote
 from io import BytesIO
 
 from .fields import _TYPE_FIELD_VALUE_TUPLE, RequestField
@@ -84,6 +86,10 @@ def encode_multipart_formdata(
 
     body.write(f"--{boundary}--\r\n".encode("latin-1"))
 
+    # RFC 2046 section 5.1.1 permits boundary characters, such as colons,
+    # that must be quoted when used in the Content-Type parameter.
+    if not re.fullmatch(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+", boundary):
+        boundary = f'"{quote(boundary)}"'
     content_type = f"multipart/form-data; boundary={boundary}"
 
     return body.getvalue(), content_type
