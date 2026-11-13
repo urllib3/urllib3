@@ -200,7 +200,7 @@ class Retry:
 
     #: Default methods to be used for ``allowed_methods``
     DEFAULT_ALLOWED_METHODS = frozenset(
-        ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
+        ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "QUERY"]
     )
 
     #: Default status codes that trigger a retry when a Retry-After header is
