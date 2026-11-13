@@ -89,13 +89,21 @@ class MaxRetryError(RequestError):
     :param str url: The requested Url
     :param reason: The underlying error
     :type reason: :class:`Exception`
+    :param retries: The retry configuration used for the failed request,
+        including the history of the individual attempts that were made.
+    :type retries: :class:`~urllib3.util.retry.Retry`
 
     """
 
     def __init__(
-        self, pool: ConnectionPool, url: str | None, reason: Exception | None = None
+        self,
+        pool: ConnectionPool,
+        url: str | None,
+        reason: Exception | None = None,
+        retries: Retry | None = None,
     ) -> None:
         self.reason = reason
+        self.retries = retries
 
         message = f"Max retries exceeded with url: {url} (Caused by {reason!r})"
 
@@ -103,7 +111,7 @@ class MaxRetryError(RequestError):
 
     def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
-        return self.__class__, (None, self.url, self.reason)
+        return self.__class__, (None, self.url, self.reason, self.retries)
 
 
 class HostChangedError(RequestError):
