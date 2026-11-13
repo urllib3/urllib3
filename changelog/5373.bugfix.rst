@@ -1,0 +1,3 @@
+Fixed bounded ``read()``, ``read1()`` and ``stream()`` calls discarding the
+remaining ``max_length`` budget when the decoder is flushed at end-of-body,
+which could return the decoder's entire accumulated output in a single call.
