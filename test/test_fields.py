@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from urllib3.fields import (
+    _TYPE_FIELD_VALUE_TUPLE,
     RequestField,
     format_header_param,
     format_header_param_html5,
@@ -118,3 +119,19 @@ class TestRequestField:
 
         cd = field.headers["Content-Disposition"]
         assert cd == "form-data; name=\"file\"; filename*=utf-8''n%C3%A4me"
+
+    @pytest.mark.parametrize(
+        "value, expected_content_type",
+        [
+            ((None, "data"), "application/octet-stream"),
+            ((None, b"data"), "application/octet-stream"),
+            ((None, b"{}", "application/json"), "application/json"),
+            ((None, "{}", "application/json"), "application/json"),
+        ],
+    )
+    def test_from_tuples_none_filename(
+        self, value: _TYPE_FIELD_VALUE_TUPLE, expected_content_type: str
+    ) -> None:
+        field = RequestField.from_tuples("metadata", value)
+        assert field.headers["Content-Disposition"] == 'form-data; name="metadata"'
+        assert field.headers["Content-Type"] == expected_content_type

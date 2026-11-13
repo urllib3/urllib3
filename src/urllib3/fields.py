@@ -7,8 +7,8 @@ import typing
 _TYPE_FIELD_VALUE = typing.Union[str, bytes]
 _TYPE_FIELD_VALUE_TUPLE = typing.Union[
     _TYPE_FIELD_VALUE,
-    tuple[str, _TYPE_FIELD_VALUE],
-    tuple[str, _TYPE_FIELD_VALUE, str],
+    tuple[str | None, _TYPE_FIELD_VALUE],
+    tuple[str | None, _TYPE_FIELD_VALUE, str],
 ]
 
 
@@ -208,14 +208,16 @@ class RequestField:
 
         Supports constructing :class:`~urllib3.fields.RequestField` from
         parameter of key/value strings AND key/filetuple. A filetuple is a
-        (filename, data, MIME type) tuple where the MIME type is optional.
+        (filename, data, MIME type) tuple where the MIME type is optional, and
+        the filename may be None to omit the filename parameter.
         For example::
 
             'foo': 'bar',
             'fakefile': ('foofile.txt', 'contents of foofile'),
             'realfile': ('barfile.txt', open('realfile').read()),
             'typedfile': ('bazfile.bin', open('bazfile').read(), 'image/jpeg'),
-            'nonamefile': 'contents of nonamefile field',
+            'nonamefile': (None, 'contents of nonamefile field'),
+            'nonamestring': 'contents of nonamestring field',
 
         Field names and filenames must be unicode.
         """
