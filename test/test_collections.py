@@ -481,3 +481,104 @@ class TestHTTPHeaderDict:
     def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
         with pytest.raises(TypeError, match="unsupported operand type.*'NoneType'"):
             d |= None
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "Repr-Digest",
+        "Content-Range",
+        "Content-MD5",
+        "Trailer",
+    ],
+)
+def test_method_change_removes_body_headers(header: str) -> None:
+    headers = HTTPHeaderDict(
+        {
+            header: "test-value",
+            "X-Unrelated": "keep",
+        }
+    )
+
+    headers._prepare_for_method_change()
+
+    assert header not in headers
+    assert headers["X-Unrelated"] == "keep"
+
+
+@pytest.mark.parametrize(
+    ("expect", "expected"),
+    [
+        ("100-continue", None),
+        ("100-CoNtInUe", None),
+        ("100-continue, custom", "custom"),
+        ("custom, 100-continue", "custom"),
+        ("100-continue,", None),
+        (",100-continue", None),
+        ("100-continue, ,", None),
+        ("custom, 100-continue,", "custom"),
+        ("custom", "custom"),
+    ],
+)
+def test_method_change_cleans_expect(expect: str, expected: str | None) -> None:
+    headers = HTTPHeaderDict(
+        {
+            "Expect": expect,
+            "X-Unrelated": "keep",
+        }
+    )
+
+    headers._prepare_for_method_change()
+
+    assert headers.get("Expect") == expected
+    assert headers["X-Unrelated"] == "keep"
+
+
+def test_method_change_preserves_quoted_expect() -> None:
+    headers = HTTPHeaderDict(
+        {
+            "Expect": 'custom="a,b", 100-continue',
+            "X-Unrelated": "keep",
+        }
+    )
+
+    headers._prepare_for_method_change()
+
+    assert headers.get("Expect") == 'custom="a,b"'
+    assert headers["X-Unrelated"] == "keep"
+
+
+def test_method_change_repeated_expect_values() -> None:
+    headers = HTTPHeaderDict()
+    headers.add("Expect", "100-continue")
+    headers.add("Expect", 'custom="a,b"')
+    headers.add("X-Unrelated", "keep")
+
+    headers._prepare_for_method_change()
+
+    assert headers.getlist("Expect") == ['custom="a,b"']
+    assert headers["X-Unrelated"] == "keep"
+
+
+def test_method_change_escaped_quote_in_expect() -> None:
+    headers = HTTPHeaderDict(
+        {
+            "Expect": 'custom="a\\",b", 100-continue',
+        }
+    )
+
+    headers._prepare_for_method_change()
+
+    assert headers["Expect"] == 'custom="a\\",b"'
+
+
+def test_method_change_preserves_similar_expectation() -> None:
+    headers = HTTPHeaderDict(
+        {
+            "Expect": "custom-100-continue",
+        }
+    )
+
+    headers._prepare_for_method_change()
+
+    assert headers["Expect"] == "custom-100-continue"

@@ -1,0 +1,4 @@
+Fixed ``PoolManager`` retaining stale ``Content-Digest``,
+``Repr-Digest``, ``Content-Range``, ``Content-MD5``, and ``Trailer``
+headers, as well as the ``100-continue`` expectation, when an HTTP
+redirect discards the original request body.
