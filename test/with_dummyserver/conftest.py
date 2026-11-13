@@ -30,9 +30,15 @@ def server_scheme(request: pytest.FixtureRequest) -> str:
 
 
 @pytest.fixture
-def connection_pool_kw(server_scheme: str) -> dict[str, typing.Any]:
+def connection_pool_kw(server_scheme: str, http_version: str) -> dict[str, typing.Any]:
     """Configure pools to trust the HTTPS test certificate."""
-    return {"ca_certs": DEFAULT_CA} if server_scheme == "https" else {}
+    opts: dict[str, typing.Any] = {
+        "http1": http_version == "h11",
+        "http2": http_version == "h2",
+    }
+    if server_scheme == "https":
+        opts["ca_certs"] = DEFAULT_CA
+    return opts
 
 
 @pytest.fixture

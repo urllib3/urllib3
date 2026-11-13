@@ -91,11 +91,18 @@ class TestHTTP2Connection:
 
     def test_putheader(self) -> None:
         conn = HTTPSConnection("example.com", http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
         stream = Stream(conn)
         conn.putrequest("GET", "/", stream=stream)
         conn.putheader("foo", "bar", stream=stream)
+        conn.putheader("Content-Length", 42, stream=stream)  # type: ignore[arg-type]
         protocol_helper = typing.cast(HTTP2ProtocolHelper, conn._protocol_helper)
         assert (b"foo", b"bar") in protocol_helper._stream_data[stream].headers
+        assert (b"content-length", b"42") in protocol_helper._stream_data[
+            stream
+        ].headers
 
     def test_request_putheader(self) -> None:
         conn = HTTPSConnection("example.com", http1=False, http2=True)
@@ -108,13 +115,16 @@ class TestHTTP2Connection:
             [
                 mock.call("foo", "bar", stream=conn._last_stream),
                 mock.call(
-                    "user-agent", _get_default_user_agent(), stream=conn._last_stream
+                    "User-Agent", _get_default_user_agent(), stream=conn._last_stream
                 ),
             ]
         )
 
     def test_putrequest_ConnectionError(self) -> None:
         conn = HTTPSConnection("example.com", http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
 
         with pytest.raises(ConnectionError):
             conn.putrequest("GET", "/")
@@ -285,6 +295,9 @@ class TestHTTP2Connection:
 
     def test_send_invalid_type(self) -> None:
         conn = HTTPSConnection("example.com", http1=False, http2=True)
+        conn.sock = mock.MagicMock(
+            sendall=mock.Mock(return_value=None),
+        )
         stream = Stream(conn)
         stream.stream_id = 1
         conn.putrequest("GET", "/", stream=stream)
@@ -531,6 +544,10 @@ class TestHTTP2Connection:
         conn._protocol_helper._h2_conn._obj.receive_data = mock.Mock(side_effect=[[h2.events.ConnectionTerminated()]])  # type: ignore[attr-defined]
         stream = Stream(conn)
         stream.stream_id = 1
+        conn._protocol_helper._stream_data[stream] = HTTP2StreamData()  # type: ignore[attr-defined]
+        conn._protocol_helper._stream_data[1] = conn._protocol_helper._stream_data[  # type: ignore[attr-defined]
+            stream
+        ]
         with pytest.raises(ConnectionError):
             conn.getresponse(stream=stream)
 
