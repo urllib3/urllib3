@@ -225,6 +225,43 @@ def rewind_body(body: typing.IO[typing.AnyStr], body_pos: _TYPE_BODY_POSITION) -
         )
 
 
+class _IteratorWithRetryGuard:
+    """Raise instead of silently reusing a consumed request body iterator."""
+
+    def __init__(self, body: typing.Iterator[typing.Any]) -> None:
+        self._body = body
+        self._has_been_consumed = False
+
+    def __iter__(self) -> typing.Iterator[typing.Any]:
+        if self._has_been_consumed:
+            raise UnrewindableBodyError(
+                "request body iterator cannot be replayed for redirect/retry."
+            )
+        return self._iter()
+
+    def _iter(self) -> typing.Iterator[typing.Any]:
+        while True:
+            try:
+                chunk = next(self._body)
+            except StopIteration:
+                return
+            except Exception:
+                self._has_been_consumed = True
+                raise
+            self._has_been_consumed = True
+            yield chunk
+
+
+def _wrap_iterator_body(body: typing.Any | None) -> typing.Any | None:
+    if (
+        isinstance(body, typing.Iterator)
+        and not hasattr(body, "read")
+        and getattr(body, "tell", None) is None
+    ):
+        return _IteratorWithRetryGuard(body)
+    return body
+
+
 class ChunksAndContentLength(typing.NamedTuple):
     chunks: typing.Iterable[bytes] | None
     content_length: int | None

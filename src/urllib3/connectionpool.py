@@ -42,7 +42,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
-from .util.request import _TYPE_BODY_POSITION, set_file_position
+from .util.request import _TYPE_BODY_POSITION, _wrap_iterator_body, set_file_position
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
@@ -719,6 +719,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Check host
         if assert_same_host and not self.is_same_host(url):
             raise HostChangedError(self, url, retries)
+
+        body = _wrap_iterator_body(body)
 
         conn = None
 
