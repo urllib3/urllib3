@@ -1302,7 +1302,9 @@ class HTTPResponse(BaseHTTPResponse):
         if amt == 0:
             return
 
-        if self.chunked and self.supports_chunked_reads():
+        # If read() or read1() has already read body bytes, continue with the
+        # underlying response's chunk parser and any buffered decoded data.
+        if self.chunked and not self._fp_bytes_read and self.supports_chunked_reads():
             yield from self.read_chunked(amt, decode_content=decode_content)
         else:
             while (
