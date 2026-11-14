@@ -125,6 +125,7 @@ class HTTP2Connection(HTTPSConnection):
             raise NotImplementedError("`skip_accept_encoding` isn't supported")
 
         self._request_url = url or "/"
+        self._validate_method(method)  # type: ignore[attr-defined]
         self._validate_path(url)  # type: ignore[attr-defined]
 
         port = self.port if self.port is not None else 443

@@ -106,6 +106,13 @@ class TestHTTP2Connection:
         with pytest.raises(ValueError):
             conn.putheader("foo", "foo\r\nbar")
 
+    @pytest.mark.parametrize("method", ["GET\r\nX-Injected: 1", "GET\n", "G\0T"])
+    def test_putrequest_invalid_method(self, method: str) -> None:
+        conn = HTTP2Connection("example.com")
+        with pytest.raises(ValueError, match="method can't contain control characters"):
+            conn.putrequest(method, "/")
+        assert conn._headers == []
+
     def test_endheaders_ConnectionError(self) -> None:
         conn = HTTP2Connection("example.com")
         with pytest.raises(ConnectionError):
