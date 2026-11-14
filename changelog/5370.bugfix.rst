@@ -1,0 +1,1 @@
+Fixed a failure in ``HTTPResponse.stream()`` after a partial read of a chunked response.
