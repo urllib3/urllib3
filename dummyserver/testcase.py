@@ -5,14 +5,22 @@ import socket
 import ssl
 import threading
 import typing
+from pathlib import Path
 from test import LONG_TIMEOUT
 
 import pytest
+import trustme
 
 from dummyserver.app import hypercorn_app
 from dummyserver.asgi_proxy import ProxyApp
 from dummyserver.hypercornserver import run_hypercorn_in_thread
-from dummyserver.socketserver import DEFAULT_CERTS, HAS_IPV6, SocketServerThread
+from dummyserver.socketserver import (
+    DEFAULT_CA,
+    DEFAULT_CA_KEY,
+    DEFAULT_CERTS,
+    HAS_IPV6,
+    SocketServerThread,
+)
 from urllib3.connection import HTTPConnection
 from urllib3.util.ssltransport import SSLTransport
 
@@ -221,6 +229,49 @@ class HTTPSHypercornDummyServerTestCase(HypercornDummyServerTestCase):
     certs = DEFAULT_CERTS
     certs_dir = ""
     bad_ca_path = ""
+
+
+@pytest.mark.usefixtures("server_scheme")
+class DualHypercornDummyServerTestCase:
+    """Base class for tests using local HTTP and HTTPS dummy servers."""
+
+    host = "localhost"
+    host_alt = "127.0.0.1"
+    http_port: typing.ClassVar[int]
+    https_port: typing.ClassVar[int]
+    # Port of the server selected by server_scheme.
+    port: typing.ClassVar[int]
+    scheme: typing.ClassVar[str]
+    base_url: typing.ClassVar[str]
+    base_url_alt: typing.ClassVar[str]
+
+    _stack: typing.ClassVar[contextlib.ExitStack]
+
+    @classmethod
+    def setup_class(cls) -> None:
+        with contextlib.ExitStack() as stack:
+            ca = trustme.CA.from_pem(
+                Path(DEFAULT_CA).read_bytes(), Path(DEFAULT_CA_KEY).read_bytes()
+            )
+            server_cert = ca.issue_cert(cls.host, cls.host_alt)
+            certs = {
+                **DEFAULT_CERTS,
+                "certfile": stack.enter_context(
+                    server_cert.cert_chain_pems[0].tempfile()
+                ),
+                "keyfile": stack.enter_context(server_cert.private_key_pem.tempfile()),
+            }
+            cls.http_port = stack.enter_context(
+                run_hypercorn_in_thread(cls.host, None, hypercorn_app)
+            )
+            cls.https_port = stack.enter_context(
+                run_hypercorn_in_thread(cls.host, certs, hypercorn_app)
+            )
+            cls._stack = stack.pop_all()
+
+    @classmethod
+    def teardown_class(cls) -> None:
+        cls._stack.close()
 
 
 class HypercornDummyProxyTestCase:

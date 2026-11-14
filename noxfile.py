@@ -320,6 +320,9 @@ def emscripten(session: nox.Session, runner: str) -> None:
         session,
         extras="",
         pytest_extra_args=[
+            # pytest-pyodide brings in pytest-asyncio, which warns if this is unset.
+            "-o",
+            "asyncio_default_fixture_loop_scope=function",
             "--runtime",
             f"{runner}-no-host",
             "--dist-dir",
