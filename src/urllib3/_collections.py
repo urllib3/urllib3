@@ -401,9 +401,6 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         """
         Remove content-specific header fields before changing the request
         method to GET or HEAD according to RFC 9110, Section 15.4.
-
-        ``Transfer-Encoding`` goes as well: it frames a request body that is
-        no longer going to be sent.
         """
         content_specific_headers = [
             "Content-Encoding",
@@ -412,11 +409,20 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
             "Content-Type",
             "Content-Length",
             "Digest",
+            "Content-Digest",
+            "Repr-Digest",
+            "Content-Range",
+            "Content-MD5",
             "Last-Modified",
+            "Trailer",
             "Transfer-Encoding",
         ]
         for header in content_specific_headers:
             self.discard(header)
+
+        if self.get("Expect", "").lower() == "100-continue":
+            self.discard("Expect")
+
         return self
 
     # Backwards compatibility for httplib

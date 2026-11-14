@@ -481,3 +481,49 @@ class TestHTTPHeaderDict:
     def test_inplace_union_with_unsupported_type(self, d: HTTPHeaderDict) -> None:
         with pytest.raises(TypeError, match="unsupported operand type.*'NoneType'"):
             d |= None
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "Repr-Digest",
+        "Content-Range",
+        "Content-MD5",
+        "Trailer",
+    ],
+)
+def test_method_change_removes_body_headers(header: str) -> None:
+    headers = HTTPHeaderDict(
+        {
+            header: "test-value",
+            "X-Unrelated": "keep",
+        }
+    )
+
+    headers._prepare_for_method_change()
+
+    assert header not in headers
+    assert headers["X-Unrelated"] == "keep"
+
+
+@pytest.mark.parametrize(
+    ("expect", "expected"),
+    [
+        ("100-continue", None),
+        ("100-CoNtInUe", None),
+        ("custom", "custom"),
+        ("custom-100-continue", "custom-100-continue"),
+    ],
+)
+def test_method_change_cleans_expect(expect: str, expected: str | None) -> None:
+    headers = HTTPHeaderDict(
+        {
+            "Expect": expect,
+            "X-Unrelated": "keep",
+        }
+    )
+
+    headers._prepare_for_method_change()
+
+    assert headers.get("Expect") == expected
+    assert headers["X-Unrelated"] == "keep"
