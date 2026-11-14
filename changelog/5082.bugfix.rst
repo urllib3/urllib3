@@ -1,0 +1,1 @@
+Fixed ``RequestField.make_multipart()`` to reject carriage return, line feed and null characters in the ``content_type``, ``content_location`` and ``content_disposition`` values, preventing header injection into multipart request bodies.
