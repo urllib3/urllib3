@@ -314,7 +314,13 @@ class ProxySchemeUnknown(AssertionError, URLSchemeUnknown):
             message = "Proxy URL had no scheme, should start with http:// or https://"
         else:
             message = f"Proxy URL had unsupported scheme {scheme}, should use http:// or https://"
-        super().__init__(message)
+        # Skip URLSchemeUnknown.__init__(), which would prefix the message
+        # with "Not supported URL scheme". Whether super() reaches it
+        # depends on whether AssertionError defines its own __init__(),
+        # which changed in Python 3.14.
+        LocationValueError.__init__(self, message)
+
+        self.scheme = scheme  # type: ignore[assignment]
 
 
 class ProxySchemeUnsupported(ValueError):

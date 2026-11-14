@@ -1,0 +1,3 @@
+Fixed ``ProxySchemeUnknown`` messages being prefixed with "Not supported URL
+scheme" on Python 3.14+. ``ProxySchemeUnknown.scheme`` is now set to the
+proxy URL's scheme on all Python versions.
