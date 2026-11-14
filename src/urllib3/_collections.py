@@ -401,9 +401,6 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         """
         Remove content-specific header fields before changing the request
         method to GET or HEAD according to RFC 9110, Section 15.4.
-
-        ``Transfer-Encoding`` goes as well: it frames a request body that is
-        no longer going to be sent.
         """
         content_specific_headers = [
             "Content-Encoding",
@@ -423,34 +420,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         for header in content_specific_headers:
             self.discard(header)
 
-        # A request without a body must not retain Expect: 100-continue.
-        expect_values = self.getlist("Expect")
-        if expect_values:
-            # Split on commas outside quoted strings only.
-            expectations = []
-            for value in expect_values:
-                start = 0
-                quoted = False
-                escaped = False
-                for pos, char in enumerate(value):
-                    if escaped:
-                        escaped = False
-                    elif char == "\\" and quoted:
-                        escaped = True
-                    elif char == '"':
-                        quoted = not quoted
-                    elif char == "," and not quoted:
-                        expectations.append(value[start:pos].strip())
-                        start = pos + 1
-                expectations.append(value[start:].strip())
-            remaining = [
-                part for part in expectations if part.lower() != "100-continue"
-            ]
-            if len(remaining) != len(expectations):
-                remaining = [part for part in remaining if part]
-                self.discard("Expect")
-                if remaining:
-                    self["Expect"] = ", ".join(remaining)
+        if self.get("Expect", "").lower() == "100-continue":
+            self.discard("Expect")
 
         return self
 
