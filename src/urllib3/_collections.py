@@ -91,10 +91,11 @@ class RecentlyUsedContainer(typing.Generic[_KT, _VT], typing.MutableMapping[_KT,
         self.lock = RLock()
 
     def __getitem__(self, key: _KT) -> _VT:
-        # Re-insert the item, moving it to the end of the eviction line.
+        # Move the item to the end of the eviction line. move_to_end() keeps
+        # the stored key instead of replacing it with the caller's key.
         with self.lock:
-            item = self._container.pop(key)
-            self._container[key] = item
+            item = self._container[key]
+            self._container.move_to_end(key)
             return item
 
     def __setitem__(self, key: _KT, value: _VT) -> None:

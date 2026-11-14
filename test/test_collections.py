@@ -70,6 +70,17 @@ class TestLRUContainer:
 
         assert list(d._container.keys()) == new_order
 
+    def test_access_keeps_stored_key(self) -> None:
+        d: Container[tuple[str], int] = Container(5)
+        stored_key = ("foo",)
+        d[stored_key] = 1
+
+        equal_key = ("".join(["f", "oo"]),)
+        assert equal_key == stored_key and equal_key is not stored_key
+        d[equal_key]
+
+        assert next(iter(d._container)) is stored_key
+
     def test_delete(self) -> None:
         d: Container[int, bool] = Container(5)
 

@@ -11,7 +11,7 @@ import pytest
 
 from dummyserver.socketserver import HAS_IPV6
 from dummyserver.testcase import (
-    HypercornDummyServerTestCase,
+    DualHypercornDummyServerTestCase,
     IPv6HypercornDummyServerTestCase,
 )
 from urllib3 import HTTPHeaderDict, HTTPResponse, request
@@ -20,20 +20,20 @@ from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
 
+from . import PoolManagerFactory, RequestFunction
 
-class TestPoolManager(HypercornDummyServerTestCase):
-    @classmethod
-    def setup_class(cls) -> None:
-        super().setup_class()
-        cls.base_url = f"http://{cls.host}:{cls.port}"
-        cls.base_url_alt = f"http://{cls.host_alt}:{cls.port}"
 
+class TestPoolManager(DualHypercornDummyServerTestCase):
     @pytest.mark.parametrize(
         "pool_manager_kwargs",
         ({}, {"retries": None}, {"retries": 1}, {"retries": Retry(1)}),
     )
-    def test_redirect(self, pool_manager_kwargs: dict[str, typing.Any]) -> None:
-        with PoolManager(**pool_manager_kwargs) as http:
+    def test_redirect(
+        self,
+        pool_manager_factory: PoolManagerFactory,
+        pool_manager_kwargs: dict[str, typing.Any],
+    ) -> None:
+        with pool_manager_factory(**pool_manager_kwargs) as http:
             r = http.request(
                 "GET",
                 f"{self.base_url}/redirect",
@@ -56,8 +56,12 @@ class TestPoolManager(HypercornDummyServerTestCase):
         "pool_manager_kwargs",
         ({}, {"retries": None}, {"retries": 2}, {"retries": Retry(2)}),
     )
-    def test_redirect_twice(self, pool_manager_kwargs: dict[str, typing.Any]) -> None:
-        with PoolManager(**pool_manager_kwargs) as http:
+    def test_redirect_twice(
+        self,
+        pool_manager_factory: PoolManagerFactory,
+        pool_manager_kwargs: dict[str, typing.Any],
+    ) -> None:
+        with pool_manager_factory(**pool_manager_kwargs) as http:
             r = http.request(
                 "GET",
                 f"{self.base_url}/redirect",
@@ -76,8 +80,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r.status == 200
             assert r.data == b"Dummy server!"
 
-    def test_redirect_to_relative_url(self) -> None:
-        with PoolManager() as http:
+    def test_redirect_to_relative_url(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory() as http:
             r = http.request(
                 "GET",
                 f"{self.base_url}/redirect",
@@ -99,13 +105,15 @@ class TestPoolManager(HypercornDummyServerTestCase):
         (0, Retry(total=0), Retry(redirect=0), Retry(total=0, redirect=0)),
     )
     def test_redirects_disabled_for_pool_manager_with_0(
-        self, retries: typing.Literal[0] | Retry
+        self,
+        pool_manager_factory: PoolManagerFactory,
+        retries: typing.Literal[0] | Retry,
     ) -> None:
         """
         Check handling redirects when retries is set to 0 on the pool
         manager.
         """
-        with PoolManager(retries=retries) as http:
+        with pool_manager_factory(retries=retries) as http:
             with pytest.raises(MaxRetryError):
                 http.request("GET", f"{self.base_url}/redirect")
 
@@ -128,14 +136,16 @@ class TestPoolManager(HypercornDummyServerTestCase):
         ),
     )
     def test_redirects_disabled_for_pool_manager_with_false(
-        self, retries: typing.Literal[False] | Retry
+        self,
+        pool_manager_factory: PoolManagerFactory,
+        retries: typing.Literal[False] | Retry,
     ) -> None:
         """
         Check that setting retries set to False on the pool manager disables
         raising MaxRetryError and redirect=True does not change the
         behavior.
         """
-        with PoolManager(retries=retries) as http:
+        with pool_manager_factory(retries=retries) as http:
             response = http.request("GET", f"{self.base_url}/redirect")
             assert response.status == 303
 
@@ -145,12 +155,14 @@ class TestPoolManager(HypercornDummyServerTestCase):
             response = http.request("GET", f"{self.base_url}/redirect", redirect=False)
             assert response.status == 303
 
-    def test_redirects_disabled_for_individual_request(self) -> None:
+    def test_redirects_disabled_for_individual_request(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
         """
         Check handling redirects when they are meant to be disabled
         on the request level.
         """
-        with PoolManager() as http:
+        with pool_manager_factory() as http:
             # Check when redirect is not passed.
             with pytest.raises(MaxRetryError):
                 http.request("GET", f"{self.base_url}/redirect", retries=0)
@@ -177,8 +189,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
             )
             assert response.status == 303
 
-    def test_cross_host_redirect(self) -> None:
-        with PoolManager() as http:
+    def test_cross_host_redirect(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory() as http:
             cross_host_location = f"{self.base_url_alt}/echo?a=b"
             with pytest.raises(MaxRetryError):
                 http.request(
@@ -201,8 +215,8 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r._pool is not None
             assert r._pool.host == self.host_alt
 
-    def test_too_many_redirects(self) -> None:
-        with PoolManager() as http:
+    def test_too_many_redirects(self, pool_manager_factory: PoolManagerFactory) -> None:
+        with pool_manager_factory() as http:
             with pytest.raises(MaxRetryError):
                 http.request(
                     "GET",
@@ -228,11 +242,11 @@ class TestPoolManager(HypercornDummyServerTestCase):
             # Even with preload_content=False and raise on redirects, we reused the same
             # connection
             assert len(http.pools) == 1
-            pool = http.connection_from_host(self.host, self.port)
+            pool = http.connection_from_host(self.host, self.port, scheme=self.scheme)
             assert pool.num_connections == 1
 
         # Check when retries are configured for the pool manager.
-        with PoolManager(retries=1) as http:
+        with pool_manager_factory(retries=1) as http:
             with pytest.raises(MaxRetryError):
                 http.request(
                     "GET",
@@ -249,8 +263,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
             )
             assert response.status == 200
 
-    def test_redirect_cross_host_remove_headers(self) -> None:
-        with PoolManager() as http:
+    def test_redirect_cross_host_remove_headers(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory() as http:
             r = http.request(
                 "GET",
                 f"{self.base_url}/redirect",
@@ -292,8 +308,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert "cookie" not in data
             assert "Cookie" not in data
 
-    def test_redirect_cross_host_headers_none(self) -> None:
-        with PoolManager() as http:
+    def test_redirect_cross_host_headers_none(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory() as http:
             r = http.urlopen(
                 "GET",
                 f"{self.base_url}/redirect?target={self.base_url_alt}/headers"
@@ -306,8 +324,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r._pool is not None
             assert r._pool.host == self.host_alt
 
-    def test_redirect_cross_host_no_remove_headers(self) -> None:
-        with PoolManager() as http:
+    def test_redirect_cross_host_no_remove_headers(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory() as http:
             r = http.request(
                 "GET",
                 f"{self.base_url}/redirect",
@@ -328,8 +348,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert data["Proxy-Authorization"] == "bar"
             assert data["Cookie"] == "foo=bar"
 
-    def test_redirect_cross_host_set_removed_headers(self) -> None:
-        with PoolManager() as http:
+    def test_redirect_cross_host_set_removed_headers(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory() as http:
             r = http.request(
                 "GET",
                 f"{self.base_url}/redirect",
@@ -384,8 +406,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
                 "cookie": "foo=bar",
             }
 
-    def test_redirect_without_preload_releases_connection(self) -> None:
-        with PoolManager(block=True, maxsize=2) as http:
+    def test_redirect_without_preload_releases_connection(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory(block=True, maxsize=2) as http:
             r = http.request("GET", f"{self.base_url}/redirect", preload_content=False)
             assert isinstance(r, HTTPResponse)
             assert r._pool is not None
@@ -393,8 +417,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r._pool.num_connections == 1
             assert len(http.pools) == 1
 
-    def test_303_redirect_makes_request_lose_body(self) -> None:
-        with PoolManager() as http:
+    def test_303_redirect_makes_request_lose_body(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory() as http:
             response = http.request(
                 "POST",
                 f"{self.base_url}/redirect",
@@ -409,7 +435,9 @@ class TestPoolManager(HypercornDummyServerTestCase):
 
     @pytest.mark.parametrize("chunked_via", ["kwarg", "header"])
     def test_303_redirect_makes_request_lose_body_framing(
-        self, chunked_via: str
+        self,
+        pool_manager_factory: PoolManagerFactory,
+        chunked_via: str,
     ) -> None:
         # The body is dropped, so the redirected GET must not keep announcing
         # a chunked body that it is never going to send.
@@ -419,7 +447,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
             kw["chunked"] = True
         else:
             request_headers["Transfer-Encoding"] = "chunked"
-        with PoolManager() as http:
+        with pool_manager_factory() as http:
             response = http.request(
                 "POST",
                 f"{self.base_url}/redirect?target={self.base_url}/headers_and_params",
@@ -431,10 +459,12 @@ class TestPoolManager(HypercornDummyServerTestCase):
         assert "Transfer-Encoding" not in headers
         assert "Content-Length" not in headers
 
-    def test_303_redirect_with_body_pos(self) -> None:
+    def test_303_redirect_with_body_pos(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
         # The body is dropped, so the position recorded to rewind it has to go
         # as well, otherwise the redirect tries to rewind a body that is gone.
-        with PoolManager() as http:
+        with pool_manager_factory() as http:
             response = http.urlopen(
                 "POST",
                 f"{self.base_url}/redirect?target={self.base_url}/echo",
@@ -445,8 +475,8 @@ class TestPoolManager(HypercornDummyServerTestCase):
         assert response.status == 200
         assert response.data == b""
 
-    def test_unknown_scheme(self) -> None:
-        with PoolManager() as http:
+    def test_unknown_scheme(self, pool_manager_factory: PoolManagerFactory) -> None:
+        with pool_manager_factory() as http:
             unknown_scheme = "unknown"
             unknown_scheme_url = f"{unknown_scheme}://host"
             with pytest.raises(URLSchemeUnknown) as e:
@@ -468,8 +498,8 @@ class TestPoolManager(HypercornDummyServerTestCase):
                 )
             assert e.value.scheme == unknown_scheme
 
-    def test_raise_on_redirect(self) -> None:
-        with PoolManager() as http:
+    def test_raise_on_redirect(self, pool_manager_factory: PoolManagerFactory) -> None:
+        with pool_manager_factory() as http:
             r = http.request(
                 "GET",
                 f"{self.base_url}/redirect",
@@ -479,8 +509,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
 
             assert r.status == 303
 
-    def test_redirect_honors_retry_after(self) -> None:
-        with PoolManager() as http:
+    def test_redirect_honors_retry_after(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory() as http:
             with mock.patch("time.sleep") as sleep_mock:
                 r = http.request("GET", f"{self.base_url}/redirect_after")
             assert r.status == 200
@@ -509,11 +541,13 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r.status == 200
             sleep_mock.assert_not_called()
 
-    def test_redirect_retry_after_keeps_pool_retry_after_max(self) -> None:
+    def test_redirect_retry_after_keeps_pool_retry_after_max(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
         # With retries=None the redirect uses the pool's Retry, so its
         # retry_after_max still caps the wait.
         timestamp = time.time() + 3600
-        with PoolManager(retries=Retry(retry_after_max=5)) as http:
+        with pool_manager_factory(retries=Retry(retry_after_max=5)) as http:
             with mock.patch("time.sleep") as sleep_mock:
                 r = http.request(
                     "GET",
@@ -524,8 +558,8 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert r.status == 200
             sleep_mock.assert_called_once_with(5)
 
-    def test_raise_on_status(self) -> None:
-        with PoolManager() as http:
+    def test_raise_on_status(self, pool_manager_factory: PoolManagerFactory) -> None:
+        with pool_manager_factory() as http:
             with pytest.raises(MaxRetryError):
                 # the default is to raise
                 r = http.request(
@@ -558,25 +592,24 @@ class TestPoolManager(HypercornDummyServerTestCase):
 
             assert r.status == 500
 
-    def test_missing_port(self) -> None:
+    def test_missing_port(self, pool_manager_factory: PoolManagerFactory) -> None:
         # Can a URL that lacks an explicit port like ':80' succeed, or
         # will all such URLs fail with an error?
 
-        with PoolManager() as http:
-            # By globally adjusting `port_by_scheme` we pretend for a moment
-            # that HTTP's default port is not 80, but is the port at which
-            # our test server happens to be listening.
-            port_by_scheme["http"] = self.port
+        with pool_manager_factory() as http:
+            # Use the test server's port as the default for this scheme.
+            original_port = port_by_scheme[self.scheme]
+            port_by_scheme[self.scheme] = self.port
             try:
-                r = http.request("GET", f"http://{self.host}/", retries=0)
+                r = http.request("GET", f"{self.scheme}://{self.host}/", retries=0)
             finally:
-                port_by_scheme["http"] = 80
+                port_by_scheme[self.scheme] = original_port
 
             assert r.status == 200
             assert r.data == b"Dummy server!"
 
-    def test_headers(self) -> None:
-        with PoolManager(headers={"Foo": "bar"}) as http:
+    def test_headers(self, pool_manager_factory: PoolManagerFactory) -> None:
+        with pool_manager_factory(headers={"Foo": "bar"}) as http:
             r = http.request("GET", f"{self.base_url}/headers")
             returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
@@ -607,7 +640,9 @@ class TestPoolManager(HypercornDummyServerTestCase):
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
 
-    def test_headers_http_header_dict(self) -> None:
+    def test_headers_http_header_dict(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
         # Test uses a list of headers to assert the order
         # that headers are sent in the request too.
 
@@ -617,7 +652,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
         headers.add("Baz", "quux")
         headers.add("Multi", "2")
 
-        with PoolManager(headers=headers) as http:
+        with pool_manager_factory(headers=headers) as http:
             r = http.request("GET", f"{self.base_url}/multi_headers")
             returned_headers = r.json()["headers"]
             assert returned_headers[-4:] == [
@@ -644,14 +679,16 @@ class TestPoolManager(HypercornDummyServerTestCase):
                 ["Extra", "extra"],
             ]
 
-    def test_merge_headers_with_pool_manager_headers(self) -> None:
+    def test_merge_headers_with_pool_manager_headers(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
         headers = HTTPHeaderDict()
         headers.add("Cookie", "choc-chip")
         headers.add("Cookie", "oatmeal-raisin")
         orig = headers.copy()
         added_headers = {"Cookie": "tim-tam"}
 
-        with PoolManager(headers=headers) as http:
+        with pool_manager_factory(headers=headers) as http:
             r = http.request(
                 "GET",
                 f"{self.base_url}/multi_headers",
@@ -666,13 +703,15 @@ class TestPoolManager(HypercornDummyServerTestCase):
             # make sure the pool headers weren't modified
             assert http.headers == orig
 
-    def test_headers_http_multi_header_multipart(self) -> None:
+    def test_headers_http_multi_header_multipart(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
         headers = HTTPHeaderDict()
         headers.add("Multi", "1")
         headers.add("Multi", "2")
         old_headers = headers.copy()
 
-        with PoolManager(headers=headers) as http:
+        with pool_manager_factory(headers=headers) as http:
             r = http.request(
                 "POST",
                 f"{self.base_url}/multi_headers",
@@ -706,23 +745,34 @@ class TestPoolManager(HypercornDummyServerTestCase):
                 ["Content-Type", "multipart/form-data; boundary=b; field=value"],
             ]
 
-    def test_body(self) -> None:
-        with PoolManager() as http:
+    def test_body(self, pool_manager_factory: PoolManagerFactory) -> None:
+        with pool_manager_factory() as http:
             r = http.request("POST", f"{self.base_url}/echo", body=b"test")
             assert r.data == b"test"
 
-    def test_http_with_ssl_keywords(self) -> None:
-        with PoolManager(ca_certs="REQUIRED") as http:
+    @pytest.mark.parametrize("server_scheme", ["http"], indirect=True)
+    def test_http_with_ssl_keywords(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory(ca_certs="REQUIRED") as http:
             r = http.request("GET", f"http://{self.host}:{self.port}/")
             assert r.status == 200
 
-    def test_http_with_server_hostname(self) -> None:
-        with PoolManager(server_hostname="example.com") as http:
+    @pytest.mark.parametrize("server_scheme", ["http"], indirect=True)
+    def test_http_with_server_hostname(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory(server_hostname="example.com") as http:
             r = http.request("GET", f"http://{self.host}:{self.port}/")
             assert r.status == 200
 
-    def test_http_with_ca_cert_dir(self) -> None:
-        with PoolManager(ca_certs="REQUIRED", ca_cert_dir="/nosuchdir") as http:
+    @pytest.mark.parametrize("server_scheme", ["http"], indirect=True)
+    def test_http_with_ca_cert_dir(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
+        with pool_manager_factory(
+            ca_certs="REQUIRED", ca_cert_dir="/nosuchdir"
+        ) as http:
             r = http.request("GET", f"http://{self.host}:{self.port}/")
             assert r.status == 200
 
@@ -741,36 +791,50 @@ class TestPoolManager(HypercornDummyServerTestCase):
             ("/echo_uri?[]", b"/echo_uri?%5B%5D"),
         ],
     )
-    def test_encode_http_target(self, target: str, expected_target: bytes) -> None:
-        with PoolManager() as http:
-            url = f"http://{self.host}:{self.port}{target}"
+    def test_encode_http_target(
+        self,
+        pool_manager_factory: PoolManagerFactory,
+        target: str,
+        expected_target: bytes,
+    ) -> None:
+        with pool_manager_factory() as http:
+            url = f"{self.scheme}://{self.host}:{self.port}{target}"
             r = http.request("GET", url)
             assert r.data == expected_target
 
-    def test_top_level_request(self) -> None:
-        r = request("GET", f"{self.base_url}/")
+    def test_top_level_request(self, http_request: RequestFunction) -> None:
+        r = http_request("GET", f"{self.base_url}/")
         assert r.status == 200
         assert r.data == b"Dummy server!"
 
+    @pytest.mark.parametrize("server_scheme", ["http"], indirect=True)
     def test_top_level_request_without_keyword_args(self) -> None:
         body = ""
         with pytest.raises(TypeError):
-            request("GET", f"{self.base_url}/", body)  # type: ignore[misc]
+            request(  # type: ignore[misc]
+                "GET",
+                f"{self.base_url}/",
+                body,
+            )
 
-    def test_top_level_request_with_body(self) -> None:
-        r = request("POST", f"{self.base_url}/echo", body=b"test")
+    def test_top_level_request_with_body(self, http_request: RequestFunction) -> None:
+        r = http_request("POST", f"{self.base_url}/echo", body=b"test")
         assert r.status == 200
         assert r.data == b"test"
 
-    def test_top_level_request_with_preload_content(self) -> None:
-        r = request("GET", f"{self.base_url}/echo", preload_content=False)
+    def test_top_level_request_with_preload_content(
+        self, http_request: RequestFunction
+    ) -> None:
+        r = http_request("GET", f"{self.base_url}/echo", preload_content=False)
         assert r.status == 200
         assert r.connection is not None
         r.data
         assert r.connection is None
 
-    def test_top_level_request_with_decode_content(self) -> None:
-        r = request(
+    def test_top_level_request_with_decode_content(
+        self, http_request: RequestFunction
+    ) -> None:
+        r = http_request(
             "GET",
             f"{self.base_url}/encodingrequest",
             headers={"accept-encoding": "gzip"},
@@ -779,7 +843,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
         assert r.status == 200
         assert gzip.decompress(r.data) == b"hello, world!"
 
-        r = request(
+        r = http_request(
             "GET",
             f"{self.base_url}/encodingrequest",
             headers={"accept-encoding": "gzip"},
@@ -788,8 +852,10 @@ class TestPoolManager(HypercornDummyServerTestCase):
         assert r.status == 200
         assert r.data == b"hello, world!"
 
-    def test_top_level_request_with_redirect(self) -> None:
-        r = request(
+    def test_top_level_request_with_redirect(
+        self, http_request: RequestFunction
+    ) -> None:
+        r = http_request(
             "GET",
             f"{self.base_url}/redirect",
             fields={"target": f"{self.base_url}/"},
@@ -798,7 +864,7 @@ class TestPoolManager(HypercornDummyServerTestCase):
 
         assert r.status == 303
 
-        r = request(
+        r = http_request(
             "GET",
             f"{self.base_url}/redirect",
             fields={"target": f"{self.base_url}/"},
@@ -808,13 +874,16 @@ class TestPoolManager(HypercornDummyServerTestCase):
         assert r.status == 200
         assert r.data == b"Dummy server!"
 
-    def test_top_level_request_with_retries(self) -> None:
-        r = request("GET", f"{self.base_url}/redirect", retries=False)
+    def test_top_level_request_with_retries(
+        self, http_request: RequestFunction
+    ) -> None:
+        r = http_request("GET", f"{self.base_url}/redirect", retries=False)
         assert r.status == 303
 
-        r = request("GET", f"{self.base_url}/redirect", retries=3)
+        r = http_request("GET", f"{self.base_url}/redirect", retries=3)
         assert r.status == 200
 
+    @pytest.mark.parametrize("server_scheme", ["http"], indirect=True)
     def test_top_level_request_with_timeout(self) -> None:
         with mock.patch("urllib3.poolmanager.RequestMethods.request") as mockRequest:
             mockRequest.return_value = HTTPResponse(status=200)
@@ -847,10 +916,12 @@ class TestPoolManager(HypercornDummyServerTestCase):
             HTTPHeaderDict(cookie="foo, bar"),
         ],
     )
-    def test_request_with_json(self, headers: HTTPHeaderDict) -> None:
+    def test_request_with_json(
+        self, headers: HTTPHeaderDict, http_request: RequestFunction
+    ) -> None:
         old_headers = None if headers is None else headers.copy()
         body = {"attribute": "value"}
-        r = request(
+        r = http_request(
             method="POST", url=f"{self.base_url}/echo_json", headers=headers, json=body
         )
         assert r.status == 200
@@ -863,10 +934,12 @@ class TestPoolManager(HypercornDummyServerTestCase):
         # Ensure the header argument itself is not modified in-place.
         assert headers == old_headers
 
-    def test_top_level_request_with_json_with_httpheaderdict(self) -> None:
+    def test_top_level_request_with_json_with_httpheaderdict(
+        self, pool_manager_factory: PoolManagerFactory
+    ) -> None:
         body = {"attribute": "value"}
         header = HTTPHeaderDict(cookie="foo, bar")
-        with PoolManager(headers=header) as http:
+        with pool_manager_factory(headers=header) as http:
             r = http.request(method="POST", url=f"{self.base_url}/echo_json", json=body)
             assert r.status == 200
             assert r.json() == body
@@ -874,12 +947,14 @@ class TestPoolManager(HypercornDummyServerTestCase):
                 " ", ""
             ).split(",")
 
+    @pytest.mark.parametrize("server_scheme", ["http"], indirect=True)
     def test_top_level_request_with_body_and_json(self) -> None:
         match = "request got values for both 'body' and 'json' parameters which are mutually exclusive"
         with pytest.raises(TypeError, match=match):
             body = {"attribute": "value"}
             request(method="POST", url=f"{self.base_url}/echo", body="", json=body)
 
+    @pytest.mark.parametrize("server_scheme", ["http"], indirect=True)
     def test_top_level_request_with_invalid_body(self) -> None:
         class BadBody:
             def __repr__(self) -> str:

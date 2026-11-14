@@ -76,7 +76,7 @@ async def upload() -> ResponseReturnValue:
     "Confirm that the uploaded file conforms to specification"
     await request.get_data(parse_form_data=True)
     params = await request.form
-    param = params.get("upload_param")
+    param = params["upload_param"]
     filename_param = params.get("upload_filename")
     size = int(params.get("upload_size", "0"))
     files_ = (await request.files).getlist(param)
