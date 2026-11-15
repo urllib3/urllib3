@@ -26,6 +26,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import _wrap_iterator_body
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -444,6 +445,9 @@ class PoolManager(RequestMethods):
         The given ``url`` parameter must be absolute, such that an appropriate
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
+        if kw.get("body") is not None:
+            kw["body"] = _wrap_iterator_body(kw["body"])
+
         u = parse_url(url)
 
         if u.scheme is None:
