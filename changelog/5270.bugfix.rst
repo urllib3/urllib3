@@ -1,0 +1,1 @@
+Changed ``Retry`` to raise ``TypeError`` when ``status_forcelist``, ``allowed_methods`` or ``remove_headers_on_redirect`` is given a string instead of a collection of values.
