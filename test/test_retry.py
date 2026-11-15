@@ -388,6 +388,16 @@ class TestRetry:
         with pytest.raises(ReadTimeoutError):
             retry.increment(method="POST", error=error)
 
+    def test_retry_query_method_allowed(self) -> None:
+        # QUERY is safe and idempotent, so it is retried by default.
+        error = ReadTimeoutError(DUMMY_POOL, "/", "read timed out")
+        retry = Retry()
+        retry = retry.increment(method="QUERY", error=error)
+        assert retry.total == 9
+
+        retry = Retry(status_forcelist=[500])
+        assert retry.is_retry("QUERY", status_code=500)
+
     def test_retry_default_remove_headers_on_redirect(self) -> None:
         retry = Retry()
 
