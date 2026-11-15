@@ -86,6 +86,17 @@ class TestProxyManager:
 
             assert headers == expected_headers
 
+    def test_proxy_headers_provided_in_any_case(self) -> None:
+        url = "http://pypi.org/project/urllib3/"
+        with ProxyManager("http://something:1234") as p:
+            provided_headers = {
+                "accept": "application/json",
+                "host": "test.python.org",
+            }
+            headers = p._set_proxy_headers(url, provided_headers)
+
+            assert list(headers.items()) == list(provided_headers.items())
+
     def test_default_port(self) -> None:
         with ProxyManager("http://something") as p:
             assert p.proxy is not None
