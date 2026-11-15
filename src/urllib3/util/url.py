@@ -20,7 +20,7 @@ _SCHEME_RE = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+-]*:|/)")
 _HOST_INVALID_CHAR_RE = re.compile(r"[\x00-\x20\x7f]")
 _URI_RE = re.compile(
     r"^(?:([a-zA-Z][a-zA-Z0-9+.-]*):)?"
-    r"(?://([^\\/?#]*))?"
+    r"(?://([^/?#]*))?"
     r"([^?#]*)"
     r"(?:\?([^#]*))?"
     r"(?:#(.*))?$",
@@ -56,7 +56,13 @@ _UNRESERVED_PAT = r"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567
 _IPV6_PAT = "(?:" + "|".join([x % _subs for x in _variations]) + ")"
 _ZONE_ID_PAT = "(?:%25|%)(?:[" + _UNRESERVED_PAT + "]|%[a-fA-F0-9]{2})+"
 _IPV6_ADDRZ_PAT = r"\[" + _IPV6_PAT + r"(?:" + _ZONE_ID_PAT + r")?\]"
-_REG_NAME_PAT = r"(?:[^\[\]%:/?#]|%[a-fA-F0-9]{2})*"
+_SUB_DELIM_PAT = "!$&'()*+,;="
+# RFC 3986 section 3.2.2 allows only unreserved characters, percent-encoded
+# octets, and sub-delimiters in a registered name. We additionally accept
+# non-ASCII characters so they can be normalized to IDNA by _normalize_host().
+_REG_NAME_PAT = (
+    rf"(?:[{_UNRESERVED_PAT}{_SUB_DELIM_PAT}]|[^\x00-\x7f]|%[a-fA-F0-9]{{2}})*"
+)
 _TARGET_RE = re.compile(r"^(/[^?#]*)(?:\?([^#]*))?(?:#.*)?$")
 
 _IPV4_RE = re.compile(
@@ -77,7 +83,7 @@ _HOST_PORT_RE = re.compile(_HOST_PORT_PAT, re.UNICODE | re.DOTALL)
 _UNRESERVED_CHARS = set(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-~"
 )
-_SUB_DELIM_CHARS = set("!$&'()*+,;=")
+_SUB_DELIM_CHARS = set(_SUB_DELIM_PAT)
 _USERINFO_CHARS = _UNRESERVED_CHARS | _SUB_DELIM_CHARS | {":"}
 _PATH_CHARS = _USERINFO_CHARS | {"@", "/"}
 _QUERY_CHARS = _FRAGMENT_CHARS = _PATH_CHARS | {"?"}
