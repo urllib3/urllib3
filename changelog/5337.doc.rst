@@ -1,0 +1,2 @@
+Clarified in ``HTTPResponse.shutdown()`` documentation that on Windows it does not
+interrupt a read that is already blocked in another thread.
