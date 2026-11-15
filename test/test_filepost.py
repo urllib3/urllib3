@@ -114,3 +114,16 @@ class TestMultipartEncoding:
         )
 
         assert encoded == expected
+
+    def test_encode_multipart_formdata_none_filename(self) -> None:
+        fields = {"metadata": (None, b"{}", "application/json")}
+        encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        expected = (
+            b"--" + BOUNDARY_BYTES + b"\r\n"
+            b'Content-Disposition: form-data; name="metadata"\r\n'
+            b"Content-Type: application/json\r\n"
+            b"\r\n"
+            b"{}\r\n"
+            b"--" + BOUNDARY_BYTES + b"--\r\n"
+        )
+        assert encoded == expected
