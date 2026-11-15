@@ -437,6 +437,67 @@ def test_specific_method(
     )
 
 
+def test_null_body_non_streaming(
+    selenium_coverage: typing.Any,
+    testserver_http: PyodideServerInfo,
+) -> None:
+    """A 204 makes ``fetch`` set ``response.body`` to JavaScript ``null``.
+
+    Pyodide converts that to ``JsNull``, which is *not* ``None``, so an
+    ``is not None`` guard lets it through and the reader call then fails with
+    ``AttributeError: 'JsNull' object has no attribute 'getReader'`` (#3723).
+
+    204 is used rather than HEAD because the fetch spec guarantees a null body
+    for it by status, independent of what the server sends.
+    """
+
+    @run_in_pyodide  # type: ignore[untyped-decorator]
+    def pyodide_test(selenium_coverage, host: str, port: int) -> None:  # type: ignore[no-untyped-def]
+        from urllib3 import HTTPSConnectionPool
+
+        with HTTPSConnectionPool(host, port) as pool:
+            response = pool.request("GET", "/status?status=204 NO CONTENT")
+            assert response.status == 204
+            assert response.data == b""
+
+    pyodide_test(
+        selenium_coverage, testserver_http.http_host, testserver_http.https_port
+    )
+
+
+@pytest.mark.webworkers
+def test_null_body_streaming(
+    testserver_http: PyodideServerInfo,
+    run_from_server: ServerRunnerInfo,
+    prefer_jspi: bool,
+) -> None:
+    """Same as above on the streaming path, which is the one #3723 reported.
+
+    Streaming has to run in a webworker, and it reaches ``response.body``
+    through a different branch than the non-streaming path -- ``_JSPIReadStream``
+    under JSPI, the worker's ``getReader()`` otherwise -- so both need covering.
+    """
+    url = (
+        f"http://{testserver_http.http_host}:{testserver_http.http_port}"
+        "/status?status=204 NO CONTENT"
+    )
+    worker_code = f"""
+            import urllib3.contrib.emscripten.fetch
+            await urllib3.contrib.emscripten.fetch.wait_for_streaming_ready()
+            from urllib3.response import BaseHTTPResponse
+            from urllib3.connection import HTTPConnection
+
+            conn = HTTPConnection("{testserver_http.http_host}", {testserver_http.http_port})
+            conn.request("GET", "{url}", preload_content=False)
+            response = conn.getresponse()
+            assert isinstance(response, BaseHTTPResponse)
+            assert(urllib3.contrib.emscripten.fetch.has_jspi() == {prefer_jspi})
+            assert response.status == 204
+            assert response.data == b""
+"""
+    run_from_server.run_webworker(worker_code)
+
+
 @pytest.mark.webworkers
 def test_streaming_download(
     testserver_http: PyodideServerInfo,

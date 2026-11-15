@@ -47,6 +47,7 @@ from pyodide.ffi import (  # type: ignore[import-not-found]
     JsArray,
     JsException,
     JsProxy,
+    jsnull,
     to_js,
 )
 
@@ -528,7 +529,9 @@ def send_request(request: EmscriptenRequest) -> EmscriptenResponse:
 
         headers = dict(Parser().parsestr(js_xhr.getAllResponseHeaders()))
 
-        if not is_in_browser_main_thread():
+        if js_xhr.response is jsnull:
+            body = b""
+        elif not is_in_browser_main_thread():
             body = js_xhr.response.to_py().tobytes()
         else:
             body = js_xhr.response.encode("ISO-8859-15")
@@ -596,19 +599,20 @@ def send_jspi_request(
         else:
             headers[str(iter_value_js.value[0])] = str(iter_value_js.value[1])
     status_code = response_js.status
-    body: bytes | io.RawIOBase = b""
+    body: bytes | io.RawIOBase
 
     response = EmscriptenResponse(
         status_code=status_code, headers=headers, body=b"", request=request
     )
-    if streaming:
+    if response_js.body is jsnull:
+        body = b""
+    elif streaming:
         # get via inputstream
-        if response_js.body is not None:
-            # get a reader from the fetch response
-            body_stream_js = response_js.body.getReader()
-            body = _JSPIReadStream(
-                body_stream_js, timeout, request, response, js_abort_controller
-            )
+        # get a reader from the fetch response
+        body_stream_js = response_js.body.getReader()
+        body = _JSPIReadStream(
+            body_stream_js, timeout, request, response, js_abort_controller
+        )
     else:
         # get directly via arraybuffer
         # n.b. this is another async JavaScript call.
@@ -618,7 +622,7 @@ def send_jspi_request(
             js_abort_controller,
             request=request,
             response=response,
-        ).to_py()
+        ).to_bytes()
     response.body = body
     return response
 
