@@ -1,0 +1,1 @@
+Added the ``URLLIB3_DISABLE_BROTLI`` environment variable to disable Brotli content decoding even when a Brotli package is installed.

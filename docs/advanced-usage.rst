@@ -606,6 +606,18 @@ Here's an example using brotli encoding via the ``Accept-Encoding`` header:
         headers={"Accept-Encoding": "br"}
     )
 
+Brotli support can be forcibly disabled even when the ``brotli`` or
+``brotlicffi`` package is installed by setting the environment variable
+``URLLIB3_DISABLE_BROTLI`` to a non-empty value. The variable is read
+once when urllib3 is imported; setting it afterwards has no effect.
+With it set, urllib3 treats Brotli as if no Brotli package were
+installed: ``Accept-Encoding`` no longer offers ``br`` and ``br``
+responses pass through undecoded.
+
+.. code-block:: bash
+
+    export URLLIB3_DISABLE_BROTLI=1
+
 Zstandard Encoding
 ------------------
 
