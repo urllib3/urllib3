@@ -289,11 +289,15 @@ def _encode_invalid_chars(
     # and contains no '%' needs neither encoding nor percent-normalization.
     # Components containing '%' always take the general path below because
     # how '%' is treated depends on whether the whole component is already
-    # percent-encoded.
+    # percent-encoded. set.issuperset() does the membership checks in C.
     if (
         "%" not in component
         and component.isascii()
-        and all(map(allowed_chars.__contains__, component))
+        and (
+            allowed_chars.issuperset(component)
+            if type(allowed_chars) is set
+            else all(map(allowed_chars.__contains__, component))
+        )
     ):
         return component
 
