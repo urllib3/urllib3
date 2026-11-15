@@ -25,6 +25,7 @@ from urllib3.exceptions import (
     ReadTimeoutError,
 )
 from urllib3.response import HTTPResponse
+from urllib3.util.retry import RequestHistory, Retry
 
 
 class TestPickle:
@@ -34,6 +35,12 @@ class TestPickle:
             HTTPError(None),
             MaxRetryError(DUMMY_POOL, "", None),
             MaxRetryError(DUMMY_POOL, "", Exception("Error occured")),
+            MaxRetryError(
+                DUMMY_POOL,
+                "",
+                Exception("Error occured"),
+                Retry(total=0, history=(RequestHistory("GET", "/", None, 500, None),)),
+            ),
             LocationParseError(""),
             ConnectTimeoutError(None),
             HTTPError("foo"),
@@ -93,6 +100,33 @@ class TestFormat:
 
         assert "defects" in str(hpe)
         assert "unparsed_data" in str(hpe)
+
+
+class TestMaxRetryError:
+    def test_retries_defaults_to_none(self) -> None:
+        error = MaxRetryError(DUMMY_POOL, "/", Exception("Error occured"))
+        assert error.retries is None
+
+    def test_retries_exposes_history(self) -> None:
+        history = (
+            RequestHistory("GET", "/", ConnectTimeoutError(), None, None),
+            RequestHistory("GET", "/", None, 500, None),
+        )
+        retries = Retry(total=0, history=history)
+        error = MaxRetryError(DUMMY_POOL, "/", Exception("Error occured"), retries)
+
+        assert error.retries is retries
+        assert error.retries.history == history
+
+    def test_retries_survives_pickling(self) -> None:
+        history = (RequestHistory("GET", "/", None, 500, None),)
+        retries = Retry(total=0, history=history)
+        error = MaxRetryError(DUMMY_POOL, "/", Exception("Error occured"), retries)
+
+        result = pickle.loads(pickle.dumps(error))
+        assert isinstance(result, MaxRetryError)
+        assert result.retries is not None
+        assert result.retries.history == history
 
 
 class TestNewConnectionError:
