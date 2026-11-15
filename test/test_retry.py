@@ -425,6 +425,14 @@ class TestRetry:
         retry = Retry()
         assert retry.parse_retry_after(value) == expected
 
+    @pytest.mark.parametrize("digits", [10, 4300, 4301, 100_000])
+    def test_parse_retry_after_many_digits(self, digits: int) -> None:
+        retry = Retry()
+        assert retry.parse_retry_after("1" * digits) == retry.retry_after_max
+        assert (
+            retry.parse_retry_after(" " + "1" * digits + " ") == retry.retry_after_max
+        )
+
     @pytest.mark.parametrize("respect_retry_after_header", [True, False])
     def test_respect_retry_after_header_propagated(
         self, respect_retry_after_header: bool

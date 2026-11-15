@@ -347,7 +347,11 @@ class Retry:
         seconds: float
         # Whitespace: https://tools.ietf.org/html/rfc7230#section-3.2.4
         if re.match(r"^\s*[0-9]+\s*$", retry_after):
-            seconds = int(retry_after)
+            try:
+                seconds = int(retry_after)
+            except ValueError:
+                # More digits than int() accepts, far beyond any maximum.
+                seconds = self.retry_after_max
         else:
             retry_date_tuple = email.utils.parsedate_tz(retry_after)
             if retry_date_tuple is None:
