@@ -36,6 +36,11 @@ class TestConnection:
     Tests in this suite should not make any network requests or connections.
     """
 
+    @pytest.mark.parametrize("blocksize", [0, -1])
+    def test_blocksize_must_be_positive(self, blocksize: int) -> None:
+        with pytest.raises(ValueError, match="blocksize must be greater than 0"):
+            HTTPConnection("example.com", blocksize=blocksize)
+
     def test_match_hostname_no_cert(self) -> None:
         cert = None
         asserted_hostname = "foo"
