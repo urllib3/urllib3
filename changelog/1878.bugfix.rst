@@ -1,0 +1,5 @@
+Fixed ``HTTPConnection.is_connected`` (and therefore ``util.is_connection_dropped()``
+and connection reuse in ``HTTPConnectionPool``) raising ``ValueError: file descriptor
+cannot be a negative integer (-1)`` when the underlying socket had been closed without
+going through ``HTTPConnection.close()``. Such a connection is now reported as
+disconnected and is transparently replaced by a new one.
