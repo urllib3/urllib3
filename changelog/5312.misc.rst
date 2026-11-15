@@ -1,0 +1,1 @@
+Added regression tests for LRU cache operation sequences and disposal callbacks running outside the cache lock.
