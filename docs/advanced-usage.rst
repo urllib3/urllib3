@@ -90,6 +90,8 @@ that urllib3 will only read from the socket when data is requested.
     HTTP connection.
 
 :meth:`~response.HTTPResponse.stream` lets you iterate over chunks of the response content.
+The ``32`` below is a chunk size in bytes, chosen to keep the printed output small.
+For larger transfers, omit the argument to use the default 64 KiB chunk size.
 
 .. code-block:: python
 
@@ -164,6 +166,45 @@ You can use this file-like object to do things like decode the content using
     # {"origin": "127.0.0.1"}
 
     resp.release_conn()
+
+Limiting download size
+~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``preload_content=False`` and count the bytes read to reject an oversized
+response. Do not rely only on ``Content-Length``: the header may be absent, and
+for compressed responses it describes the compressed body, not its decoded size.
+
+.. code-block:: python
+
+    import urllib3
+
+    max_size = 1024 * 1024
+    data = bytearray()
+    resp = urllib3.request(
+        "GET",
+        "https://httpbin.org/bytes/1024",
+        preload_content=False,
+    )
+    try:
+        for chunk in resp.stream():
+            if len(data) + len(chunk) > max_size:
+                raise ValueError("Response exceeds the size limit")
+            data.extend(chunk)
+    finally:
+        resp.close()
+        resp.release_conn()
+
+    print(len(data))
+    # 1024
+
+The limit applies to the decoded bytes kept in ``data``. A chunk and internal
+buffers also take memory, so this is not a strict memory or network-traffic cap.
+Configure timeouts separately to limit how long a read can wait.
+
+On early exit, ``close()`` discards the connection without draining the remaining
+body. Calling ``release_conn()`` afterward returns the pool slot so later requests
+can create a new connection. Draining an oversized response would defeat the
+purpose of stopping the download early.
 
 .. _upload_buffering:
 
