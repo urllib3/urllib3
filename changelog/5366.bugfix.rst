@@ -1,0 +1,1 @@
+Fixed multipart file tuple type annotations to allow omitting the filename with ``None``.
