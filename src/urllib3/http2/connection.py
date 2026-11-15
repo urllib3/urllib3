@@ -229,36 +229,67 @@ class HTTP2Connection(HTTPSConnection):
     ) -> HTTP2Response:
         status = None
         data = bytearray()
+        headers = HTTPHeaderDict()
         with self._h2_conn as conn:
             end_stream = False
             while not end_stream:
                 # TODO: Arbitrary read value.
-                if received_data := self.sock.recv(65535):
-                    events = conn.receive_data(received_data)
-                    for event in events:
-                        if isinstance(event, h2.events.ResponseReceived):
-                            headers = HTTPHeaderDict()
-                            for header, value in event.headers:
-                                if header == b":status":
-                                    status = int(value.decode())
-                                else:
-                                    headers.add(
-                                        header.decode("ascii"), value.decode("ascii")
-                                    )
+                received_data = self.sock.recv(65535)
+                if not received_data:
+                    # The peer closed the TCP connection before sending
+                    # END_STREAM. Treat this as terminal instead of looping
+                    # forever on recv() == b"" -- which never blocks, so the
+                    # configured socket timeout never gets a chance to fire.
+                    raise ConnectionError(
+                        "Connection closed by server before the HTTP/2 "
+                        "response was complete"
+                    )
 
-                        elif isinstance(event, h2.events.DataReceived):
-                            data += event.data
-                            conn.acknowledge_received_data(
-                                event.flow_controlled_length, event.stream_id
-                            )
+                events = conn.receive_data(received_data)
+                for event in events:
+                    if isinstance(event, h2.events.ResponseReceived):
+                        for header, value in event.headers:
+                            if header == b":status":
+                                status = int(value.decode())
+                            else:
+                                # Header names are guaranteed ASCII by h2, but
+                                # RFC 9110 5.5/5.6 permits obs-text (0x80-0xFF)
+                                # bytes in field *values*; decode those as
+                                # latin-1, matching the HTTP/1.1 path
+                                # (http.client also uses latin-1 for headers).
+                                headers.add(
+                                    header.decode("ascii"), value.decode("latin-1")
+                                )
 
-                        elif isinstance(event, h2.events.StreamEnded):
-                            end_stream = True
+                    elif isinstance(event, h2.events.DataReceived):
+                        data += event.data
+                        conn.acknowledge_received_data(
+                            event.flow_controlled_length, event.stream_id
+                        )
+
+                    elif isinstance(event, h2.events.StreamEnded):
+                        end_stream = True
+
+                    elif isinstance(event, h2.events.StreamReset):
+                        raise ConnectionError(
+                            f"Stream {event.stream_id} reset by remote server "
+                            f"(error_code={event.error_code})"
+                        )
+
+                    elif isinstance(event, h2.events.ConnectionTerminated):
+                        raise ConnectionError(
+                            f"Connection terminated by remote server "
+                            f"(error_code={event.error_code})"
+                        )
 
                 if data_to_send := conn.data_to_send():
                     self.sock.sendall(data_to_send)
 
-        assert status is not None
+        if status is None:
+            raise ConnectionError(
+                "Connection closed before an HTTP/2 response was received"
+            )
+
         return HTTP2Response(
             status=status,
             headers=headers,
