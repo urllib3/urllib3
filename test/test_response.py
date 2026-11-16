@@ -557,6 +557,90 @@ class TestResponse:
         assert ret == b"foobarbaz"
 
     @onlyBrotli()
+    @pytest.mark.parametrize("read_method", ("read", "read1", "stream"))
+    def test_brotli_eof_flush_respects_max_length(self, read_method: str) -> None:
+        if not _brotli_gte_1_2_0_available:
+            pytest.skip("Brotli >= 1.2.0 is required to bound decompression")
+
+        amt = 1024
+        original_data = b"\x00" * (4 * 1024 * 1024)
+        compressed_data = brotli.compress(original_data)
+        fp = BytesIO(compressed_data)
+        r = HTTPResponse(fp, headers={"content-encoding": "br"}, preload_content=False)
+        r._init_decoder()
+        assert r._decoder is not None
+
+        with mock.patch.object(
+            r._decoder, "decompress", wraps=r._decoder.decompress
+        ) as decompress_mock:
+            chunks = []
+            if read_method == "stream":
+                for chunk in r.stream(amt):
+                    chunks.append(chunk)
+                    # The entire expanded body must not be materialized in
+                    # the response's decoded buffer at end-of-body.
+                    assert len(r._decoded_buffer) < 1024 * 1024
+            else:
+                read = getattr(r, read_method)
+                while chunk := read(amt):
+                    chunks.append(chunk)
+                    assert len(r._decoded_buffer) < 1024 * 1024
+
+        assert b"".join(chunks) == original_data
+        assert all(len(chunk) <= amt for chunk in chunks)
+        max_lengths = [
+            call.kwargs["max_length"] for call in decompress_mock.call_args_list
+        ]
+        assert max_lengths
+        # The EOF flush must keep honoring the caller's budget instead of
+        # switching to an unlimited decompression.
+        assert all(0 < max_length <= amt for max_length in max_lengths)
+
+    @onlyBrotli()
+    def test_chunked_brotli_eof_flush_respects_max_length(self) -> None:
+        if not _brotli_gte_1_2_0_available:
+            pytest.skip("Brotli >= 1.2.0 is required to bound decompression")
+
+        amt = 1024
+        original_data = b"\x00" * (4 * 1024 * 1024)
+        httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        httplib_r.fp = MockChunkedEncodingResponse(  # type: ignore[assignment]
+            [brotli.compress(original_data)]
+        )
+        r = HTTPResponse(
+            httplib_r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked", "content-encoding": "br"},
+        )
+
+        chunks = list(r.read_chunked(amt=amt, decode_content=True))
+
+        assert b"".join(chunks) == original_data
+        # The EOF flush must not yield the entire expanded body in one chunk.
+        assert max(len(chunk) for chunk in chunks) < 1024 * 1024
+
+    def test_flush_decoder_forwards_max_length(self) -> None:
+        class FakeDecoder:
+            def __init__(self) -> None:
+                self.calls: list[int] = []
+
+            def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+                self.calls.append(max_length)
+                return b"x" * (max_length if max_length >= 0 else 100)
+
+            def flush(self) -> bytes:
+                return b""
+
+        decoder = FakeDecoder()
+        r = HTTPResponse(BytesIO(b""), preload_content=False)
+        r._decoder = decoder  # type: ignore[assignment]
+        assert r._flush_decoder(7) == b"x" * 7
+        assert decoder.calls == [7]
+
+        assert r._flush_decoder() == b"x" * 100
+        assert decoder.calls == [7, -1]
+
+    @onlyBrotli()
     def test_decode_brotli_error(self) -> None:
         fp = BytesIO(b"foo")
         with pytest.raises(DecodeError):
