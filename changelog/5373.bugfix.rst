@@ -1,0 +1,1 @@
+Fixed Brotli responses to honor the ``max_length`` budget when the decoder is flushed at the end of the body, avoiding materializing the entire remaining decompressed output in a single read.

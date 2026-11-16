@@ -673,7 +673,7 @@ class BaseHTTPResponse(io.IOBase):
                 )
             return data
 
-        if max_length is None or flush_decoder:
+        if max_length is None:
             max_length = -1
 
         try:
@@ -688,17 +688,32 @@ class BaseHTTPResponse(io.IOBase):
                 e,
             ) from e
         if flush_decoder:
-            data += self._flush_decoder()
+            # Preserve a caller-provided budget when flushing. Flushing must
+            # not discard `max_length` and let the decoder materialize its
+            # entire backlog in one call (CVE-2025-66471 / CVE-2026-44432).
+            if max_length < 0:
+                data += self._flush_decoder()
+            else:
+                remaining = max_length - len(data)
+                if remaining > 0:
+                    data += self._flush_decoder(remaining)
 
         return data
 
-    def _flush_decoder(self) -> bytes:
+    def _flush_decoder(self, max_length: int = -1) -> bytes:
         """
         Flushes the decoder. Should only be called if the decoder is actually
         being used.
+
+        :param max_length:
+            The maximum number of decoded bytes to produce. A negative value
+            means no limit.
         """
         if self._decoder:
-            return self._decoder.decompress(b"") + self._decoder.flush()
+            return (
+                self._decoder.decompress(b"", max_length=max_length)
+                + self._decoder.flush()
+            )
         return b""
 
     # Compatibility methods for `io` module
@@ -1502,8 +1517,11 @@ class HTTPResponse(BaseHTTPResponse):
                 # On CPython and PyPy, we should never need to flush the
                 # decoder. However, on Jython we *might* need to, so
                 # lets defensively do it anyway.
-                decoded = self._flush_decoder()
-                if decoded:  # Platform-specific: Jython.
+                #
+                # Drain any remaining decoded bytes in bounded chunks so that
+                # a decoder with a large internal backlog cannot materialize
+                # all of it at once when `amt` is set.
+                while decoded := self._flush_decoder(amt if amt is not None else -1):
                     yield decoded
 
             # Chunk content ends with \r\n: discard it.
