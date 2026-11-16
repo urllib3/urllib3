@@ -1,0 +1,1 @@
+Clarified that ``parse_url()`` is intended for HTTP(S) URLs and may change rootless paths used by other URI schemes.
