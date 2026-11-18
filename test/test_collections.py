@@ -385,7 +385,7 @@ class TestHTTPHeaderDict:
         ]
 
     def test_create_with_bytes_values(self) -> None:
-        from_dict = HTTPHeaderDict({"user-agent": b"from-dict"})  # type: ignore[dict-item]
+        from_dict = HTTPHeaderDict({"user-agent": b"from-dict"})  # type: ignore[arg-type]
         assert from_dict["user-agent"] == "from-dict"
         from_list = HTTPHeaderDict([("user-agent", b"from-list")])  # type: ignore[list-item]
         assert from_list["user-agent"] == "from-list"
@@ -395,7 +395,7 @@ class TestHTTPHeaderDict:
     def test_extend_with_bytes_values(self, d: HTTPHeaderDict) -> None:
         d.extend([("set-cookie", b"100"), ("set-cookie", b"200")])  # type: ignore[list-item]
         assert d["set-cookie"] == "100, 200"
-        d.extend({"x-num": b"42"})  # type: ignore[dict-item]
+        d.extend({"x-num": b"42"})  # type: ignore[arg-type]
         assert d["x-num"] == "42"
 
     def test_update_with_bytes_value(self, d: HTTPHeaderDict) -> None:
