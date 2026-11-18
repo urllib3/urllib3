@@ -347,6 +347,74 @@ class TestHTTPHeaderDict:
         assert b"Content-Type" in d  # type: ignore[comparison-overlap]
         assert b"X-Not-There" not in d  # type: ignore[comparison-overlap]
 
+    def test_setitem_with_bytes_value(self) -> None:
+        # Regression test for https://github.com/urllib3/urllib3/issues/3072
+        d = HTTPHeaderDict()
+        encoded = "Schönefeld/1.18.0".encode("latin-1")
+        # The bytes value gets converted to str. The API is typed for str only,
+        # but the implementation supports bytes.
+        d["user-agent"] = encoded  # type: ignore[assignment]
+        assert d["user-agent"] == "Schönefeld/1.18.0"
+        assert isinstance(d["user-agent"], str)
+        assert d.getlist("user-agent") == ["Schönefeld/1.18.0"]
+
+    def test_setitem_with_bytes_key_and_value(self) -> None:
+        d = HTTPHeaderDict()
+        d[b"user-agent"] = b"Sch\xc3\xb6nefeld"  # type: ignore[index, assignment]
+        assert d["user-agent"] == b"Sch\xc3\xb6nefeld".decode("latin-1")
+
+    def test_add_with_bytes_value(self, d: HTTPHeaderDict) -> None:
+        d.add("cookie", b"asdf")  # type: ignore[arg-type]
+        assert d.getlist("cookie") == ["foo", "bar", "asdf"]
+        assert d["cookie"] == "foo, bar, asdf"
+
+    def test_add_combine_with_bytes_value(self, d: HTTPHeaderDict) -> None:
+        d.add("cookie", b"asdf", combine=True)  # type: ignore[arg-type]
+        assert d.getlist("cookie") == ["foo", "bar, asdf"]
+        assert d["cookie"] == "foo, bar, asdf"
+
+    def test_mixed_str_and_bytes_values(self, d: HTTPHeaderDict) -> None:
+        d.add("cookie", b"quux")  # type: ignore[arg-type]
+        d["other"] = b"bytes"  # type: ignore[assignment]
+        d.add("other", "str")
+        assert d["cookie"] == "foo, bar, quux"
+        assert d["other"] == "bytes, str"
+        assert list(d.itermerged()) == [
+            ("Cookie", "foo, bar, quux"),
+            ("other", "bytes, str"),
+        ]
+
+    def test_create_with_bytes_values(self) -> None:
+        from_dict = HTTPHeaderDict({"user-agent": b"from-dict"})  # type: ignore[arg-type]
+        assert from_dict["user-agent"] == "from-dict"
+        from_list = HTTPHeaderDict([("user-agent", b"from-list")])  # type: ignore[list-item]
+        assert from_list["user-agent"] == "from-list"
+        from_kwargs = HTTPHeaderDict(**{"user-agent": b"from-kwargs"})  # type: ignore[arg-type]
+        assert from_kwargs["user-agent"] == "from-kwargs"
+
+    def test_extend_with_bytes_values(self, d: HTTPHeaderDict) -> None:
+        d.extend([("set-cookie", b"100"), ("set-cookie", b"200")])  # type: ignore[list-item]
+        assert d["set-cookie"] == "100, 200"
+        d.extend({"x-num": b"42"})  # type: ignore[arg-type]
+        assert d["x-num"] == "42"
+
+    def test_update_with_bytes_value(self, d: HTTPHeaderDict) -> None:
+        d.update({"Cookie": b"updated"})  # type: ignore[dict-item]
+        assert d["cookie"] == "updated"
+
+    def test_setdefault_with_bytes_value(self) -> None:
+        d = HTTPHeaderDict()
+        assert d.setdefault("x-a", b"default") == "default"  # type: ignore[arg-type]
+        assert d["x-a"] == "default"
+
+    def test_bytes_value_copy_and_equality(self) -> None:
+        d = HTTPHeaderDict()
+        d["user-agent"] = "Schönefeld/1.18.0".encode("latin-1")  # type: ignore[assignment]
+        clone = d.copy()
+        assert clone == d
+        assert clone["user-agent"] == "Schönefeld/1.18.0"
+        assert repr(d) == "HTTPHeaderDict({'user-agent': 'Schönefeld/1.18.0'})"
+
     def test_getlist_after_copy(self, d: HTTPHeaderDict) -> None:
         assert d.getlist("cookie") == HTTPHeaderDict(d).getlist("cookie")
 

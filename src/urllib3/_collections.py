@@ -253,6 +253,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
+        if isinstance(val, bytes):
+            val = val.decode("latin-1")
         self._container[key.lower()] = [key, val]
 
     def __getitem__(self, key: str) -> str:
@@ -274,7 +276,11 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         return False
 
     def setdefault(self, key: str, default: str = "") -> str:
-        return super().setdefault(key, default)
+        if key not in self:
+            self[key] = default
+        # Return the stored value rather than ``default`` itself so that a
+        # bytes default comes back decoded, like every other read path.
+        return self[key]
 
     def __eq__(self, other: object) -> bool:
         maybe_constructable = ensure_can_construct_http_header_dict(other)
@@ -326,6 +332,8 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
         # avoid a bytes/str comparison by decoding before httplib
         if isinstance(key, bytes):
             key = key.decode("latin-1")
+        if isinstance(val, bytes):
+            val = val.decode("latin-1")
         key_lower = key.lower()
         new_vals = [key, val]
         # Keep the common case aka no item present as fast as possible
