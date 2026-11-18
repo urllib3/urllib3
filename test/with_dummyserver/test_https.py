@@ -3,6 +3,7 @@ from __future__ import annotations
 import concurrent.futures
 import contextlib
 import datetime
+import hashlib
 import os.path
 import shutil
 import ssl
@@ -72,6 +73,7 @@ CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
 
 class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
     tls_protocol_name: str | None = None
+    server_cert_der: typing.ClassVar[bytes]
 
     def tls_protocol_not_default(self) -> bool:
         return self.tls_protocol_name in {"TLSv1", "TLSv1.1"}
@@ -102,43 +104,56 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
 
     @classmethod
     def setup_class(cls) -> None:
-        super().setup_class()
+        with contextlib.ExitStack() as stack:
+            cls.certs_dir = stack.enter_context(tempfile.TemporaryDirectory())
+            certs_dir = Path(cls.certs_dir)
+            with open(DEFAULT_CA, "rb") as crt, open(DEFAULT_CA_KEY, "rb") as key:
+                root_ca = trustme.CA.from_pem(crt.read(), key.read())
 
-        cls.certs_dir = tempfile.mkdtemp()
-        # Start from existing root CA as we don't want to change the server certificate yet
-        with open(DEFAULT_CA, "rb") as crt, open(DEFAULT_CA_KEY, "rb") as key:
-            root_ca = trustme.CA.from_pem(crt.read(), key.read())
+            # Older trustme versions do not expose KeyType and always use RSA.
+            if hasattr(trustme, "KeyType"):
+                server_cert = root_ca.issue_cert(cls.host, key_type=trustme.KeyType.RSA)
+            else:
+                server_cert = root_ca.issue_cert(cls.host)
+            server_pem = server_cert.cert_chain_pems[0]
+            certfile = certs_dir / "server.pem"
+            keyfile = certs_dir / "server.key"
+            server_pem.write_to_path(certfile)
+            server_cert.private_key_pem.write_to_path(keyfile)
+            cls.certs = {
+                **cls.certs,
+                "certfile": str(certfile),
+                "keyfile": str(keyfile),
+            }
+            cls.server_cert_der = ssl.PEM_cert_to_DER_cert(
+                server_pem.bytes().decode("ascii")
+            )
 
-        # Generate another CA to test verification failure
-        bad_ca = trustme.CA()
-        cls.bad_ca_path = os.path.join(cls.certs_dir, "ca_bad.pem")
-        bad_ca.cert_pem.write_to_path(cls.bad_ca_path)
+            # Generate another CA to test verification failure.
+            bad_ca = trustme.CA()
+            cls.bad_ca_path = str(certs_dir / "ca_bad.pem")
+            bad_ca.cert_pem.write_to_path(cls.bad_ca_path)
 
-        # client cert chain
-        intermediate_ca = root_ca.create_child_ca()
-        cert = intermediate_ca.issue_cert("example.com")
-        encrypted_key = encrypt_key_pem(cert.private_key_pem, b"letmein")
+            intermediate_ca = root_ca.create_child_ca()
+            cert = intermediate_ca.issue_cert("example.com")
+            encrypted_key = encrypt_key_pem(cert.private_key_pem, b"letmein")
+            cert.private_key_pem.write_to_path(certs_dir / CLIENT_INTERMEDIATE_KEY)
+            encrypted_key.write_to_path(certs_dir / PASSWORD_CLIENT_KEYFILE)
 
-        cert.private_key_pem.write_to_path(
-            os.path.join(cls.certs_dir, CLIENT_INTERMEDIATE_KEY)
-        )
-        encrypted_key.write_to_path(
-            os.path.join(cls.certs_dir, PASSWORD_CLIENT_KEYFILE)
-        )
-        # Write the client cert and the intermediate CA
-        client_cert = os.path.join(cls.certs_dir, CLIENT_INTERMEDIATE_PEM)
-        cert.cert_chain_pems[0].write_to_path(client_cert)
-        cert.cert_chain_pems[1].write_to_path(client_cert, append=True)
-        # Write only the client cert
-        cert.cert_chain_pems[0].write_to_path(
-            os.path.join(cls.certs_dir, CLIENT_NO_INTERMEDIATE_PEM)
-        )
+            # Write certificates with and without the intermediate CA.
+            client_cert = certs_dir / CLIENT_INTERMEDIATE_PEM
+            cert.cert_chain_pems[0].write_to_path(client_cert)
+            cert.cert_chain_pems[1].write_to_path(client_cert, append=True)
+            cert.cert_chain_pems[0].write_to_path(
+                certs_dir / CLIENT_NO_INTERMEDIATE_PEM
+            )
 
-    @classmethod
-    def teardown_class(cls) -> None:
-        super().teardown_class()
+            super().setup_class()
+            stack.enter_context(cls._stack)
+            cls._stack = stack.pop_all()
 
-        shutil.rmtree(cls.certs_dir)
+    def _server_fingerprint(self, algorithm: str) -> bytes:
+        return hashlib.new(algorithm, self.server_cert_der).digest()
 
     def test_simple(self, http_version: str) -> None:
         with HTTPSConnectionPool(
@@ -464,43 +479,19 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             conn.getresponse().close()
             conn.close()
 
-    def test_assert_fingerprint_md5(self) -> None:
+    @pytest.mark.parametrize("algorithm", ["md5", "sha1", "sha256"])
+    def test_assert_fingerprint(self, algorithm: str) -> None:
+        fingerprint = self._server_fingerprint(algorithm).hex(":").upper()
         with HTTPSConnectionPool(
             "localhost",
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
-            assert_fingerprint=("55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"),
+            assert_fingerprint=fingerprint,
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            https_pool.request("GET", "/")
-
-    def test_assert_fingerprint_sha1(self) -> None:
-        with HTTPSConnectionPool(
-            "localhost",
-            self.port,
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=DEFAULT_CA,
-            assert_fingerprint=(
-                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            ),
-            ssl_minimum_version=self.tls_version(),
-        ) as https_pool:
-            https_pool.request("GET", "/")
-
-    def test_assert_fingerprint_sha256(self) -> None:
-        with HTTPSConnectionPool(
-            "localhost",
-            self.port,
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=DEFAULT_CA,
-            assert_fingerprint=(
-                "E3:59:8E:69:FF:C5:9F:C7:88:87:44:58:22:7F:90:8D:D9:BC:12:C4:90:79:D5:"
-                "DC:A8:5D:4F:60:40:1E:A6:D2"
-            ),
-            ssl_minimum_version=self.tls_version(),
-        ) as https_pool:
-            https_pool.request("GET", "/")
+            response = https_pool.request("GET", "/")
+            assert response.status == 200
 
     def test_assert_invalid_fingerprint(self) -> None:
         def _test_request(pool: HTTPSConnectionPool) -> SSLError:
@@ -521,7 +512,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             )
             e = _test_request(https_pool)
             expected = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-            got = "728b554c9afc1e88a11cad1bb2e7cc3edbc8f98a"
+            got = self._server_fingerprint("sha1").hex()
             assert (
                 str(e)
                 == f'Fingerprints did not match. Expected "{expected}", got "{got}"'
@@ -538,14 +529,14 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             assert "Fingerprint of invalid length:" in str(e)
 
     def test_verify_none_and_bad_fingerprint(self) -> None:
+        fingerprint = self._server_fingerprint("sha1")
+        mismatched = bytes([fingerprint[0] ^ 1]) + fingerprint[1:]
         with HTTPSConnectionPool(
             "127.0.0.1",
             self.port,
             cert_reqs="CERT_NONE",
             assert_hostname=False,
-            assert_fingerprint=(
-                "AA:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            ),
+            assert_fingerprint=mismatched.hex(),
         ) as https_pool:
             with pytest.raises(MaxRetryError) as cm:
                 https_pool.request("GET", "/", retries=0)
@@ -557,9 +548,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             self.port,
             cert_reqs="CERT_NONE",
             assert_hostname=False,
-            assert_fingerprint=(
-                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            ),
+            assert_fingerprint=self._server_fingerprint("sha1").hex(),
         ) as https_pool:
             https_pool.request("GET", "/")
 
@@ -569,9 +558,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
-            assert_fingerprint=(
-                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            ),
+            assert_fingerprint=self._server_fingerprint("sha1").hex(),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
             https_pool.request("GET", "/")
@@ -598,9 +585,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             retries=False,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
-            assert_fingerprint=(
-                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-            ),
+            assert_fingerprint=self._server_fingerprint("sha1").hex(),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
             # TODO This was removed in https://github.com/urllib3/urllib3/pull/703/files
@@ -684,14 +669,12 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                     )
 
     def test_enhanced_ssl_connection(self) -> None:
-        fingerprint = "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
-
         with HTTPSConnectionPool(
             self.host,
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
-            assert_fingerprint=fingerprint,
+            assert_fingerprint=self._server_fingerprint("sha1").hex(),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
             r = https_pool.request("GET", "/")
@@ -1164,16 +1147,16 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         assert ctx.verify_flags == ssl_ctx.verify_flags
 
     def test_assert_missing_hashfunc(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fingerprint = "55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
+        fingerprint = "00" * 16
         with HTTPSConnectionPool(
             "localhost",
             self.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=DEFAULT_CA,
-            assert_fingerprint=(fingerprint),
+            assert_fingerprint=fingerprint,
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
-            digest_length = len(fingerprint.replace(":", "").lower())
+            digest_length = len(fingerprint)
             monkeypatch.setitem(urllib3.util.ssl_.HASHFUNC_MAP, digest_length, None)
             with pytest.raises(MaxRetryError) as cm:
                 https_pool.request("GET", "/", retries=0)
