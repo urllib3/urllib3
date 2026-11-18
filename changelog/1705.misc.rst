@@ -1,0 +1,2 @@
+Generated HTTPS test server certificates at runtime and derived the expected
+certificate fingerprints from those certificates.
