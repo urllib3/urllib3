@@ -3075,6 +3075,74 @@ class TestSocketDummyServerDualStack(SocketDummyServerTestCase):
             s1.close()
             s2.close()
 
+    def test_multi_socket_listener_high_fd(self) -> None:
+        try:
+            import fcntl
+        except ImportError:
+            pytest.skip("fcntl is not available on this platform")
+
+        cmd = getattr(fcntl, "F_DUPFD_CLOEXEC", getattr(fcntl, "F_DUPFD", None))
+        fcntl_fn = getattr(fcntl, "fcntl", None)
+        if cmd is None or fcntl_fn is None:
+            pytest.skip("F_DUPFD is not available")
+
+        try:
+            import resource
+
+            getrlimit = getattr(resource, "getrlimit", None)
+            setrlimit = getattr(resource, "setrlimit", None)
+            rlimit_nofile = getattr(resource, "RLIMIT_NOFILE", None)
+            if getrlimit and setrlimit and rlimit_nofile is not None:
+                soft, hard = getrlimit(rlimit_nofile)
+                if soft < 1050 and hard >= 1050:
+                    setrlimit(rlimit_nofile, (min(hard, 2048), hard))
+        except Exception:
+            pass
+
+        s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        high_s1: socket.socket | None = None
+        high_s2: socket.socket | None = None
+        try:
+            s1.bind(("127.0.0.1", 0))
+            s2.bind(("127.0.0.1", 0))
+            s1.listen(1)
+            s2.listen(1)
+            try:
+                fd1 = fcntl_fn(s1.fileno(), cmd, 1024)
+                fd2 = fcntl_fn(s2.fileno(), cmd, 1025)
+            except OSError:
+                pytest.skip("Unable to allocate file descriptor >= 1024")
+
+            high_s1 = socket.fromfd(fd1, s1.family, s1.type, s1.proto)
+            high_s2 = socket.fromfd(fd2, s2.family, s2.type, s2.proto)
+            # Close the original low-fd sockets so only high-fd listeners remain
+            s1.close()
+            s2.close()
+
+            listener = _MultiSocketListener([high_s1, high_s2])
+            listener.settimeout(1.0)
+
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                client.connect(high_s2.getsockname())
+                conn, _ = listener.accept()
+                try:
+                    client.sendall(b"PING")
+                    assert conn.recv(4) == b"PING"
+                finally:
+                    conn.close()
+            finally:
+                client.close()
+            listener.close()
+        finally:
+            if high_s1 is not None:
+                high_s1.close()
+            if high_s2 is not None:
+                high_s2.close()
+            s1.close()
+            s2.close()
+
     def test_dual_stack_bind_retries_on_eaddrinuse(self) -> None:
         if not HAS_IPV6_AND_DNS:
             pytest.skip("Test requires IPv6 and localhost DNS resolution")

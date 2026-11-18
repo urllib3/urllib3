@@ -10,7 +10,7 @@ import contextlib
 import errno
 import logging
 import os
-import select
+import selectors
 import socket
 import ssl
 import sys
@@ -120,26 +120,30 @@ class _MultiSocketListener:
         if self._closed:
             raise OSError(errno.EBADF, "Bad file descriptor")
         deadline = None if self._timeout is None else time.monotonic() + self._timeout
-        while True:
-            remaining = (
-                None if deadline is None else max(0.0, deadline - time.monotonic())
-            )
-            readable, _, _ = select.select(self._sockets, [], [], remaining)
-            if not readable:
-                raise TimeoutError("timed out")
-            for sock in readable:
-                sock.setblocking(False)
-                try:
-                    conn, addr = sock.accept()
-                except BlockingIOError:
-                    continue
-                finally:
-                    with contextlib.suppress(OSError):
-                        sock.setblocking(True)
-                conn.setblocking(True)
-                return conn, addr
-            if deadline is not None and time.monotonic() >= deadline:
-                raise TimeoutError("timed out")
+        with selectors.DefaultSelector() as selector:
+            for sock in self._sockets:
+                selector.register(sock, selectors.EVENT_READ)
+            while True:
+                remaining = (
+                    None if deadline is None else max(0.0, deadline - time.monotonic())
+                )
+                events = selector.select(remaining)
+                if not events:
+                    raise TimeoutError("timed out")
+                for key, _ in events:
+                    sock = typing.cast(socket.socket, key.fileobj)
+                    sock.setblocking(False)
+                    try:
+                        conn, addr = sock.accept()
+                    except BlockingIOError:
+                        continue
+                    finally:
+                        with contextlib.suppress(OSError):
+                            sock.setblocking(True)
+                    conn.setblocking(True)
+                    return conn, addr
+                if deadline is not None and time.monotonic() >= deadline:
+                    raise TimeoutError("timed out")
 
     def close(self) -> None:
         self._closed = True
