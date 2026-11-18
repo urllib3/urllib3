@@ -1,0 +1,1 @@
+Added ``urllib3.multipart`` with streaming ``MultipartEncoder`` and ``MultipartDecoder`` classes and a ``Part`` class representing a single body part. The encoder is a readable, rewindable stream, so multipart bodies containing large files can be sent without loading the whole encoded body into memory, and ``encode_multipart_formdata`` now uses the encoder internally.
