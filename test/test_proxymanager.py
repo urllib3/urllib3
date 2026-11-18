@@ -192,6 +192,7 @@ class TestProxyManagerURLUserinfo:
         with ProxyManager("http://user:pass@proxy.example:3128") as manager:
             assert manager.proxy_headers["Proxy-Authorization"] == "Basic dXNlcjpwYXNz"
             # Credentials are moved into the headers, not kept in the URL.
+            assert manager.proxy is not None
             assert manager.proxy.auth is None
             assert "@" not in manager.proxy.url
 
