@@ -703,14 +703,16 @@ class BaseHTTPResponse(io.IOBase):
         Flushes the decoder. Should only be called if the decoder is actually
         being used.
 
-        When ``max_length`` is non-negative, only that many decoded bytes are
-        returned and any leftover tail stays in the decoder for later reads.
-        ``flush()`` has no size limit, so it is only called for an unbounded
-        flush.
+        When ``max_length`` is non-negative, at most that many bytes are
+        drained from the decoder's pending output, and any leftover tail stays
+        in the decoder for later reads. ``flush()`` itself has no size limit,
+        so it is only called once nothing is left in that tail; it still has
+        to run then, to emit what raw deflate holds back and to detect
+        truncated input such as an incomplete Zstandard frame.
         """
         if self._decoder:
             flushed = self._decoder.decompress(b"", max_length=max_length)
-            if max_length < 0:
+            if max_length < 0 or not self._decoder.has_unconsumed_tail:
                 return flushed + self._decoder.flush()
             return flushed
         return b""
