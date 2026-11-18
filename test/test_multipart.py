@@ -64,6 +64,44 @@ class GeneratingStream(io.RawIOBase):
         return False
 
 
+class ExplodingSeekableStream(io.RawIOBase):
+    """A readable stream whose seekable() raises."""
+
+    def __init__(self, data: bytes) -> None:
+        self._buffer = io.BytesIO(data)
+
+    def read(self, size: int = -1) -> bytes:
+        return self._buffer.read(size)
+
+    def readable(self) -> bool:
+        return True
+
+    def seekable(self) -> bool:
+        raise OSError("seekable is broken")
+
+
+class SeekFailingStream(io.RawIOBase):
+    """A stream that claims to be seekable but whose seek() raises."""
+
+    def __init__(self, data: bytes) -> None:
+        self._buffer = io.BytesIO(data)
+
+    def read(self, size: int = -1) -> bytes:
+        return self._buffer.read(size)
+
+    def readable(self) -> bool:
+        return True
+
+    def seekable(self) -> bool:
+        return True
+
+    def tell(self) -> int:
+        return self._buffer.tell()
+
+    def seek(self, offset: int, whence: int = 0) -> int:
+        raise OSError("seek is broken")
+
+
 class TestPart:
     def test_read_and_tell(self) -> None:
         part = Part('Content-Disposition: form-data; name="k"\r\n\r\n', b"value")
@@ -143,6 +181,40 @@ class TestPart:
         with pytest.raises(io.UnsupportedOperation):
             part.seek(0, 0)
 
+    def test_read_zero_and_peek_variants(self) -> None:
+        part = Part('Content-Disposition: form-data; name="k"\r\n\r\n', b"abcdef")
+        assert part.read(0) == b""
+        assert part.peek(0) == b""
+        peeked = part.peek()
+        assert peeked.startswith(b"Content-Disposition")
+        assert part.readable() is True
+
+    def test_name_and_filename_without_disposition(self) -> None:
+        part = Part("X-Test: yes\r\n\r\n", b"data")
+        assert part.name is None
+        assert part.filename is None
+
+    def test_unquoted_disposition_param(self) -> None:
+        part = Part("Content-Disposition: form-data; name=plain\r\n\r\n", b"data")
+        assert part.name == "plain"
+
+    def test_stream_with_broken_seekable(self) -> None:
+        stream = ExplodingSeekableStream(b"streamed")
+        part = Part(
+            'Content-Disposition: form-data; name="f"\r\n\r\n',
+            stream,  # type: ignore[arg-type]
+        )
+        assert part.length is None
+        assert part.read().endswith(b"streamed")
+
+    def test_stream_with_broken_seek_has_unknown_length(self) -> None:
+        stream = SeekFailingStream(b"streamed")
+        part = Part(
+            'Content-Disposition: form-data; name="f"\r\n\r\n',
+            stream,  # type: ignore[arg-type]
+        )
+        assert part.length is None
+
 
 class TestMultipartEncoder:
     @pytest.mark.parametrize(
@@ -168,7 +240,8 @@ class TestMultipartEncoder:
     ) -> None:
         encoder = MultipartEncoder(fields, boundary=BOUNDARY)  # type: ignore[arg-type]
         expected, content_type = encode_multipart_formdata(
-            fields, boundary=BOUNDARY  # type: ignore[arg-type]
+            fields,
+            boundary=BOUNDARY,  # type: ignore[arg-type]
         )
         assert encoder.read() == expected
         assert encoder.content_type == content_type
@@ -269,6 +342,15 @@ class TestMultipartEncoder:
         assert stream.bytes_read == total
         assert read_total > total  # Plus boundary and header overhead.
 
+    def test_seek_rewinds_and_readable(self) -> None:
+        fields = [("k", "v"), ("file", ("f.bin", b"x" * 100))]
+        encoder = MultipartEncoder(fields, boundary=BOUNDARY)  # type: ignore[arg-type]
+        expected, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)  # type: ignore[arg-type]
+        assert encoder.read(10) == expected[:10]
+        assert encoder.seek(0) == 0
+        assert encoder.read() == expected
+        assert encoder.readable() is True
+
 
 class TestMultipartDecoder:
     def test_round_trip(self) -> None:
@@ -329,6 +411,32 @@ class TestMultipartDecoder:
     def test_missing_boundary(self) -> None:
         with pytest.raises(ValueError):
             MultipartDecoder.from_content_type(b"", "multipart/form-data")
+
+    def test_lf_only_line_endings(self) -> None:
+        body = (
+            b"--" + BOUNDARY_BYTES + b"\n"
+            b'Content-Disposition: form-data; name="k"\n'
+            b"\n"
+            b"value\n"
+            b"--" + BOUNDARY_BYTES + b"--\n"
+        )
+        decoder = MultipartDecoder(body, BOUNDARY)
+        assert len(decoder.parts) == 1
+        assert decoder.parts[0].name == "k"
+
+    def test_garbage_and_headerless_chunks_are_skipped(self) -> None:
+        body = (
+            b"--" + BOUNDARY_BYTES + b"garbage-without-line-break"
+            b"--" + BOUNDARY_BYTES + b"\r\nno header separator here"
+            b"--" + BOUNDARY_BYTES + b"\r\n"
+            b'Content-Disposition: form-data; name="k"\r\n'
+            b"\r\n"
+            b"value\r\n"
+            b"--" + BOUNDARY_BYTES + b"--\r\n"
+        )
+        decoder = MultipartDecoder(body, BOUNDARY)
+        assert len(decoder.parts) == 1
+        assert decoder.parts[0].name == "k"
 
 
 class TestEncodeMultipartFormdata:
