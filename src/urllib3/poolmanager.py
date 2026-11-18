@@ -18,6 +18,7 @@ from .connectionpool import (
     port_by_scheme,
 )
 from .exceptions import (
+    InvalidHeader,
     LocationValueError,
     MaxRetryError,
     ProxySchemeUnknown,
@@ -26,6 +27,7 @@ from .exceptions import (
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
+from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, parse_url
@@ -170,6 +172,52 @@ key_fn_by_scheme = {
 }
 
 pool_classes_by_scheme = {"http": HTTPConnectionPool, "https": HTTPSConnectionPool}
+
+
+def _url_userinfo_auth_header(
+    url: Url, *, proxy: bool = False
+) -> tuple[str, str] | None:
+    """
+    Build a Basic authentication header from the userinfo (``username:password``)
+    component of a URL.
+
+    Returns a ``(header_name, header_value)`` tuple: ``Authorization`` for a
+    request URL, or ``Proxy-Authorization`` when ``proxy`` is true. Returns
+    ``None`` when the URL carries no userinfo.
+    """
+    credentials = url.auth_decoded_joined
+    if credentials is None:
+        return None
+    if proxy:
+        header_value = make_headers(proxy_basic_auth=credentials)["proxy-authorization"]
+        return "Proxy-Authorization", header_value
+    header_value = make_headers(basic_auth=credentials)["authorization"]
+    return "Authorization", header_value
+
+
+def _merge_url_userinfo_auth_header(
+    headers: typing.Mapping[str, str] | None,
+    auth_header: tuple[str, str],
+) -> HTTPHeaderDict:
+    """
+    Merge an authentication header derived from URL userinfo into ``headers``.
+
+    An explicitly provided header wins only when it is identical to the one
+    derived from the URL; a conflicting value raises :class:`InvalidHeader`
+    so that credentials are never silently sent to the wrong party.
+    """
+    header_name, header_value = auth_header
+    merged_headers = HTTPHeaderDict(headers)
+    existing_values = merged_headers.getlist(header_name)
+    if existing_values:
+        if existing_values != [header_value]:
+            raise InvalidHeader(
+                f"The {header_name} header conflicts with the credentials "
+                "provided in the URL"
+            )
+        return merged_headers
+    merged_headers[header_name] = header_value
+    return merged_headers
 
 
 class PoolManager(RequestMethods):
@@ -464,6 +512,19 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers
 
+        # Construct an Authorization header from the userinfo component of
+        # the request URL (e.g. "https://username:password@example.org/").
+        # The userinfo is then removed from the URL so the credentials are
+        # only sent in the header, never in the request target (which matters
+        # for absolute-form requests sent to a proxy).
+        url_auth_header = _url_userinfo_auth_header(u)
+        if url_auth_header is not None:
+            kw["headers"] = _merge_url_userinfo_auth_header(
+                kw["headers"], url_auth_header
+            )
+            u = u._replace(auth=None)
+            url = u.url
+
         if self._proxy_requires_url_absolute_form(u):
             # Strip the fragment here but let the connection pool normalize the URL
             # to avoid decoding IPv6 zone identifiers twice.
@@ -536,7 +597,12 @@ class ProxyManager(PoolManager):
     the defined proxy, using the CONNECT method for HTTPS URLs.
 
     :param proxy_url:
-        The URL of the proxy to be used.
+        The URL of the proxy to be used. If the URL contains a username and
+        password (``https://username:password@proxy:3128/``), a
+        ``Proxy-Authorization`` Basic header is constructed from them and
+        sent to the proxy, unless an identical header is provided via
+        ``proxy_headers``. A conflicting ``Proxy-Authorization`` value in
+        ``proxy_headers`` raises an error.
 
     :param proxy_headers:
         A dictionary containing headers that will be sent to the proxy. In case
@@ -629,6 +695,17 @@ class ProxyManager(PoolManager):
         if proxy.port is None:
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
+
+        # Construct a Proxy-Authorization header from the userinfo component
+        # of the proxy URL (e.g. "https://username:password@proxy:3128/") and
+        # merge it into the proxy headers. The userinfo is then removed from
+        # the stored proxy URL so the credentials only live in the headers.
+        proxy_auth_header = _url_userinfo_auth_header(proxy, proxy=True)
+        if proxy_auth_header is not None:
+            proxy_headers = _merge_url_userinfo_auth_header(
+                proxy_headers, proxy_auth_header
+            )
+            proxy = proxy._replace(auth=None)
 
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
