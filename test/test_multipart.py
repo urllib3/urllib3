@@ -136,7 +136,7 @@ class TestPart:
 
     def test_non_seekable_stream_cannot_rewind_after_read(self) -> None:
         stream = NonSeekableStream(b"streamed")
-        part = Part('Content-Disposition: form-data; name="f"\r\n\r\n', stream)
+        part = Part('Content-Disposition: form-data; name="f"\r\n\r\n', stream)  # type: ignore[arg-type]
         assert not part.seekable()
         assert part.length is None
         assert part.read().endswith(b"streamed")
@@ -189,8 +189,8 @@ class TestMultipartEncoder:
     @pytest.mark.parametrize("chunk_size", [1, 3, 7, 64, 8192])
     def test_chunked_reads(self, chunk_size: int) -> None:
         fields = [("k", "v"), ("file", ("f.bin", b"x" * 1000))]
-        encoder = MultipartEncoder(fields, boundary=BOUNDARY)
-        expected, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        encoder = MultipartEncoder(fields, boundary=BOUNDARY)  # type: ignore[arg-type]
+        expected, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)  # type: ignore[arg-type]
         assert read_in_chunks(encoder, chunk_size) == expected
 
     def test_peek(self) -> None:
@@ -202,7 +202,7 @@ class TestMultipartEncoder:
 
     def test_complete_rewind(self) -> None:
         fields = [("k", "v"), ("file", ("f.bin", io.BytesIO(b"y" * 500)))]
-        encoder = MultipartEncoder(fields, boundary=BOUNDARY)
+        encoder = MultipartEncoder(fields, boundary=BOUNDARY)  # type: ignore[arg-type]
         expected, _ = encode_multipart_formdata(
             [("k", "v"), ("file", ("f.bin", b"y" * 500))], boundary=BOUNDARY
         )
@@ -223,7 +223,7 @@ class TestMultipartEncoder:
             ("a", ("a.bin", NonSeekableStream(b"one-way"))),
             ("b", ("b.bin", backing)),
         ]
-        encoder = MultipartEncoder(fields, boundary=BOUNDARY)
+        encoder = MultipartEncoder(fields, boundary=BOUNDARY)  # type: ignore[arg-type]
         encoder.read()
         assert backing.tell() != 0  # The stream was consumed.
         with pytest.raises(io.UnsupportedOperation):
@@ -233,7 +233,7 @@ class TestMultipartEncoder:
     def test_file_data_is_read_incrementally(self) -> None:
         payload = b"z" * 100_000
         stream = NonSeekableStream(payload)
-        encoder = MultipartEncoder([("file", ("big.bin", stream))], boundary=BOUNDARY)
+        encoder = MultipartEncoder([("file", ("big.bin", stream))], boundary=BOUNDARY)  # type: ignore[list-item]
         first = encoder.read(1024)
         assert len(first) == 1024
         # Only a bounded amount of the file has been pulled so far.
@@ -248,7 +248,7 @@ class TestMultipartEncoder:
 
     def test_length_unknown_for_non_seekable_part(self) -> None:
         encoder = MultipartEncoder(
-            [("file", ("big.bin", NonSeekableStream(b"data")))],
+            [("file", ("big.bin", NonSeekableStream(b"data")))],  # type: ignore[list-item]
             boundary=BOUNDARY,
         )
         assert encoder.length is None
@@ -262,7 +262,7 @@ class TestMultipartEncoder:
         # must not allocate memory proportional to the body size.
         total = 32 * 1024 * 1024
         stream = GeneratingStream(total)
-        encoder = MultipartEncoder([("file", ("big.bin", stream))], boundary=BOUNDARY)
+        encoder = MultipartEncoder([("file", ("big.bin", stream))], boundary=BOUNDARY)  # type: ignore[list-item]
         read_total = 0
         while chunk := encoder.read(65536):
             read_total += len(chunk)
@@ -278,7 +278,7 @@ class TestMultipartDecoder:
             ("file", ("notes.txt", file_content)),
             ("bin", ("data.bin", b"\x00\x01\x02\r\n\xff")),
         ]
-        encoder = MultipartEncoder(fields, boundary=BOUNDARY)
+        encoder = MultipartEncoder(fields, boundary=BOUNDARY)  # type: ignore[arg-type]
         decoder = MultipartDecoder.from_content_type(
             encoder.read(), encoder.content_type
         )
@@ -300,7 +300,7 @@ class TestMultipartDecoder:
 
     def test_decoder_accepts_encoder_as_body(self) -> None:
         encoder = MultipartEncoder([("k", "v")], boundary=BOUNDARY)
-        decoder = MultipartDecoder(encoder, BOUNDARY)
+        decoder = MultipartDecoder(encoder, BOUNDARY)  # type: ignore[arg-type]
         assert [part.name for part in decoder] == ["k"]
 
     def test_preamble_and_epilogue_are_ignored(self) -> None:
@@ -333,14 +333,14 @@ class TestMultipartDecoder:
 
 class TestEncodeMultipartFormdata:
     def test_int_field_value(self) -> None:
-        encoded, _ = encode_multipart_formdata([("k", 42)], boundary=BOUNDARY)  # type: ignore[arg-type]
+        encoded, _ = encode_multipart_formdata([("k", 42)], boundary=BOUNDARY)  # type: ignore[list-item]
         assert b"\r\n42\r\n" in encoded
 
     def test_file_like_field_value(self) -> None:
         # File-like data used to raise TypeError; it is now streamed
         # through the encoder and included in the returned body.
         encoded, _ = encode_multipart_formdata(
-            [("file", ("f.bin", io.BytesIO(b"streamed-bytes")))],
+            [("file", ("f.bin", io.BytesIO(b"streamed-bytes")))],  # type: ignore[list-item]
             boundary=BOUNDARY,
         )
         assert b"streamed-bytes" in encoded
