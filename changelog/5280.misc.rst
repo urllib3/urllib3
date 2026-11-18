@@ -1,0 +1,1 @@
+Bound ``SocketServerThread`` to both IPv4 and IPv6 loopback addresses when resolving ``localhost`` with IPv6 enabled.
