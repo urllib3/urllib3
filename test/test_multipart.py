@@ -350,6 +350,10 @@ class TestMultipartEncoder:
         assert encoder.seek(0) == 0
         assert encoder.read() == expected
         assert encoder.readable() is True
+        with pytest.raises(io.UnsupportedOperation):
+            encoder.seek(1)
+        with pytest.raises(io.UnsupportedOperation):
+            encoder.seek(0, io.SEEK_END)
 
 
 class TestMultipartDecoder:
