@@ -77,6 +77,25 @@ class TestMultipartEncoding:
 
         assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
 
+    def test_no_filename(self) -> None:
+        # A None filename produces a part without a filename parameter, which
+        # is how a typed part such as JSON metadata is sent alongside a file.
+        fields = [("k", (None, b"{}", "application/json"))]
+
+        encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        expected = (
+            b"--" + BOUNDARY_BYTES + b"\r\n"
+            b'Content-Disposition: form-data; name="k"\r\n'
+            b"Content-Type: application/json\r\n"
+            b"\r\n"
+            b"{}\r\n"
+            b"--" + BOUNDARY_BYTES + b"--\r\n"
+        )
+
+        assert encoded == expected
+
+        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+
     def test_explicit(self) -> None:
         fields = [("k", ("somefile.txt", b"v", "image/jpeg"))]
 

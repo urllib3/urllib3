@@ -1,0 +1,4 @@
+Fixed the type of a multipart file tuple so that an omitted filename (``None``) is
+accepted by type checkers, matching the behaviour of ``RequestField.from_tuples()``
+and ``encode_multipart_formdata()``, which already produce a part without a
+``filename`` parameter.

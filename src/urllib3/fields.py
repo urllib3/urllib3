@@ -7,8 +7,10 @@ import typing
 _TYPE_FIELD_VALUE = typing.Union[str, bytes]
 _TYPE_FIELD_VALUE_TUPLE = typing.Union[
     _TYPE_FIELD_VALUE,
-    tuple[str, _TYPE_FIELD_VALUE],
-    tuple[str, _TYPE_FIELD_VALUE, str],
+    # The filename is optional: None produces a part with no filename
+    # parameter, which is how a typed part such as JSON metadata is sent.
+    tuple[typing.Optional[str], _TYPE_FIELD_VALUE],
+    tuple[typing.Optional[str], _TYPE_FIELD_VALUE, str],
 ]
 
 
