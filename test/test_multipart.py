@@ -240,8 +240,8 @@ class TestMultipartEncoder:
     ) -> None:
         encoder = MultipartEncoder(fields, boundary=BOUNDARY)  # type: ignore[arg-type]
         expected, content_type = encode_multipart_formdata(
-            fields,
-            boundary=BOUNDARY,  # type: ignore[arg-type]
+            fields,  # type: ignore[arg-type]
+            boundary=BOUNDARY,
         )
         assert encoder.read() == expected
         assert encoder.content_type == content_type
