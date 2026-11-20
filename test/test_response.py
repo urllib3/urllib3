@@ -1548,6 +1548,23 @@ class TestResponse:
 
         decoded.close()
 
+    def test_decode_rejects_mode_switch_after_decoded_content(self) -> None:
+        fp = BytesIO(zlib.compress(b"foo"))
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+        assert resp.read(1) == b"f"
+        assert resp._has_decoded_content is True
+
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r"Calling read\(decode_content=False\) is not supported after "
+                r"read\(decode_content=True\) was called"
+            ),
+        ):
+            resp._decode(b"", decode_content=False, flush_decoder=False)
+
     def test_read_with_mix_decode_toggle(self) -> None:
         data = zlib.compress(b"foo")
 
