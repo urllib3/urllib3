@@ -1,0 +1,1 @@
+Disabled graceful shutdown timeout on hypercorn test servers to avoid test teardown delays.
