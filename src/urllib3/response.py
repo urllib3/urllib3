@@ -1479,6 +1479,17 @@ class HTTPResponse(BaseHTTPResponse):
                 # but httplib handles only `None` correctly.
                 amt = None
 
+            if decode_content is None:
+                decode_content = self.decode_content
+
+            # Reject decode-mode switches before consuming chunked body data,
+            # matching HTTPResponse.read() after #5344.
+            if amt != 0 and not decode_content and self._has_decoded_content:
+                raise RuntimeError(
+                    "Calling read(decode_content=False) is not supported after "
+                    "read(decode_content=True) was called."
+                )
+
             while True:
                 # First, check if any data is left in the decoder's buffer.
                 if self._decoder and self._decoder.has_unconsumed_tail:
