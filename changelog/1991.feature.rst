@@ -1,0 +1,1 @@
+Added ``FingerprintMismatchError``, an ``SSLError`` subclass with expected and actual fingerprint attributes, for certificate fingerprint mismatches.
