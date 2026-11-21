@@ -213,32 +213,35 @@ class TestConnectionPool(DualHypercornDummyServerTestCase):
     @pytest.mark.parametrize("server_scheme", ["http"], indirect=True)
     def test_http2_test_error(self, http_version: str) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
-            if http_version == "h2":
-                with pytest.raises(
-                    ValueError, match="HTTP/2 support currently only applies to HTTPS.*"
-                ):
-                    r = pool.request("GET", "/")
-            else:
-                r = pool.request("GET", "/")
-                assert r.status == 200
+            r = pool.request("GET", "/")
+            assert r.status == 200
 
-    def test_get(self, pool_factory: PoolFactory) -> None:
+    def test_get(self, pool_factory: PoolFactory, http_version: str) -> None:
         with pool_factory(self.host, self.port) as pool:
             r = pool.request("GET", "/specific_method", fields={"method": "GET"})
             assert r.status == 200, r.data
+            assert r.version_string == "HTTP/2" if http_version == "h2" else "HTTP/1.1"
 
     def test_debug_log(
-        self, pool_factory: PoolFactory, caplog: pytest.LogCaptureFixture
+        self,
+        pool_factory: PoolFactory,
+        caplog: pytest.LogCaptureFixture,
+        http_version: str,
     ) -> None:
         caplog.set_level(logging.DEBUG, logger="urllib3.connectionpool")
         with pool_factory(self.host, self.port) as pool:
             r = pool.urlopen("GET", "/")
             assert r.status == 200
         logs = [record.getMessage() for record in caplog.records]
-        assert logs == [
-            f"Starting new {pool.scheme.upper()} connection (1): {self.host}:{self.port}",
-            f'{pool.scheme}://{self.host}:{self.port} "GET / HTTP/1.1" 200 0',
-        ]
+        http_version = "HTTP/2" if http_version == "h2" else "HTTP/1.1"
+        assert (
+            f"Starting new {pool.scheme.upper()} connection (1): {self.host}:{self.port}"
+            in logs
+        )
+        assert (
+            f'{pool.scheme}://{self.host}:{self.port} "GET / {http_version}" 200 0'
+            in logs
+        )
 
     def test_post_url(self, pool_factory: PoolFactory) -> None:
         with pool_factory(self.host, self.port) as pool:
@@ -478,6 +481,8 @@ class TestConnectionPool(DualHypercornDummyServerTestCase):
                 [mock.call(x) for x in expect_settimeout_calls]
             )
 
+    # tunnels are currently supported only in HTTP/1.1
+    @pytest.mark.parametrize("http_version", ["h11"], indirect=True)
     def test_tunnel(self, pool_factory: PoolFactory) -> None:
         timeout = Timeout(total=None)
         with pool_factory(self.host, self.port, timeout=timeout) as pool:
@@ -598,6 +603,8 @@ class TestConnectionPool(DualHypercornDummyServerTestCase):
             assert pool.num_connections == 1
             assert pool.num_requests == 2
 
+    # the connection header is not used in HTTP/2
+    @pytest.mark.parametrize("http_version", ["h11"], indirect=True)
     def test_keepalive_close(self, pool_factory: PoolFactory) -> None:
         with pool_factory(
             self.host, self.port, block=True, maxsize=1, timeout=2
@@ -909,6 +916,8 @@ class TestConnectionPool(DualHypercornDummyServerTestCase):
                 with pytest.raises(NewConnectionError):
                     pool.request("GET", f"/source_address?{invalid_source_address}")
 
+    # the connection header is not used in HTTP/2
+    @pytest.mark.parametrize("http_version", ["h11"], indirect=True)
     def test_stream_keepalive(self, pool_factory: PoolFactory) -> None:
         x = 2
 
@@ -927,6 +936,8 @@ class TestConnectionPool(DualHypercornDummyServerTestCase):
             assert pool.num_connections == 1
             assert pool.num_requests == x
 
+    # the chunked transfer encoding is not used in HTTP/2
+    @pytest.mark.parametrize("http_version", ["h11"], indirect=True)
     def test_read_chunked_short_circuit(self, pool_factory: PoolFactory) -> None:
         with pool_factory(self.host, self.port) as pool:
             response = pool.request("GET", "/chunked", preload_content=False)
@@ -934,6 +945,8 @@ class TestConnectionPool(DualHypercornDummyServerTestCase):
             with pytest.raises(StopIteration):
                 next(response.read_chunked())
 
+    # the chunked transfer encoding is not used in HTTP/2
+    @pytest.mark.parametrize("http_version", ["h11"], indirect=True)
     def test_read_chunked_on_closed_response(self, pool_factory: PoolFactory) -> None:
         with pool_factory(self.host, self.port) as pool:
             response = pool.request("GET", "/chunked", preload_content=False)
@@ -1155,6 +1168,7 @@ class TestConnectionPool(DualHypercornDummyServerTestCase):
     def test_request_chunked_is_deprecated(
         self,
         pool_factory: PoolFactory,
+        http_version: str,
     ) -> None:
         with pool_factory(self.host, self.port) as pool:
             conn = pool._get_conn()
@@ -1168,7 +1182,9 @@ class TestConnectionPool(DualHypercornDummyServerTestCase):
 
             resp = conn.getresponse()
             assert resp.status == 200
-            assert resp.json()["Transfer-Encoding"] == "chunked"
+            if http_version == "h11":
+                # this only exists in HTTP/1.1
+                assert resp.json()["Transfer-Encoding"] == "chunked"
             conn.close()
 
     def test_bytes_header(self, pool_factory: PoolFactory) -> None:

@@ -79,7 +79,11 @@ class ConnectionPool:
     scheme: str | None = None
     QueueCls = _DEFAULT_QUEUE_CLASS
 
-    def __init__(self, host: str, port: int | None = None) -> None:
+    def __init__(
+        self,
+        host: str,
+        port: int | None = None,
+    ) -> None:
         if not host:
             raise LocationValueError("No host specified.")
 

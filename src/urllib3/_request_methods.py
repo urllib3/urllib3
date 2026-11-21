@@ -141,7 +141,11 @@ class RequestMethods:
             )
         else:
             return self.request_encode_body(
-                method, url, fields=fields, headers=headers, **urlopen_kw
+                method,
+                url,
+                fields=fields,
+                headers=headers,
+                **urlopen_kw,
             )
 
     def request_encode_url(

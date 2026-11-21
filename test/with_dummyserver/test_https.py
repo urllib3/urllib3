@@ -38,7 +38,12 @@ from dummyserver.socketserver import (
 )
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
 from urllib3 import HTTPSConnectionPool
-from urllib3.connection import RECENT_DATE, HTTPSConnection, VerifiedHTTPSConnection
+from urllib3.connection import (
+    RECENT_DATE,
+    HTTPProtocolHelper,
+    HTTPSConnection,
+    VerifiedHTTPSConnection,
+)
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InsecureRequestWarning,
@@ -47,6 +52,7 @@ from urllib3.exceptions import (
     SSLError,
     SystemTimeWarning,
 )
+from urllib3.http2.connection import HTTP2ProtocolHelper
 from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import Timeout
 
@@ -627,6 +633,8 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             timeout=timeout,
             cert_reqs="CERT_NONE",
             ssl_minimum_version=self.tls_version(),
+            http1=(http_version == "h11"),
+            http2=(http_version == "h2"),
         ) as https_pool:
             with contextlib.closing(https_pool._new_conn()) as conn:
                 if http_version == "h2":
@@ -977,10 +985,15 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             self.port,
             ca_certs=DEFAULT_CA,
             ssl_minimum_version=self.tls_version(),
+            http1=(http_version == "h11"),
+            http2=(http_version == "h2"),
         ) as pool:
-            r = pool.request("GET", "/alpn_protocol", retries=0)
+            r = pool.request(
+                "GET",
+                "/alpn_protocol",
+                retries=0,
+            )
             assert r.status == 200
-            assert r.data.decode("utf-8") == util.ALPN_PROTOCOLS[0]
             assert (
                 r.data.decode("utf-8") == {"h11": "http/1.1", "h2": "h2"}[http_version]
             )
@@ -993,8 +1006,14 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
                 self.host,
                 self.port,
                 ca_certs=DEFAULT_CA,
+                http1=(http_version == "h11"),
+                http2=(http_version == "h2"),
             ) as pool:
-                r = pool.request("GET", "/alpn_protocol", retries=0)
+                r = pool.request(
+                    "GET",
+                    "/alpn_protocol",
+                    retries=0,
+                )
                 assert r.status == 200
 
             if http_version == "h2":
@@ -1011,56 +1030,54 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             pytest.skip("Test must have server in HTTP/1.1 mode")
         assert http2_probe._values() == {}
 
-        urllib3.http2.inject_into_urllib3()
-        try:
-            with HTTPSConnectionPool(
-                self.host,
-                self.port,
-                ca_certs=DEFAULT_CA,
-            ) as pool:
-                r = pool.request("GET", "/", retries=0)
-                assert r.status == 200
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ca_certs=DEFAULT_CA,
+            http1=(http_version == "h11"),
+            http2=(http_version == "h2"),
+        ) as pool:
+            r = pool.request(
+                "GET",
+                "/",
+                retries=0,
+            )
+            assert r.status == 200
 
-            # The probe was a failure because Hypercorn didn't support HTTP/2.
-            assert http2_probe._values() == {(self.host, self.port): False}
-        finally:
-            urllib3.http2.extract_from_urllib3()
+        # The probe was a failure because Hypercorn didn't support HTTP/2.
+        assert http2_probe._values() == {(self.host, self.port): False}
 
     def test_http2_probe_no_result_in_connect_error(self) -> None:
         assert http2_probe._values() == {}
 
-        urllib3.http2.inject_into_urllib3()
-        try:
-            with HTTPSConnectionPool(
-                TARPIT_HOST,
-                self.port,
-                ca_certs=DEFAULT_CA,
-                timeout=SHORT_TIMEOUT,
-            ) as pool:
-                with pytest.raises(ConnectTimeoutError):
-                    pool.request("GET", "/", retries=False)
+        with HTTPSConnectionPool(
+            TARPIT_HOST,
+            self.port,
+            ca_certs=DEFAULT_CA,
+            timeout=SHORT_TIMEOUT,
+            http1=False,
+            http2=True,
+        ) as pool:
+            with pytest.raises(ConnectTimeoutError):
+                pool.request("GET", "/", retries=False)
 
-            # The probe was inconclusive since an error occurred during connection.
-            assert http2_probe._values() == {(TARPIT_HOST, self.port): None}
-        finally:
-            urllib3.http2.extract_from_urllib3()
+        # The probe was inconclusive since an error occurred during connection.
+        assert http2_probe._values() == {(TARPIT_HOST, self.port): None}
 
     def test_http2_probe_no_result_in_ssl_error(self) -> None:
-        urllib3.http2.inject_into_urllib3()
-        try:
-            with HTTPSConnectionPool(
-                self.host,
-                self.port,
-                ca_certs=None,
-                timeout=LONG_TIMEOUT,
-            ) as pool:
-                with pytest.raises(SSLError):
-                    pool.request("GET", "/", retries=False)
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ca_certs=None,
+            timeout=LONG_TIMEOUT,
+            http1=False,
+            http2=True,
+        ) as pool:
+            with pytest.raises(SSLError):
+                pool.request("GET", "/", retries=False)
 
-            # The probe was inconclusive since an error occurred during connection.
-            assert http2_probe._values() == {(self.host, self.port): None}
-        finally:
-            urllib3.http2.extract_from_urllib3()
+        # The probe was inconclusive since an error occurred during connection.
+        assert http2_probe._values() == {(self.host, self.port): None}
 
     def test_http2_probe_blocked_per_thread(self) -> None:
         state, current_thread, last_action = None, None, time.perf_counter()
@@ -1093,36 +1110,76 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         connect_timeout = LONG_TIMEOUT
         total_threads = 3
         barrier = threading.Barrier(total_threads)
-        urllib3.http2.inject_into_urllib3()
-        try:
 
-            def try_connect(_: typing.Any) -> tuple[float, float]:
-                with HTTPSConnectionPool(
-                    TARPIT_HOST,
-                    self.port,
-                    ca_certs=DEFAULT_CA,
-                    timeout=connect_timeout,
-                ) as pool:
-                    start_time = time.time()
-                    conn = pool._get_conn()
-                    assert isinstance(conn, HTTPSConnection)
-                    conn._connect_callback = connect_callback
-                    # ThreadPoolExecutor does not guarantee that each work item
-                    # runs on its own thread, so make every thread wait here
-                    # until all of them have a connection ready to attempt.
-                    barrier.wait()
-                    with pytest.raises(ConnectTimeoutError):
-                        conn.connect()
-                    end_time = time.time()
-                    return start_time, end_time
+        def try_connect(_: typing.Any) -> tuple[float, float]:
+            with HTTPSConnectionPool(
+                TARPIT_HOST,
+                self.port,
+                ca_certs=DEFAULT_CA,
+                timeout=connect_timeout,
+                http1=False,
+                http2=True,
+            ) as pool:
+                start_time = time.time()
+                conn = pool._get_conn()
+                assert isinstance(conn, HTTPSConnection)
+                conn._connect_callback = connect_callback
+                # ThreadPoolExecutor does not guarantee that each work item
+                # runs on its own thread, so make every thread wait here
+                # until all of them have a connection ready to attempt.
+                barrier.wait()
+                with pytest.raises(ConnectTimeoutError):
+                    conn.connect()
+                end_time = time.time()
+                return start_time, end_time
 
-            with concurrent.futures.ThreadPoolExecutor(total_threads) as threadpool:
-                list(threadpool.map(try_connect, range(total_threads)))
+        with concurrent.futures.ThreadPoolExecutor(total_threads) as threadpool:
+            list(threadpool.map(try_connect, range(total_threads)))
 
-            # The probe was inconclusive since an error occurred during connection.
-            assert http2_probe._values() == {(TARPIT_HOST, self.port): None}
-        finally:
-            urllib3.http2.extract_from_urllib3()
+        # The probe was inconclusive since an error occurred during connection.
+        assert http2_probe._values() == {(TARPIT_HOST, self.port): None}
+
+    def test_http2_probe_cached_result_differs(self, http_version: str) -> None:
+        assert http2_probe._values() == {}
+
+        # we prepopulate the cache with the reverse of what we are going to get
+        # from the ALPN negotiation
+        assert http2_probe.acquire_and_get(self.host, self.port) is None
+        http2_probe.set_and_release(self.host, self.port, http_version == "h11")
+        callback_called = False
+
+        def connect_callback(label: str, thread_id: int, **kwargs: typing.Any) -> None:
+            # at the time the before_connect callback is invoked, we should
+            # receive the HTTP/2 support value from the probe cache
+            nonlocal callback_called
+
+            if label == "before connect":
+                assert kwargs["target_supports_http2"] == (http_version == "h11")
+                callback_called = True
+
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ca_certs=DEFAULT_CA,
+            http2=True,
+        ) as pool:
+            conn = pool._get_conn()
+            conn._connect_callback = connect_callback  # type: ignore[attr-defined]
+            conn.connect()
+            assert callback_called
+            s = conn.request("GET", "/")
+            r = conn.getresponse(s)
+            conn.close()
+
+        # this request should have been executed under the protocol indicated
+        # by the http_version fixture, in spite of the HTTP/2 probe cache
+        # having the opposite value
+        assert r.status == 200
+        assert r.version_string == "HTTP/2" if http_version == "h2" else "HTTP/1.1"
+        assert isinstance(
+            conn._protocol_helper,  # type: ignore[attr-defined]
+            HTTP2ProtocolHelper if http_version == "h2" else HTTPProtocolHelper,
+        )
 
     def test_default_ssl_context_ssl_min_max_versions(self) -> None:
         ctx = urllib3.util.ssl_.create_urllib3_context()
