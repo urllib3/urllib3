@@ -81,6 +81,25 @@ ConnectionError = ProtocolError
 # Leaf Exceptions
 
 
+class FingerprintMismatchError(SSLError):
+    """Raised when a certificate does not match the expected fingerprint.
+
+    :param str expected_fingerprint: The expected fingerprint as hexadecimal text.
+    :param str actual_fingerprint: The certificate's fingerprint as hexadecimal text.
+    """
+
+    def __init__(self, expected_fingerprint: str, actual_fingerprint: str) -> None:
+        self.expected_fingerprint = expected_fingerprint
+        self.actual_fingerprint = actual_fingerprint
+        super().__init__(
+            f'Fingerprints did not match. Expected "{expected_fingerprint}", '
+            f'got "{actual_fingerprint}"'
+        )
+
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
+        return self.__class__, (self.expected_fingerprint, self.actual_fingerprint)
+
+
 class MaxRetryError(RequestError):
     """Raised when the maximum number of retries is exceeded.
 
