@@ -37,7 +37,7 @@ from dummyserver.socketserver import (
     encrypt_key_pem,
 )
 from dummyserver.testcase import HTTPSHypercornDummyServerTestCase
-from urllib3 import HTTPSConnectionPool
+from urllib3 import HTTPSConnectionPool, exceptions
 from urllib3.connection import RECENT_DATE, HTTPSConnection, VerifiedHTTPSConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -506,7 +506,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         def _test_request(pool: HTTPSConnectionPool) -> SSLError:
             with pytest.raises(MaxRetryError) as cm:
                 pool.request("GET", "/", retries=0)
-            assert type(cm.value.reason) is SSLError
+            assert isinstance(cm.value.reason, SSLError)
             return cm.value.reason
 
         with HTTPSConnectionPool(
@@ -522,6 +522,9 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             e = _test_request(https_pool)
             expected = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             got = "728b554c9afc1e88a11cad1bb2e7cc3edbc8f98a"
+            assert isinstance(e, exceptions.FingerprintMismatchError)
+            assert e.expected_fingerprint == expected
+            assert e.actual_fingerprint == got
             assert (
                 str(e)
                 == f'Fingerprints did not match. Expected "{expected}", got "{got}"'
@@ -530,12 +533,32 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             # Uneven length
             https_pool.assert_fingerprint = "AA:A"
             e = _test_request(https_pool)
+            assert type(e) is SSLError
             assert "Fingerprint of invalid length:" in str(e)
 
             # Invalid length
             https_pool.assert_fingerprint = "AA"
             e = _test_request(https_pool)
+            assert type(e) is SSLError
             assert "Fingerprint of invalid length:" in str(e)
+
+    def test_fingerprint_mismatch_without_retries(self) -> None:
+        with HTTPSConnectionPool(
+            "localhost",
+            self.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=DEFAULT_CA,
+            assert_fingerprint="AA:" * 31 + "AA",
+            ssl_minimum_version=self.tls_version(),
+        ) as https_pool:
+            with pytest.raises(SSLError) as caught:
+                https_pool.request("GET", "/", retries=False)
+            error = caught.value
+            assert isinstance(error, exceptions.FingerprintMismatchError)
+            assert error.expected_fingerprint == "aa" * 32
+            assert error.actual_fingerprint == (
+                "e3598e69ffc59fc788874458227f908dd9bc12c49079d5dca85d4f60401ea6d2"
+            )
 
     def test_verify_none_and_bad_fingerprint(self) -> None:
         with HTTPSConnectionPool(
@@ -549,7 +572,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
         ) as https_pool:
             with pytest.raises(MaxRetryError) as cm:
                 https_pool.request("GET", "/", retries=0)
-            assert type(cm.value.reason) is SSLError
+            assert isinstance(cm.value.reason, exceptions.FingerprintMismatchError)
 
     def test_verify_none_and_good_fingerprint(self) -> None:
         with HTTPSConnectionPool(
