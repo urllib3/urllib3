@@ -836,7 +836,7 @@ class TestConnectionPool(DualHypercornDummyServerTestCase):
             assert pool.pool.qsize() == MAXSIZE - 1
 
             # Check state without release
-            pool.urlopen("GET", "/", preload_content=False)
+            r = pool.urlopen("GET", "/", preload_content=False)  # noqa: F841
             assert pool.pool.qsize() == MAXSIZE - 2
 
             pool.urlopen("GET", "/")
@@ -856,7 +856,9 @@ class TestConnectionPool(DualHypercornDummyServerTestCase):
             assert pool.pool.qsize() == MAXSIZE
 
             # Make request without releasing connection
-            pool.request("GET", "/", release_conn=False, preload_content=False)
+            r = pool.request(  # noqa: F841
+                "GET", "/", release_conn=False, preload_content=False
+            )
             assert pool.pool.qsize() == MAXSIZE - 1
 
     @pytest.mark.parametrize("server_scheme", ["http"], indirect=True)

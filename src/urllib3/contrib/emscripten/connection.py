@@ -131,7 +131,9 @@ class EmscriptenHTTPConnection:
             raise TimeoutError(e.message) from e
         except _RequestError as e:
             raise HTTPException(e.message) from e
-        return Stream(self)
+        stream = Stream(self)
+        stream.stream_id = 1
+        return stream
 
     def getresponse(self, stream: Stream | None = None) -> BaseHTTPResponse:
         if self._response is not None:
@@ -142,6 +144,14 @@ class EmscriptenHTTPConnection:
             )
         else:
             raise ResponseNotReady()
+
+    def num_streams(self) -> int:
+        return 0 if self._closed else 1
+
+    def is_stream_closed(self, stream: Stream | None = None) -> bool:
+        if stream is None:  # Defensive:
+            return True
+        return self._closed
 
     def close_stream(self, stream: Stream | None = None) -> None:
         pass

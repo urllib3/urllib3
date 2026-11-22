@@ -33,6 +33,16 @@ def pool() -> typing.Generator[HTTPConnectionPool]:
     server.teardown_class()
 
 
+@pytest.fixture()
+def h2_pool() -> typing.Generator[HTTPConnectionPool]:
+    server.setup_class()
+
+    with HTTPConnectionPool(server.host, server.port, http1=False, http2=True) as pool:
+        yield pool
+
+    server.teardown_class()
+
+
 def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
     with contextlib.closing(pool._get_conn()) as conn:
         conn.request("GET", "/")
@@ -116,6 +126,64 @@ def test_connection_state_properties(pool: HTTPConnectionPool) -> None:
     assert conn.has_connected_to_proxy is False
     assert conn.is_verified is False
     assert conn.proxy_is_verified is None
+
+
+def test_h1_streams(pool: HTTPConnectionPool) -> None:
+    conn = pool._get_conn()
+    assert conn.num_streams() == 0
+    stream = conn.request("GET", "/")
+    assert conn.num_streams() == 1
+    assert not stream.is_closed()
+    resp = conn.getresponse()
+    assert conn.num_streams() == 0
+    assert stream.is_closed()
+    stream = conn.request("GET", "/", preload_content=False)
+    assert conn.num_streams() == 1
+    assert not stream.is_closed()
+    resp = stream.getresponse()
+    if stream.is_closed():
+        assert conn.num_streams() == 0
+    else:
+        assert conn.num_streams() == 1
+    resp.read()
+    assert conn.num_streams() == 0
+    assert stream.is_closed()
+    conn.close()
+
+
+def test_parallel_streams(h2_pool: HTTPConnectionPool) -> None:
+    conn = h2_pool._get_conn()
+    assert conn.num_streams() == 0
+    stream1 = conn.request("GET", "/")
+    assert conn.num_streams() == 1
+    assert not stream1.is_closed()
+    resp1 = conn.getresponse()
+    assert resp1.status == 200
+    assert conn.num_streams() == 0
+    assert stream1.is_closed()
+    stream2 = conn.request("GET", "/")
+    assert conn.num_streams() == 1
+    stream3 = conn.request("GET", "/", preload_content=False)
+    assert conn.num_streams() == 2
+    resp2 = stream2.getresponse()
+    assert resp2.status == 200
+    assert conn.num_streams() == 1
+    assert conn.is_stream_closed(stream2)
+    assert not conn.is_stream_closed(stream3)
+    stream3.close()
+    assert conn.num_streams() == 0
+    assert stream2.is_closed()
+    assert stream3.is_closed()
+    stream4 = conn.request("GET", "/", preload_content=False)
+    assert conn.num_streams() == 1
+    assert not stream4.is_closed()
+    resp4 = conn.getresponse(stream4)
+    assert conn.num_streams() == 1
+    assert not stream4.is_closed()
+    resp4.read()
+    assert conn.num_streams() == 0
+    assert stream4.is_closed()
+    conn.close()
 
 
 def test_set_tunnel_is_reset(pool: HTTPConnectionPool) -> None:

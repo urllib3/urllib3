@@ -142,6 +142,16 @@ class Stream:
             raise ValueError("Must call `request` first.")
         return self.conn.getresponse(self)
 
+    def is_closed(self) -> bool:
+        if self.stream_id is None:  # Defensive:
+            raise ValueError("Must call `request` first.")
+        return self.conn.is_stream_closed(self)
+
+    def close(self) -> None:
+        if self.stream_id is None:  # Defensive:
+            raise ValueError("Must call `request` first.")
+        self.conn.close_stream(self)
+
 
 class BaseProtocolHelper:
     """This is a base helper class dedicated to the protocol specific logic
@@ -204,6 +214,12 @@ class BaseProtocolHelper:
         # subclasses must return True to indicate that they have implemented
         # this method
         return False
+
+    def num_streams(self) -> int:
+        raise NotImplementedError("This method must be implemented in a subclass")
+
+    def is_stream_closed(self, stream: Stream | None = None) -> bool:
+        raise NotImplementedError("This method must be implemented in a subclass")
 
     def close_stream(self, stream: Stream | None = None) -> None:
         pass
@@ -379,6 +395,14 @@ class HTTPProtocolHelper(BaseProtocolHelper):
             connection=self.conn,
         )
         return response
+
+    def num_streams(self) -> int:
+        return 1 if self._response_options else 0
+
+    def is_stream_closed(self, stream: Stream | None = None) -> bool:
+        if stream is None or stream.stream_id != 1:  # Defensive:
+            return False
+        return False if self._response_options else True
 
 
 class HTTPConnection(_HTTPConnection):
@@ -737,6 +761,12 @@ class HTTPConnection(_HTTPConnection):
         Return True if a tunneling proxy is configured, else return False
         """
         return self._tunnel_host is not None
+
+    def num_streams(self) -> int:
+        return self._protocol_helper.num_streams()
+
+    def is_stream_closed(self, stream: Stream | None = None) -> bool:
+        return self._protocol_helper.is_stream_closed(stream=stream)
 
     def close_stream(self, stream: Stream | None = None) -> None:
         self._protocol_helper.close_stream(stream=stream)

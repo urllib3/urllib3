@@ -565,6 +565,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         return response
 
+    def is_closed(self) -> bool:
+        """
+        Check if this pool is closed.
+        """
+        return self.pool is None
+
     def close(self) -> None:
         """
         Close all pooled connections and disable the pool.

@@ -520,6 +520,14 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             self.close_stream(stream)
         return data
 
+    def num_streams(self) -> int:
+        return len([s for s in self._stream_data if isinstance(s, Stream)])
+
+    def is_stream_closed(self, stream: Stream | None = None) -> bool:
+        if stream is None:  # Defensive:
+            return True
+        return stream not in self._stream_data
+
     def close(self) -> None:
         with self._h2_conn as h2_conn:
             try:
@@ -649,8 +657,22 @@ class HTTP2Response(HTTPResponse):
 
     def drain_conn(self) -> None:
         super().drain_conn()
-        self._stream.conn.close_stream(self._stream)
+        self._stream.close()
 
     @property
     def closed(self) -> bool:
-        return self._stream.conn.is_closed
+        return self._stream.is_closed()
+
+    def close(self) -> None:
+        self._stream.close()
+
+        # To avoid resource leaks, here we also close the parent connection if:
+        # - the connection was allocated from a connection pool
+        # - the connection pool has been closed
+        # - this was the last active stream
+        conn = self._stream.conn
+        if self._pool and conn.num_streams() == 0:
+            if self._pool.is_closed():
+                conn.close()
+            else:
+                self.release_conn()
