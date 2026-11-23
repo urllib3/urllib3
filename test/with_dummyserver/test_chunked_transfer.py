@@ -143,7 +143,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_multidimensional_memoryview_body(self) -> None:
         self._test_body(
-            memoryview(b"AAAABBBB").cast("B", shape=[2, 4]),  # type: ignore[arg-type]
+            memoryview(b"AAAABBBB").cast("B", shape=[2, 4]),
             expected_data=b"AAAABBBB",
         )
 
