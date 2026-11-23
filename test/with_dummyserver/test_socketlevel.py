@@ -2502,9 +2502,7 @@ class TestStream(SocketDummyServerTestCase):
         )
 
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
-            resp = pool.request(
-                "GET", "/", preload_content=False, timeout=LONG_TIMEOUT
-            )
+            resp = pool.request("GET", "/", preload_content=False, timeout=LONG_TIMEOUT)
             assert pool.pool is not None
             assert pool.pool.qsize() == 0
             connection = resp.connection
