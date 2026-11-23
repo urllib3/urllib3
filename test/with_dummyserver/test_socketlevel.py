@@ -2503,10 +2503,11 @@ class TestStream(SocketDummyServerTestCase):
 
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             resp = pool.request("GET", "/", preload_content=False, timeout=LONG_TIMEOUT)
+            assert isinstance(resp, HTTPResponse)
             assert pool.pool is not None
             assert pool.pool.qsize() == 0
             connection = resp.connection
-            assert connection is not None
+            assert isinstance(connection, HTTPConnection)
             assert connection.sock is not None
 
             reader = resp.read_chunked(1, decode_content=True)
