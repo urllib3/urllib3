@@ -1520,10 +1520,17 @@ class TestResponse:
         fp = MockChunkedEncodingResponse([zlib.compress(b"foo")])
         raw = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
         raw.fp = fp  # type: ignore[assignment]
+        original = mock.Mock()
+        original.isclosed.return_value = False
+        connection = mock.Mock()
+        pool = mock.Mock()
         resp = HTTPResponse(
             raw,
             headers={"transfer-encoding": "chunked", "content-encoding": "deflate"},
             preload_content=False,
+            original_response=original,
+            pool=pool,
+            connection=connection,
         )
         decoded = resp.read_chunked(1, decode_content=True)
         assert next(decoded) == b"f"
@@ -1541,10 +1548,16 @@ class TestResponse:
         ):
             next(resp.read_chunked(amt, decode_content=False))
 
-        # Mode-switch rejection must not consume further chunked body bytes.
+        # Mode-switch rejection must not consume further chunked body bytes
+        # or release the live response's connection.
         assert resp.chunk_left == chunk_left_before
         assert len(fp.cur_chunk) == cur_chunk_len_before
         assert fp.index == index_before
+        original.close.assert_not_called()
+        connection.close.assert_not_called()
+        pool._put_conn.assert_not_called()
+        assert resp.connection is connection
+        assert b"".join(resp.read_chunked(decode_content=True)) == b"oo"
 
         decoded.close()
 

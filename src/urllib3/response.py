@@ -1461,6 +1461,19 @@ class HTTPResponse(BaseHTTPResponse):
                 "It should have have an fp attribute which returns raw chunks."
             )
 
+        if decode_content is None:
+            decode_content = self.decode_content
+
+        # Reject decode-mode switches before ``_error_catcher()``. An
+        # exception inside that context manager closes ``_original_response``
+        # and the pooled connection, which discards a still-readable body.
+        # ``read()`` already rejects this switch before ``_raw_read()`` (#5344).
+        if amt != 0 and not decode_content and self._has_decoded_content:
+            raise RuntimeError(
+                "Calling read(decode_content=False) is not supported after "
+                "read(decode_content=True) was called."
+            )
+
         with self._error_catcher():
             # Don't bother reading the body of a HEAD request.
             if self._original_response and is_response_to_head(self._original_response):
@@ -1478,17 +1491,6 @@ class HTTPResponse(BaseHTTPResponse):
                 # Negative numbers and `None` should be treated the same,
                 # but httplib handles only `None` correctly.
                 amt = None
-
-            if decode_content is None:
-                decode_content = self.decode_content
-
-            # Reject decode-mode switches before consuming chunked body data,
-            # matching HTTPResponse.read() after #5344.
-            if amt != 0 and not decode_content and self._has_decoded_content:
-                raise RuntimeError(
-                    "Calling read(decode_content=False) is not supported after "
-                    "read(decode_content=True) was called."
-                )
 
             while True:
                 # First, check if any data is left in the decoder's buffer.
