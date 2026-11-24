@@ -3099,6 +3099,8 @@ class TestSocketDummyServerDualStack(SocketDummyServerTestCase):
         except Exception:
             pass
 
+        fd1: int | None = None
+        fd2: int | None = None
         s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         high_s1: socket.socket | None = None
@@ -3114,11 +3116,18 @@ class TestSocketDummyServerDualStack(SocketDummyServerTestCase):
             except OSError:
                 pytest.skip("Unable to allocate file descriptor >= 1024")
 
-            high_s1 = socket.fromfd(fd1, s1.family, s1.type, s1.proto)
-            high_s2 = socket.fromfd(fd2, s2.family, s2.type, s2.proto)
+            # Adopt allocated high descriptors directly without dup()
+            high_s1 = socket.socket(s1.family, s1.type, s1.proto, fileno=fd1)
+            fd1 = None
+            high_s2 = socket.socket(s2.family, s2.type, s2.proto, fileno=fd2)
+            fd2 = None
+
             # Close the original low-fd sockets so only high-fd listeners remain
             s1.close()
             s2.close()
+
+            assert high_s1.fileno() >= 1024
+            assert high_s2.fileno() >= 1024
 
             listener = _MultiSocketListener([high_s1, high_s2])
             listener.settimeout(1.0)
@@ -3138,8 +3147,12 @@ class TestSocketDummyServerDualStack(SocketDummyServerTestCase):
         finally:
             if high_s1 is not None:
                 high_s1.close()
+            elif fd1 is not None:
+                os.close(fd1)
             if high_s2 is not None:
                 high_s2.close()
+            elif fd2 is not None:
+                os.close(fd2)
             s1.close()
             s2.close()
 
