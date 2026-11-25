@@ -57,6 +57,23 @@ class TestRequestField:
             "\r\n"
         )
 
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"content_type": "text/plain\r\nX-Injected: 1"},
+            {"content_location": "/test\r\nX-Injected: 1"},
+            {"content_disposition": "form-data\r\nX-Injected: 1"},
+            {"content_type": "text/plain\nX-Injected: 1"},
+            {"content_type": "text/plain\x00"},
+        ],
+    )
+    def test_make_multipart_rejects_header_injection(
+        self, kwargs: dict[str, str]
+    ) -> None:
+        field = RequestField("somename", "data")
+        with pytest.raises(ValueError, match="carriage return, line feed"):
+            field.make_multipart(**kwargs)
+
     def test_render_parts(self) -> None:
         field = RequestField("somename", "data")
         parts = field._render_parts({"name": "value", "filename": "value"})
