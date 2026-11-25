@@ -1,0 +1,2 @@
+Raised ``UnrewindableBodyError`` instead of silently resending an exhausted
+request body iterator as an empty body during a retry.
