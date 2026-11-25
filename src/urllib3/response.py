@@ -1233,6 +1233,10 @@ class HTTPResponse(BaseHTTPResponse):
         if amt and amt < 0:
             # Negative numbers and `None` should be treated the same.
             amt = None
+        if amt == 0:
+            # A zero-length read must not raise for a decode-mode switch,
+            # mirroring read(): it consumes nothing and returns nothing.
+            return b""
         # try and respond without going to the network
         if self._has_decoded_content:
             if not decode_content:
@@ -1258,8 +1262,6 @@ class HTTPResponse(BaseHTTPResponse):
                 if amt is None:
                     return self._decoded_buffer.get_all()
                 return self._decoded_buffer.get(amt)
-        if amt == 0:
-            return b""
 
         # FIXME, this method's type doesn't say returning None is possible
         data = self._raw_read(amt, read1=True)

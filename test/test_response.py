@@ -1515,6 +1515,43 @@ class TestResponse:
         ):
             resp.read1(decode_content=False)
 
+    @pytest.mark.parametrize(
+        "encoding,compress", [("gzip", gzip.compress), ("deflate", zlib.compress)]
+    )
+    def test_read1_zero_with_decode_disabled_after_decoded_read(
+        self, encoding: str, compress: typing.Callable[[bytes], bytes]
+    ) -> None:
+        # A zero-length read must not raise for a decode-mode switch,
+        # mirroring read() (#5344): it consumes nothing and returns nothing.
+        fp = BytesIO(compress(b"foo"))
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": encoding}, preload_content=False
+        )
+        assert resp.read1(1) == b"f"
+        position = fp.tell()
+
+        assert resp.read1(0, decode_content=False) == b""
+        assert fp.tell() == position
+        assert resp.read1() == b"oo"
+
+    @pytest.mark.parametrize(
+        "encoding,compress", [("gzip", gzip.compress), ("deflate", zlib.compress)]
+    )
+    def test_read1_zero_with_decode_disabled_after_decoded_read_via_read(
+        self, encoding: str, compress: typing.Callable[[bytes], bytes]
+    ) -> None:
+        # Same zero-length allowance when the decoded read went through read().
+        fp = BytesIO(compress(b"foo"))
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": encoding}, preload_content=False
+        )
+        assert resp.read(1) == b"f"
+        position = fp.tell()
+
+        assert resp.read1(0, decode_content=False) == b""
+        assert fp.tell() == position
+        assert resp.read1() == b"oo"
+
     def test_read_chunked_with_illegal_mix_decode_toggle(self) -> None:
         fp = MockChunkedEncodingResponse([zlib.compress(b"foo")])
         raw = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
