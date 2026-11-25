@@ -1506,9 +1506,7 @@ class HTTPResponse(BaseHTTPResponse):
                 # On CPython and PyPy, we should never need to flush the
                 # decoder. However, on Jython we *might* need to, so
                 # lets defensively do it anyway.
-                decoded = self._flush_decoder(
-                    max_length=amt if amt is not None else -1
-                )
+                decoded = self._flush_decoder(max_length=amt if amt is not None else -1)
                 if decoded:  # Platform-specific: Jython.
                     yield decoded
 
