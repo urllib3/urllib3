@@ -1169,7 +1169,6 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             assert callback_called
             s = conn.request("GET", "/")
             r = conn.getresponse(s)
-            conn.close()
 
         # this request should have been executed under the protocol indicated
         # by the http_version fixture, in spite of the HTTP/2 probe cache
@@ -1180,6 +1179,7 @@ class BaseTestHTTPS(HTTPSHypercornDummyServerTestCase):
             conn._protocol_helper,  # type: ignore[attr-defined]
             HTTP2ProtocolHelper if http_version == "h2" else HTTPProtocolHelper,
         )
+        conn.close()
 
     def test_default_ssl_context_ssl_min_max_versions(self) -> None:
         ctx = urllib3.util.ssl_.create_urllib3_context()

@@ -785,6 +785,12 @@ class HTTPConnection(_HTTPConnection):
             self._tunnel_host = None
             self._tunnel_port = None
             self._tunnel_scheme = None
+            if self.http1:
+                self._protocol_helper = HTTPProtocolHelper(self)
+            elif self.http2:
+                from .http2.connection import HTTP2ProtocolHelper
+
+                self._protocol_helper = HTTP2ProtocolHelper(self)
 
     def putrequest(
         self,

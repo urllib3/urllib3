@@ -616,7 +616,7 @@ class TestHTTP2Connection:
         conn._protocol_helper._h2_conn._obj.receive_data = mock.Mock(  # type: ignore[attr-defined]
             side_effect=events,
         )
-        conn._protocol_helper._h2_conn._obj.acknowledge_received_data = mock.Mock()  # type: ignore[attr-defined]
+        conn._protocol_helper._h2_conn._obj.increment_flow_control_window = mock.Mock()  # type: ignore[attr-defined]
         conn._protocol_helper._h2_conn._obj.data_to_send = mock.Mock(return_value=b"flow")  # type: ignore[attr-defined]
         conn._protocol_helper.close_stream = mock.Mock()  # type: ignore[method-assign]
         stream = Stream(conn)
@@ -629,14 +629,14 @@ class TestHTTP2Connection:
 
     def test_flow_control(self) -> None:
         conn, stream = self._create_test_response_stream(200, [], b"fo", b"o")
-        ack_received_data = conn._protocol_helper._h2_conn._obj.acknowledge_received_data  # type: ignore[attr-defined]
+        inc_window = conn._protocol_helper._h2_conn._obj.increment_flow_control_window  # type: ignore[attr-defined]
         data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send  # type: ignore[attr-defined]
 
         resp = conn.getresponse(stream=stream)
         assert resp.status == 200
         assert resp.data == b"foo"
-        ack_received_data.assert_any_call(2, 1)
-        ack_received_data.assert_called_with(1, 1)
+        inc_window.assert_any_call(2, None)
+        inc_window.assert_called_with(1, None)
         data_to_send.assert_called_with()
         conn.sock.sendall.assert_called_with(b"flow")  # type: ignore[union-attr]
 
@@ -672,6 +672,9 @@ class TestHTTP2Connection:
         data += resp.read()
         assert data == b"first,second,third"
         conn._protocol_helper.close_stream.assert_called_once_with(stream)  # type: ignore[attr-defined]
+        inc_window = conn._protocol_helper._h2_conn._obj.increment_flow_control_window  # type: ignore[attr-defined]
+        inc_window.assert_any_call(3, 1)
+        inc_window.assert_any_call(12, 1)
 
     def test_response_enforce_content_length(self) -> None:
         conn, stream = self._create_test_response_stream(
