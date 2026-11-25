@@ -1099,6 +1099,33 @@ class TestResponse:
 
         assert b"".join(iter(lambda: resp.read(1), b"")) == msg
 
+    @onlyBrotli()
+    def test_brotli_eof_flush_preserves_read_budget(self, monkeypatch) -> None:
+        compressed = brotli.compress(b"0" * 100_000, quality=11)
+        resp = HTTPResponse(
+            BytesIO(compressed),
+            headers={"content-encoding": "br"},
+            preload_content=False,
+        )
+        calls = []
+        original_decompress = type(resp)._decoder.decompress if resp._decoder else None
+        resp._init_decoder()
+        decoder_type = type(resp._decoder)
+        original_decompress = decoder_type.decompress
+
+        def decompress_spy(self, data: bytes, max_length: int = -1) -> bytes:
+            calls.append(max_length)
+            return original_decompress(self, data, max_length=max_length)
+
+        monkeypatch.setattr(decoder_type, "decompress", decompress_spy)
+
+        body = b""
+        while chunk := resp.read(1024):
+            body += chunk
+
+        assert body == b"0" * 100_000
+        assert -1 not in calls
+
     def test_read_multi_decoding_too_many_links(self) -> None:
         fp = BytesIO(b"foo")
         with pytest.raises(

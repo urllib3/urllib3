@@ -673,7 +673,7 @@ class BaseHTTPResponse(io.IOBase):
                 )
             return data
 
-        if max_length is None or flush_decoder:
+        if max_length is None:
             max_length = -1
 
         try:
@@ -688,17 +688,21 @@ class BaseHTTPResponse(io.IOBase):
                 e,
             ) from e
         if flush_decoder:
-            data += self._flush_decoder()
+            flush_max_length = max_length - len(data) if max_length > 0 else max_length
+            data += self._flush_decoder(max_length=flush_max_length)
 
         return data
 
-    def _flush_decoder(self) -> bytes:
+    def _flush_decoder(self, max_length: int = -1) -> bytes:
         """
         Flushes the decoder. Should only be called if the decoder is actually
         being used.
         """
         if self._decoder:
-            return self._decoder.decompress(b"") + self._decoder.flush()
+            data = self._decoder.decompress(b"", max_length=max_length)
+            if not self._decoder.has_unconsumed_tail:
+                data += self._decoder.flush()
+            return data
         return b""
 
     # Compatibility methods for `io` module
@@ -1502,7 +1506,9 @@ class HTTPResponse(BaseHTTPResponse):
                 # On CPython and PyPy, we should never need to flush the
                 # decoder. However, on Jython we *might* need to, so
                 # lets defensively do it anyway.
-                decoded = self._flush_decoder()
+                decoded = self._flush_decoder(
+                    max_length=amt if amt is not None else -1
+                )
                 if decoded:  # Platform-specific: Jython.
                     yield decoded
 

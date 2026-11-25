@@ -1,0 +1,1 @@
+Preserved the streaming read size budget when flushing compressed decoders at end-of-body.
