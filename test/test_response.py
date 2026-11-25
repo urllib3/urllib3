@@ -30,6 +30,7 @@ from urllib3.response import (  # type: ignore[attr-defined]
     _MAX_CHUNK_LINE_LENGTH,
     BaseHTTPResponse,
     BytesQueueBuffer,
+    ContentDecoder,
     GzipDecoder,
     HTTPResponse,
     brotli,
@@ -1100,7 +1101,9 @@ class TestResponse:
         assert b"".join(iter(lambda: resp.read(1), b"")) == msg
 
     @onlyBrotli()
-    def test_brotli_eof_flush_preserves_read_budget(self, monkeypatch) -> None:
+    def test_brotli_eof_flush_preserves_read_budget(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         compressed = brotli.compress(b"0" * 100_000, quality=11)
         resp = HTTPResponse(
             BytesIO(compressed),
@@ -1108,12 +1111,15 @@ class TestResponse:
             preload_content=False,
         )
         calls = []
-        original_decompress = type(resp)._decoder.decompress if resp._decoder else None
         resp._init_decoder()
-        decoder_type = type(resp._decoder)
+        decoder = resp._decoder
+        assert decoder is not None
+        decoder_type = type(decoder)
         original_decompress = decoder_type.decompress
 
-        def decompress_spy(self, data: bytes, max_length: int = -1) -> bytes:
+        def decompress_spy(
+            self: ContentDecoder, data: bytes, max_length: int = -1
+        ) -> bytes:
             calls.append(max_length)
             return original_decompress(self, data, max_length=max_length)
 
