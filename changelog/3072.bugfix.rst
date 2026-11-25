@@ -1,0 +1,1 @@
+Fixed ``HTTPHeaderDict`` raising ``TypeError`` when a header value was passed as ``bytes``. Bytes values are now decoded using latin-1 when they are set or added, mirroring the existing handling of bytes keys, so values round-trip losslessly through the dict and onto the wire.
