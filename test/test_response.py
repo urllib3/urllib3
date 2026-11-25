@@ -1515,22 +1515,68 @@ class TestResponse:
         ):
             resp.read1(decode_content=False)
 
-    def test_read_chunked_with_illegal_mix_decode_toggle(self) -> None:
+    @pytest.mark.parametrize("amt", [None, 1, -1])
+    def test_read_chunked_with_illegal_mix_decode_toggle(self, amt: int | None) -> None:
         fp = MockChunkedEncodingResponse([zlib.compress(b"foo")])
         raw = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
         raw.fp = fp  # type: ignore[assignment]
+        original = mock.Mock()
+        original.isclosed.return_value = False
+        connection = mock.Mock()
+        pool = mock.Mock()
         resp = HTTPResponse(
             raw,
             headers={"transfer-encoding": "chunked", "content-encoding": "deflate"},
             preload_content=False,
+            original_response=original,
+            pool=pool,
+            connection=connection,
         )
         decoded = resp.read_chunked(1, decode_content=True)
         assert next(decoded) == b"f"
 
-        with pytest.raises(RuntimeError, match="decode_content=False"):
-            next(resp.read_chunked(1, decode_content=False))
+        chunk_left_before = resp.chunk_left
+        cur_chunk_len_before = len(fp.cur_chunk)
+        index_before = fp.index
+
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r"Calling read\(decode_content=False\) is not supported after "
+                r"read\(decode_content=True\) was called"
+            ),
+        ):
+            next(resp.read_chunked(amt, decode_content=False))
+
+        # Mode-switch rejection must not consume further chunked body bytes
+        # or release the live response's connection.
+        assert resp.chunk_left == chunk_left_before
+        assert len(fp.cur_chunk) == cur_chunk_len_before
+        assert fp.index == index_before
+        original.close.assert_not_called()
+        connection.close.assert_not_called()
+        pool._put_conn.assert_not_called()
+        assert resp.connection is connection
+        assert b"".join(resp.read_chunked(decode_content=True)) == b"oo"
 
         decoded.close()
+
+    def test_decode_rejects_mode_switch_after_decoded_content(self) -> None:
+        fp = BytesIO(zlib.compress(b"foo"))
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
+        assert resp.read(1) == b"f"
+        assert resp._has_decoded_content is True
+
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                r"Calling read\(decode_content=False\) is not supported after "
+                r"read\(decode_content=True\) was called"
+            ),
+        ):
+            resp._decode(b"", decode_content=False, flush_decoder=False)
 
     def test_read_with_mix_decode_toggle(self) -> None:
         data = zlib.compress(b"foo")
@@ -1950,6 +1996,28 @@ class TestResponse:
             data += c
 
         assert b"foobar" == data
+
+    @pytest.mark.parametrize("use_stream", [True, False])
+    @pytest.mark.parametrize("decode_content", [True, False])
+    def test_mock_gzipped_transfer_encoding_chunked_default_decode_content(
+        self, use_stream: bool, decode_content: bool
+    ) -> None:
+        """stream() and read_chunked() follow the response's decode_content."""
+        compressed = gzip.compress(b"foobar")
+        fp = MockChunkedEncodingResponse(
+            [compressed[i : i + 2] for i in range(0, len(compressed), 2)]
+        )
+        r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        r.fp = fp  # type: ignore[assignment]
+        headers = {"transfer-encoding": "chunked", "content-encoding": "gzip"}
+        resp = HTTPResponse(
+            r, preload_content=False, headers=headers, decode_content=decode_content
+        )
+
+        chunks = resp.stream() if use_stream else resp.read_chunked()
+        data = b"".join(chunks)
+
+        assert data == (b"foobar" if decode_content else compressed)
 
     def test_mock_transfer_encoding_chunked_custom_read(self) -> None:
         stream = [b"foooo", b"bbbbaaaaar"]

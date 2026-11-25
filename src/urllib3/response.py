@@ -1461,6 +1461,19 @@ class HTTPResponse(BaseHTTPResponse):
                 "It should have have an fp attribute which returns raw chunks."
             )
 
+        if decode_content is None:
+            decode_content = self.decode_content
+
+        # Reject decode-mode switches before ``_error_catcher()``. An
+        # exception inside that context manager closes ``_original_response``
+        # and the pooled connection, which discards a still-readable body.
+        # ``read()`` already rejects this switch before ``_raw_read()`` (#5344).
+        if amt != 0 and not decode_content and self._has_decoded_content:
+            raise RuntimeError(
+                "Calling read(decode_content=False) is not supported after "
+                "read(decode_content=True) was called."
+            )
+
         with self._error_catcher():
             # Don't bother reading the body of a HEAD request.
             if self._original_response and is_response_to_head(self._original_response):

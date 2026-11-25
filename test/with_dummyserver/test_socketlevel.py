@@ -2484,6 +2484,45 @@ class TestHEAD(SocketDummyServerTestCase):
 
 
 class TestStream(SocketDummyServerTestCase):
+    @pytest.mark.parametrize("amt", [None, 1, -1])
+    def test_read_chunked_decode_toggle_keeps_pooled_response(
+        self, amt: int | None
+    ) -> None:
+        # A live chunked body must survive a rejected decode_content switch.
+        # Raising inside ``_error_catcher()`` closes the response and returns
+        # its connection to the pool, so later decoded reads see an empty body.
+        decoded_body = b"a" * 90
+        compressed = zlib.compress(decoded_body)
+        chunked = b"%X\r\n%s\r\n0\r\n\r\n" % (len(compressed), compressed)
+        self.start_response_handler(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Transfer-Encoding: chunked\r\n"
+            b"Content-Encoding: deflate\r\n"
+            b"\r\n" + chunked
+        )
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            resp = pool.request("GET", "/", preload_content=False, timeout=LONG_TIMEOUT)
+            assert isinstance(resp, HTTPResponse)
+            assert pool.pool is not None
+            assert pool.pool.qsize() == 0
+            connection = resp.connection
+            assert isinstance(connection, HTTPConnection)
+            assert connection.sock is not None
+
+            reader = resp.read_chunked(1, decode_content=True)
+            assert next(reader) == decoded_body[:1]
+
+            with pytest.raises(RuntimeError, match="decode_content=False"):
+                next(resp.read_chunked(amt, decode_content=False))
+
+            assert not resp.closed
+            assert resp.connection is connection
+            assert connection.sock is not None
+            assert pool.pool.qsize() == 0
+            assert b"".join(resp.read_chunked(decode_content=True)) == decoded_body[1:]
+            reader.close()
+
     def test_stream_none_unchunked_response_does_not_hang(self) -> None:
         done_event = Event()
 
