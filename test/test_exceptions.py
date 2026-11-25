@@ -22,6 +22,7 @@ from urllib3.exceptions import (
     MaxRetryError,
     NameResolutionError,
     NewConnectionError,
+    ProxySchemeUnknown,
     ReadTimeoutError,
 )
 from urllib3.response import HTTPResponse
@@ -93,6 +94,35 @@ class TestFormat:
 
         assert "defects" in str(hpe)
         assert "unparsed_data" in str(hpe)
+
+    @pytest.mark.parametrize(
+        "scheme, expected_scheme, message",
+        [
+            (
+                "ftp",
+                "ftp",
+                "Proxy URL had unsupported scheme ftp, should use http:// or https://",
+            ),
+            (
+                None,
+                None,
+                "Proxy URL had no scheme, should start with http:// or https://",
+            ),
+            (
+                "localhost",
+                None,
+                "Proxy URL had no scheme, should start with http:// or https://",
+            ),
+        ],
+    )
+    def test_proxy_scheme_unknown(
+        self, scheme: str | None, expected_scheme: str | None, message: str
+    ) -> None:
+        err = ProxySchemeUnknown(scheme)
+
+        assert str(err) == message
+        assert err.args == (message,)
+        assert err.scheme == expected_scheme
 
 
 class TestNewConnectionError:
