@@ -1447,3 +1447,16 @@ class TestUtilWithoutIdna:
         self, url: str, expected_host: str
     ) -> None:
         assert parse_url(url).host == expected_host
+
+    @pytest.mark.parametrize(
+        "url, expected_path",
+        [
+            ("mailto:user@example.com", "user@example.com"),
+            ("urn:isbn:0451450523", "isbn:0451450523"),
+            ("tel:+1-800-555-0199", "+1-800-555-0199"),
+        ],
+    )
+    def test_parse_url_rootless_path(self, url: str, expected_path: str) -> None:
+        parsed = parse_url(url)
+        assert parsed.path == expected_path
+        assert parsed.url == url

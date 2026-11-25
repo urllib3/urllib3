@@ -117,7 +117,7 @@ class Url(
         query: str | None = None,
         fragment: str | None = None,
     ):
-        if path and not path.startswith("/"):
+        if path and not path.startswith("/") and (host is not None or scheme is None):
             path = "/" + path
         if scheme is not None:
             scheme = scheme.lower()
