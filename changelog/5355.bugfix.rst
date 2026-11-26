@@ -1,0 +1,1 @@
+Fixed multipart form encoding with custom boundaries that require quoting in the ``Content-Type`` header.
