@@ -240,7 +240,10 @@ class Url(
 
         # We use "is not None" we want things to happen with empty strings (or 0 port)
         if scheme is not None:
-            url += scheme + "://"
+            if auth is not None or host is not None or port is not None:
+                url += scheme + "://"
+            else:
+                url += scheme + ":"
         if auth is not None:
             url += auth + "@"
         if host is not None:
