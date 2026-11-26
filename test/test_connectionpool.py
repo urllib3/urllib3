@@ -396,9 +396,11 @@ class TestConnectionPool:
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
             conn1 = pool._get_conn()
             with patch.object(conn1, "close") as conn1_close:
+                assert not pool.is_closed()
                 pool.close()
 
                 assert pool.pool is None
+                assert pool.is_closed()
 
                 # Accessing pool.pool will raise AttributeError, which will get
                 # caught and will close conn1

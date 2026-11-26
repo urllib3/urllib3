@@ -207,6 +207,7 @@ def test_response_after_connection_closed(pool: HTTPConnectionPool) -> None:
     assert resp1.data == b""  # not available after connection close
     assert not resp2.closed
     assert resp2.data == b"foo"
+    resp2.close()
     conn.close()
 
 
