@@ -1,0 +1,4 @@
+Fixed ``fields`` being appended to a URL that already had a query or a
+fragment. The parameters are now merged into the existing query; previously
+they produced a second ``?``, or were silently dropped from the request when
+the URL had a fragment.
