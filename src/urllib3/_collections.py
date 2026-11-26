@@ -205,11 +205,11 @@ class HTTPHeaderDictItemView(set[tuple[str, str]]):
 class HTTPHeaderDict(typing.MutableMapping[str, str]):
     """
     :param headers:
-        An iterable of field-value pairs. Must not contain multiple field names
-        when compared case-insensitively.
+        An iterable of field-value pairs. Repeated field names are preserved,
+        including names that differ only in case.
 
     :param kwargs:
-        Additional field-value pairs to pass in to ``dict.update``.
+        Additional field-value pairs to append using ``.extend``.
 
     A ``dict`` like container for storing HTTP Headers.
 
@@ -217,14 +217,10 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
     RFC 7230. Iteration provides the first case-sensitive key seen for each
     case-insensitive pair.
 
-    Using ``__setitem__`` syntax overwrites fields that compare equal
-    case-insensitively in order to maintain ``dict``'s api. For fields that
-    compare equal, instead create a new ``HTTPHeaderDict`` and use ``.add``
-    in a loop.
-
-    If multiple fields that are equal case-insensitively are passed to the
-    constructor or ``.update``, the behavior is undefined and some will be
-    lost.
+    Using ``__setitem__`` syntax or ``.update`` overwrites fields that compare
+    equal case-insensitively. To preserve repeated fields, pass field-value pairs
+    to the constructor or use ``.add`` or ``.extend``. Use ``.getlist`` to retrieve
+    their values separately; ``__getitem__`` joins them with commas.
 
     >>> headers = HTTPHeaderDict()
     >>> headers.add('Set-Cookie', 'foo=bar')
@@ -234,6 +230,12 @@ class HTTPHeaderDict(typing.MutableMapping[str, str]):
     'foo=bar, baz=quxx'
     >>> headers['Content-Length']
     '7'
+    >>> headers = HTTPHeaderDict([("Set-Cookie", "a=1"), ("set-cookie", "b=2")])
+    >>> headers.getlist("Set-Cookie")
+    ['a=1', 'b=2']
+    >>> headers.update({"Set-Cookie": "c=3"})
+    >>> headers.getlist("Set-Cookie")
+    ['c=3']
     """
 
     _container: typing.MutableMapping[str, list[str]]
