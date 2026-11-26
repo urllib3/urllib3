@@ -484,7 +484,11 @@ def parse_url(url: str) -> Url:
     """
     Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
     performed to parse incomplete urls. Fields not provided will be None.
-    This parser is RFC 3986 and RFC 6874 compliant.
+    This parser is based on RFC 3986 and RFC 6874 and is intended for HTTP(S) URLs.
+
+    Support for other URI schemes is limited. For example,
+    ``parse_url("mailto:user@example.com").path`` is ``"/user@example.com"``,
+    which differs from the rootless path ``"user@example.com"`` in the input.
 
     The parser logic and helper functions are based heavily on
     work done in the ``rfc3986`` module.
