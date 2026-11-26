@@ -1458,7 +1458,7 @@ class HTTPResponse(BaseHTTPResponse):
         if not self.supports_chunked_reads():
             raise BodyNotHttplibCompatible(
                 "Body should be http.client.HTTPResponse like. "
-                "It should have have an fp attribute which returns raw chunks."
+                "It should have an fp attribute which returns raw chunks."
             )
 
         with self._error_catcher():
