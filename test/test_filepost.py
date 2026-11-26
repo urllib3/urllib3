@@ -114,3 +114,14 @@ class TestMultipartEncoding:
         )
 
         assert encoded == expected
+
+
+@pytest.mark.parametrize("data", [bytearray(b"foo"), memoryview(b"foo")])
+def test_buffer_field_values(data: bytearray | memoryview) -> None:
+    field = RequestField("file", data, filename="file")
+    field.make_multipart()
+    expected = RequestField("file", b"foo", filename="file")
+    expected.make_multipart()
+    assert encode_multipart_formdata([field], boundary=BOUNDARY) == (
+        encode_multipart_formdata([expected], boundary=BOUNDARY)
+    )
