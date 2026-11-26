@@ -16,7 +16,13 @@ _NORMALIZABLE_SCHEMES = ("http", "https", None)
 # 'rfc3986' module: https://github.com/python-hyper/rfc3986
 _PERCENT_RE = re.compile(r"%[a-fA-F0-9]{2}")
 _HOST_PERCENT_RE = re.compile(r"%[a-fA-F0-9]{2}|%")
-_SCHEME_RE = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+-]*:|/)")
+_SCHEME_RE = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+.\-]*:|/)")
+# RFC 3986 allows '.' in a scheme, so a schemeless "host:port" URL also matches
+# the scheme grammar above.  Treat the URL as schemeless when the characters
+# between the colon and the next '/', '?' or '#' are a port number.
+_SCHEME_LIKE_HOST_PORT_RE = re.compile(
+    r"^[a-zA-Z][a-zA-Z0-9+\-]*\.[a-zA-Z0-9+.\-]*:(?:\d+(?:[/?#]|$)|$)"
+)
 _HOST_INVALID_CHAR_RE = re.compile(r"[\x00-\x20\x7f]")
 _URI_RE = re.compile(
     r"^(?:([a-zA-Z][a-zA-Z0-9+.-]*):)?"
@@ -480,6 +486,26 @@ def _encode_target(target: str) -> str:
     return encoded_target
 
 
+def _is_scheme_url(url: str) -> bool:
+    """Return whether ``url`` starts with a scheme instead of a host and port.
+
+    RFC 3986 allows ``.`` in a scheme, which also makes a schemeless URL like
+    ``example.com:8080`` match the scheme grammar.  Prefer the schemeless
+    reading when a port number follows the colon.
+    """
+    if _SCHEME_RE.match(url) is None:
+        return False
+
+    colon = url.find(":")
+    rest = url[colon + 1 : colon + 2]
+    if rest and not rest.isdigit():
+        # The regex matched a leading "/" (no scheme) or what follows the
+        # colon cannot be a port number, so this is a scheme.
+        return True
+
+    return _SCHEME_LIKE_HOST_PORT_RE.match(url) is None
+
+
 def parse_url(url: str) -> Url:
     """
     Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
@@ -512,7 +538,9 @@ def parse_url(url: str) -> Url:
         # Empty
         return Url()
 
-    if not _SCHEME_RE.search(url):
+    if not _is_scheme_url(url):
+        # Either the URL has no scheme, or it is a schemeless "host:port"
+        # that would otherwise parse as a scheme containing a dot.
         url = "//" + url
 
     scheme: str | None

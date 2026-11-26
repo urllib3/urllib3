@@ -306,7 +306,9 @@ class TestPoolManager:
 
         with pytest.warns(FutureWarning) as records:
             with pytest.raises(ConnectionError):
-                p.request(method="GET", url="evil.com://good.com")
+                # "evil.com" is a valid scheme name now that dots are allowed
+                # in schemes, so use an unambiguously schemeless URL here.
+                p.request(method="GET", url="evil.com/good.com")
 
         msg = (
             "URLs without a scheme (ie 'https://') are deprecated and will raise an error "
