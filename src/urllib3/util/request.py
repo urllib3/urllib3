@@ -225,6 +225,25 @@ def rewind_body(body: typing.IO[typing.AnyStr], body_pos: _TYPE_BODY_POSITION) -
         )
 
 
+def _bytes_view_for_send(mv: memoryview) -> bytes | memoryview:
+    """Return a body whose ``len()`` equals the number of bytes to send.
+
+    ``HTTPConnection.request()`` frames ``Transfer-Encoding: chunked`` with
+    ``len(chunk)``. For a 1-D bytes-like object that already matches
+    ``mv.nbytes``, keep the existing view. Otherwise produce a 1-D
+    unsigned-byte view (no copy when C-contiguous) or ``tobytes()``.
+    Zero-length views are returned as empty ``bytes`` because CPython
+    rejects ``cast()`` on some empty shapes.
+    """
+    if mv.nbytes == 0:
+        return b""
+    if mv.c_contiguous and mv.ndim == 1 and mv.itemsize == 1:
+        return mv
+    if mv.c_contiguous:
+        return mv.cast("B")
+    return mv.tobytes()
+
+
 class ChunksAndContentLength(typing.NamedTuple):
     chunks: typing.Iterable[bytes] | None
     content_length: int | None
@@ -292,8 +311,10 @@ def body_to_chunks(
                     f"object, or iterable. Instead was {body!r}"
                 ) from None
         else:
-            # Since it implements the buffer API can be passed directly to socket.sendall()
-            chunks = (body,)
+            # Buffer bodies can be passed to socket.sendall(), but chunked
+            # framing uses len(chunk) while Content-Length uses mv.nbytes.
+            # Typed and multidimensional views have len() == element count.
+            chunks = (_bytes_view_for_send(mv),)
             content_length = mv.nbytes
 
     return ChunksAndContentLength(chunks=chunks, content_length=content_length)
