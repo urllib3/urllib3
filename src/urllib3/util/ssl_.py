@@ -10,7 +10,7 @@ import warnings
 from binascii import Error as BinasciiError
 from binascii import unhexlify
 
-from ..exceptions import ProxySchemeUnsupported, SSLError
+from ..exceptions import FingerprintMismatchError, ProxySchemeUnsupported, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
 
 SSLContext = None
@@ -113,6 +113,9 @@ def assert_fingerprint(cert: bytes | None, fingerprint: str) -> None:
         Certificate as bytes object.
     :param fingerprint:
         Fingerprint as string of hexdigits, can be interspersed by colons.
+    :raises urllib3.exceptions.FingerprintMismatchError:
+        If the certificate's fingerprint does not match. The exception contains
+        the expected and actual fingerprints as lowercase hexadecimal strings.
     """
 
     if cert is None:
@@ -137,9 +140,7 @@ def assert_fingerprint(cert: bytes | None, fingerprint: str) -> None:
     cert_digest = hashfunc(cert).digest()
 
     if not hmac.compare_digest(cert_digest, fingerprint_bytes):
-        raise SSLError(
-            f'Fingerprints did not match. Expected "{fingerprint}", got "{cert_digest.hex()}"'
-        )
+        raise FingerprintMismatchError(fingerprint, cert_digest.hex())
 
 
 def resolve_cert_reqs(candidate: None | int | str) -> VerifyMode:

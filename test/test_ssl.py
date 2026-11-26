@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import ssl
 import sys
 import typing
@@ -7,6 +8,7 @@ from unittest import mock
 
 import pytest
 
+from urllib3 import exceptions
 from urllib3.exceptions import ProxySchemeUnsupported, SSLError
 from urllib3.util import ssl_
 
@@ -251,10 +253,11 @@ class TestSSL:
             ssl_.create_urllib3_context(**kwargs)
 
     def test_assert_fingerprint_raises_exception_on_none_cert(self) -> None:
-        with pytest.raises(SSLError):
+        with pytest.raises(SSLError) as caught:
             ssl_.assert_fingerprint(
                 cert=None, fingerprint="55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
             )
+        assert type(caught.value) is SSLError
 
     @pytest.mark.parametrize(
         "fingerprint",
@@ -269,5 +272,31 @@ class TestSSL:
     def test_assert_fingerprint_raises_sslerror_on_non_hexadecimal(
         self, fingerprint: str
     ) -> None:
-        with pytest.raises(SSLError):
+        with pytest.raises(SSLError) as caught:
             ssl_.assert_fingerprint(b"certificate", fingerprint)
+        assert type(caught.value) is SSLError
+
+    @pytest.mark.parametrize("hash_name", ["md5", "sha1", "sha256"])
+    @pytest.mark.parametrize("separator", ["", ":"])
+    def test_assert_fingerprint_mismatch_details(
+        self, hash_name: str, separator: str
+    ) -> None:
+        cert = b"certificate"
+        digest = hashlib.new(hash_name, cert)
+        fingerprint = separator.join(["AA"] * digest.digest_size)
+        with pytest.raises(SSLError) as caught:
+            ssl_.assert_fingerprint(cert, fingerprint)
+
+        error = caught.value
+        assert isinstance(error, exceptions.FingerprintMismatchError)
+        assert error.expected_fingerprint == "aa" * digest.digest_size
+        assert error.actual_fingerprint == digest.hexdigest()
+        assert str(error) == (
+            f'Fingerprints did not match. Expected "{error.expected_fingerprint}", '
+            f'got "{error.actual_fingerprint}"'
+        )
+        assert error.args == (str(error),)
+
+        # Uppercase and colon-separated matching fingerprints remain accepted.
+        matching = separator.join(f"{byte:02X}" for byte in digest.digest())
+        ssl_.assert_fingerprint(cert, matching)

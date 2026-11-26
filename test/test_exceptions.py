@@ -8,6 +8,7 @@ from test import DUMMY_POOL
 
 import pytest
 
+from urllib3 import exceptions
 from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import HTTPConnectionPool
 from urllib3.exceptions import (
@@ -67,6 +68,23 @@ class TestPickle:
         if hasattr(exception, "_reason"):
             # reason is likely an exception so do string comparison instead
             assert str(exception._reason) == str(result._reason)  # type: ignore[attr-defined]
+
+    @pytest.mark.parametrize("protocol", [0, pickle.HIGHEST_PROTOCOL])
+    @pytest.mark.parametrize("wrap_in_max_retry", [False, True])
+    def test_fingerprint_mismatch(self, protocol: int, wrap_in_max_retry: bool) -> None:
+        error = exceptions.FingerprintMismatchError("aa" * 32, "bb" * 32)
+        exception = (
+            MaxRetryError(DUMMY_POOL, "/", error) if wrap_in_max_retry else error
+        )
+        result = pickle.loads(pickle.dumps(exception, protocol=protocol))
+        if wrap_in_max_retry:
+            assert isinstance(result, MaxRetryError)
+            result = result.reason
+        assert isinstance(result, exceptions.FingerprintMismatchError)
+        assert result.expected_fingerprint == error.expected_fingerprint
+        assert result.actual_fingerprint == error.actual_fingerprint
+        assert result.args == error.args
+        assert str(result) == str(error)
 
     def test_invalid_chunk_length(self) -> None:
         response = HTTPResponse(

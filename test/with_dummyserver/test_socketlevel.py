@@ -40,6 +40,7 @@ from urllib3 import (
     HTTPResponse,
     HTTPSConnectionPool,
     ProxyManager,
+    exceptions,
     util,
 )
 from urllib3._collections import HTTPHeaderDict
@@ -1854,7 +1855,7 @@ class TestSSL(SocketDummyServerTestCase):
 
         with pytest.raises(MaxRetryError) as cm:
             request()
-        assert type(cm.value.reason) is SSLError
+        assert isinstance(cm.value.reason, exceptions.FingerprintMismatchError)
         assert str(cm.value.reason) == (
             "Fingerprints did not match. Expected "
             '"a0c4a74600eda72dc0becb9a8cb607ca58ee745e", got '
@@ -1863,7 +1864,7 @@ class TestSSL(SocketDummyServerTestCase):
         # Should not hang, see https://github.com/urllib3/urllib3/issues/529
         with pytest.raises(MaxRetryError) as cm2:
             request()
-        assert type(cm2.value.reason) is SSLError
+        assert isinstance(cm2.value.reason, exceptions.FingerprintMismatchError)
         assert str(cm2.value.reason) == (
             "Fingerprints did not match. Expected "
             '"a0c4a74600eda72dc0becb9a8cb607ca58ee745e", got '
