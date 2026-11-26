@@ -1,0 +1,1 @@
+Clarified how to preserve repeated header fields and retrieve separate ``Set-Cookie`` values without splitting cookie expiry dates on commas.

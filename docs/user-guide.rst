@@ -249,7 +249,11 @@ the ``;`` delimited key-value pairs:
 Note that the ``Cookie`` header will be stripped if the server redirects to a
 different host.
 
-Cookies provided by the server are stored in the ``Set-Cookie`` header:
+Cookies provided by the server are stored in the ``Set-Cookie`` header.
+
+Use ``resp.headers.getlist("Set-Cookie")`` to retrieve each ``Set-Cookie`` field
+separately when a response sets multiple cookies. Do not split a combined header
+value on commas: a cookie's ``Expires`` attribute can itself contain a comma.
 
 .. code-block:: python
 
@@ -261,8 +265,8 @@ Cookies provided by the server are stored in the ``Set-Cookie`` header:
         redirect=False
     )
 
-    print(resp.headers["Set-Cookie"])
-    # session=f3efe9db; Path=/
+    print(resp.headers.getlist("Set-Cookie"))
+    # ["session=f3efe9db; Path=/"]
 
 Query Parameters
 ~~~~~~~~~~~~~~~~
