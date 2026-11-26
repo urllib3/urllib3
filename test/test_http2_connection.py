@@ -668,6 +668,8 @@ class TestHTTP2Connection:
         resp = conn.getresponse(stream=stream)
         assert resp.status == 200
         data = resp.read(3) + resp.read(12)
+        assert not resp.isclosed()
+        assert not resp.closed
         conn._protocol_helper.close_stream.assert_not_called()  # type: ignore[attr-defined]
         data += resp.read()
         assert data == b"first,second,third"

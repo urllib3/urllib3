@@ -682,14 +682,4 @@ class HTTP2Response(HTTPResponse):
 
     def close(self) -> None:
         self._stream.close()
-
-        # To avoid resource leaks, here we also close the parent connection if:
-        # - the connection was allocated from a connection pool
-        # - the connection pool has been closed
-        # - this was the last active stream
-        conn = self._stream.conn
-        if self._pool and conn.num_streams() == 0:
-            if self._pool.is_closed():
-                conn.close()
-            else:
-                self.release_conn()
+        self.release_conn()
