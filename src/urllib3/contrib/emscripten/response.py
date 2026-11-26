@@ -211,7 +211,7 @@ class EmscriptenHttpResponseWrapper(BaseHTTPResponse):
         Deserializes the body of the HTTP response as a Python object.
 
         The body of the HTTP response must be encoded using UTF-8, as per
-        `RFC 8529 Section 8.1 <https://www.rfc-editor.org/rfc/rfc8259#section-8.1>`_.
+        `RFC 8259 Section 8.1 <https://www.rfc-editor.org/rfc/rfc8259#section-8.1>`_.
 
         To use a custom JSON decoder pass the result of :attr:`HTTPResponse.data` to
         your custom decoder instead.
