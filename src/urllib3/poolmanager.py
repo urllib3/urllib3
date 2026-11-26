@@ -169,7 +169,16 @@ key_fn_by_scheme = {
     "https": functools.partial(_default_key_normalizer, PoolKey),
 }
 
-pool_classes_by_scheme = {"http": HTTPConnectionPool, "https": HTTPSConnectionPool}
+#: A scheme may map to any callable returning an :class:`HTTPConnectionPool`,
+#: not just a pool class, so that e.g. a ``functools.partial`` can be used to
+#: customize pool creation. ``Any`` preserves support for duck-typed custom
+#: pools, as exercised by ``test_proxymanager``.
+_TYPE_POOL_CLASSES_BY_SCHEME = dict[str, typing.Callable[..., typing.Any]]
+
+pool_classes_by_scheme: _TYPE_POOL_CLASSES_BY_SCHEME = {
+    "http": HTTPConnectionPool,
+    "https": HTTPSConnectionPool,
+}
 
 
 class PoolManager(RequestMethods):
@@ -269,7 +278,7 @@ class PoolManager(RequestMethods):
         connection pools handed out by :meth:`connection_from_url` and
         companion methods. It is intended to be overridden for customization.
         """
-        pool_cls: type[HTTPConnectionPool] = self.pool_classes_by_scheme[scheme]
+        pool_cls = self.pool_classes_by_scheme[scheme]
         if request_context is None:
             request_context = self.connection_pool_kw.copy()
 
@@ -289,7 +298,7 @@ class PoolManager(RequestMethods):
             for kw in SSL_KEYWORDS:
                 request_context.pop(kw, None)
 
-        return pool_cls(host, port, **request_context)
+        return typing.cast(HTTPConnectionPool, pool_cls(host, port, **request_context))
 
     def clear(self) -> None:
         """
