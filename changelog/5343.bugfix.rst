@@ -1,0 +1,2 @@
+Fixed streaming response decoding errors leaving unread connections checked out,
+which could exhaust blocking connection pools.
