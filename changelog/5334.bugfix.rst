@@ -1,0 +1,3 @@
+Fixed ``ProxyManager`` sending duplicate ``Accept`` and ``Host`` headers to an
+HTTP proxy when the request headers spelled these names in another case, such as
+``accept`` or ``host``.
