@@ -23,24 +23,33 @@ _MISSING_TUNNEL_CONTROL_CHAR_FIX = (
 )
 
 
-@pytest.fixture()
-def pool() -> typing.Generator[HTTPConnectionPool]:
+@pytest.fixture(
+    params=[
+        {"http1": True, "http2": False},
+        {"http1": False, "http2": True},
+    ]
+)
+def pool(request: pytest.FixtureRequest) -> typing.Generator[HTTPConnectionPool]:
     server.setup_class()
 
-    with HTTPConnectionPool(server.host, server.port) as pool:
+    with HTTPConnectionPool(server.host, server.port, **request.param) as pool:
         yield pool
 
     server.teardown_class()
 
 
 @pytest.fixture()
-def h2_pool() -> typing.Generator[HTTPConnectionPool]:
-    server.setup_class()
+def h11_pool(pool: HTTPConnectionPool) -> typing.Generator[HTTPConnectionPool]:
+    if pool.conn_kw.get("http2"):
+        pytest.skip(reason="HTTP/2 connection pool does not need to be tested")
+    yield pool
 
-    with HTTPConnectionPool(server.host, server.port, http1=False, http2=True) as pool:
-        yield pool
 
-    server.teardown_class()
+@pytest.fixture()
+def h2_pool(pool: HTTPConnectionPool) -> typing.Generator[HTTPConnectionPool]:
+    if pool.conn_kw.get("http1"):
+        pytest.skip(reason="HTTP/1.1 connection pool does not need to be tested")
+    yield pool
 
 
 def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
@@ -186,8 +195,23 @@ def test_parallel_streams(h2_pool: HTTPConnectionPool) -> None:
     conn.close()
 
 
-def test_set_tunnel_is_reset(pool: HTTPConnectionPool) -> None:
+def test_response_after_connection_closed(pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
+    conn.request("GET", "/", preload_content=False)
+    resp1 = conn.getresponse()
+    conn.close()
+    conn.request("POST", "/echo", body=b"foo", preload_content=False)
+    resp2 = conn.getresponse()
+    assert resp1.closed
+    resp1.close()  # close anyway to make sure resp2 isn't affected
+    assert resp1.data == b""  # not available after connection close
+    assert not resp2.closed
+    assert resp2.data == b"foo"
+    conn.close()
+
+
+def test_set_tunnel_is_reset(h11_pool: HTTPConnectionPool) -> None:
+    conn = h11_pool._get_conn()
 
     assert conn.is_closed is True
     assert conn.is_connected is False
@@ -208,8 +232,8 @@ def test_set_tunnel_is_reset(pool: HTTPConnectionPool) -> None:
     assert conn._tunnel_scheme is None  # type: ignore[attr-defined]
 
 
-def test_invalid_tunnel_scheme(pool: HTTPConnectionPool) -> None:
-    conn = pool._get_conn()
+def test_invalid_tunnel_scheme(h11_pool: HTTPConnectionPool) -> None:
+    conn = h11_pool._get_conn()
 
     with pytest.raises(ValueError) as e:
         conn.set_tunnel(host="host", port=8080, scheme="socks")
@@ -245,9 +269,9 @@ def test_invalid_tunnel_scheme(pool: HTTPConnectionPool) -> None:
     reason="Control characters in tunnel headers not rejected in older Python versions",
 )
 def test_invalid_tunnel_headers(
-    pool: HTTPConnectionPool, name: str, value: str
+    h11_pool: HTTPConnectionPool, name: str, value: str
 ) -> None:
-    conn = pool._get_conn()
+    conn = h11_pool._get_conn()
     conn.set_tunnel("tunnel", headers={name: value})
     with pytest.raises(ValueError, match="Invalid header"):
         conn.connect()
@@ -268,8 +292,8 @@ def test_invalid_tunnel_headers(
     _MISSING_TUNNEL_CONTROL_CHAR_FIX,
     reason="Control characters in tunnel host not rejected in older Python versions",
 )
-def test_invalid_tunnel_host(pool: HTTPConnectionPool, tunnel_host: str) -> None:
-    conn = pool._get_conn()
+def test_invalid_tunnel_host(h11_pool: HTTPConnectionPool, tunnel_host: str) -> None:
+    conn = h11_pool._get_conn()
     conn.set_tunnel(tunnel_host)
     with pytest.raises(
         ValueError, match="Tunnel host can't contain control characters"

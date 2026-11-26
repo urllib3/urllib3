@@ -6,6 +6,7 @@ import threading
 import types
 import typing
 from dataclasses import dataclass, field
+from http.client import ResponseNotReady
 from importlib.metadata import version
 
 import h2.config
@@ -412,6 +413,8 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             raise ConnectionError("`stream` cannot be None")
         if not stream.stream_id:
             raise ConnectionError("Must call `request` to create a stream")
+        if stream.stream_id not in self._stream_data:
+            raise ResponseNotReady()
 
         # Since the connection's timeout value may have been updated
         # we need to set the timeout on the socket.
@@ -552,6 +555,13 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
         # Reset all our HTTP/2 connection state.
         self._h2_conn = self._new_h2_conn()
+
+        # remove stream IDs for active streams, as we don't want these streams
+        # to collide with new streams that may be created later on on a
+        # reconnection
+        for s in self._stream_data:
+            if isinstance(s, Stream):
+                s.stream_id = None
         self._stream_data = {}
 
     def close_stream(self, stream: Stream | None = None) -> None:
@@ -612,6 +622,9 @@ class HTTP2Response(HTTPResponse):
         *,
         read1: bool = False,
     ) -> bytes:
+        if self._stream.stream_id is None:
+            # the connection has been closed
+            return b""
         data: bytes = self._stream.conn._protocol_helper.read_stream(  # type: ignore[attr-defined]
             self._stream, amt or 0
         )

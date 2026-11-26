@@ -143,14 +143,14 @@ class Stream:
         return self.conn.getresponse(self)
 
     def is_closed(self) -> bool:
-        if self.stream_id is None:  # Defensive:
-            raise ValueError("Must call `request` first.")
+        if self.stream_id is None:
+            # the connection is closed
+            return True
         return self.conn.is_stream_closed(self)
 
     def close(self) -> None:
-        if self.stream_id is None:  # Defensive:
-            raise ValueError("Must call `request` first.")
-        self.conn.close_stream(self)
+        if self.stream_id is not None:
+            self.conn.close_stream(self)
 
 
 class BaseProtocolHelper:
@@ -392,7 +392,6 @@ class HTTPProtocolHelper(BaseProtocolHelper):
             request_method=resp_options.request_method,
             request_url=resp_options.request_url,
             sock_shutdown=_shutdown,
-            connection=self.conn,
         )
         return response
 
