@@ -1,0 +1,1 @@
+Fixed chunked requests with typed or multidimensional buffer bodies declaring the number of elements instead of the number of bytes as the chunk size.
