@@ -1000,6 +1000,12 @@ class TestUtil:
         timeout = Timeout(total=10, read=7)
         assert timeout.read_timeout == 7
 
+        # Before connecting, the shorter of total and read applies
+        timeout = Timeout(total=1, read=2)
+        assert timeout.read_timeout == 1
+        timeout.start_connect()
+        assert timeout.read_timeout <= 1
+
         timeout = Timeout(total=None, read=None, connect=None)
         assert timeout.connect_timeout is None
         assert timeout.read_timeout is None
