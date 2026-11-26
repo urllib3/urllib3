@@ -6,6 +6,7 @@ import pytest
 
 from urllib3.connectionpool import HTTPConnectionPool
 from urllib3.exceptions import (
+    InvalidHeader,
     LocationParseError,
     MaxRetryError,
     NewConnectionError,
@@ -182,3 +183,62 @@ class TestProxyManager:
             assert ei1.value.reason is not None
             assert isinstance(ei1.value.reason, ProxyError)
             assert isinstance(ei1.value.reason.original_error, NewConnectionError)
+
+
+class TestProxyManagerURLUserinfo:
+    """Proxy-Authorization headers from proxy URL userinfo (#1999)."""
+
+    def test_proxy_authorization_header_from_proxy_url_userinfo(self) -> None:
+        with ProxyManager("http://user:pass@proxy.example:3128") as manager:
+            assert manager.proxy_headers["Proxy-Authorization"] == "Basic dXNlcjpwYXNz"
+            # Credentials are moved into the headers, not kept in the URL.
+            assert manager.proxy is not None
+            assert manager.proxy.auth is None
+            assert "@" not in manager.proxy.url
+
+    def test_proxy_authorization_header_percent_decodes_userinfo(self) -> None:
+        with ProxyManager("http://us%40er:p%3Ass@proxy.example:3128") as manager:
+            # Decoded credentials are "us@er:p:ss".
+            assert (
+                manager.proxy_headers["Proxy-Authorization"] == "Basic dXNAZXI6cDpzcw=="
+            )
+
+    def test_no_proxy_authorization_header_without_userinfo(self) -> None:
+        with ProxyManager("http://proxy.example:3128") as manager:
+            assert "Proxy-Authorization" not in manager.proxy_headers
+
+    def test_matching_proxy_authorization_header_is_kept(self) -> None:
+        with ProxyManager(
+            "http://user:pass@proxy.example:3128",
+            proxy_headers={"Proxy-Authorization": "Basic dXNlcjpwYXNz"},
+        ) as manager:
+            headers = manager.proxy_headers
+            values = [
+                value
+                for key, value in headers.items()
+                if key.lower() == "proxy-authorization"
+            ]
+            assert values == ["Basic dXNlcjpwYXNz"]
+
+    def test_conflicting_proxy_authorization_header_raises(self) -> None:
+        with pytest.raises(InvalidHeader):
+            ProxyManager(
+                "http://user:pass@proxy.example:3128",
+                proxy_headers={"Proxy-Authorization": "Basic b3RoZXI6eA=="},
+            )
+
+    def test_proxy_authorization_sent_and_target_has_no_credentials(
+        self,
+    ) -> None:
+        with ProxyManager("http://user:pass@proxy.example:8080") as manager:
+            with patch.object(
+                HTTPConnectionPool,
+                "_make_request",
+                return_value=HTTPResponse(status=200),
+            ) as request:
+                response = manager.urlopen("GET", "http://destination.example/path")
+        assert response.status == 200
+        # Absolute-form request target must not contain proxy credentials.
+        assert request.call_args.args[2] == "http://destination.example/path"
+        headers = request.call_args.kwargs["headers"]
+        assert headers["Proxy-Authorization"] == "Basic dXNlcjpwYXNz"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 import socket
+import typing
 from test import resolvesLocalhostFQDN
 from unittest import mock
 from unittest.mock import MagicMock, patch
@@ -9,14 +10,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from urllib3 import connection_from_url
-from urllib3.connectionpool import HTTPSConnectionPool
-from urllib3.exceptions import LocationValueError
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+from urllib3.exceptions import InvalidHeader, LocationValueError
 from urllib3.poolmanager import (
     _DEFAULT_BLOCKSIZE,
     PoolKey,
     PoolManager,
     key_fn_by_scheme,
 )
+from urllib3.response import HTTPResponse
 from urllib3.util import retry, timeout
 from urllib3.util.url import Url
 
@@ -540,3 +542,89 @@ class TestPoolManager:
 
         # Connection should be closed, because reference to pool_1 is gone.
         assert conn_queue.qsize() == 0
+
+
+class TestURLUserinfoAuth:
+    """Authorization headers constructed from request URL userinfo (#1999)."""
+
+    def _urlopen_with_mocked_pool(
+        self, manager: PoolManager, url: str, **kw: typing.Any
+    ) -> mock.MagicMock:
+        with patch.object(
+            HTTPConnectionPool,
+            "_make_request",
+            return_value=HTTPResponse(status=200),
+        ) as request:
+            manager.urlopen("GET", url, **kw)
+        return request
+
+    def test_authorization_header_from_url_userinfo(self) -> None:
+        with PoolManager() as manager:
+            request = self._urlopen_with_mocked_pool(
+                manager, "http://user:pass@example.org/path"
+            )
+        headers = request.call_args.kwargs["headers"]
+        assert headers["Authorization"] == "Basic dXNlcjpwYXNz"
+        # Credentials must not be forwarded in the request target.
+        assert request.call_args.args[2] == "/path"
+
+    def test_authorization_header_from_username_only(self) -> None:
+        with PoolManager() as manager:
+            request = self._urlopen_with_mocked_pool(
+                manager, "http://user@example.org/path"
+            )
+        headers = request.call_args.kwargs["headers"]
+        assert headers["Authorization"] == "Basic dXNlcjo="
+
+    def test_authorization_header_percent_decodes_userinfo(self) -> None:
+        with PoolManager() as manager:
+            request = self._urlopen_with_mocked_pool(
+                manager, "http://us%40er:p%3Ass@example.org/path"
+            )
+        headers = request.call_args.kwargs["headers"]
+        # Decoded credentials are "us@er:p:ss".
+        assert headers["Authorization"] == "Basic dXNAZXI6cDpzcw=="
+
+    def test_no_authorization_header_without_userinfo(self) -> None:
+        with PoolManager() as manager:
+            request = self._urlopen_with_mocked_pool(manager, "http://example.org/path")
+        headers = request.call_args.kwargs["headers"]
+        assert "Authorization" not in headers
+
+    def test_matching_authorization_header_is_kept(self) -> None:
+        with PoolManager() as manager:
+            request = self._urlopen_with_mocked_pool(
+                manager,
+                "http://user:pass@example.org/path",
+                headers={"Authorization": "Basic dXNlcjpwYXNz"},
+            )
+        headers = request.call_args.kwargs["headers"]
+        assert headers.getlist("Authorization") == ["Basic dXNlcjpwYXNz"]
+
+    def test_conflicting_authorization_header_raises(self) -> None:
+        with PoolManager() as manager:
+            with pytest.raises(InvalidHeader):
+                manager.urlopen(
+                    "GET",
+                    "http://user:pass@example.org/path",
+                    headers={"Authorization": "Basic b3RoZXI6eA=="},
+                )
+
+    def test_authorization_not_forwarded_on_cross_host_redirect(self) -> None:
+        responses = [
+            HTTPResponse(
+                status=302, headers={"Location": "http://other.example.org/path"}
+            ),
+            HTTPResponse(status=200),
+        ]
+        with PoolManager() as manager:
+            with patch.object(
+                HTTPConnectionPool, "_make_request", side_effect=responses
+            ) as request:
+                response = manager.urlopen("GET", "http://user:pass@example.org/path")
+        assert response.status == 200
+        assert request.call_count == 2
+        first_headers = request.call_args_list[0].kwargs["headers"]
+        second_headers = request.call_args_list[1].kwargs["headers"]
+        assert first_headers["Authorization"] == "Basic dXNlcjpwYXNz"
+        assert "Authorization" not in second_headers
