@@ -566,6 +566,60 @@ class TestSSLTransportWithMock:
         with pytest.raises(ValueError):
             ssl_transport.makefile(mode="x")
 
+    @pytest.mark.parametrize(
+        ("mode", "buffering", "kwargs", "exc_type"),
+        [
+            ("r", 0, {}, ValueError),
+            ("rb", "invalid", {}, TypeError),
+            ("r", None, {"newline": "invalid"}, ValueError),
+            ("w", None, {"newline": "invalid"}, ValueError),
+            ("rw", None, {"newline": "invalid"}, ValueError),
+        ],
+    )
+    def test_makefile_error_does_not_leak_socket_io_refs(
+        self,
+        mode: str,
+        buffering: typing.Any,
+        kwargs: dict[str, typing.Any],
+        exc_type: type[Exception],
+    ) -> None:
+        sock, peer = socket.socketpair()
+        try:
+            context = mock.create_autospec(ssl_.SSLContext)
+            with pytest.raises(exc_type) as exc_info:
+                with SSLTransport(sock, context) as ssl_transport:
+                    ssl_transport.makefile(mode, buffering, **kwargs)
+            assert sock._io_refs == 0  # type: ignore[attr-defined]
+            assert sock.fileno() == -1
+            assert exc_info.value is not None
+        finally:
+            if sock.fileno() != -1:
+                sock._io_refs = 0  # type: ignore[attr-defined]
+                sock.close()
+            peer.close()
+
+    def test_makefile_buffer_init_error_does_not_leak_socket_io_refs(self) -> None:
+        sock, peer = socket.socketpair()
+        try:
+            context = mock.create_autospec(ssl_.SSLContext)
+            with mock.patch(
+                "urllib3.util.ssltransport.io.BufferedReader",
+                side_effect=RuntimeError("buffer init failed"),
+            ):
+                with pytest.raises(
+                    RuntimeError, match="buffer init failed"
+                ) as exc_info:
+                    with SSLTransport(sock, context) as ssl_transport:
+                        ssl_transport.makefile("rb")
+            assert sock._io_refs == 0  # type: ignore[attr-defined]
+            assert sock.fileno() == -1
+            assert exc_info.value is not None
+        finally:
+            if sock.fileno() != -1:
+                sock._io_refs = 0  # type: ignore[attr-defined]
+                sock.close()
+            peer.close()
+
     def test_wrap_ssl_read_error(self) -> None:
         server_hostname = "example-domain.com"
         sock = mock.Mock()

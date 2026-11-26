@@ -141,29 +141,35 @@ class SSLTransport:
             rawmode += "r"
         if writing:
             rawmode += "w"
-        raw = socket.SocketIO(self, rawmode)  # type: ignore[arg-type]
-        self.socket._io_refs += 1  # type: ignore[attr-defined]
         if buffering is None:
             buffering = -1
         if buffering < 0:
             buffering = io.DEFAULT_BUFFER_SIZE
+        if buffering == 0 and not binary:
+            raise ValueError("unbuffered streams must be binary")
+        raw = socket.SocketIO(self, rawmode)  # type: ignore[arg-type]
+        self.socket._io_refs += 1  # type: ignore[attr-defined]
         if buffering == 0:
-            if not binary:
-                raise ValueError("unbuffered streams must be binary")
             return raw
-        buffer: typing.BinaryIO
-        if reading and writing:
-            buffer = io.BufferedRWPair(raw, raw, buffering)  # type: ignore[assignment]
-        elif reading:
-            buffer = io.BufferedReader(raw, buffering)
-        else:
-            assert writing
-            buffer = io.BufferedWriter(raw, buffering)
-        if binary:
-            return buffer
-        text = io.TextIOWrapper(buffer, encoding, errors, newline)
-        text.mode = mode  # type: ignore[misc]
-        return text
+        resource: socket.SocketIO | typing.BinaryIO = raw
+        try:
+            buffer: typing.BinaryIO
+            if reading and writing:
+                buffer = io.BufferedRWPair(raw, raw, buffering)  # type: ignore[assignment]
+            elif reading:
+                buffer = io.BufferedReader(raw, buffering)
+            else:
+                assert writing
+                buffer = io.BufferedWriter(raw, buffering)
+            resource = buffer
+            if binary:
+                return buffer
+            text = io.TextIOWrapper(buffer, encoding, errors, newline)
+            text.mode = mode  # type: ignore[misc]
+            return text
+        except BaseException:
+            resource.close()
+            raise
 
     def unwrap(self) -> None:
         self._ssl_io_loop(self.sslobj.unwrap)
