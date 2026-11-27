@@ -1066,6 +1066,29 @@ class TestResponse:
 
         assert r.data == b"foo"
 
+    @onlyZstd()
+    @pytest.mark.parametrize("inner", ["gzip", "deflate"])
+    @pytest.mark.parametrize("preload_content", [True, False])
+    def test_multi_decoding_incomplete_zstd(
+        self, inner: str, preload_content: bool
+    ) -> None:
+        # zstd is applied last, so it is the first decoder to run; a
+        # truncated zstd stream must still fail when another coding follows.
+        payload = (
+            gzip.compress(b"foo" * 100)
+            if inner == "gzip"
+            else zlib.compress(b"foo" * 100)
+        )
+        fp = BytesIO(zstd_compress(payload)[:-1])
+
+        with pytest.raises(DecodeError):
+            r = HTTPResponse(
+                fp,
+                headers={"content-encoding": f"{inner}, zstd"},
+                preload_content=preload_content,
+            )
+            r.read()
+
     def test_read_multi_decoding_deflate_deflate(self) -> None:
         msg = b"foobarbaz" * 42
         data = zlib.compress(zlib.compress(msg))
