@@ -32,6 +32,7 @@ from urllib3.response import (  # type: ignore[attr-defined]
     BytesQueueBuffer,
     GzipDecoder,
     HTTPResponse,
+    MultiDecoder,
     brotli,
 )
 from urllib3.util.response import is_fp_closed
@@ -1088,6 +1089,27 @@ class TestResponse:
                 preload_content=preload_content,
             )
             r.read()
+
+    @pytest.mark.parametrize(
+        "content_encoding", ["gzip, deflate", "deflate, gzip", "deflate, deflate"]
+    )
+    def test_multi_decoder_flush_feeds_later_decoders(
+        self, content_encoding: str
+    ) -> None:
+        # A bounded read leaves input in the first decoder; whatever it
+        # flushes must still pass through the decoders after it.
+        msg = b"foobarbaz" * 1000
+        payload = msg
+        for encoding in content_encoding.split(", "):
+            payload = (
+                gzip.compress(payload) if encoding == "gzip" else zlib.compress(payload)
+            )
+        decoder = MultiDecoder(content_encoding)
+
+        head = decoder.decompress(payload, max_length=10)
+
+        assert len(head) == 10
+        assert head + decoder.flush() == msg
 
     def test_read_multi_decoding_deflate_deflate(self) -> None:
         msg = b"foobarbaz" * 42
