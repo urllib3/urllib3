@@ -1,0 +1,1 @@
+Fixed a truncated zstd body inside a multi-coding response (for example ``gzip, zstd``) being returned without ``DecodeError``.

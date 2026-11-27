@@ -352,7 +352,14 @@ class MultiDecoder(ContentDecoder):
         self._decoders = [_get_decoder(e) for e in encodings]
 
     def flush(self) -> bytes:
-        return self._decoders[0].flush()
+        # Flush every decoder in decoding order, so each one can report a
+        # truncated stream, and pass what it flushes to the decoders after it.
+        data = b""
+        for d in reversed(self._decoders):
+            if data:
+                data = d.decompress(data)
+            data += d.flush()
+        return data
 
     def decompress(self, data: bytes, max_length: int = -1) -> bytes:
         if max_length <= 0:

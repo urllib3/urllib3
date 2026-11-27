@@ -32,6 +32,7 @@ from urllib3.response import (  # type: ignore[attr-defined]
     BytesQueueBuffer,
     GzipDecoder,
     HTTPResponse,
+    MultiDecoder,
     brotli,
 )
 from urllib3.util.response import is_fp_closed
@@ -1065,6 +1066,50 @@ class TestResponse:
         r = HTTPResponse(fp, headers={"content-encoding": "gzip, gzip"})
 
         assert r.data == b"foo"
+
+    @onlyZstd()
+    @pytest.mark.parametrize("inner", ["gzip", "deflate"])
+    @pytest.mark.parametrize("preload_content", [True, False])
+    def test_multi_decoding_incomplete_zstd(
+        self, inner: str, preload_content: bool
+    ) -> None:
+        # zstd is applied last, so it is the first decoder to run; a
+        # truncated zstd stream must still fail when another coding follows.
+        payload = (
+            gzip.compress(b"foo" * 100)
+            if inner == "gzip"
+            else zlib.compress(b"foo" * 100)
+        )
+        fp = BytesIO(zstd_compress(payload)[:-1])
+
+        with pytest.raises(DecodeError):
+            r = HTTPResponse(
+                fp,
+                headers={"content-encoding": f"{inner}, zstd"},
+                preload_content=preload_content,
+            )
+            r.read()
+
+    @pytest.mark.parametrize(
+        "content_encoding", ["gzip, deflate", "deflate, gzip", "deflate, deflate"]
+    )
+    def test_multi_decoder_flush_feeds_later_decoders(
+        self, content_encoding: str
+    ) -> None:
+        # A bounded read leaves input in the first decoder; whatever it
+        # flushes must still pass through the decoders after it.
+        msg = b"foobarbaz" * 1000
+        payload = msg
+        for encoding in content_encoding.split(", "):
+            payload = (
+                gzip.compress(payload) if encoding == "gzip" else zlib.compress(payload)
+            )
+        decoder = MultiDecoder(content_encoding)
+
+        head = decoder.decompress(payload, max_length=10)
+
+        assert len(head) == 10
+        assert head + decoder.flush() == msg
 
     def test_read_multi_decoding_deflate_deflate(self) -> None:
         msg = b"foobarbaz" * 42
