@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import socket
+import ssl
 import typing
 from http.client import HTTPMessage, ResponseNotReady
 from unittest import mock
@@ -313,6 +314,52 @@ class TestConnection:
         conn = HTTPSConnection(
             "google.com", port=443, assert_hostname="example.com", ssl_context=context
         )
+        with mock.patch.object(conn, "_new_conn"):
+            with pytest.raises(ImplementationCertificateError):
+                conn.connect()
+
+        context.wrap_socket.return_value.close.assert_called_once_with()
+
+    def test_user_context_check_hostname_false_skips_hostname_matching(self) -> None:
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.wrap_socket.return_value.getpeercert.return_value = {
+            "subjectAltName": (("DNS", "example.com"),)
+        }
+        conn = HTTPSConnection("google.com", port=443, ssl_context=context)
+        with mock.patch.object(conn, "_new_conn"):
+            conn.connect()
+
+        context.wrap_socket.return_value.getpeercert.assert_not_called()
+
+    def test_assert_hostname_overrides_user_context_check_hostname_false(self) -> None:
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.wrap_socket.return_value.getpeercert.return_value = {
+            "subjectAltName": (("DNS", "google.com"),)
+        }
+        conn = HTTPSConnection(
+            "google.com", port=443, assert_hostname="example.com", ssl_context=context
+        )
+        with mock.patch.object(conn, "_new_conn"):
+            with pytest.raises(ImplementationCertificateError):
+                conn.connect()
+
+        context.wrap_socket.return_value.close.assert_called_once_with()
+
+    def test_pyopenssl_context_still_matches_hostname(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(ssl_, "IS_PYOPENSSL", True)
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.wrap_socket.return_value.getpeercert.return_value = {
+            "subjectAltName": (("DNS", "example.com"),)
+        }
+        conn = HTTPSConnection("google.com", port=443, ssl_context=context)
         with mock.patch.object(conn, "_new_conn"):
             with pytest.raises(ImplementationCertificateError):
                 conn.connect()

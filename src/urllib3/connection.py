@@ -1065,6 +1065,14 @@ def _ssl_wrap_socket_and_match_hostname(
     else:
         context = ssl_context
 
+    if (
+        not default_ssl_context
+        and not ssl_.IS_PYOPENSSL
+        and assert_hostname is None
+        and getattr(context, "check_hostname", True) is False
+    ):
+        assert_hostname = False
+
     context.verify_mode = resolve_cert_reqs(cert_reqs)
 
     # In some cases, we want to verify hostnames ourselves
