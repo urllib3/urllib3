@@ -112,6 +112,9 @@ def run_hypercorn_in_thread(
     host: str, certs: dict[str, typing.Any] | None, app: hypercorn.typing.ASGIFramework
 ) -> typing.Iterator[int]:
     config = Config()
+    # Test servers: on shutdown, do not wait for idle keep-alive or tunnel
+    # connections to drain (hypercorn waits up to 3 s by default).
+    config.graceful_timeout = 0
     if certs:
         config.certfile = certs["certfile"]
         config.keyfile = certs["keyfile"]
