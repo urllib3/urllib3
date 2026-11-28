@@ -137,7 +137,7 @@ def test_connection_state_properties(pool: HTTPConnectionPool) -> None:
     assert conn.proxy_is_verified is None
 
 
-def test_h1_streams(pool: HTTPConnectionPool) -> None:
+def test_serial_streams(pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
     assert conn.num_streams() == 0
     stream = conn.request("GET", "/")
@@ -192,6 +192,16 @@ def test_parallel_streams(h2_pool: HTTPConnectionPool) -> None:
     resp4.read()
     assert conn.num_streams() == 0
     assert stream4.is_closed()
+    conn.close()
+
+
+def test_response_closes_after_eof(h2_pool: HTTPConnectionPool) -> None:
+    conn = h2_pool._get_conn()
+    stream = conn.request("GET", "/")
+    resp = stream.getresponse()
+    assert resp.closed
+    assert stream.is_closed()
+    assert stream.stream_id is None
     conn.close()
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import socket
 import typing
+from http.client import ResponseNotReady
 from unittest import mock
 
 import h2.events
@@ -566,21 +567,21 @@ class TestHTTP2Connection:
         with pytest.raises(StreamError):
             conn.getresponse(stream=stream)
 
-    def test_getresponse_ConnectionError(self) -> None:
+    def test_getresponse_ResponseNotReady(self) -> None:
         conn = HTTPSConnection("example.com", http1=False, http2=True)
 
         with pytest.raises(ConnectionError):
             conn.getresponse()
 
         stream = Stream(conn)
-        with pytest.raises(ConnectionError):
+        with pytest.raises(ResponseNotReady):
             conn.getresponse(stream=stream)
 
     def _create_test_response_stream(
         self,
         status: int,
         headers: list[tuple[bytes, bytes]],
-        *chunks: bytes,
+        *chunks: bytes | tuple[bytes, int],  # tuples are for padded frames
         **response_opts: typing.Any,
     ) -> tuple[HTTPConnection, Stream]:
         conn = HTTPSConnection("example.com", http1=False, http2=True)
@@ -595,20 +596,32 @@ class TestHTTP2Connection:
             ],
         ]
         if len(chunks) > 0:
+            if isinstance(chunks[0], tuple):
+                data = chunks[0][0]
+                pad = chunks[0][1]
+            else:
+                data = chunks[0]
+                pad = 0
             events[0].append(
                 h2.events.DataReceived(
                     stream_id=1,
-                    data=chunks[0],
-                    flow_controlled_length=len(chunks[0]),
+                    data=data,
+                    flow_controlled_length=len(data) + pad,
                 ),
             )
         for chunk in chunks[1:]:
+            if isinstance(chunk, tuple):
+                data = chunk[0]
+                pad = chunk[1]
+            else:
+                data = chunk
+                pad = 0
             events.append(
                 [
                     h2.events.DataReceived(
                         stream_id=1,
-                        data=chunk,
-                        flow_controlled_length=len(chunk),
+                        data=data,
+                        flow_controlled_length=len(data) + pad,
                     ),
                 ],
             )
@@ -628,15 +641,20 @@ class TestHTTP2Connection:
         return conn, stream
 
     def test_flow_control(self) -> None:
-        conn, stream = self._create_test_response_stream(200, [], b"fo", b"o")
+        conn, stream = self._create_test_response_stream(200, [], (b"fo", 5), b"o")
         inc_window = conn._protocol_helper._h2_conn._obj.increment_flow_control_window  # type: ignore[attr-defined]
         data_to_send = conn._protocol_helper._h2_conn._obj.data_to_send  # type: ignore[attr-defined]
 
         resp = conn.getresponse(stream=stream)
         assert resp.status == 200
         assert resp.data == b"foo"
-        inc_window.assert_any_call(2, None)
-        inc_window.assert_called_with(1, None)
+        inc_window.call_args_list == [
+            mock.call(2, None),  # data frame returned to connection
+            mock.call(5, 1),  # padding returned to stream
+            mock.call(2, 1),  # data returned to stream
+            mock.call(1, None),  # data frame returned to connection
+            mock.call(1, 1),  # data returned to stream
+        ]
         data_to_send.assert_called_with()
         conn.sock.sendall.assert_called_with(b"flow")  # type: ignore[union-attr]
 
@@ -663,7 +681,7 @@ class TestHTTP2Connection:
 
     def test_response_read_in_chunks(self) -> None:
         conn, stream = self._create_test_response_stream(
-            200, [], b"first,", b"second,", b"third", preload_content=False
+            200, [], (b"first,", 2), b"second,", (b"third", 4), preload_content=False
         )
         resp = conn.getresponse(stream=stream)
         assert resp.status == 200
@@ -675,8 +693,18 @@ class TestHTTP2Connection:
         assert data == b"first,second,third"
         conn._protocol_helper.close_stream.assert_called_once_with(stream)  # type: ignore[attr-defined]
         inc_window = conn._protocol_helper._h2_conn._obj.increment_flow_control_window  # type: ignore[attr-defined]
-        inc_window.assert_any_call(3, 1)
-        inc_window.assert_any_call(12, 1)
+        assert inc_window.call_args_list == [
+            mock.call(8, None),  # first data frame released to connection
+            mock.call(2, 1),  # padding released to stream
+            mock.call(3, 1),  # read(3) released to stream
+            mock.call(3, 1),  # first 3 bytes of read(12) released to stream
+            mock.call(7, None),  # second data frame released to connection
+            mock.call(7, 1),  # second data frame released to stream
+            mock.call(9, None),  # third data frame released to connection
+            mock.call(4, 1),  # padding released to stream
+            mock.call(2, 1),  # last 2 bytes of read(12) released to stream
+            mock.call(3, 1),  # final read released to stream
+        ]
 
     def test_response_enforce_content_length(self) -> None:
         conn, stream = self._create_test_response_stream(

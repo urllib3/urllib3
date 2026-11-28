@@ -344,13 +344,24 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
                         elif isinstance(event, h2.events.DataReceived):
                             if event.flow_controlled_length > 0:
                                 # release the amount read back to the connection window
-                                # note that these bytes will be released to the stream when they are read
+                                # also release padding bytes to the stream window
+                                # note that the data bytes will be released to the stream when they are read
                                 h2_conn.increment_flow_control_window(
                                     event.flow_controlled_length, None
                                 )
+                                if event.flow_controlled_length > len(event.data):
+                                    h2_conn.increment_flow_control_window(
+                                        event.flow_controlled_length - len(event.data),
+                                        event.stream_id,
+                                    )
                             if event.stream_id in self._stream_data:
                                 self._stream_data[event.stream_id].response_buffer.put(
                                     event.data
+                                )
+                            else:  # Defensive:
+                                # release this buffer, since we aren't going to use it
+                                h2_conn.increment_flow_control_window(
+                                    len(event.data), event.stream_id
                                 )
                         elif isinstance(event, h2.events.StreamReset):
                             if event.stream_id in self._stream_data:
@@ -411,9 +422,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
     def getresponse(self, stream: Stream | None = None) -> HTTPResponse:
         if stream is None:
             raise ConnectionError("`stream` cannot be None")
-        if not stream.stream_id:
-            raise ConnectionError("Must call `request` to create a stream")
-        if stream.stream_id not in self._stream_data:
+        if not stream.stream_id or stream.stream_id not in self._stream_data:
             raise ResponseNotReady()
 
         # Since the connection's timeout value may have been updated
@@ -503,19 +512,32 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
 
     def read_stream(self, stream: Stream, n: int = 0) -> bytes:
         """Read bytes from a stream."""
-        if stream not in self._stream_data:
+        if stream not in self._stream_data:  # Defensive:
             return b""
         stream_data = self._stream_data[stream]
         data = b""
         while len(stream_data.response_buffer) > 0 or not stream_data.is_eof():
+            new_data = b""
             if n > 0:
                 need = n - len(data)
-                if len(stream_data.response_buffer) > 0:
-                    data += stream_data.response_buffer.get(need)
-                if len(data) == n:
-                    break  # we have what we need
+                if need > 0 and len(stream_data.response_buffer) > 0:
+                    new_data = stream_data.response_buffer.get(need)
             else:
-                data += stream_data.response_buffer.get_all()
+                new_data += stream_data.response_buffer.get_all()
+            data += new_data
+            # release the amount of bytes consumed to the stream's flow control window
+            if len(new_data) > 0:
+                with self._h2_conn as h2_conn:
+                    try:
+                        h2_conn.increment_flow_control_window(
+                            len(new_data), stream.stream_id
+                        )
+                        if data_to_send := h2_conn.data_to_send():
+                            self.conn.sock.sendall(data_to_send)
+                    except h2.exceptions.StreamClosedError:
+                        pass
+            if n > 0 and len(data) == n:
+                break  # we have what we need
             self._wait_for_data(stream)
         if n == 0:
             data += stream_data.response_buffer.get_all()
@@ -525,15 +547,6 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
         if len(stream_data.response_buffer) == 0 and stream_data.response_eof:
             # we just read the last of the response, so we can close the stream
             self.close_stream(stream)
-        elif len(data) > 0:
-            # release the amount of bytes read to the stream's flow control window
-            with self._h2_conn as h2_conn:
-                try:
-                    h2_conn.increment_flow_control_window(len(data), stream.stream_id)
-                    if data_to_send := h2_conn.data_to_send():
-                        self.conn.sock.sendall(data_to_send)
-                except h2.exceptions.StreamClosedError:
-                    pass
         return data
 
     def num_streams(self) -> int:
@@ -585,6 +598,7 @@ class HTTP2ProtocolHelper(BaseProtocolHelper):
             del self._stream_data[stream]
         if stream.stream_id in self._stream_data:
             del self._stream_data[stream.stream_id]
+        stream.stream_id = None
 
 
 class HTTP2Response(HTTPResponse):
@@ -685,6 +699,7 @@ class HTTP2Response(HTTPResponse):
     def drain_conn(self) -> None:
         super().drain_conn()
         self._stream.close()
+        self.release_conn()
 
     @property
     def closed(self) -> bool:
