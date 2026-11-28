@@ -30,6 +30,8 @@ from urllib3.response import (  # type: ignore[attr-defined]
     _MAX_CHUNK_LINE_LENGTH,
     BaseHTTPResponse,
     BytesQueueBuffer,
+    ContentDecoder,
+    DeflateDecoder,
     GzipDecoder,
     HTTPResponse,
     brotli,
@@ -49,6 +51,67 @@ def zstd_compress(data: bytes) -> bytes:
 def deflate2_compress(data: bytes) -> bytes:
     compressor = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
     return compressor.compress(data) + compressor.flush()
+
+
+class ScriptedFlushDecoder(ContentDecoder):
+    def __init__(
+        self,
+        drain_data: bytes = b"",
+        flush_data: bytes = b"",
+        drain_slice: int = 2,
+    ) -> None:
+        self.drain_data = bytearray(drain_data)
+        self.flush_data = flush_data
+        self.drain_slice = drain_slice
+        self.decompress_calls: list[int] = []
+        self.flush_calls = 0
+        self.flush_max_lengths: list[int] = []
+
+    def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+        self.decompress_calls.append(max_length)
+        if data or not self.drain_data or max_length == 0:
+            return b""
+        limit = len(self.drain_data)
+        if max_length > 0:
+            limit = min(limit, max_length)
+        amount = min(self.drain_slice, limit)
+        result = bytes(self.drain_data[:amount])
+        del self.drain_data[:amount]
+        return result
+
+    @property
+    def has_unconsumed_tail(self) -> bool:
+        return False
+
+    def flush(self, max_length: int = -1) -> bytes:
+        self.flush_calls += 1
+        self.flush_max_lengths.append(max_length)
+        limit = len(self.flush_data)
+        if max_length >= 0:
+            limit = min(limit, max_length)
+        result = bytes(self.flush_data[:limit])
+        self.flush_data = self.flush_data[limit:]
+        return result
+
+
+def assert_finalizer_slices(
+    decoder: ContentDecoder, compressed: bytes, payload: bytes
+) -> None:
+    first = decoder.decompress(compressed, max_length=3)
+    assert len(first) <= 3
+
+    chunks = []
+    for _ in range(100):
+        chunk = decoder.flush(max_length=7)
+        assert len(chunk) <= 7
+        chunks.append(chunk)
+        if len(chunk) < 7:
+            break
+    else:
+        pytest.fail("bounded decoder finalizer did not finish")
+
+    assert first + b"".join(chunks) == payload
+    assert decoder.flush(max_length=7) == b""
 
 
 if brotli:
@@ -1098,6 +1161,388 @@ class TestResponse:
         )
 
         assert b"".join(iter(lambda: resp.read(1), b"")) == msg
+
+    @pytest.mark.parametrize(
+        ("decoder_type", "compress"),
+        [
+            (DeflateDecoder, zlib.compress),
+            (GzipDecoder, gzip.compress),
+        ],
+    )
+    def test_zlib_and_gzip_finalizers_are_bounded(
+        self,
+        decoder_type: type[ContentDecoder],
+        compress: typing.Callable[[bytes], bytes],
+    ) -> None:
+        payload = b"x" * 100
+        assert_finalizer_slices(decoder_type(), compress(payload), payload)
+
+    @pytest.mark.parametrize(
+        ("wbits", "compress"),
+        [
+            (zlib.MAX_WBITS, zlib.compress),
+            (16 + zlib.MAX_WBITS, gzip.compress),
+        ],
+    )
+    def test_zlib_backend_flush_is_empty_after_bounded_empty_input_drain(
+        self, wbits: int, compress: typing.Callable[[bytes], bytes]
+    ) -> None:
+        payload = b"x" * 100
+        decompressor = zlib.decompressobj(wbits)
+        output = decompressor.decompress(compress(payload), max_length=3)
+
+        for _ in range(100):
+            piece = decompressor.decompress(decompressor.unconsumed_tail, max_length=7)
+            assert len(piece) <= 7
+            output += piece
+            if not piece:
+                break
+        else:
+            pytest.fail("bounded zlib empty-input drain did not finish")
+
+        assert output == payload
+        assert decompressor.flush() == b""
+
+    def test_raw_deflate_finalizer_drains_output_without_compressed_tail(self) -> None:
+        payload = b"x" * 21
+        compressed = bytes.fromhex("aba8c00200")
+        assert zlib.decompress(compressed, -zlib.MAX_WBITS) == payload
+
+        decoder = DeflateDecoder()
+        first = decoder.decompress(compressed, max_length=2)
+        assert first == b"xx"
+        assert decoder._obj.unconsumed_tail == b""
+
+        chunks = []
+        for _ in range(20):
+            chunk = decoder.flush(max_length=2)
+            assert len(chunk) <= 2
+            chunks.append(chunk)
+            if len(chunk) < 2:
+                break
+        else:
+            pytest.fail("raw deflate finalizer did not finish")
+
+        assert first + b"".join(chunks) == payload
+        assert decoder.flush(max_length=2) == b""
+        assert decoder._obj.flush() == b""
+
+    @onlyBrotli()
+    def test_brotli_finalizer_is_bounded(self) -> None:
+        from urllib3.response import BrotliDecoder
+
+        if not _brotli_gte_1_2_0_available:
+            pytest.skip("bounded Brotli output requires Brotli >= 1.2.0")
+
+        payload = b"x" * 40_000
+        decoder = BrotliDecoder()
+        assert decoder.flush(max_length=0) == b""
+        first = decoder.decompress(brotli.compress(payload), max_length=4096)
+        # Google's brotli backend rounds small output limits up to its internal
+        # chunk size. The finalizer itself must still honor exact slice sizes.
+        assert len(first) > 0
+
+        chunks = []
+        for _ in range(100):
+            chunk = decoder.flush(max_length=2048)
+            assert len(chunk) <= 2048
+            chunks.append(chunk)
+            if len(chunk) < 2048:
+                break
+        else:
+            pytest.fail("bounded Brotli finalizer did not finish")
+
+        assert first + b"".join(chunks) == payload
+        assert decoder.flush(max_length=2048) == b""
+
+    @onlyBrotli()
+    def test_brotli_eof_flush_preserves_read_budget(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        compressed = brotli.compress(b"0" * 100_000, quality=11)
+        resp = HTTPResponse(
+            BytesIO(compressed),
+            headers={"content-encoding": "br"},
+            preload_content=False,
+        )
+        calls = []
+        resp._init_decoder()
+        decoder = resp._decoder
+        assert decoder is not None
+        decoder_type = type(decoder)
+        original_decompress = decoder_type.decompress
+
+        def decompress_spy(
+            self: ContentDecoder, data: bytes, max_length: int = -1
+        ) -> bytes:
+            calls.append(max_length)
+            return original_decompress(self, data, max_length=max_length)
+
+        monkeypatch.setattr(decoder_type, "decompress", decompress_spy)
+
+        body = b""
+        while chunk := resp.read(1024):
+            body += chunk
+
+        assert body == b"0" * 100_000
+        assert all(call >= 0 for call in calls)
+
+    @onlyBrotli()
+    def test_brotli_chunked_terminal_flush_preserves_read_budget(self) -> None:
+        from urllib3.response import BrotliDecoder
+
+        if not _brotli_gte_1_2_0_available:
+            pytest.skip("bounded Brotli output requires Brotli >= 1.2.0")
+
+        payload = b"0" * 100_000
+        seed_decoder = BrotliDecoder()
+        already_decoded = seed_decoder.decompress(
+            brotli.compress(payload, quality=11), max_length=32752
+        )
+        assert len(already_decoded) > 0
+
+        httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        # An empty content list starts at the terminal zero-length chunk, so
+        # every yielded byte below comes from the response-level terminal drain.
+        httplib_r.fp = MockChunkedEncodingResponse([])  # type: ignore[assignment]
+        resp = HTTPResponse(
+            httplib_r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked", "content-encoding": "br"},
+        )
+        resp._decoder = seed_decoder
+        resp._decoder_initialized = True
+
+        chunks = list(resp.read_chunked(amt=1024, decode_content=True))
+
+        assert chunks
+        assert all(len(chunk) <= 1024 for chunk in chunks)
+        assert already_decoded + b"".join(chunks) == payload
+
+    def test_eof_flush_with_zero_remaining_budget_never_goes_negative(self) -> None:
+        class OvershootingDecoder(ContentDecoder):
+            def __init__(self) -> None:
+                self.decompress_calls: list[int] = []
+                self.flush_calls = 0
+
+            def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+                self.decompress_calls.append(max_length)
+                return b"ab" if data else b""
+
+            @property
+            def has_unconsumed_tail(self) -> bool:
+                return False
+
+            def flush(self, max_length: int = -1) -> bytes:
+                self.flush_calls += 1
+                return b"cd"
+
+        resp = HTTPResponse(BytesIO(b""), preload_content=False)
+        decoder = OvershootingDecoder()
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+
+        decoded = resp._decode(
+            b"compressed", decode_content=True, flush_decoder=True, max_length=1
+        )
+
+        assert decoded == b"ab"
+        assert decoder.decompress_calls == [1]
+        assert decoder.flush_calls == 0
+
+    def test_flush_decoder_zero_budget_does_not_call_decoder(self) -> None:
+        resp = HTTPResponse(BytesIO(b""), preload_content=False)
+        decoder = ScriptedFlushDecoder(drain_data=b"ab", flush_data=b"cd")
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+
+        assert resp._flush_decoder(max_length=0) == b""
+        assert decoder.decompress_calls == []
+        assert decoder.flush_calls == 0
+
+    def test_read_chunked_zero_budget_terminal_flush_exits(self) -> None:
+        httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        httplib_r.fp = MockChunkedEncodingResponse([b"compressed"])  # type: ignore[assignment]
+        resp = HTTPResponse(
+            httplib_r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked", "content-encoding": "deflate"},
+        )
+        resp._decoder = ScriptedFlushDecoder(flush_data=b"ab")
+        resp._decoder_initialized = True
+
+        assert list(resp.read_chunked(amt=0, decode_content=True)) == []
+
+    def test_flush_decoder_drains_hidden_output_and_finalizes_in_slices(self) -> None:
+        resp = HTTPResponse(BytesIO(b""), preload_content=False)
+        decoder = ScriptedFlushDecoder(
+            drain_data=b"abcdef", flush_data=b"xyz", drain_slice=2
+        )
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+
+        assert resp._flush_decoder(max_length=2) == b"ab"
+        assert resp._flush_decoder(max_length=2) == b"cd"
+        assert resp._flush_decoder(max_length=2) == b"ef"
+        assert resp._flush_decoder(max_length=2) == b"xy"
+        assert resp._flush_decoder(max_length=2) == b"z"
+        assert resp._flush_decoder(max_length=2) == b""
+        assert decoder.decompress_calls == [2, 2, 2, 2, 2]
+        assert decoder.flush_calls == 2
+        assert all(0 <= call <= 2 for call in decoder.flush_max_lengths)
+
+    def test_flush_decoder_stops_before_finalizer_with_unconsumed_tail(self) -> None:
+        class TailDecoder(ContentDecoder):
+            def __init__(self) -> None:
+                self.flush_calls = 0
+
+            def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+                return b""
+
+            @property
+            def has_unconsumed_tail(self) -> bool:
+                return True
+
+            def flush(self, max_length: int = -1) -> bytes:
+                self.flush_calls += 1
+                return b"unexpected"
+
+        resp = HTTPResponse(BytesIO(b""), preload_content=False)
+        decoder = TailDecoder()
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+
+        assert resp._flush_decoder(max_length=2) == b""
+        assert decoder.flush_calls == 0
+
+    def test_flush_decoder_queues_overshooting_finalizer_output(self) -> None:
+        class OvershootingFinalizerDecoder(ContentDecoder):
+            def __init__(self) -> None:
+                self.final_data = b"abcdef"
+                self.flush_max_lengths: list[int] = []
+
+            def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+                return b""
+
+            @property
+            def has_unconsumed_tail(self) -> bool:
+                return False
+
+            def flush(self, max_length: int = -1) -> bytes:
+                self.flush_max_lengths.append(max_length)
+                final = self.final_data
+                self.final_data = b""
+                return final
+
+        resp = HTTPResponse(BytesIO(b""), preload_content=False)
+        decoder = OvershootingFinalizerDecoder()
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+
+        chunks = [resp._flush_decoder(max_length=2) for _ in range(4)]
+
+        assert chunks == [b"ab", b"cd", b"ef", b""]
+        assert decoder.flush_max_lengths == [2, 2]
+
+    def test_read_chunked_unbounded_eof_flush_uses_single_finalizer_drain(self) -> None:
+        httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        httplib_r.fp = MockChunkedEncodingResponse([])  # type: ignore[assignment]
+        resp = HTTPResponse(
+            httplib_r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked", "content-encoding": "deflate"},
+        )
+        decoder = ScriptedFlushDecoder(flush_data=b"abcdef")
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+
+        assert list(resp.read_chunked(decode_content=True)) == [b"abcdef"]
+        assert decoder.flush_max_lengths == [-1]
+
+    @pytest.mark.parametrize("read_method", ["read", "read1"])
+    def test_ordinary_reads_return_every_deferred_flush_byte(
+        self, read_method: str
+    ) -> None:
+        resp = HTTPResponse(BytesIO(b""), preload_content=False)
+        decoder = ScriptedFlushDecoder(flush_data=b"abcdef")
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+        resp._has_decoded_content = True
+
+        read = getattr(resp, read_method)
+        chunks = [read(2), read(2), read(2), read(2)]
+
+        assert chunks == [b"ab", b"cd", b"ef", b""]
+        assert b"".join(chunks) == b"abcdef"
+        assert decoder.flush_calls == 4
+        assert all(0 <= call <= 2 for call in decoder.flush_max_lengths)
+
+    @pytest.mark.parametrize("read_method", ["read", "read1"])
+    def test_ordinary_reads_return_queued_flush_bytes_before_new_decodes(
+        self, read_method: str
+    ) -> None:
+        resp = HTTPResponse(BytesIO(b""), preload_content=False)
+        decoder = ScriptedFlushDecoder(drain_data=b"newer", drain_slice=2)
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+        resp._has_decoded_content = True
+        resp._decoder_flush_buffer.put(b"older-")
+
+        read = getattr(resp, read_method)
+
+        assert read(8) == b"older-ne"
+        assert read(8) == b"wer"
+        assert read(8) == b""
+
+    @pytest.mark.parametrize("read_method", ["read", "read1"])
+    def test_ordinary_reads_wrap_decoder_errors_after_flush_queue_drain(
+        self, read_method: str
+    ) -> None:
+        class FailingDrainDecoder(ContentDecoder):
+            def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+                if not data:
+                    raise zlib.error("empty-input drain failed")
+                return b""
+
+            @property
+            def has_unconsumed_tail(self) -> bool:
+                return False
+
+            def flush(self, max_length: int = -1) -> bytes:
+                return b""
+
+        resp = HTTPResponse(BytesIO(b""), preload_content=False)
+        resp._decoder = FailingDrainDecoder()
+        resp._decoder_initialized = True
+        resp._has_decoded_content = True
+        resp._decoder_flush_buffer.put(b"older")
+
+        with pytest.raises(DecodeError) as excinfo:
+            getattr(resp, read_method)(8)
+
+        assert isinstance(excinfo.value.__cause__, zlib.error)
+
+    def test_read_chunked_eof_flush_drains_multiple_bounded_slices(self) -> None:
+        httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        httplib_r.fp = MockChunkedEncodingResponse([b"compressed"])  # type: ignore[assignment]
+        resp = HTTPResponse(
+            httplib_r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked", "content-encoding": "deflate"},
+        )
+        decoder = ScriptedFlushDecoder(
+            drain_data=b"abcd", flush_data=b"xyz", drain_slice=2
+        )
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+
+        chunks = list(resp.read_chunked(amt=2, decode_content=True))
+
+        assert chunks == [b"ab", b"cd", b"xy", b"z"]
+        assert b"".join(chunks) == b"abcdxyz"
+        assert all(0 <= call <= 2 for call in decoder.decompress_calls)
+        assert decoder.flush_calls == 2
+        assert all(0 <= call <= 2 for call in decoder.flush_max_lengths)
 
     def test_read_multi_decoding_too_many_links(self) -> None:
         fp = BytesIO(b"foo")
