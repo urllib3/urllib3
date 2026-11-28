@@ -75,7 +75,7 @@ class ContentDecoder:
     def has_unconsumed_tail(self) -> bool:
         raise NotImplementedError()
 
-    def flush(self) -> bytes:
+    def flush(self, max_length: int = -1) -> bytes:
         raise NotImplementedError()
 
 
@@ -93,8 +93,6 @@ class DeflateDecoder(ContentDecoder):
         # Deflate stream.
         if self._obj.eof:
             return b""
-        if not data and not self._obj.unconsumed_tail:
-            return data
         original_max_length = max_length
         if original_max_length < 0:
             max_length = 0
@@ -140,8 +138,12 @@ class DeflateDecoder(ContentDecoder):
             and not self._obj.eof
         )
 
-    def flush(self) -> bytes:
-        return self._obj.flush()
+    def flush(self, max_length: int = -1) -> bytes:
+        # ``decompressobj.flush(length)`` does not cap its output; ``length``
+        # is only the initial output buffer size. zlib exposes pending output
+        # through bounded empty-input decompress calls instead, and once those
+        # return empty its finalizer has no remaining output to return.
+        return self.decompress(b"", max_length=max_length)
 
 
 class GzipDecoderState:
@@ -218,10 +220,12 @@ class GzipDecoder(ContentDecoder):
     def has_unconsumed_tail(self) -> bool:
         return bool(self._unconsumed_tail)
 
-    def flush(self) -> bytes:
+    def flush(self, max_length: int = -1) -> bytes:
         if self._state == GzipDecoderState.SWALLOW_DATA:
             return b""
-        return self._obj.flush()
+        # As with deflate, zlib's finalizer length is not an output cap.
+        # Drain the gzip stream through bounded empty-input decompress calls.
+        return self.decompress(b"", max_length=max_length)
 
 
 if brotli is not None:
@@ -232,6 +236,7 @@ if brotli is not None:
         # are for 'brotlipy' and bottom branches for 'Brotli'
         def __init__(self) -> None:
             self._obj = brotli.Decompressor()
+            self._flush_buffer = bytearray()
             if hasattr(self._obj, "decompress"):
                 setattr(self, "_decompress", self._obj.decompress)
             else:
@@ -263,10 +268,34 @@ if brotli is not None:
             except AttributeError:
                 return False
 
-        def flush(self) -> bytes:
-            if hasattr(self._obj, "flush"):
-                return self._obj.flush()  # type: ignore[no-any-return]
-            return b""
+        def flush(self, max_length: int = -1) -> bytes:
+            if max_length == 0:
+                return b""
+
+            data = bytearray()
+            while max_length < 0 or len(data) < max_length:
+                remaining = -1 if max_length < 0 else max_length - len(data)
+                if self._flush_buffer:
+                    amount = len(self._flush_buffer) if remaining < 0 else remaining
+                    data += self._flush_buffer[:amount]
+                    del self._flush_buffer[:amount]
+                    continue
+
+                # Supported Brotli backends decompress eagerly: brotlicffi's
+                # deprecated finalizer returns no output, and Google's brotli
+                # finalizer is absent. Drain output held by the output cap
+                # through the empty-input path instead. Google's backend can
+                # round small limits up to its internal chunk size, so slice
+                # that bounded chunk and keep the remainder for the next call.
+                chunk = self.decompress(b"", max_length=remaining)
+                if not chunk:
+                    break
+                if remaining >= 0 and len(chunk) > remaining:
+                    data += chunk[:remaining]
+                    self._flush_buffer += chunk[remaining:]
+                else:
+                    data += chunk
+            return bytes(data)
 
 
 try:
@@ -323,7 +352,7 @@ else:
                 self._obj.unused_data
             )
 
-        def flush(self) -> bytes:
+        def flush(self, max_length: int = -1) -> bytes:
             if not self._obj.eof:
                 raise DecodeError("Zstandard data is incomplete")
             return b""
@@ -351,8 +380,8 @@ class MultiDecoder(ContentDecoder):
             )
         self._decoders = [_get_decoder(e) for e in encodings]
 
-    def flush(self) -> bytes:
-        return self._decoders[0].flush()
+    def flush(self, max_length: int = -1) -> bytes:
+        return self._decoders[0].flush(max_length=max_length)
 
     def decompress(self, data: bytes, max_length: int = -1) -> bytes:
         if max_length <= 0:
@@ -530,6 +559,8 @@ class BaseHTTPResponse(io.IOBase):
         self._decoder: ContentDecoder | None = None
         # Distinguish an uninitialized decoder from a response needing no decoder.
         self._decoder_initialized = False
+        self._decoder_flushed = False
+        self._decoder_flush_buffer = BytesQueueBuffer()
         self.length_remaining: int | None
 
     def get_redirect_location(self) -> str | None | typing.Literal[False]:
@@ -677,8 +708,15 @@ class BaseHTTPResponse(io.IOBase):
             max_length = -1
 
         try:
+            if not data and len(self._decoder_flush_buffer):
+                data = self._flush_decoder(max_length=max_length)
+                self._has_decoded_content = True
+                return data
             if self._decoder:
-                data = self._decoder.decompress(data, max_length=max_length)
+                if self._decoder_flushed and not data:
+                    data = b""
+                else:
+                    data = self._decoder.decompress(data, max_length=max_length)
                 self._has_decoded_content = True
         except self.DECODER_ERROR_CLASSES as e:
             content_encoding = self.headers.get("content-encoding", "").lower()
@@ -688,7 +726,10 @@ class BaseHTTPResponse(io.IOBase):
                 e,
             ) from e
         if flush_decoder:
-            flush_max_length = max_length - len(data) if max_length > 0 else max_length
+            if max_length < 0:
+                flush_max_length = max_length
+            else:
+                flush_max_length = max(max_length - len(data), 0)
             data += self._flush_decoder(max_length=flush_max_length)
 
         return data
@@ -698,12 +739,48 @@ class BaseHTTPResponse(io.IOBase):
         Flushes the decoder. Should only be called if the decoder is actually
         being used.
         """
-        if self._decoder:
-            data = self._decoder.decompress(b"", max_length=max_length)
-            if not self._decoder.has_unconsumed_tail:
-                data += self._decoder.flush()
-            return data
-        return b""
+        if not self._decoder:
+            return b""
+
+        data = bytearray()
+        while max_length < 0 or len(data) < max_length:
+            remaining = -1 if max_length < 0 else max_length - len(data)
+            if len(self._decoder_flush_buffer):
+                data += self._decoder_flush_buffer.get(
+                    len(self._decoder_flush_buffer) if remaining < 0 else remaining
+                )
+                continue
+
+            if self._decoder_flushed:
+                break
+
+            chunk = self._decoder.decompress(b"", max_length=remaining)
+            if chunk:
+                if max_length >= 0 and len(chunk) > remaining:
+                    self._decoder_flush_buffer.put(chunk)
+                    continue
+                data += chunk
+                continue
+
+            if self._decoder.has_unconsumed_tail:
+                break
+
+            # The internal finalizer contract is bounded: a finalizer returns
+            # at most ``remaining`` bytes and is called again when it fills the
+            # budget exactly. Production decoders satisfy it with bounded
+            # empty-input drains rather than unbounded backend finalizers. Keep
+            # any output from a nonconforming finalizer in a queue so slicing
+            # it does not copy the remaining bytes on every read.
+            final = self._decoder.flush(max_length=remaining)
+            if max_length >= 0 and len(final) > remaining:
+                self._decoder_flush_buffer.put(final)
+                continue
+
+            data += final
+            if max_length < 0 or len(final) < remaining:
+                self._decoder_flushed = True
+
+        return bytes(data)
 
     # Compatibility methods for `io` module
     def readinto(self, b: bytearray | memoryview[int]) -> int:
@@ -850,6 +927,7 @@ class HTTPResponse(BaseHTTPResponse):
             # decoder to avoid keeping unnecessary data in memory.
             self._decoded_buffer = BytesQueueBuffer()
             self._decoder = None
+            self._decoder_flush_buffer = BytesQueueBuffer()
 
     @property
     def data(self) -> bytes:
@@ -1148,13 +1226,13 @@ class HTTPResponse(BaseHTTPResponse):
 
             if (
                 self._decoder
-                and self._decoder.has_unconsumed_tail
+                and (self._decoder.has_unconsumed_tail or len(self._decoder_flush_buffer))
                 and len(self._decoded_buffer) < amt
             ):
                 decoded_data = self._decode(
                     b"",
                     decode_content,
-                    flush_decoder=False,
+                    flush_decoder=len(self._decoder_flush_buffer) > 0,
                     max_length=amt - len(self._decoded_buffer),
                 )
                 self._decoded_buffer.put(decoded_data)
@@ -1171,6 +1249,7 @@ class HTTPResponse(BaseHTTPResponse):
             not data
             and len(self._decoded_buffer) == 0
             and not (self._decoder and self._decoder.has_unconsumed_tail)
+            and not len(self._decoder_flush_buffer)
             and not (decode_content and self._has_decoded_content)
         ):
             return data
@@ -1246,13 +1325,13 @@ class HTTPResponse(BaseHTTPResponse):
                 )
             if (
                 self._decoder
-                and self._decoder.has_unconsumed_tail
+                and (self._decoder.has_unconsumed_tail or len(self._decoder_flush_buffer))
                 and (amt is None or len(self._decoded_buffer) < amt)
             ):
                 decoded_data = self._decode(
                     b"",
                     decode_content,
-                    flush_decoder=False,
+                    flush_decoder=len(self._decoder_flush_buffer) > 0,
                     max_length=(
                         amt - len(self._decoded_buffer) if amt is not None else None
                     ),
@@ -1314,6 +1393,7 @@ class HTTPResponse(BaseHTTPResponse):
                 not is_fp_closed(self._fp)
                 or len(self._decoded_buffer) > 0
                 or (self._decoder and self._decoder.has_unconsumed_tail)
+                or len(self._decoder_flush_buffer)
                 or self._has_decoded_content
             ):
                 data = self.read(amt=amt, decode_content=decode_content)
@@ -1506,9 +1586,17 @@ class HTTPResponse(BaseHTTPResponse):
                 # On CPython and PyPy, we should never need to flush the
                 # decoder. However, on Jython we *might* need to, so
                 # lets defensively do it anyway.
-                decoded = self._flush_decoder(max_length=amt if amt is not None else -1)
-                if decoded:  # Platform-specific: Jython.
-                    yield decoded
+                if amt is None:
+                    decoded = self._flush_decoder(max_length=-1)
+                    if decoded:  # Platform-specific: Jython.
+                        yield decoded
+                else:
+                    while amt:
+                        decoded = self._flush_decoder(max_length=amt)
+                        if decoded:  # Platform-specific: Jython.
+                            yield decoded
+                        if len(decoded) < amt:
+                            break
 
             # Chunk content ends with \r\n: discard it.
             while self._fp is not None:
