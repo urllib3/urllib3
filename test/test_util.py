@@ -759,6 +759,49 @@ class TestUtil:
         with pytest.raises(TypeError):
             parse_url(b"https://www.google.com/")  # type: ignore[arg-type]
 
+    # RFC 3986 allows '.' in a scheme, but a schemeless "host:port" URL has
+    # the same shape. See https://github.com/urllib3/urllib3/issues/2897
+    parse_url_scheme_with_dot_map = [
+        ("a.b://example.com/path", Url(scheme="a.b", host="example.com", path="/path")),
+        ("dns.udp://example.com", Url(scheme="dns.udp", host="example.com")),
+        (
+            "git+ssh.v2://user@example.com:2222/repo",
+            Url(
+                scheme="git+ssh.v2",
+                auth="user",
+                host="example.com",
+                port=2222,
+                path="/repo",
+            ),
+        ),
+        # Schemeless URLs with a port must keep parsing as host:port.
+        ("example.com:8080", Url(host="example.com", port=8080)),
+        ("example.com:8080/path", Url(host="example.com", port=8080, path="/path")),
+        ("example.com:", Url(host="example.com")),
+        # A single label plus a trailing dot is not a host here: "a." is a
+        # valid dotted scheme, so "a.:8080" reads as a scheme.
+        ("a.:8080", Url(scheme="a.", path="/8080")),
+    ]
+
+    @pytest.mark.parametrize("url, expected_url", parse_url_scheme_with_dot_map)
+    def test_parse_url_scheme_with_dot(self, url: str, expected_url: Url) -> None:
+        assert parse_url(url) == expected_url
+
+    # A digit run after the colon is a port attempt whatever follows it, so
+    # these stay in the host/port parser and keep failing there instead of
+    # being silently re-read as a dotted scheme.
+    parse_url_scheme_with_dot_invalid_map = [
+        "example.com:8080;foo",
+        "example.com:8080x",
+        "a.b:80:90",
+        "example.com:8080:9090",
+    ]
+
+    @pytest.mark.parametrize("url", parse_url_scheme_with_dot_invalid_map)
+    def test_parse_url_scheme_with_dot_invalid_host_port(self, url: str) -> None:
+        with pytest.raises(LocationParseError):
+            parse_url(url)
+
     @pytest.mark.parametrize(
         "kwargs, expected",
         [
