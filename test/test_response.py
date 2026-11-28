@@ -26,7 +26,7 @@ from urllib3.exceptions import (
     ResponseNotChunked,
     SSLError,
 )
-from urllib3.response import (
+from urllib3.response import (  # type: ignore[attr-defined]
     _MAX_CHUNK_LINE_LENGTH,
     BaseHTTPResponse,
     BytesQueueBuffer,
@@ -1205,9 +1205,8 @@ class TestResponse:
 
     def test_raw_deflate_finalizer_drains_output_without_compressed_tail(self) -> None:
         payload = b"x" * 21
-        compressor = zlib.compressobj(1, zlib.DEFLATED, -zlib.MAX_WBITS)
-        compressed = compressor.compress(payload) + compressor.flush()
-        assert compressed.hex() == "aba8c00200"
+        compressed = bytes.fromhex("aba8c00200")
+        assert zlib.decompress(compressed, -zlib.MAX_WBITS) == payload
 
         decoder = DeflateDecoder()
         first = decoder.decompress(compressed, max_length=2)
@@ -1230,7 +1229,7 @@ class TestResponse:
 
     @onlyBrotli()
     def test_brotli_finalizer_is_bounded(self) -> None:
-        from urllib3.response import BrotliDecoder  # type: ignore[attr-defined]
+        from urllib3.response import BrotliDecoder
 
         if not _brotli_gte_1_2_0_available:
             pytest.skip("bounded Brotli output requires Brotli >= 1.2.0")
@@ -1290,7 +1289,7 @@ class TestResponse:
 
     @onlyBrotli()
     def test_brotli_chunked_terminal_flush_preserves_read_budget(self) -> None:
-        from urllib3.response import BrotliDecoder  # type: ignore[attr-defined]
+        from urllib3.response import BrotliDecoder
 
         if not _brotli_gte_1_2_0_available:
             pytest.skip("bounded Brotli output requires Brotli >= 1.2.0")
@@ -1393,7 +1392,9 @@ class TestResponse:
         assert all(0 <= call <= 2 for call in decoder.flush_max_lengths)
 
     @pytest.mark.parametrize("read_method", ["read", "read1"])
-    def test_ordinary_reads_return_every_deferred_flush_byte(self, read_method: str) -> None:
+    def test_ordinary_reads_return_every_deferred_flush_byte(
+        self, read_method: str
+    ) -> None:
         resp = HTTPResponse(BytesIO(b""), preload_content=False)
         decoder = ScriptedFlushDecoder(flush_data=b"abcdef")
         resp._decoder = decoder

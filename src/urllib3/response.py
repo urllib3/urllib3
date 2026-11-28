@@ -1226,7 +1226,9 @@ class HTTPResponse(BaseHTTPResponse):
 
             if (
                 self._decoder
-                and (self._decoder.has_unconsumed_tail or len(self._decoder_flush_buffer))
+                and (
+                    self._decoder.has_unconsumed_tail or len(self._decoder_flush_buffer)
+                )
                 and len(self._decoded_buffer) < amt
             ):
                 decoded_data = self._decode(
@@ -1325,7 +1327,9 @@ class HTTPResponse(BaseHTTPResponse):
                 )
             if (
                 self._decoder
-                and (self._decoder.has_unconsumed_tail or len(self._decoder_flush_buffer))
+                and (
+                    self._decoder.has_unconsumed_tail or len(self._decoder_flush_buffer)
+                )
                 and (amt is None or len(self._decoded_buffer) < amt)
             ):
                 decoded_data = self._decode(
