@@ -23,14 +23,33 @@ _MISSING_TUNNEL_CONTROL_CHAR_FIX = (
 )
 
 
-@pytest.fixture()
-def pool() -> typing.Generator[HTTPConnectionPool]:
+@pytest.fixture(
+    params=[
+        {"http1": True, "http2": False},
+        {"http1": False, "http2": True},
+    ]
+)
+def pool(request: pytest.FixtureRequest) -> typing.Generator[HTTPConnectionPool]:
     server.setup_class()
 
-    with HTTPConnectionPool(server.host, server.port) as pool:
+    with HTTPConnectionPool(server.host, server.port, **request.param) as pool:
         yield pool
 
     server.teardown_class()
+
+
+@pytest.fixture()
+def h11_pool(pool: HTTPConnectionPool) -> typing.Generator[HTTPConnectionPool]:
+    if pool.conn_kw.get("http2"):
+        pytest.skip(reason="HTTP/2 connection pool does not need to be tested")
+    yield pool
+
+
+@pytest.fixture()
+def h2_pool(pool: HTTPConnectionPool) -> typing.Generator[HTTPConnectionPool]:
+    if pool.conn_kw.get("http1"):
+        pytest.skip(reason="HTTP/1.1 connection pool does not need to be tested")
+    yield pool
 
 
 def test_returns_urllib3_HTTPResponse(pool: HTTPConnectionPool) -> None:
@@ -118,8 +137,92 @@ def test_connection_state_properties(pool: HTTPConnectionPool) -> None:
     assert conn.proxy_is_verified is None
 
 
-def test_set_tunnel_is_reset(pool: HTTPConnectionPool) -> None:
+def test_serial_streams(pool: HTTPConnectionPool) -> None:
     conn = pool._get_conn()
+    assert conn.num_streams() == 0
+    stream = conn.request("GET", "/")
+    assert conn.num_streams() == 1
+    assert not stream.is_closed()
+    resp = conn.getresponse()
+    assert conn.num_streams() == 0
+    assert stream.is_closed()
+    stream = conn.request("GET", "/", preload_content=False)
+    assert conn.num_streams() == 1
+    assert not stream.is_closed()
+    resp = stream.getresponse()
+    if stream.is_closed():
+        assert conn.num_streams() == 0
+    else:
+        assert conn.num_streams() == 1
+    resp.read()
+    assert conn.num_streams() == 0
+    assert stream.is_closed()
+    conn.close()
+
+
+def test_parallel_streams(h2_pool: HTTPConnectionPool) -> None:
+    conn = h2_pool._get_conn()
+    assert conn.num_streams() == 0
+    stream1 = conn.request("GET", "/")
+    assert conn.num_streams() == 1
+    assert not stream1.is_closed()
+    resp1 = conn.getresponse()
+    assert resp1.status == 200
+    assert conn.num_streams() == 0
+    assert stream1.is_closed()
+    stream2 = conn.request("GET", "/")
+    assert conn.num_streams() == 1
+    stream3 = conn.request("GET", "/", preload_content=False)
+    assert conn.num_streams() == 2
+    resp2 = stream2.getresponse()
+    assert resp2.status == 200
+    assert conn.num_streams() == 1
+    assert conn.is_stream_closed(stream2)
+    assert not conn.is_stream_closed(stream3)
+    stream3.close()
+    assert conn.num_streams() == 0
+    assert stream2.is_closed()
+    assert stream3.is_closed()
+    stream4 = conn.request("GET", "/", preload_content=False)
+    assert conn.num_streams() == 1
+    assert not stream4.is_closed()
+    resp4 = conn.getresponse(stream4)
+    assert conn.num_streams() == 1
+    assert not stream4.is_closed()
+    resp4.read()
+    assert conn.num_streams() == 0
+    assert stream4.is_closed()
+    conn.close()
+
+
+def test_response_closes_after_eof(h2_pool: HTTPConnectionPool) -> None:
+    conn = h2_pool._get_conn()
+    stream = conn.request("GET", "/")
+    resp = stream.getresponse()
+    assert resp.closed
+    assert stream.is_closed()
+    assert stream.stream_id is None
+    conn.close()
+
+
+def test_response_after_connection_closed(pool: HTTPConnectionPool) -> None:
+    conn = pool._get_conn()
+    conn.request("GET", "/", preload_content=False)
+    resp1 = conn.getresponse()
+    conn.close()
+    conn.request("POST", "/echo", body=b"foo", preload_content=False)
+    resp2 = conn.getresponse()
+    assert resp1.closed
+    resp1.close()  # close anyway to make sure resp2 isn't affected
+    assert resp1.data == b""  # not available after connection close
+    assert not resp2.closed
+    assert resp2.data == b"foo"
+    resp2.close()
+    conn.close()
+
+
+def test_set_tunnel_is_reset(h11_pool: HTTPConnectionPool) -> None:
+    conn = h11_pool._get_conn()
 
     assert conn.is_closed is True
     assert conn.is_connected is False
@@ -140,8 +243,8 @@ def test_set_tunnel_is_reset(pool: HTTPConnectionPool) -> None:
     assert conn._tunnel_scheme is None  # type: ignore[attr-defined]
 
 
-def test_invalid_tunnel_scheme(pool: HTTPConnectionPool) -> None:
-    conn = pool._get_conn()
+def test_invalid_tunnel_scheme(h11_pool: HTTPConnectionPool) -> None:
+    conn = h11_pool._get_conn()
 
     with pytest.raises(ValueError) as e:
         conn.set_tunnel(host="host", port=8080, scheme="socks")
@@ -177,9 +280,9 @@ def test_invalid_tunnel_scheme(pool: HTTPConnectionPool) -> None:
     reason="Control characters in tunnel headers not rejected in older Python versions",
 )
 def test_invalid_tunnel_headers(
-    pool: HTTPConnectionPool, name: str, value: str
+    h11_pool: HTTPConnectionPool, name: str, value: str
 ) -> None:
-    conn = pool._get_conn()
+    conn = h11_pool._get_conn()
     conn.set_tunnel("tunnel", headers={name: value})
     with pytest.raises(ValueError, match="Invalid header"):
         conn.connect()
@@ -200,8 +303,8 @@ def test_invalid_tunnel_headers(
     _MISSING_TUNNEL_CONTROL_CHAR_FIX,
     reason="Control characters in tunnel host not rejected in older Python versions",
 )
-def test_invalid_tunnel_host(pool: HTTPConnectionPool, tunnel_host: str) -> None:
-    conn = pool._get_conn()
+def test_invalid_tunnel_host(h11_pool: HTTPConnectionPool, tunnel_host: str) -> None:
+    conn = h11_pool._get_conn()
     conn.set_tunnel(tunnel_host)
     with pytest.raises(
         ValueError, match="Tunnel host can't contain control characters"

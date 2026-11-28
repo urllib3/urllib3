@@ -40,7 +40,6 @@ from urllib3 import (
     HTTPResponse,
     HTTPSConnectionPool,
     ProxyManager,
-    util,
 )
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
@@ -209,14 +208,14 @@ class TestALPN(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        with HTTPSConnectionPool(self.host, self.port) as pool:
+        with HTTPSConnectionPool(self.host, self.port, http2=True) as pool:
             try:
                 pool.request("GET", "/", retries=0)
             except MaxRetryError:  # We are violating the protocol
                 pass
             successful = done_receiving.wait(LONG_TIMEOUT)
             assert successful, "Timed out waiting for connection accept"
-            for protocol in util.ALPN_PROTOCOLS:
+            for protocol in ["http/1.1", "h2"]:
                 assert (
                     protocol.encode("ascii") in self.buf
                 ), "missing ALPN protocol in SSL handshake"

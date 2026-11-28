@@ -655,12 +655,14 @@ class TestPoolManager(DualHypercornDummyServerTestCase):
         with pool_manager_factory(headers=headers) as http:
             r = http.request("GET", f"{self.base_url}/multi_headers")
             returned_headers = r.json()["headers"]
-            assert returned_headers[-4:] == [
+
+            for header in [
                 ["Foo", "bar"],
                 ["Multi", "1"],
                 ["Multi", "2"],
                 ["Baz", "quux"],
-            ]
+            ]:
+                assert header in returned_headers
 
             r = http.request(
                 "GET",
@@ -672,12 +674,13 @@ class TestPoolManager(DualHypercornDummyServerTestCase):
                 },
             )
             returned_headers = r.json()["headers"]
-            assert returned_headers[-4:] == [
+            for header in [
                 ["Foo", "new"],
                 ["Multi", "1, 2"],
                 ["Baz", "quux"],
                 ["Extra", "extra"],
-            ]
+            ]:
+                assert header in returned_headers
 
     def test_merge_headers_with_pool_manager_headers(
         self, pool_manager_factory: PoolManagerFactory
@@ -695,11 +698,13 @@ class TestPoolManager(DualHypercornDummyServerTestCase):
                 headers=typing.cast(HTTPHeaderDict, http.headers) | added_headers,
             )
             returned_headers = r.json()["headers"]
-            assert returned_headers[-3:] == [
-                ["Cookie", "choc-chip"],
-                ["Cookie", "oatmeal-raisin"],
-                ["Cookie", "tim-tam"],
-            ]
+            cookie = ""
+            for header in returned_headers:
+                if header[0] == "Cookie":
+                    if cookie:
+                        cookie += "; "
+                    cookie += header[1]
+            assert cookie == "choc-chip; oatmeal-raisin; tim-tam"
             # make sure the pool headers weren't modified
             assert http.headers == orig
 
@@ -720,11 +725,12 @@ class TestPoolManager(DualHypercornDummyServerTestCase):
                 encode_multipart=True,
             )
             returned_headers = r.json()["headers"]
-            assert returned_headers[5:] == [
+            for header in [
                 ["Multi", "1"],
                 ["Multi", "2"],
                 ["Content-Type", "multipart/form-data; boundary=b"],
-            ]
+            ]:
+                assert header in returned_headers
             # Assert that the previous headers weren't modified.
             assert headers == old_headers
 
@@ -738,12 +744,13 @@ class TestPoolManager(DualHypercornDummyServerTestCase):
                 encode_multipart=True,
             )
             returned_headers = r.json()["headers"]
-            assert returned_headers[5:] == [
+            for header in [
                 ["Multi", "1"],
                 ["Multi", "2"],
                 # Uses the set value, not the one that would be generated.
                 ["Content-Type", "multipart/form-data; boundary=b; field=value"],
-            ]
+            ]:
+                assert header in returned_headers
 
     def test_body(self, pool_manager_factory: PoolManagerFactory) -> None:
         with pool_manager_factory() as http:

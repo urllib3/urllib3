@@ -79,7 +79,11 @@ class ConnectionPool:
     scheme: str | None = None
     QueueCls = _DEFAULT_QUEUE_CLASS
 
-    def __init__(self, host: str, port: int | None = None) -> None:
+    def __init__(
+        self,
+        host: str,
+        port: int | None = None,
+    ) -> None:
         if not host:
             raise LocationValueError("No host specified.")
 
@@ -560,6 +564,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         )
 
         return response
+
+    def is_closed(self) -> bool:
+        """
+        Check if this pool is closed.
+        """
+        return self.pool is None
 
     def close(self) -> None:
         """

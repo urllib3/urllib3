@@ -40,8 +40,12 @@ def test_index(
         assert urllib3.contrib.emscripten.fetch.has_jspi() == prefer_jspi
         conn = HTTPConnection(host, port)
         url = f"http://{host}:{port}/"
-        conn.request("GET", url)
+        stream = conn.request("GET", url)
+        assert conn.num_streams() == 1
+        assert not stream.is_closed()
         response = conn.getresponse()
+        assert conn.num_streams() == 1
+        assert not stream.is_closed()
         # check methods of response
         assert isinstance(response, BaseHTTPResponse)
         assert response.url == url
@@ -54,6 +58,9 @@ def test_index(
         data2 = response.data  # check that getting data twice works
         decoded2 = data2.decode("utf-8")
         assert decoded1 == decoded2 == "Dummy server!"
+        response.close()
+        assert conn.num_streams() == 0
+        assert stream.is_closed()
 
     pyodide_test(
         selenium_coverage,
