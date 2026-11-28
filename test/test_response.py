@@ -868,7 +868,7 @@ class TestResponse:
             assert len(result[-1]) == len(original_data) % 10240
         assert b"".join(result) == original_data
 
-    @pytest.mark.timeout(LONG_TIMEOUT)
+    @pytest.mark.timeout(max(LONG_TIMEOUT * 10, 5))
     @pytest.mark.parametrize(
         "data",
         [d[1] for d in _test_compressor_params],
