@@ -18,10 +18,13 @@ _PERCENT_RE = re.compile(r"%[a-fA-F0-9]{2}")
 _HOST_PERCENT_RE = re.compile(r"%[a-fA-F0-9]{2}|%")
 _SCHEME_RE = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+.\-]*:|/)")
 # RFC 3986 allows '.' in a scheme, so a schemeless "host:port" URL also matches
-# the scheme grammar above.  Treat the URL as schemeless when the characters
-# between the colon and the next '/', '?' or '#' are a port number.
+# the scheme grammar above.  Treat the URL as schemeless when a port attempt
+# follows the colon: any digit run, or the end of the string.  The port attempt
+# is deliberate even when the digits are not a valid port ("example.com:8080;foo"),
+# so that invalid host:port input keeps failing in the host/port parser instead
+# of being silently read as a scheme.
 _SCHEME_LIKE_HOST_PORT_RE = re.compile(
-    r"^[a-zA-Z][a-zA-Z0-9+\-]*\.[a-zA-Z0-9+.\-]*:(?:\d+(?:[/?#]|$)|$)"
+    r"^[a-zA-Z][a-zA-Z0-9+\-]*\.[a-zA-Z0-9+.\-]+:(?:\d|$)"
 )
 _HOST_INVALID_CHAR_RE = re.compile(r"[\x00-\x20\x7f]")
 _URI_RE = re.compile(
