@@ -1391,6 +1391,74 @@ class TestResponse:
         assert decoder.flush_calls == 2
         assert all(0 <= call <= 2 for call in decoder.flush_max_lengths)
 
+    def test_flush_decoder_stops_before_finalizer_with_unconsumed_tail(self) -> None:
+        class TailDecoder(ContentDecoder):
+            def __init__(self) -> None:
+                self.flush_calls = 0
+
+            def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+                return b""
+
+            @property
+            def has_unconsumed_tail(self) -> bool:
+                return True
+
+            def flush(self, max_length: int = -1) -> bytes:
+                self.flush_calls += 1
+                return b"unexpected"
+
+        resp = HTTPResponse(BytesIO(b""), preload_content=False)
+        decoder = TailDecoder()
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+
+        assert resp._flush_decoder(max_length=2) == b""
+        assert decoder.flush_calls == 0
+
+    def test_flush_decoder_queues_overshooting_finalizer_output(self) -> None:
+        class OvershootingFinalizerDecoder(ContentDecoder):
+            def __init__(self) -> None:
+                self.final_data = b"abcdef"
+                self.flush_max_lengths: list[int] = []
+
+            def decompress(self, data: bytes, max_length: int = -1) -> bytes:
+                return b""
+
+            @property
+            def has_unconsumed_tail(self) -> bool:
+                return False
+
+            def flush(self, max_length: int = -1) -> bytes:
+                self.flush_max_lengths.append(max_length)
+                final = self.final_data
+                self.final_data = b""
+                return final
+
+        resp = HTTPResponse(BytesIO(b""), preload_content=False)
+        decoder = OvershootingFinalizerDecoder()
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+
+        chunks = [resp._flush_decoder(max_length=2) for _ in range(4)]
+
+        assert chunks == [b"ab", b"cd", b"ef", b""]
+        assert decoder.flush_max_lengths == [2, 2]
+
+    def test_read_chunked_unbounded_eof_flush_uses_single_finalizer_drain(self) -> None:
+        httplib_r = httplib.HTTPResponse(MockSock)  # type: ignore[arg-type]
+        httplib_r.fp = MockChunkedEncodingResponse([])  # type: ignore[assignment]
+        resp = HTTPResponse(
+            httplib_r,
+            preload_content=False,
+            headers={"transfer-encoding": "chunked", "content-encoding": "deflate"},
+        )
+        decoder = ScriptedFlushDecoder(flush_data=b"abcdef")
+        resp._decoder = decoder
+        resp._decoder_initialized = True
+
+        assert list(resp.read_chunked(decode_content=True)) == [b"abcdef"]
+        assert decoder.flush_max_lengths == [-1]
+
     @pytest.mark.parametrize("read_method", ["read", "read1"])
     def test_ordinary_reads_return_every_deferred_flush_byte(
         self, read_method: str
